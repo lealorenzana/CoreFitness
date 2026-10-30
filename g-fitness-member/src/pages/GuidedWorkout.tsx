@@ -27,7 +27,7 @@ import { errorMessage } from '../utils/errorMessage';
 import { pointsWord } from '../lib/gymApp';
 import { useGymApp } from '../hooks/useGymApp';
 import { on, useCountUp, useSteps } from '../components/moments/momentHooks';
-import { buzz as momentBuzz, play, pointsFor, reducedMotion } from '../lib/moments';
+import { buzz as momentBuzz, play, pointsFor, reducedMotion, workoutUnpaidReason } from '../lib/moments';
 import { checkForMoments } from '../lib/momentWatch';
 import { getProgression, levelLabel, type Progression } from '../lib/api/achievements';
 import { getCurrentMemberId } from '../services/bookingService';
@@ -1091,6 +1091,7 @@ function FinishView({
   const beat = useCountUp(done.beat, step >= 6, still, { ms: 500, onTick: tick });
   const [points, setPoints] = useState<number | null>(null);
   const [prog, setProg] = useState<Progression | null>(null);
+  const [unpaid, setUnpaid] = useState<'short' | 'today' | null>(null);
   useEffect(() => {
     let alive = true;
     void (async () => {
@@ -1098,6 +1099,12 @@ function FinishView({
       if (done.waiting || !logId) return;
       const [p, g] = await Promise.all([pointsFor('workout_logs', logId), getProgression().catch(() => null)]);
       if (alive) { setPoints(p); setProg(g); }
+      // Nothing paid: say why when the database can tell us (0219), never a guess.
+      if (p == null) {
+        const midnight = new Date(); midnight.setHours(0, 0, 0, 0);
+        const why = await workoutUnpaidReason(logId, midnight.toISOString());
+        if (alive) setUnpaid(why);
+      }
     })();
     // A badge, a level or a target this workout earned plays after the finish screen has had its turn.
     const t = window.setTimeout(() => { if (!done.waiting) void checkForMoments(true); }, 4200);
@@ -1158,6 +1165,13 @@ function FinishView({
         <div className="flex justify-center">
           <div className={on(step, 8, 'mo-points mo-in')} data-finish-points><Coins size={16} weight="fill" /> +{points} {pointsWord(gymApp, true)} for the workout</div>
         </div>
+      )}
+      {points == null && unpaid && (
+        <p className={on(step, 8)} style={{ marginTop: 12, fontSize: 12.5, lineHeight: 1.5, textAlign: 'center', color: 'var(--color-text-secondary)' }} data-finish-unpaid>
+          {unpaid === 'short'
+            ? `No ${pointsWord(gymApp, true)} for this one — a workout earns them with 3 or more sets and at least 10 minutes.`
+            : `No ${pointsWord(gymApp, true)} for this one — workouts earn them once a day, and today's are already in.`}
+        </p>
       )}
       {prog && (
         <div className={on(step, 9)} style={{ marginTop: 14 }} data-finish-level>

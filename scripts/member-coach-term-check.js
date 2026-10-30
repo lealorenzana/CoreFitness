@@ -314,19 +314,27 @@ async (page) => {
   // ---- Your coach: waiting for payment ----
   STATE.status = 'awaiting_payment';
   await go('/member/coach');
+  if (await page.locator('[data-pay-way="transfer"]').count()) await page.locator('[data-pay-way="transfer"]').click();
   t = await text();
   out.push("waiting for payment shows the coach's own GCash: " + (/Pay Rae/.test(t) && /0917 222 3333/.test(t) && /₱1,500/.test(t) ? 'yes' : 'MISSING'));
-  await page.getByLabel('Payment reference').fill('GC-55512');
-  await page.getByRole('button', { name: /^Send$/ }).click();
+  // One chooser (2026-10-28): a coach paid directly shows the coach's account, never the gym's, and no desk.
+  out.push("…in the one list, the coach's account and not the gym's: " + (/Send to Rae’s GCash/.test(t) && !/the gym’s/.test(t)
+    && (await page.locator('[data-pay-way="desk"]').count()) === 0 ? 'yes' : 'MISSING'));
+  await page.getByLabel('Reference number from your receipt').fill('GC-55512');
+  await page.getByRole('button', { name: 'Send my reference' }).click();
   await page.waitForTimeout(1000);
   out.push('the reference is sent: ' + (CALLS.submit_coaching_payment?.p_reference === 'GC-55512' ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/member-coach-pay.png' });
 
   // ---- 0192: pay the coach online, straight to their PayMongo ----
   await page.route('https://checkout.paymongo.test/**', (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<h1>PayMongo</h1>' }));
+  out.push('a sent reference waits for approval, offering no second way to pay: ' + (/Waiting for Rae to approve it/.test(await text())
+    && (await page.locator('[data-pay-chooser]').count()) === 0 ? 'yes' : 'MISSING'));
+  STATE.status = 'awaiting_payment';
   await go('/member/coach');
-  const payBtn = page.locator('[data-paymongo-pay]').getByRole('button');
-  out.push('a coach paid directly can be paid online, at the coaching\u2019s price: ' + ((await payBtn.count()) === 1 && /Pay ₱1,500 now/.test(await payBtn.innerText()) ? 'yes' : 'MISSING'));
+  const payBtn = page.locator('[data-pay-chooser]').getByRole('button', { name: /^Pay ₱1,500 online$/ });
+  out.push('a coach paid directly can be paid online, at the coaching\u2019s price: ' + ((await payBtn.count()) === 1
+    && (await page.locator('[data-pay-way="online"][aria-checked="true"]').count()) === 1 ? 'yes' : 'MISSING'));
   await payBtn.click();
   await page.waitForURL('https://checkout.paymongo.test/**', { timeout: 8000 }).catch(() => {});
   out.push('…only the coaching is sent — the price is the database\u2019s: ' + (CALLS.paymongo?.purpose === 'coaching' && CALLS.paymongo?.details?.coaching_id === 'k1'

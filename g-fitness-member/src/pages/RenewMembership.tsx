@@ -18,7 +18,7 @@ import { Page, PageTitle } from '../components/ui/page';
 import { Chip, Eyebrow, NocButton, Panel, SectionHead, StatusPill } from '../components/ui/noc';
 import Disclosure from '../components/ui/Disclosure';
 import GlassSheet from '../components/ui/GlassSheet';
-import PayOnline, { type PayOnlineValue } from '../components/PayOnline';
+import PayChooser from '../components/payments/PayChooser';
 import PayMongoPay from '../components/payments/PayMongoPay';
 import { gymOnlinePay, myDayPass, reconcilePending, waitForPayment, type DayPassState } from '../lib/api/paymongo';
 import { useGymApp } from '../hooks/useGymApp';
@@ -139,12 +139,9 @@ export default function RenewMembership() {
   const [quote, setQuote] = useState<RefundQuote | null>(null);
   const [sheet, setSheet] = useState(false);
   const [when, setWhen] = useState<string | null>(null);
-  const [sending, setSending] = useState(false);
   // 0167: the gym's own accounts, when it takes payments online.
   const gymApp = useGymApp();
   const [payMethods, setPayMethods] = useState<GymPayMethod[]>([]);
-  const [payMode, setPayMode] = useState<'desk' | 'online'>('desk');
-  const [pay, setPay] = useState<PayOnlineValue>({ methodId: null, reference: '', proof: null });
   const onlineOn = moduleOn(gymApp, 'online_pay');
   useEffect(() => {
     if (!onlineOn) return;
@@ -293,27 +290,12 @@ export default function RenewMembership() {
     && (current.never_expires || (!!current.expiry_date && new Date(`${current.expiry_date}T00:00:00`).getTime() >= new Date(new Date().toDateString()).getTime()))
     && Number(current.membership_plans?.price ?? 0) > 0;
   const switchMidTerm = !!selected && currentRunning && selected.id !== current?.plan_id;
-  const paying = canPayOnline && payMode === 'online';
-  const send = async () => {
-    if (!selected) return;
-    if (paying && pay.reference.trim().length < 4) { toast.error('Type the reference number from your receipt.'); return; }
-    setSending(true);
-    try {
-      if (paying) {
-        await requestRenewalPaid(selected.id, pay.methodId ?? payMethods[0].id, pay.reference.trim(), pay.proof);
-      } else {
-        await requestRenewal(selected.id, when ? `Coming ${when.toLowerCase()}` : undefined);
-      }
-      await reload();
-      setSheet(false);
-      setSelectedId(null);
-      setPay({ methodId: null, reference: '', proof: null });
-      toast.success(paying ? 'Sent — the desk will confirm your payment' : 'Sent — the front desk knows you are coming');
-    } catch (err) {
-      toast.error(errorMessage(err, 'Could not send the request'));
-    } finally {
-      setSending(false);
-    }
+  /** After the desk is told (or sent a reference): the request panel takes over. */
+  const sent = async (paid: boolean) => {
+    await reload();
+    setSheet(false);
+    setSelectedId(null);
+    toast.success(paid ? 'Sent — waiting for the desk to approve your payment' : 'Sent — the front desk knows you are coming');
   };
 
   const withdraw = async () => {
@@ -405,8 +387,9 @@ export default function RenewMembership() {
           <p style={{ fontSize: 13.5, marginBottom: 10, color: 'var(--color-text-secondary)' }}>
             <b style={{ color: 'var(--color-text-primary)' }}>Just today?</b> A day pass lets you in today{dayPass.classes ? ' and book a class held today' : ''}.
           </p>
-          <PayMongoPay purpose="day_pass" details={{}} amount={peso(Number(dayPass.price))} returnPath="/member/renew"
-            label={`Day pass — pay ${peso(Number(dayPass.price))} now`} note="Valid for today only. QRPh, GCash, Maya or card, straight to the gym." />
+          <PayChooser amount={peso(Number(dayPass.price))}
+            online={{ purpose: 'day_pass', details: {}, returnPath: '/member/renew', to: gym?.gym_name ?? 'the gym' }}
+            desk={{ next: `Or ask the desk for a day pass when you arrive — ${peso(Number(dayPass.price))}, valid for today only.` }} />
         </Panel></div>
       )}
       {/* Back from PayMongo (0192): confirmed here, the moment PayMongo says so. */}
@@ -443,7 +426,7 @@ export default function RenewMembership() {
                     <PaperPlaneTilt size={13} weight="fill" /> {openRequest.paid ? 'Payment sent' : 'The desk knows you are coming'}
                   </span>
                 </Eyebrow>
-                <StatusPill label={openRequest.paid ? 'To confirm' : 'Requested'} tone="action" />
+                <StatusPill label={openRequest.paid ? 'Waiting for approval' : 'Requested'} tone="action" />
               </div>
               <p style={{ fontSize: 19, fontWeight: 700, marginTop: 8, color: 'var(--color-text-primary)' }}>
                 {openRequest.planName ?? 'Your plan'}
@@ -456,7 +439,7 @@ export default function RenewMembership() {
               </p>
               <p style={{ fontSize: 12.5, marginTop: 8, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
                 {openRequest.paid
-                  ? 'The desk checks it reached the gym\'s account, then records it — your plan changes then. If something is off they tell you why.'
+                  ? 'Waiting for the desk to approve it: they check it reached the gym’s account, then record it — your plan changes then. If they turn it down, the reason shows here.'
                   : 'It closes by itself once staff record your payment — your plan changes then, not before.'}
               </p>
               <NocButton variant="ghost" className="w-full" style={{ marginTop: 12 }} onClick={() => void withdraw()}>
@@ -466,12 +449,12 @@ export default function RenewMembership() {
           ) : lastClosed ? (
             <Panel glow={lastClosed.status === 'declined' ? 'action' : 'structure'}>
               <Eyebrow tone={lastClosed.status === 'declined' ? 'action' : undefined}>
-                {lastClosed.status === 'fulfilled' ? 'Renewal recorded' : 'Request closed by the desk'}
+                {lastClosed.status === 'fulfilled' ? 'Renewal recorded' : 'Not approved by the desk'}
               </Eyebrow>
               <p style={{ fontSize: 14, marginTop: 8, lineHeight: 1.5, color: 'var(--color-text-secondary)' }}>
                 {lastClosed.status === 'fulfilled'
                   ? `${lastClosed.planName ?? 'Your plan'} — the desk recorded your payment on ${new Date(lastClosed.closedAt as string).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}.`
-                  : `${lastClosed.planName ?? 'Your request'}: ${lastClosed.closeNote ?? 'closed'}`}
+                  : `${lastClosed.planName ?? 'Your request'} — ${lastClosed.closeNote ? `the reason: ${lastClosed.closeNote}` : 'no reason was given; ask at the desk'}.`}
               </p>
             </Panel>
           ) : null}
@@ -660,17 +643,11 @@ export default function RenewMembership() {
             open={sheet && selected != null}
             onClose={() => setSheet(false)}
             title={action.label}
-            subtitle={canPayOnline ? 'Pay at the desk, or pay the gym now by ' + payMethods.map((m) => m.label).join(', ') : 'Nothing is charged in the app — the desk takes cash'}
+            subtitle={selected && Number(selected.price) > 0 ? `${peso(Number(selected.price))} · choose how you will pay` : 'Nothing to pay — the desk moves you'}
             footer={
-              <div className="flex flex-col" style={{ gap: 8 }}>
-                <NocButton variant="fill" className="w-full" disabled={sending} icon={<PaperPlaneTilt size={16} weight="fill" />}
-                  onClick={() => void send()}>
-                  {sending ? 'Sending…' : paying ? 'Send for the desk to confirm' : openRequest ? 'Replace my request' : 'Tell the desk I am coming'}
-                </NocButton>
-                <NocButton variant="ghost" className="w-full" onClick={() => { setSheet(false); setConfirmed(true); }}>
-                  Just show me what to do
-                </NocButton>
-              </div>
+              <NocButton variant="ghost" className="w-full" onClick={() => { setSheet(false); setConfirmed(true); }}>
+                Just show me what to do
+              </NocButton>
             }
           >
             {selected && payMongo && Number(selected.price) > 0 && switchMidTerm && (
@@ -687,48 +664,42 @@ export default function RenewMembership() {
                 <p style={{ fontSize: 12, marginTop: 12, color: 'var(--color-text-muted)' }}>Or, for {selected.name}:</p>
               </div>
             )}
-            {selected && payMongo && Number(selected.price) > 0 && !switchMidTerm && (
-              <div style={{ marginBottom: 16 }}>
-                <PayMongoPay purpose="membership" details={{ plan_id: selected.id }} amount={peso(Number(selected.price))}
-                  returnPath="/member/renew" note="GCash, Maya, card or online banking, straight to the gym. Your plan renews the moment it is paid." />
-                <p style={{ fontSize: 12, marginTop: 12, color: 'var(--color-text-muted)' }}>Or:</p>
-              </div>
-            )}
-            {selected && canPayOnline && (
-              <div className="flex" style={{ gap: 8, marginBottom: 14 }} role="group" aria-label="How you will pay">
-                <Chip label="Pay at the desk" on={payMode === 'desk'} onClick={() => setPayMode('desk')} />
-                <Chip label="Pay now online" on={payMode === 'online'} onClick={() => setPayMode('online')} />
-              </div>
-            )}
-            {selected && paying && (
-              <PayOnline methods={payMethods} amount={peso(Number(selected.price))} value={pay} onChange={setPay} />
-            )}
-            {selected && !paying && (
-              <div className="flex flex-col" style={{ gap: 14 }}>
-                <p style={{ fontSize: 13.5, lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>
-                  The front desk gets a heads-up that you want{' '}
-                  <span style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{selected.name}</span>
-                  {Number(selected.price) > 0 && (
-                    <> and will expect <span style={{ color: 'var(--color-secondary)', fontWeight: 600 }}>{peso(Number(selected.price))}</span> in cash</>
-                  )}
-                  . Your plan changes when they record it.
-                </p>
-                <div>
-                  <p className="inline-flex items-center" style={{ gap: 6, fontSize: 12, fontWeight: 600, color: 'var(--color-primary-300)' }}>
-                    <Clock size={13} /> When will you come? (optional)
-                  </p>
-                  <div className="flex flex-wrap" style={{ gap: 8, marginTop: 8 }}>
-                    {['Today', 'Tomorrow', 'This week'].map((w) => (
-                      <Chip key={w} label={w} on={when === w} onClick={() => setWhen(when === w ? null : w)} />
-                    ))}
-                  </div>
-                </div>
-                {openRequest && (
-                  <p style={{ fontSize: 12.5, color: 'var(--color-secondary)' }}>
-                    This replaces your open request for {openRequest.planName}.
-                  </p>
-                )}
-              </div>
+            {selected && (
+              <PayChooser
+                amount={peso(Number(selected.price))}
+                online={payMongo && Number(selected.price) > 0 && !switchMidTerm
+                  ? { purpose: 'membership', details: { plan_id: selected.id }, returnPath: '/member/renew', to: gym?.gym_name ?? 'the gym' } : null}
+                transfer={canPayOnline ? {
+                  methods: payMethods, whose: 'the gym’s', approver: 'the desk',
+                  send: async (methodId, reference, proof) => { await requestRenewalPaid(selected.id, methodId, reference, proof); await sent(true); },
+                } : null}
+                desk={{
+                  next: Number(selected.price) > 0
+                    ? `Bring ${peso(Number(selected.price))} in cash — your plan changes when the desk records it.`
+                    : 'Nothing to pay — the desk moves you when you come in.',
+                  button: openRequest ? 'Replace my request' : Number(selected.price) > 0 ? 'I’ll pay at the desk' : 'Tell the desk I am coming',
+                  choose: async () => { await requestRenewal(selected.id, when ? `Coming ${when.toLowerCase()}` : undefined); await sent(false); },
+                  body: (
+                    <div className="flex flex-col" style={{ gap: 10 }}>
+                      <div>
+                        <p className="inline-flex items-center" style={{ gap: 6, fontSize: 12, fontWeight: 600, color: 'var(--color-primary-300)' }}>
+                          <Clock size={13} /> When will you come? (optional)
+                        </p>
+                        <div className="flex flex-wrap" style={{ gap: 8, marginTop: 8 }}>
+                          {['Today', 'Tomorrow', 'This week'].map((w) => (
+                            <Chip key={w} label={w} on={when === w} onClick={() => setWhen(when === w ? null : w)} />
+                          ))}
+                        </div>
+                      </div>
+                      {openRequest && (
+                        <p style={{ fontSize: 12.5, color: 'var(--color-secondary)' }}>
+                          This replaces your open request for {openRequest.planName}.
+                        </p>
+                      )}
+                    </div>
+                  ),
+                }}
+              />
             )}
           </GlassSheet>
         </>

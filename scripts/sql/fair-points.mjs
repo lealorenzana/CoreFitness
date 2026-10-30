@@ -173,6 +173,28 @@ await owner();
 check('the desk records a reason with an action', err === null, err ?? '');
 check('…a member cannot', err2 !== null, 'it ran');
 
+// 13. Walk-ins: a pack needs a phone; the guest stays on the list until their last visit.
+await owner();
+await db.exec(`update gym_settings set day_pass_on = true, day_pass_price = 100, pack5_price = 400 where gym_id = '${GYM}'`);
+await as(ST);
+err = await tryExec(`select * from record_guest_visit(null, 'No Phone', null, 'pack5', 'cash')`);
+check('a pack cannot be sold without a phone', /phone/i.test(err ?? ''), err ?? 'it was sold');
+const bought = await one(`select * from record_guest_visit(null, 'Pack Guest', '0917 555 1212', 'pack5', 'cash')`);
+check('with a phone, a 5-visit pack leaves 4 visits', bought.visits_left === 4, JSON.stringify(bought));
+let left = 4, stillListed = true;
+for (let i = 0; i < 4; i++) {
+  const listed = (await all(`select * from guests_with_visits()`)).some((g) => g.id === bought.guest_id && g.visits_left === left);
+  stillListed = stillListed && listed;
+  left = (await one(`select * from record_guest_visit('${bought.guest_id}', null, null, 'pack_visit', 'cash')`)).visits_left;
+}
+check('the guest is on the list to pick, visit after visit, until 0', stillListed && left === 0, `${stillListed} ${left}`);
+check('…and off it at 0', !(await all(`select * from guests_with_visits()`)).some((g) => g.id === bought.guest_id));
+err = await tryExec(`select * from record_guest_visit('${bought.guest_id}', null, null, 'pack_visit', 'cash')`);
+check('a fifth pack visit is refused', /no visits left/i.test(err ?? ''), err ?? 'it went through');
+await as(M);
+check('a member sees no guest list', (await all(`select * from guests_with_visits()`)).length === 0);
+await owner();
+
 check('the marker answers', (await one(`select migration_0219_applied() a`)).a === true);
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

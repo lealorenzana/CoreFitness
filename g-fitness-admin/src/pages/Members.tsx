@@ -16,6 +16,8 @@ import FloatingWindow from '../components/ui/FloatingWindow';
 import './attendance/att.css';
 import { supabase } from '../lib/supabaseClient';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import ReasonDialog from '../components/ui/ReasonDialog';
+import { recordReason } from '../lib/api/reasons';
 import MembershipActionDialog from '../components/ui/MembershipActionDialog';
 import MemberDetailDrawer from '../components/ui/MemberDetailDrawer';
 import InviteMembersPanel from '../components/InviteMembersPanel';
@@ -424,15 +426,17 @@ export default function Members() {
     showToast(`Reminder sent to ${sent} of ${due.length}`, sent === due.length ? 'success' : 'error');
   };
 
-  const handleUnfreeze = async (m: MemberRow) => {
-    if (!m.membership) return;
-    try {
-      await unfreezeMembership(m.membership);
-      showToast(`${m.fullName}'s membership resumed — frozen days added back`, 'success');
-      await load();
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not resume that membership', 'error');
-    }
+  /** Ending a freeze early undoes one — it asks why (owner, 2026-10-28; 0219's record_reason). */
+  const [toResume, setToResume] = useState<MemberRow | null>(null);
+  const handleUnfreeze = async (reason: string) => {
+    const m = toResume;
+    if (!m?.membership) return;
+    await unfreezeMembership(m.membership);
+    await recordReason({ action: 'membership.resumed', subjectType: 'membership', subjectId: m.membership.id, memberId: m.id,
+      summary: `Resumed ${m.fullName}'s frozen membership`, reason });
+    showToast(`${m.fullName}'s membership resumed — frozen days added back`, 'success');
+    setToResume(null);
+    await load();
   };
 
   const handleCancel = async (detail: Omit<MembershipActionDetail, 'memberId'>) => {
@@ -728,7 +732,7 @@ export default function Members() {
                         )}
                         <DotMenu label={`Actions for ${m.fullName}`} items={[
                           { label: 'View details', icon: Eye, onClick: () => setViewingId(m.id) },
-                          { label: 'Resume membership', icon: Play, onClick: () => void handleUnfreeze(m), hidden: showArchived || !m.membership || m.membershipStatus !== 'frozen' },
+                          { label: 'Resume membership', icon: Play, onClick: () => setToResume(m), hidden: showArchived || !m.membership || m.membershipStatus !== 'frozen' },
                           { label: frozenOnce ? 'Freeze (used this period)' : 'Freeze membership', icon: Pause, onClick: () => setToFreeze(m),
                             hidden: showArchived || !m.membership || m.membershipStatus !== 'active', disabled: frozenOnce },
                           { label: 'Cancel membership', icon: Ban, onClick: () => setToCancel(m), tone: 'warn', hidden: showArchived || !m.membership || m.membershipStatus !== 'active' },
@@ -760,6 +764,10 @@ export default function Members() {
           </div>
         )}
       </div>
+
+      <ReasonDialog isOpen={!!toResume} onClose={() => setToResume(null)} title="Resume the membership"
+        message={<>Resume <b className="text-white">{toResume?.fullName}</b>&rsquo;s frozen membership now? The frozen days are added back to its end date.</>}
+        confirmText="Resume" quick={['Back early from the injury', 'Back from travel', 'Frozen by mistake']} onConfirm={handleUnfreeze} />
 
       {/* "remind all" (2026-10-20): one message to each member expiring this week — the record is the notification,
           never sent without the admin seeing who gets it. */}
@@ -914,9 +922,11 @@ export default function Members() {
                       throw err;
                     }
                   }}
-                  onReject={async (reg) => {
+                  onReject={async (reg, reason) => {
                     try {
                       await rejectPendingRegistration(reg);
+                      await recordReason({ action: 'registration.rejected', subjectType: 'member', subjectId: reg.id, memberId: reg.id,
+                        summary: `Rejected ${reg.first_name} ${reg.last_name}'s sign-up`, reason });
                       setPendingCount((c) => Math.max(0, c - 1));
                       showToast(`${reg.first_name} ${reg.last_name} registration rejected.`, 'success');
                     } catch (err) {
@@ -1127,8 +1137,9 @@ function PendingRegistrationsList({
   onReject,
 }: {
   onApprove: (reg: PendingRegistrationRow) => Promise<void>;
-  onReject: (reg: PendingRegistrationRow) => Promise<void>;
+  onReject: (reg: PendingRegistrationRow, reason: string) => Promise<void>;
 }) {
+  const [toReject, setToReject] = useState<PendingRegistrationRow | null>(null);
   const [pendingList, setPendingList] = useState<PendingRegistrationRow[]>([]);
   /** id -> name, so the row can say which plan they asked about. */
   const [planNames, setPlanNames] = useState<Record<string, string>>({});
@@ -1154,13 +1165,12 @@ function PendingRegistrationsList({
     }
   };
 
-  const handleReject = async (reg: PendingRegistrationRow) => {
-    try {
-      await onReject(reg);
-      setPendingList((prev) => prev.filter((p) => p.id !== reg.id));
-    } catch {
-      // onReject already surfaced the error toast
-    }
+  const handleReject = async (reason: string) => {
+    const reg = toReject;
+    if (!reg) return;
+    await onReject(reg, reason);
+    setPendingList((prev) => prev.filter((p) => p.id !== reg.id));
+    setToReject(null);
   };
 
   const q = search.trim().toLowerCase();
@@ -1203,12 +1213,15 @@ function PendingRegistrationsList({
               </div>
               <div className="flex flex-col gap-2 flex-none">
                 <RdButton size="sm" variant="primary" icon={CheckCircle} onClick={() => void handleApprove(reg)}>Approve</RdButton>
-                <RdButton size="sm" variant="amber" icon={XCircle} onClick={() => void handleReject(reg)}>Reject</RdButton>
+                <RdButton size="sm" variant="amber" icon={XCircle} onClick={() => setToReject(reg)}>Reject</RdButton>
               </div>
             </motion.div>
           );
         })}
       </div>
+      <ReasonDialog isOpen={!!toReject} onClose={() => setToReject(null)} title="Reject the sign-up"
+        message={<>Reject <b className="text-white">{toReject ? `${toReject.first_name} ${toReject.last_name}` : ''}</b>? They cannot sign in to this gym until they sign up again.</>}
+        confirmText="Reject" quick={['Not a member of this gym', 'A duplicate sign-up', 'A test account']} onConfirm={handleReject} />
     </>
   );
 }

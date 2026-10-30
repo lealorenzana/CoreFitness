@@ -8,7 +8,10 @@ import DateField from '../components/ui/DateField';
 import GlassSheet from '../components/ui/GlassSheet';
 import { Page, PageTitle } from '../components/ui/page';
 import { LineRow, NocButton, Panel, SectionHead, StatusPill } from '../components/ui/noc';
-import PayMongoPay from '../components/payments/PayMongoPay';
+import PayChooser from '../components/payments/PayChooser';
+import { listGymPayMethods, type GymPayMethod } from '../lib/api/renewalRequests';
+import { useGymApp } from '../hooks/useGymApp';
+import { moduleOn } from '../lib/gymApp';
 import { gymOnlinePay, reconcilePending, waitForPayment } from '../lib/api/paymongo';
 import { errorMessage } from '../utils/errorMessage';
 import { addDays, todayKey } from '../utils/dates';
@@ -34,7 +37,11 @@ export default function MyCoach() {
   const [list, setList] = useState<Coaching[] | null | undefined>(undefined);
   const [coaches, setCoaches] = useState<PublicTrainer[]>([]);
   const [methods, setMethods] = useState<TrainerPaymentMethod[]>([]);
-  const [reference, setReference] = useState('');
+  /** The gym's own accounts (0167), for a package the gym prices. */
+  const gymApp = useGymApp();
+  const gymTransfer = moduleOn(gymApp, 'online_pay');
+  const [gymMethods, setGymMethods] = useState<GymPayMethod[]>([]);
+  useEffect(() => { if (gymTransfer) void listGymPayMethods().then(setGymMethods); }, [gymTransfer]);
   /** Who takes coaching payments online (0192): the gym, and which coaches. */
   const [onlinePay, setOnlinePay] = useState<{ gym: boolean; trainers: string[] } | null>(null);
   useEffect(() => { void gymOnlinePay().then(setOnlinePay); }, []);
@@ -133,41 +140,37 @@ export default function MyCoach() {
             <div data-pay>
               <SectionHead title={current.feeMode === 'trainer_direct' ? `Pay ${current.trainerName.split(' ')[0]}` : 'Pay the gym'}
                 meta={current.price != null ? peso(current.price) : undefined} />
-              {current.feeMode === 'trainer_direct' ? (
-                methods.length === 0
-                  ? <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{current.trainerName.split(' ')[0]} has not added how to pay them yet. Ask them in your room.</p>
-                  : methods.map((m, i) => (
-                    <LineRow key={m.id} title={m.label} last={i === methods.length - 1}
-                      meta={[m.accountName, m.accountNumber].filter(Boolean).join(' · ') || undefined}
-                      action={m.qrUrl ? <a href={m.qrUrl} target="_blank" rel="noreferrer" style={{ fontSize: 12.5, color: 'var(--color-secondary)' }}>QR</a> : undefined} />
-                  ))
-              ) : (
-                <p style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Pay at the front desk, or pay the gym online and send the reference below.</p>
-              )}
-              {/* Online (0192): to the gym's own PayMongo, or the coach's when they are paid directly. */}
-              {current.price != null && Number(current.price) > 0 && onlinePay && (current.feeMode === 'trainer_direct'
-                ? onlinePay.trainers.includes(current.trainerId) : current.feeMode === 'gym_priced' && onlinePay.gym) && (
-                <div style={{ marginTop: 10 }}>
-                  <PayMongoPay purpose="coaching" details={{ coaching_id: current.id }} amount={peso(current.price)} returnPath="/member/coach"
-                    note={current.feeMode === 'trainer_direct' ? `Straight to ${current.trainerName.split(' ')[0]}, through PayMongo. Your coaching starts the moment it is paid.` : undefined} />
-                  <p style={{ fontSize: 12, marginTop: 10, color: 'var(--color-text-muted)' }}>Or pay another way and send the reference:</p>
-                </div>
-              )}
+              {current.status === 'awaiting_payment' && (() => {
+                const direct = current.feeMode === 'trainer_direct';
+                const first = current.trainerName.split(' ')[0];
+                // Online (0192): to the gym's own PayMongo, or the coach's when they are paid directly.
+                const onlineOk = current.price != null && Number(current.price) > 0 && !!onlinePay
+                  && (direct ? onlinePay.trainers.includes(current.trainerId) : current.feeMode === 'gym_priced' && onlinePay.gym);
+                const accounts: GymPayMethod[] = direct
+                  ? methods.map((m) => ({ id: m.id, kind: m.kind, label: m.label, account_name: m.accountName, account_number: m.accountNumber, qr_image: m.qrUrl, instructions: null }))
+                  : gymMethods;
+                if (direct && !onlineOk && accounts.length === 0) {
+                  return <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{first} has not added how to pay them yet. Ask them in your room.</p>;
+                }
+                return (
+                  <PayChooser amount={current.price != null ? peso(current.price) : ''}
+                    online={onlineOk ? { purpose: 'coaching', details: { coaching_id: current.id }, returnPath: '/member/coach', to: direct ? first : 'the gym' } : null}
+                    transfer={accounts.length > 0 ? {
+                      methods: accounts, whose: direct ? `${first}’s` : 'the gym’s', approver: direct ? first : 'the desk', allowProof: false,
+                      send: async (_method, reference) => { await submitCoachingPayment(current.id, reference); toast.success('Sent — they will confirm it'); await load(); },
+                    } : null}
+                    desk={direct ? null : { next: 'Pay at the counter — your coaching starts when the desk records it.' }} />
+                );
+              })()}
               {confirming && (
                 <p style={{ fontSize: 13, marginTop: 10, color: 'var(--color-text-secondary)' }} data-coaching-confirming>
                   {confirming === 'waiting' ? 'Confirming your payment with PayMongo…' : 'PayMongo has not confirmed it yet — it updates here once it does.'}
                 </p>
               )}
-              {current.status === 'payment_sent' ? (
+              {current.status === 'payment_sent' && (
                 <p style={{ fontSize: 13, marginTop: 10, color: 'var(--color-text-secondary)' }}>
-                  Sent (ref {current.payReference}). Waiting for {current.feeMode === 'trainer_direct' ? current.trainerName.split(' ')[0] : 'the desk'} to confirm it arrived.
+                  Sent (ref {current.payReference}). Waiting for {current.feeMode === 'trainer_direct' ? current.trainerName.split(' ')[0] : 'the desk'} to approve it.
                 </p>
-              ) : (
-                <form className="flex" style={{ gap: 8, marginTop: 10 }}
-                  onSubmit={(e) => { e.preventDefault(); void run(() => submitCoachingPayment(current.id, reference), 'Sent — they will confirm it'); setReference(''); }}>
-                  <TextInput aria-label="Payment reference" placeholder="Reference number" value={reference} onChange={(e) => setReference(e.target.value)} />
-                  <NocButton type="submit" disabled={busy || reference.trim().length < 3} style={{ width: 96 }}>Send</NocButton>
-                </form>
               )}
             </div>
           )}

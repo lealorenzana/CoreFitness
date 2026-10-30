@@ -150,6 +150,9 @@ async (page) => {
   out.push('the desk is told to suggest a membership: ' + (/suggest a membership/.test(t) ? 'yes' : 'MISSING'));
   out.push("today's list with the cash: " + (/Today's walk-ins/.test(t) && /₱150 cash in the drawer/.test(t) ? 'yes' : 'MISSING'));
   await page.locator('[data-walkin-list]').getByRole('button', { name: /^Void$/ }).first().click();
+  // Voiding takes money off the day, so it asks why first (0219).
+  await page.locator('[data-reason-dialog]').getByLabel('Reason').fill('Entered by mistake');
+  await page.locator('[data-reason-confirm]').click();
   await page.waitForTimeout(700);
   out.push('a visit can be voided: ' + (CALLS.some(([f]) => f === 'void_guest_visit') ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/admin-walk-ins.png' });

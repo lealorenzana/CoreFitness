@@ -1,30 +1,28 @@
-import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useCallback } from 'react';
-import { createPortal } from 'react-dom';
-import { Link } from 'react-router-dom';
-import Button from '../components/ui/Button';
-import Input from '../components/ui/Input';
+import {
+  Plus, Edit2, Trash2, Calendar, MapPin, Users, Clock, Bell, Ban, RotateCcw, CheckSquare, CalendarDays, Star,
+} from 'lucide-react';
+import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import ReasonDialog from '../components/ui/ReasonDialog';
 import BulkBar from '../components/ui/BulkBar';
 import ImageField from '../components/ui/ImageField';
-import Pagination from '../components/ui/Pagination';
 import {
-  PageHeader, StatTiles, Section, EmptyState, CardGrid, TileCard, PageSummary,
-  SectionTabs,
-} from '../components/ui/kit';
+  RdHeader, RdCard, StatTile, SearchField, RdButton, RdTable, Tr, Td, TableFooter, EmptyBlock, FitBody,
+  RailCard, RailAction, TipCard, IconTile, Initials, Pill, DotMenu, RdField,
+} from '../components/ui/rd';
+import { RD_INPUT, RD_INPUT_STYLE } from '../components/ui/rdTokens';
 import { usePaged } from '../hooks/usePaged';
-import FormField, { SectionLabel, FieldDivider } from '../components/ui/FormField';
+import { useFitRows } from '../hooks/useFitRows';
 import DatePicker from '../components/ui/DatePicker';
 import TimePicker from '../components/ui/TimePicker';
-import {
-  Plus, Edit2, Trash2, X, Calendar, MapPin, Users, Clock, Bell, ChevronRight, Ban,
-} from 'lucide-react';
 import { showToast } from '../utils/toast';
 import {
   listEvents, listRegistrations, listEventRegistrations, createEvent, updateEvent,
   deleteEvent, deleteEvents, eventStatus, type EventRow, type EventStatus,
 } from '../lib/api/events';
 import { listMembers } from '../lib/api/members';
+import { recordReason } from '../lib/api/reasons';
 
 /**
  * Gym events — real rows in `events` (migration 0014).
@@ -34,15 +32,16 @@ import { listMembers } from '../lib/api/members';
  * hardcoded array of twenty names. Both now come from `event_registrations`, so
  * an event with no signups shows zero instead of a plausible number.
  *
- * The old "Announcements" tab was a second broadcast composer sitting alongside
- * the real one at /notifications. Duplicated composers mean staff can't tell
- * which one actually sends, so it's a link now, not a copy.
- *
- * Status is derived from `starts_at`, never stored — see the migration.
+ * Rebuilt on the redesign kit (2026-10-28) — the owner found it the one page in
+ * Announcements that still looked like the old admin: the same header and pill
+ * tabs as Announcements, a table that fits the screen, the rail with what to do
+ * next, and the shared Modal. Cancelling or deleting asks for a reason (0219),
+ * kept in Activity. Status is derived from `starts_at`, never stored.
  */
 
-/** Inputs sit inset against the raised modal panel, matching Members and Trainers. */
-const INSET = { background: 'var(--color-bg)' };
+const MUTED = 'var(--color-text-muted)';
+const SECOND = 'var(--color-text-secondary)';
+const LINE = '1px solid rgba(255,255,255,0.06)';
 
 const emptyForm = {
   title: '', description: '', date: '', time: '', location: '', capacity: '30', duration: '60',
@@ -52,11 +51,8 @@ const emptyForm = {
   whoIsItFor: '', whatToBring: '', fee: '', contact: '', isFeatured: false, imageUrl: '',
 };
 
-const STATUS_STYLE: Record<EventStatus, { bg: string; color: string }> = {
-  Upcoming: { bg: 'var(--color-primary-light)', color: 'var(--color-primary)' },
-  Ongoing: { bg: 'var(--color-primary-light)', color: 'var(--color-primary)' },
-  Completed: { bg: 'rgba(148,163,184,0.15)', color: 'var(--color-text-muted)' },
-  Cancelled: { bg: 'rgba(148,163,184,0.15)', color: 'var(--color-text-muted)' },
+const STATUS_TONE: Record<EventStatus, 'violet' | 'amber' | 'gray'> = {
+  Upcoming: 'violet', Ongoing: 'amber', Completed: 'gray', Cancelled: 'gray',
 };
 
 /** Local datetime -> ISO, without toISOString()'s UTC shift on the date part. */
@@ -75,13 +71,7 @@ function splitTimestamp(iso: string): { date: string; time: string } {
   };
 }
 
-/**
- * When the event finishes, from the start time and duration.
- *
- * Duration is entered in minutes, which is the right thing to store and the
- * wrong thing to reason about — "60" tells you nothing about when the room is
- * free again. Null whenever either input is missing, so it never guesses.
- */
+/** When the event finishes, from the start time and duration; null when either is missing, so it never guesses. */
 function endTimeLabel(time: string, durationMinutes: string): string | null {
   if (!time) return null;
   const [hh, mm] = time.split(':').map(Number);
@@ -92,27 +82,31 @@ function endTimeLabel(time: string, durationMinutes: string): string | null {
   return d.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
 }
 
-/** Announcements and Events are one section — see SectionTabs for why the
- *  records stay in separate tables. */
+/** Announcements and Events are one section — the records stay in separate tables. */
+const COMMS_TABS = [
+  { label: 'Announcements', to: '/notifications' },
+  { label: 'Events', to: '/events' },
+];
 const EVENT_STEPS = ['What and when', 'Where and who', 'Picture and preview'];
 const DURATION_LABEL: Record<string, string> = { '30': '30 min', '45': '45 min', '60': '1 h', '90': '1 h 30', '120': '2 h' };
 const BRING = ['Water', 'A towel', 'Shoes you can move in', 'A mat', 'Gym clothes'];
 const FOR_WHOM = ['Everyone — beginners welcome', 'Members and their friends', 'Members only', 'For those already training regularly'];
+const CANCEL_REASONS = ['Bad weather', 'The coach is unavailable', 'Too few sign-ups', 'Moved to another date'];
+const DELETE_REASONS = ['Made by mistake', 'A duplicate', 'An old test event'];
+
 /** A quick-pick chip; on = the value the form holds now. */
 function Pick({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button type="button" onClick={onClick} className="h-8 px-3 rounded-full text-[11px] font-semibold"
-      style={{ background: on ? 'var(--color-primary-light)' : 'var(--color-bg)', color: on ? '#fff' : 'var(--color-text-secondary)',
-        border: `1px solid ${on ? 'var(--color-primary)' : 'var(--color-border)'}` }}>
+    <button type="button" onClick={onClick} className="h-8 px-3 rounded-full text-[12.5px] font-semibold"
+      style={{ background: on ? 'rgba(124,58,237,0.18)' : 'transparent', color: on ? '#E9E3FF' : SECOND,
+        border: `1px solid ${on ? 'rgba(139,92,246,0.7)' : 'rgba(255,255,255,0.1)'}` }}>
       {children}
     </button>
   );
 }
 
-const COMMS_TABS = [
-  { label: 'Announcements', to: '/notifications' },
-  { label: 'Events', to: '/events' },
-];
+const fmtDay = (iso: string) => new Date(iso).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' });
+const fmtTime = (iso: string) => new Date(iso).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
 
 export default function Events() {
   const [events, setEvents] = useState<EventRow[]>([]);
@@ -120,14 +114,16 @@ export default function Events() {
   const [names, setNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState('');
 
   const [showModal, setShowModal] = useState(false);
   const [step, setStep] = useState(0);
   const [editing, setEditing] = useState<EventRow | null>(null);
   const [form, setForm] = useState(emptyForm);
-
   const [errors, setErrors] = useState<Record<string, string>>({});
+
   const [toCancel, setToCancel] = useState<EventRow | null>(null);
+  const [toReinstate, setToReinstate] = useState<EventRow | null>(null);
   const [toDelete, setToDelete] = useState<EventRow | null>(null);
   // Select-many (2026-10-04): delete several, or every past one, in one go.
   const [selecting, setSelecting] = useState(false);
@@ -136,7 +132,7 @@ export default function Events() {
   const togglePick = (id: string) => setPicked((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   const [attendeesFor, setAttendeesFor] = useState<EventRow | null>(null);
-  const [attendees, setAttendees] = useState<{ id: string; name: string; at: string }[]>([]);
+  const [attendees, setAttendees] = useState<{ id: string; name: string; at: string }[] | null>(null);
 
   const endsAt = endTimeLabel(form.time, form.duration);
 
@@ -149,11 +145,9 @@ export default function Events() {
         listMembers().catch(() => []),
       ]);
       setEvents(rows);
-
       const tally: Record<string, number> = {};
       for (const r of regs) tally[r.event_id] = (tally[r.event_id] ?? 0) + 1;
       setCounts(tally);
-
       const nameById: Record<string, string> = {};
       for (const m of members) nameById[m.profile.id] = `${m.profile.first_name} ${m.profile.last_name}`;
       setNames(nameById);
@@ -163,49 +157,38 @@ export default function Events() {
       setLoading(false);
     }
   }, []);
-
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
   const openAdd = () => { setEditing(null); setForm(emptyForm); setErrors({}); setStep(0); setShowModal(true); };
-
   const openEdit = (evt: EventRow) => {
     const { date, time } = splitTimestamp(evt.starts_at);
     setEditing(evt);
     setErrors({});
     setForm({
-      title: evt.title,
-      description: evt.description ?? '',
-      date,
-      time,
-      location: evt.location ?? '',
-      capacity: String(evt.capacity),
-      whoIsItFor: evt.who_is_it_for ?? '',
-      whatToBring: evt.what_to_bring ?? '',
+      title: evt.title, description: evt.description ?? '', date, time, location: evt.location ?? '',
+      capacity: String(evt.capacity), whoIsItFor: evt.who_is_it_for ?? '', whatToBring: evt.what_to_bring ?? '',
       // NULL fee means free; 0 means deliberately priced at zero. An empty
       // string round-trips back to NULL, so the distinction survives an edit.
-      fee: evt.fee == null ? '' : String(evt.fee),
-      contact: evt.contact ?? '',
-      isFeatured: evt.is_featured ?? false,
-      imageUrl: evt.image_url ?? '',
-      duration: String(evt.duration_minutes),
+      fee: evt.fee == null ? '' : String(evt.fee), contact: evt.contact ?? '',
+      isFeatured: evt.is_featured ?? false, imageUrl: evt.image_url ?? '', duration: String(evt.duration_minutes),
     });
     setStep(0);
     setShowModal(true);
   };
 
-  const handleSave = async () => {
-    // Marked against the field that's missing, not just announced in a toast
-    // that vanishes before you've found which box it meant.
+  const firstStepProblems = () => {
     const next: Record<string, string> = {};
     if (!form.title.trim()) next.title = 'Give the event a name.';
     if (!form.date) next.date = 'Pick a date.';
     if (!form.time) next.time = 'Pick a start time.';
-    setErrors(next);
-    if (Object.keys(next).length > 0) {
-      setStep(0);
-      return showToast('Title, date and time are required', 'error');
-    }
+    return next;
+  };
 
+  const handleSave = async () => {
+    // Marked against the field that's missing, not just announced in a toast.
+    const next = firstStepProblems();
+    setErrors(next);
+    if (Object.keys(next).length > 0) { setStep(0); return showToast('Title, date and time are required', 'error'); }
     setSaving(true);
     try {
       const payload = {
@@ -220,17 +203,11 @@ export default function Events() {
         fee: form.fee.trim() === '' ? null : Number(form.fee),
         contact: form.contact.trim() || null,
         is_featured: form.isFeatured,
-        // Empty string means "no picture" and must be stored as NULL — an
-        // empty src renders the browser's broken-image glyph on every phone.
+        // Empty string means "no picture" and must be stored as NULL.
         image_url: form.imageUrl.trim() || null,
       };
-      if (editing) {
-        await updateEvent(editing.id, payload);
-        showToast('Event updated', 'success');
-      } else {
-        await createEvent(payload);
-        showToast('Event created', 'success');
-      }
+      if (editing) { await updateEvent(editing.id, payload); showToast('Event updated', 'success'); }
+      else { await createEvent(payload); showToast('Event created', 'success'); }
       setShowModal(false);
       await load();
     } catch (err) {
@@ -240,525 +217,363 @@ export default function Events() {
     }
   };
 
-  // Cancel and delete used `window.confirm` — an OS dialog in the middle of a
-  // themed app, with no way to say which button is the destructive one. Every
-  // other destructive action in the admin goes through ConfirmDialog.
-  const handleCancelEvent = async () => {
-    const evt = toCancel;
+  const cancelEvent = async (reason: string) => {
+    const evt = toCancel!;
+    await updateEvent(evt.id, { cancelled: true });
+    await recordReason({ action: 'event.cancelled', subjectType: 'event', subjectId: evt.id, summary: `Cancelled the event ${evt.title}`, reason });
+    showToast('Event cancelled', 'success');
+    setToCancel(null);
+    await load();
+  };
+  const reinstateEvent = async () => {
+    const evt = toReinstate;
     if (!evt) return;
     try {
-      await updateEvent(evt.id, { cancelled: !evt.cancelled });
-      showToast(evt.cancelled ? 'Event reinstated' : 'Event cancelled', 'success');
-      setToCancel(null);
+      await updateEvent(evt.id, { cancelled: false });
+      showToast('Event reinstated', 'success');
+      setToReinstate(null);
       await load();
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to update event', 'error');
     }
   };
-
-  const handleDelete = async () => {
-    const evt = toDelete;
-    if (!evt) return;
-    try {
-      await deleteEvent(evt.id);
-      showToast('Event deleted', 'success');
-      setToDelete(null);
-      await load();
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to delete event', 'error');
-    }
+  const removeEvent = async (reason: string) => {
+    const evt = toDelete!;
+    await deleteEvent(evt.id);
+    await recordReason({ action: 'event.deleted', subjectType: 'event', subjectId: null, summary: `Deleted the event ${evt.title}`, reason });
+    showToast('Event deleted', 'success');
+    setToDelete(null);
+    await load();
   };
-
-  const handleBulkDelete = async () => {
-    try {
-      const removed = await deleteEvents([...picked]);
-      showToast(`${removed} event${removed === 1 ? '' : 's'} deleted`, 'success');
-      setBulkDelete(false); setPicked(new Set()); setSelecting(false);
-      await load();
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to delete events', 'error');
-    }
+  const removeMany = async (reason: string) => {
+    const titles = events.filter((e) => picked.has(e.id)).map((e) => e.title);
+    const removed = await deleteEvents([...picked]);
+    await recordReason({ action: 'event.deleted', subjectType: 'event', subjectId: null,
+      summary: `Deleted ${removed} event${removed === 1 ? '' : 's'}: ${titles.join(', ')}`.slice(0, 300), reason });
+    showToast(`${removed} event${removed === 1 ? '' : 's'} deleted`, 'success');
+    setBulkDelete(false); setPicked(new Set()); setSelecting(false);
+    await load();
   };
   const pickedRegs = [...picked].reduce((n, id) => n + (counts[id] ?? 0), 0);
 
   const openAttendees = async (evt: EventRow) => {
     setAttendeesFor(evt);
-    setAttendees([]);
+    setAttendees(null);
     try {
       const regs = await listEventRegistrations(evt.id);
-      setAttendees(regs.map((r) => ({
-        id: r.id,
-        name: names[r.member_id] ?? 'Member',
-        at: new Date(r.registered_at).toLocaleDateString(),
-      })));
+      // A name the roster does not have is said so — never a made-up one.
+      setAttendees(regs.map((r) => ({ id: r.id, name: names[r.member_id] ?? 'Name could not be looked up', at: new Date(r.registered_at).toLocaleDateString('en-PH') })));
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to load attendees', 'error');
+      setAttendees([]);
+      showToast(err instanceof Error ? err.message : 'Failed to load sign-ups', 'error');
     }
   };
 
-  const paged = usePaged(events, 12);
+  const q = search.trim().toLowerCase();
+  const visible = q ? events.filter((e) => e.title.toLowerCase().includes(q) || (e.location ?? '').toLowerCase().includes(q)) : events;
+  const fit = useFitRows(8);
+  const paged = usePaged(visible, fit.perPage);
+  const upcoming = events.filter((e) => eventStatus(e) === 'Upcoming').sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+  const next = upcoming[0] ?? null;
+  const signups = Object.values(counts).reduce((s, n) => s + n, 0);
+  const full = events.filter((e) => !e.cancelled && (counts[e.id] ?? 0) >= e.capacity).length;
+
+  const rail = (
+    <>
+      <RailCard icon={CalendarDays} title="Next up" sub={next ? `${fmtDay(next.starts_at)}, ${fmtTime(next.starts_at)}` : 'Nothing coming up'}>
+        {next ? (
+          <button type="button" onClick={() => void openAttendees(next)} className="text-left rounded-xl px-3 py-2.5"
+            style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.015)' }}>
+            <span className="block font-semibold text-white truncate">{next.title}</span>
+            <span className="block text-[12.5px]" style={{ color: MUTED }}>{counts[next.id] ?? 0} of {next.capacity} signed up</span>
+          </button>
+        ) : (
+          <RailAction icon={Plus} label="New event" onClick={openAdd} />
+        )}
+      </RailCard>
+      <RailCard icon={Bell} title="Tell members" sub="An event shows in their app; an announcement reaches their inbox and phone.">
+        <RailAction icon={Bell} label="Send an announcement" href="/notifications" />
+      </RailCard>
+      <TipCard title="Cancel or delete">
+        Cancelling keeps the event and everyone&rsquo;s sign-up, and members see it as cancelled. Deleting removes both. Either asks why.
+      </TipCard>
+    </>
+  );
 
   return (
-    <div className="space-y-4">
-      <SectionTabs tabs={COMMS_TABS} />
-      <PageHeader
-        title="Events"
-        subtitle="Gym events and member signups"
-        actions={
-          <>
-            <Link to="/notifications"
-              className="flex items-center gap-1.5 h-9 px-3 rounded-lg text-[11px] font-semibold"
-              style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>
-              <Bell size={13} /> Announce <ChevronRight size={12} />
-            </Link>
-            <Button variant="primary" size="sm" onClick={openAdd}>
-              <Plus size={15} className="mr-1" /> New event
-            </Button>
-          </>
-        }
-      />
+    <div className="rd-fit" data-events>
+      <RdHeader title="Events" subtitle="Gym events, and who signed up."
+        tabs={COMMS_TABS}
+        actions={<RdButton variant="primary" icon={Plus} onClick={openAdd}>New event</RdButton>} />
 
-      <StatTiles items={[
-        { label: 'Events', value: events.length, icon: Calendar },
-        { label: 'Upcoming', value: events.filter((e) => eventStatus(e) === 'Upcoming').length, icon: Clock },
-        { label: 'Signups', value: Object.values(counts).reduce((s, n) => s + n, 0), icon: Users },
-        {
-          label: 'Full',
-          value: events.filter((e) => (counts[e.id] ?? 0) >= e.capacity).length,
-          icon: Users,
-          tone: events.some((e) => (counts[e.id] ?? 0) >= e.capacity) ? 'secondary' : 'primary',
-        },
-      ]} />
+      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+        <StatTile compact icon={Calendar} label="Events" value={events.length} sub="all of them" />
+        <StatTile compact icon={Clock} label="Upcoming" value={upcoming.length} sub="not started yet" />
+        <StatTile compact icon={Users} label="Sign-ups" value={signups} sub="across every event" />
+        <StatTile compact icon={Users} tone={full > 0 ? 'amber' : 'violet'} label="Full" value={full} sub="no places left" />
+      </div>
 
-      <Section title="All events" icon={Calendar} count={events.length}
-        hint="click the headcount to see who signed up"
-        actions={events.length > 0 && !selecting ? <Button variant="ghost" size="sm" onClick={() => setSelecting(true)}>Select</Button> : undefined}>
-        {selecting && (
-          <BulkBar count={picked.size} total={events.length}
-            onAll={() => setPicked(new Set(events.map((e) => e.id)))}
-            groups={[['Past events', () => setPicked(new Set(events.filter((e) => eventStatus(e) === 'Completed').map((e) => e.id)))],
-                     ['Cancelled', () => setPicked(new Set(events.filter((e) => e.cancelled).map((e) => e.id)))]]}
-            onClear={() => setPicked(new Set())}
-            onDone={() => { setSelecting(false); setPicked(new Set()); }}
-            action={() => setBulkDelete(true)} actionLabel={`Delete ${picked.size || ''}`.trim()} />
-        )}
-        {loading ? (
-          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Loading events…</p>
-        ) : events.length === 0 ? (
-          <EmptyState
-            icon={Calendar}
-            title="No events yet"
-            hint="Create one and it appears for every member in the phone app."
-            action={<Button variant="primary" size="sm" onClick={openAdd}><Plus size={14} /> New event</Button>}
-          />
-        ) : (
-          <>
-            <CardGrid min={300}>
-              {paged.visible.map((evt) => {
-                const status = eventStatus(evt);
-                const style = STATUS_STYLE[status];
-                const registered = counts[evt.id] ?? 0;
-                const full = registered >= evt.capacity;
-                // A capacity bar reads faster than "12/20" alone, and it is the
-                // same two numbers — nothing new is being claimed.
-                const share = evt.capacity > 0 ? Math.min(100, (registered / evt.capacity) * 100) : 0;
-                return (
-                  <TileCard key={evt.id} dim={evt.cancelled} accent={(full && !evt.cancelled) || picked.has(evt.id)}>
-                    {selecting && (
-                      <label className="flex items-center gap-2 mb-2 text-[11px] font-semibold text-white cursor-pointer">
-                        <input type="checkbox" checked={picked.has(evt.id)} onChange={() => togglePick(evt.id)} aria-label={`Select ${evt.title}`} />
-                        Select
-                      </label>
-                    )}
-                    {/* Only when the gym chose one — never a stock image. */}
-                    {evt.image_url && (
-                      <img src={evt.image_url} alt="" loading="lazy"
-                        className="w-full rounded-lg object-cover mb-2"
-                        style={{ aspectRatio: '16 / 9', background: 'var(--color-bg)' }} />
-                    )}
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="text-[13px] font-bold text-white flex-1 leading-snug">{evt.title}</h3>
-                      <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0"
-                        style={{ background: style.bg, color: style.color }}>
-                        {status}
-                      </span>
-                    </div>
-
-                    {evt.description && (
-                      <p className="text-[10px] mt-1 line-clamp-2" style={{ color: 'var(--color-text-muted)' }}>
-                        {evt.description}
-                      </p>
-                    )}
-
-                    <p className="text-[10px] mt-2 flex items-center gap-2 flex-wrap" style={{ color: 'var(--color-text-muted)' }}>
-                      <span className="flex items-center gap-1">
-                        <Calendar size={10} />
-                        {new Date(evt.starts_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock size={10} />
-                        {new Date(evt.starts_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                      </span>
-                      {evt.location && (
-                        <span className="flex items-center gap-1 truncate">
-                          <MapPin size={10} /> {evt.location}
-                        </span>
-                      )}
-                    </p>
-
-                    {/* Real headcount from event_registrations */}
-                    <button onClick={() => openAttendees(evt)}
-                      className="w-full mt-2.5 px-2.5 py-2 rounded-lg text-left"
-                      style={{ background: 'var(--color-surface-high)' }}>
-                      <span className="flex items-center justify-between">
-                        <span className="text-[10px] flex items-center gap-1.5" style={{ color: 'var(--color-text-muted)' }}>
-                          <Users size={11} /> Registered
-                        </span>
-                        <span className="text-[11px] font-bold tabular-nums"
-                          style={{ color: full ? 'var(--color-secondary)' : 'var(--color-primary)' }}>
-                          {registered}/{evt.capacity}
-                        </span>
-                      </span>
-                      <span className="block mt-1.5 h-1 rounded-full overflow-hidden"
-                        style={{ background: 'var(--color-border)' }}>
-                        <span className="block h-full rounded-full"
-                          style={{ width: `${share}%`, background: full ? 'var(--color-secondary)' : 'var(--color-primary)' }} />
-                      </span>
-                    </button>
-
-                    <div className="flex gap-1.5 mt-2.5">
-                      <Button variant="ghost" size="sm" className="!text-[10px] flex-1" onClick={() => openEdit(evt)}>
-                        <Edit2 size={11} className="mr-1" /> Edit
-                      </Button>
-                      {/* Cancelling keeps the event and every registration;
-                          deleting removes both, so they are different buttons. */}
-                      <Button variant="ghost" size="sm" className="!text-[10px] flex-1" onClick={() => setToCancel(evt)}>
-                        <Ban size={11} className="mr-1" /> {evt.cancelled ? 'Reinstate' : 'Cancel'}
-                      </Button>
-                      <Button variant="ghost" size="sm" className="!text-[10px]" title="Delete event" onClick={() => setToDelete(evt)}>
-                        <Trash2 size={11} style={{ color: 'var(--color-secondary)' }} />
-                      </Button>
-                    </div>
-                  </TileCard>
-                );
-              })}
-            </CardGrid>
-            <div className="flex items-center justify-between mt-3">
-              <PageSummary page={paged.page} perPage={paged.perPage} total={paged.total} noun="events" />
-              <Pagination currentPage={paged.page} totalItems={paged.total}
-                itemsPerPage={paged.perPage} onPageChange={paged.setPage} />
+      <FitBody rail={rail}>
+        <RdCard className="overflow-hidden rd-fit-fill" data-event-list>
+          <div className="flex items-center gap-3 flex-wrap px-4 py-3" style={{ borderBottom: LINE }}>
+            <Calendar size={18} style={{ color: '#C4B5FD' }} />
+            <h2 className="text-[16px] font-semibold text-white">All events</h2>
+            <span className="text-[12.5px]" style={{ color: MUTED }}>tap the sign-ups to see who</span>
+            <span className="flex-1" />
+            <div className="w-[240px]"><SearchField value={search} onChange={setSearch} placeholder="Search events" label="Search events" /></div>
+            {events.length > 0 && !selecting && <RdButton size="sm" variant="ghost" icon={CheckSquare} onClick={() => setSelecting(true)}>Select</RdButton>}
+          </div>
+          {selecting && (
+            <div className="px-4 pt-3">
+              <BulkBar count={picked.size} total={events.length}
+                onAll={() => setPicked(new Set(events.map((e) => e.id)))}
+                groups={[['Past events', () => setPicked(new Set(events.filter((e) => eventStatus(e) === 'Completed').map((e) => e.id)))],
+                         ['Cancelled', () => setPicked(new Set(events.filter((e) => e.cancelled).map((e) => e.id)))]]}
+                onClear={() => setPicked(new Set())}
+                onDone={() => { setSelecting(false); setPicked(new Set()); }}
+                action={() => setBulkDelete(true)} actionLabel={`Delete ${picked.size || ''}`.trim()} />
             </div>
-          </>
-        )}
-      </Section>
-
-      <ConfirmDialog
-        isOpen={!!toCancel}
-        onClose={() => setToCancel(null)}
-        onConfirm={handleCancelEvent}
-        title={toCancel?.cancelled ? 'Reinstate Event' : 'Cancel Event'}
-        message={
-          toCancel?.cancelled
-            ? `Put "${toCancel?.title}" back on? Members will see it as upcoming again.`
-            : `Cancel "${toCancel?.title ?? 'this event'}"? It stays visible to members as cancelled, and everyone who signed up keeps their registration record. Nothing is deleted.`
-        }
-        confirmText={toCancel?.cancelled ? 'Reinstate' : 'Cancel event'}
-        cancelText="Never mind"
-        type={toCancel?.cancelled ? 'info' : 'warning'}
-      />
-
-      <ConfirmDialog
-        isOpen={!!toDelete}
-        onClose={() => setToDelete(null)}
-        onConfirm={handleDelete}
-        title="Delete Event"
-        message={
-          (counts[toDelete?.id ?? ''] ?? 0) > 0
-            ? `Delete "${toDelete?.title}"? This also removes ${counts[toDelete!.id]} registration${counts[toDelete!.id] === 1 ? '' : 's'} — the members who signed up lose the record. Cancelling instead keeps it.`
-            : `Delete "${toDelete?.title}"? Nobody has signed up, so nothing else is affected.`
-        }
-        confirmText="Delete"
-        type="danger"
-      />
-
-      <ConfirmDialog
-        isOpen={bulkDelete}
-        onClose={() => setBulkDelete(false)}
-        onConfirm={handleBulkDelete}
-        title={`Delete ${picked.size} event${picked.size === 1 ? '' : 's'}`}
-        message={pickedRegs > 0
-          ? `This also removes ${pickedRegs} registration${pickedRegs === 1 ? '' : 's'} — the members who signed up lose the record. Cancelling keeps them. This cannot be undone.`
-          : 'Nobody signed up to these, so nothing else is affected. This cannot be undone.'}
-        confirmText="Delete"
-        type="danger"
-      />
-
-      {/* Add / Edit modal */}
-      {createPortal(
-        <AnimatePresence>
-          {showModal && (
-            <>
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                onClick={() => setShowModal(false)}
-                className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[200]" />
-              <div className="fixed inset-0 flex items-center justify-center z-[200] p-4">
-                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  className="w-full max-w-lg rounded-2xl overflow-hidden"
-                  style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}
-                  onClick={(e) => e.stopPropagation()}>
-                  <div className="p-5 flex items-center justify-between" style={{ borderBottom: '1px solid var(--color-border)' }}>
-                    <div className="flex-1 min-w-0">
-                      <h2 className="text-base font-bold text-white">{editing ? 'Edit event' : 'New event'}</h2>
-                      <ol className="flex gap-2 mt-2" aria-label="Steps">
-                        {EVENT_STEPS.map((t, i) => (
-                          <li key={t} className="flex-1">
-                            <button type="button" className="w-full text-left" onClick={() => setStep(i)}>
-                              <span className="block h-1 rounded-full" style={{ background: i <= step ? 'var(--color-primary)' : 'var(--color-border)' }} />
-                              <span className="block text-[11px] mt-1 font-semibold" style={{ color: i === step ? '#fff' : 'var(--color-text-secondary)' }}>{i + 1}. {t}</span>
-                            </button>
-                          </li>
-                        ))}
-                      </ol>
-                    </div>
-                    <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-white self-start" aria-label="Close">
-                      <X size={20} />
-                    </button>
-                  </div>
-                  <div className="p-5 space-y-4 max-h-[65vh] overflow-y-auto scrollbar-thin scrollbar-thumb-dark-border">
-                    {step === 0 && (<>
-                    <SectionLabel>Details</SectionLabel>
-                    <FormField label="Event title" required error={errors.title}>
-                      <Input style={INSET} type="text" value={form.title} placeholder="e.g. Summer Fitness Challenge"
-                        onChange={(e) => setForm({ ...form, title: e.target.value })} />
-                    </FormField>
-                    <FormField label="Description" hint="Shown to members in the app.">
-                      <textarea value={form.description} placeholder="What is it, who is it for?" rows={3}
-                        onChange={(e) => setForm({ ...form, description: e.target.value })}
-                        className="w-full rounded-xl px-4 py-3 text-white text-sm resize-none"
-                        style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
-                    </FormField>
-
-                    <FieldDivider />
-                    <SectionLabel>Date &amp; Time</SectionLabel>
-                    <div className="grid grid-cols-2 gap-3">
-                      {/* Our own picker, not <input type="date">. The native one
-                          drops a white Chrome-styled calendar over the app and
-                          `color-scheme` is the only thing CSS can change about it. */}
-                      <FormField label="Date" required error={errors.date}>
-                        <DatePicker mode="future" value={form.date}
-                          onChange={(v) => setForm({ ...form, date: v })} />
-                      </FormField>
-                      <FormField label="Start time" required error={errors.time}>
-                        <TimePicker value={form.time} onChange={(v) => setForm({ ...form, time: v })} />
-                      </FormField>
-                    </div>
-                    <FormField
-                      label="Duration (minutes)"
-                      hint={endsAt ? `Finishes around ${endsAt}.` : 'How long the event runs.'}
-                    >
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {['30', '45', '60', '90', '120'].map((m) => (
-                          <Pick key={m} on={form.duration === m} onClick={() => setForm({ ...form, duration: m })}>{DURATION_LABEL[m]}</Pick>
-                        ))}
-                        <Input style={{ ...INSET, width: 90 }} type="number" min="15" step="15" value={form.duration} placeholder="60" aria-label="Minutes"
-                          onChange={(e) => setForm({ ...form, duration: e.target.value })} />
-                      </div>
-                    </FormField>
-                    </>)}
-
-                    {step === 1 && (<>
-                    <SectionLabel>Location &amp; Capacity</SectionLabel>
-                    <FormField label="Location" hint="Leave blank if it's at the gym.">
-                      <Input style={INSET} type="text" value={form.location} placeholder="e.g. Main floor, Mamburao"
-                        onChange={(e) => setForm({ ...form, location: e.target.value })} />
-                    </FormField>
-                    <FormField label="Capacity (people)" hint="Members can sign up until this is reached.">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {['10', '20', '30', '50', '100'].map((n) => (
-                          <Pick key={n} on={form.capacity === n} onClick={() => setForm({ ...form, capacity: n })}>{n}</Pick>
-                        ))}
-                        <Input style={{ ...INSET, width: 90 }} type="number" min="1" value={form.capacity} placeholder="30" aria-label="Capacity"
-                          onChange={(e) => setForm({ ...form, capacity: e.target.value })} />
-                      </div>
-                    </FormField>
-
-                    <FieldDivider />
-                    <SectionLabel>Member Information</SectionLabel>
-
-                    <FormField
-                      label="Intended Audience"
-                      hint="The single most useful line. Saying everyone is welcome and no experience is needed brings people in; leaving it blank quietly keeps beginners away."
-                    >
-                      <div className="flex gap-1.5 flex-wrap mb-2">
-                        {FOR_WHOM.map((w) => <Pick key={w} on={form.whoIsItFor === w} onClick={() => setForm({ ...form, whoIsItFor: w })}>{w}</Pick>)}
-                      </div>
-                      <Input style={INSET} type="text" value={form.whoIsItFor}
-                        placeholder="e.g. Everyone — half the group will be first-timers"
-                        onChange={(e) => setForm({ ...form, whoIsItFor: e.target.value })} />
-                    </FormField>
-
-                    <FormField label="Items to Bring" hint="Water, a towel, flat shoes — whatever they will wish they had.">
-                      <div className="flex gap-1.5 flex-wrap mb-2">
-                        {BRING.map((b) => {
-                          const list = form.whatToBring.split(',').map((x) => x.trim()).filter(Boolean);
-                          const on = list.some((x) => x.toLowerCase() === b.toLowerCase());
-                          return (
-                            <Pick key={b} on={on} onClick={() => setForm({ ...form,
-                              whatToBring: (on ? list.filter((x) => x.toLowerCase() !== b.toLowerCase()) : [...list, b]).join(', ') })}>{on ? '✓ ' : '+ '}{b}</Pick>
-                          );
-                        })}
-                      </div>
-                      <Input style={INSET} type="text" value={form.whatToBring}
-                        placeholder="e.g. Water, a towel, shoes you can move in"
-                        onChange={(e) => setForm({ ...form, whatToBring: e.target.value })} />
-                    </FormField>
-
-                    <FormField
-                      label="Fee"
-                      hint={
-                        form.fee.trim() === ''
-                          ? 'Blank means free, and the app says "Free" rather than "₱0".'
-                          : Number(form.fee) === 0
-                            ? 'Zero shows as "₱0" — use blank if you mean free.'
-                            : 'Members pay at the desk; the app does not take payments.'
-                      }
-                    >
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <Pick on={form.fee.trim() === ''} onClick={() => setForm({ ...form, fee: '' })}>Free</Pick>
-                        {['50', '100', '200', '500'].map((f) => <Pick key={f} on={form.fee === f} onClick={() => setForm({ ...form, fee: f })}>₱{f}</Pick>)}
-                        <Input style={{ ...INSET, width: 110 }} type="number" min="0" step="50" value={form.fee} aria-label="Fee"
-                          placeholder="Other ₱" onChange={(e) => setForm({ ...form, fee: e.target.value })} />
-                      </div>
-                    </FormField>
-
-                    <FormField label="Contact Person" hint="Shown to members who have a question before signing up.">
-                      <Input style={INSET} type="text" value={form.contact}
-                        placeholder="e.g. Ask at the front desk, or message us on Facebook"
-                        onChange={(e) => setForm({ ...form, contact: e.target.value })} />
-                    </FormField>
-
-                    </>)}
-
-                    {step === 2 && (<>
-                    <ImageField
-                      value={form.imageUrl}
-                      onChange={(imageUrl) => setForm({ ...form, imageUrl })}
-                      kind="events"
-                      label="Event picture"
-                      hint="A poster or photo, shown with the event in the member app."
-                    />
-
-                    <label className="flex items-start gap-2.5 cursor-pointer pt-1">
-                      <input type="checkbox" checked={form.isFeatured} className="mt-0.5"
-                        onChange={(e) => setForm({ ...form, isFeatured: e.target.checked })} />
-                      <span className="text-[11px] leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                        <strong className="text-white">Feature this event.</strong> Pins it to the top of the
-                        members' Events screen. Use it sparingly — if everything is featured, nothing is.
+          )}
+          <RdTable boxRef={fit.ref} head={[...(selecting ? [''] : []), 'Event', 'When', 'Signed up', 'Status', { label: '', align: 'right' }]}
+            empty={loading ? <p className="text-[13px] p-6" style={{ color: MUTED }}>Loading events…</p> : visible.length === 0 ? (
+              <EmptyBlock icon={Calendar} compact
+                title={events.length === 0 ? 'No events yet' : 'No event matches that'}
+                body={events.length === 0 ? 'Create one and it appears for every member in the phone app.' : 'Try a different search.'}
+                action={events.length === 0 ? <RdButton variant="primary" icon={Plus} onClick={openAdd}>New event</RdButton> : undefined} />
+            ) : undefined}>
+            {!loading && paged.visible.map((evt) => {
+              const status = eventStatus(evt);
+              const registered = counts[evt.id] ?? 0;
+              const isFull = registered >= evt.capacity;
+              const share = evt.capacity > 0 ? Math.min(100, Math.round((registered / evt.capacity) * 100)) : 0;
+              return (
+                <Tr key={evt.id} data-event-row style={{ height: visible.length > paged.perPage ? fit.rowHeight : undefined,
+                  opacity: evt.cancelled ? 0.6 : 1, background: picked.has(evt.id) ? 'rgba(124,58,237,0.08)' : undefined }}>
+                  {selecting && (
+                    <Td className="w-10">
+                      <input type="checkbox" className="accent-violet-500" checked={picked.has(evt.id)} onChange={() => togglePick(evt.id)} aria-label={`Select ${evt.title}`} />
+                    </Td>
+                  )}
+                  <Td>
+                    <span className="flex items-center gap-3 min-w-0">
+                      {/* Only when the gym chose one — never a stock image. */}
+                      {evt.image_url
+                        ? <img src={evt.image_url} alt="" className="w-10 h-10 rounded-xl object-cover flex-none" />
+                        : <IconTile icon={Calendar} size={40} tone={isFull && !evt.cancelled ? 'amber' : 'violet'} />}
+                      <span className="min-w-0 max-w-[380px]">
+                        <span className="flex items-center gap-1.5 font-semibold text-white truncate">
+                          {evt.is_featured && <Star size={13} style={{ color: '#FBBF24', flex: 'none' }} aria-label="Featured" />}{evt.title}
+                        </span>
+                        <span className="flex items-center gap-1 text-[12.5px] truncate" style={{ color: MUTED }}>
+                          <MapPin size={12} /> {evt.location || 'At the gym'}
+                        </span>
                       </span>
-                    </label>
-
-                    <FieldDivider />
-                    <SectionLabel>How members will see it</SectionLabel>
-                    <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-                      {form.imageUrl && <img src={form.imageUrl} alt="" className="w-full object-cover" style={{ aspectRatio: '16 / 9' }} />}
-                      <div className="p-3 space-y-1">
-                        {form.isFeatured && <span className="text-[10px] font-bold uppercase" style={{ color: 'var(--color-secondary)' }}>Featured</span>}
-                        <p className="text-sm font-bold text-white">{form.title || 'Event name'}</p>
-                        <p className="text-[12px]" style={{ color: 'var(--color-text-secondary)' }}>
-                          {form.date ? new Date(`${form.date}T00:00:00`).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Date'}
-                          {form.time ? ` · ${form.time}${endsAt ? `–${endsAt}` : ''}` : ''} · {form.location.trim() || 'At the gym'}
-                        </p>
-                        <p className="text-[12px]" style={{ color: 'var(--color-text-secondary)' }}>
-                          {form.fee.trim() === '' ? 'Free' : `₱${Number(form.fee).toLocaleString('en-PH')}`} · {form.capacity || 30} spots
-                          {form.whoIsItFor ? ` · ${form.whoIsItFor}` : ''}
-                        </p>
-                        {form.description && <p className="text-[12px] pt-1" style={{ color: 'var(--color-text-muted)' }}>{form.description}</p>}
-                        {form.whatToBring && <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>Bring: {form.whatToBring}</p>}
-                      </div>
-                    </div>
-                    </>)}
-                  </div>
-                  <div className="p-5 flex gap-3" style={{ borderTop: '1px solid var(--color-border)' }}>
-                    <Button variant="ghost" className="flex-1" onClick={() => (step > 0 ? setStep(step - 1) : setShowModal(false))}>{step > 0 ? 'Back' : 'Cancel'}</Button>
-                    {step < 2 && !editing ? (
-                      <Button variant="primary" className="flex-1"
-                        onClick={() => {
-                          if (step === 0) {
-                            const next: Record<string, string> = {};
-                            if (!form.title.trim()) next.title = 'Give the event a name.';
-                            if (!form.date) next.date = 'Pick a date.';
-                            if (!form.time) next.time = 'Pick a start time.';
-                            setErrors(next);
-                            if (Object.keys(next).length > 0) return;
-                          }
-                          setStep(step + 1);
-                        }}>Next</Button>
-                    ) : (
-                      <Button variant="primary" className="flex-1" onClick={handleSave} disabled={saving}>
-                        {saving ? 'Saving…' : editing ? 'Save changes' : 'Create event'}
-                      </Button>
-                    )}
-                  </div>
-                </motion.div>
-              </div>
-            </>
-          )}
-        </AnimatePresence>,
-        document.body
-      )}
-
-      {/* Attendees modal */}
-      {createPortal(
-        <AnimatePresence>
-          {attendeesFor && (
-            <>
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                onClick={() => setAttendeesFor(null)}
-                className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[200]" />
-              <div className="fixed inset-0 flex items-center justify-center z-[200] p-4">
-                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  className="w-full max-w-sm rounded-2xl overflow-hidden"
-                  style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
-                  onClick={(e) => e.stopPropagation()}>
-                  <div className="p-5 flex items-center justify-between" style={{ borderBottom: '1px solid var(--color-border)' }}>
-                    <div>
-                      <h2 className="text-sm font-bold text-white">{attendeesFor.title}</h2>
-                      <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
-                        {attendees.length} registered
-                      </p>
-                    </div>
-                    <button onClick={() => setAttendeesFor(null)} className="text-gray-400 hover:text-white">
-                      <X size={20} />
+                    </span>
+                  </Td>
+                  <Td>
+                    <span className="block text-white whitespace-nowrap">{fmtDay(evt.starts_at)}</span>
+                    <span className="block text-[12.5px] whitespace-nowrap" style={{ color: MUTED }}>{fmtTime(evt.starts_at)}{endTimeLabel(splitTimestamp(evt.starts_at).time, String(evt.duration_minutes)) ? ` – ${endTimeLabel(splitTimestamp(evt.starts_at).time, String(evt.duration_minutes))}` : ''}</span>
+                  </Td>
+                  <Td>
+                    {/* Real headcount from event_registrations; the bar is the same two numbers. */}
+                    <button type="button" onClick={() => void openAttendees(evt)} className="block text-left w-[150px]" data-signups aria-label={`See who signed up for ${evt.title}`}>
+                      <span className="flex items-center gap-2">
+                        <span className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
+                          <span className="block h-full rounded-full" style={{ width: `${share}%`, background: isFull ? '#F59E0B' : 'linear-gradient(90deg,#6D28D9,#8B5CF6)' }} />
+                        </span>
+                        <span className="text-[12.5px] tabular-nums" style={{ color: isFull ? '#FBBF24' : '#C4B5FD' }}>{registered}/{evt.capacity}</span>
+                      </span>
+                      <span className="block text-[12px] mt-0.5" style={{ color: MUTED }}>{isFull ? 'Full' : `${evt.capacity - registered} places left`}</span>
                     </button>
-                  </div>
-                  <div className="p-4 max-h-[55vh] overflow-y-auto space-y-2">
-                    {attendees.length === 0 ? (
-                      <p className="text-[11px] text-center py-8" style={{ color: 'var(--color-text-muted)' }}>
-                        Nobody has signed up yet.
-                      </p>
-                    ) : attendees.map((a) => (
-                      <div key={a.id} className="flex items-center gap-3 p-2.5 rounded-xl"
-                        style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-bold"
-                          style={{ background: 'var(--color-primary)' }}>
-                          {a.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[11px] font-semibold text-white truncate">{a.name}</p>
-                          <p className="text-[9px]" style={{ color: 'var(--color-text-muted)' }}>Signed up {a.at}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
-              </div>
-            </>
+                  </Td>
+                  <Td><Pill tone={STATUS_TONE[status]} solidDot>{status}</Pill></Td>
+                  <Td align="right">
+                    <span className="inline-flex items-center gap-2">
+                      <RdButton size="sm" variant="secondary" icon={Edit2} onClick={() => openEdit(evt)}>Edit</RdButton>
+                      <DotMenu label={`More for ${evt.title}`} items={[
+                        { label: 'Cancel the event', icon: Ban, tone: 'warn', onClick: () => setToCancel(evt), hidden: evt.cancelled },
+                        { label: 'Put it back on', icon: RotateCcw, onClick: () => setToReinstate(evt), hidden: !evt.cancelled },
+                        { label: 'Delete', icon: Trash2, tone: 'danger', onClick: () => setToDelete(evt) },
+                      ]} />
+                    </span>
+                  </Td>
+                </Tr>
+              );
+            })}
+          </RdTable>
+          <TableFooter page={paged.page} perPage={paged.perPage} total={paged.total} noun="events" onPage={paged.setPage} />
+        </RdCard>
+      </FitBody>
+
+      <ReasonDialog isOpen={!!toCancel} onClose={() => setToCancel(null)} title="Cancel the event"
+        message={<>Cancel <b className="text-white">{toCancel?.title}</b>? It stays in members&rsquo; app as cancelled, and everyone who signed up keeps their sign-up. Nothing is deleted.</>}
+        confirmText="Cancel the event" quick={CANCEL_REASONS} onConfirm={cancelEvent} />
+
+      <ConfirmDialog isOpen={!!toReinstate} onClose={() => setToReinstate(null)} onConfirm={reinstateEvent}
+        title="Put the event back on" message={`"${toReinstate?.title ?? ''}" shows as upcoming again for members.`}
+        confirmText="Put it back on" cancelText="Keep it cancelled" type="info" />
+
+      <ReasonDialog isOpen={!!toDelete} onClose={() => setToDelete(null)} title="Delete the event" danger
+        message={(counts[toDelete?.id ?? ''] ?? 0) > 0
+          ? <>Delete <b className="text-white">{toDelete?.title}</b>? This also removes {counts[toDelete!.id]} sign-up{counts[toDelete!.id] === 1 ? '' : 's'}. Cancelling instead keeps them.</>
+          : <>Delete <b className="text-white">{toDelete?.title}</b>? Nobody has signed up, so nothing else is affected.</>}
+        confirmText="Delete" quick={DELETE_REASONS} onConfirm={removeEvent} />
+
+      <ReasonDialog isOpen={bulkDelete} onClose={() => setBulkDelete(false)} title={`Delete ${picked.size} event${picked.size === 1 ? '' : 's'}`} danger
+        message={pickedRegs > 0
+          ? `This also removes ${pickedRegs} sign-up${pickedRegs === 1 ? '' : 's'}. Cancelling keeps them. This cannot be undone.`
+          : 'Nobody signed up to these, so nothing else is affected. This cannot be undone.'}
+        confirmText="Delete" quick={['Old events', 'Made by mistake', 'Duplicates']} onConfirm={removeMany} />
+
+      {/* Create or edit: three steps, the member's view at the end. */}
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)} size="lg" title={editing ? 'Edit event' : 'New event'}
+        subtitle={`Step ${step + 1} of 3 — ${EVENT_STEPS[step]}`}
+        footer={<>
+          <RdButton variant="ghost" onClick={() => (step > 0 ? setStep(step - 1) : setShowModal(false))}>{step > 0 ? 'Back' : 'Cancel'}</RdButton>
+          {step < 2 && !editing ? (
+            <RdButton variant="primary" onClick={() => {
+              if (step === 0) { const next = firstStepProblems(); setErrors(next); if (Object.keys(next).length > 0) return; }
+              setStep(step + 1);
+            }}>Next</RdButton>
+          ) : (
+            <RdButton variant="primary" onClick={() => void handleSave()} disabled={saving}>{saving ? 'Saving…' : editing ? 'Save changes' : 'Create event'}</RdButton>
           )}
-        </AnimatePresence>,
-        document.body
-      )}
+        </>}>
+        <ol className="flex gap-2 mb-4" aria-label="Steps">
+          {EVENT_STEPS.map((t, i) => (
+            <li key={t} className="flex-1">
+              <button type="button" className="w-full text-left" onClick={() => setStep(i)}>
+                <span className="block h-1 rounded-full" style={{ background: i <= step ? '#8B5CF6' : 'rgba(255,255,255,0.1)' }} />
+                <span className="block text-[12px] mt-1 font-semibold" style={{ color: i === step ? '#fff' : SECOND }}>{i + 1}. {t}</span>
+              </button>
+            </li>
+          ))}
+        </ol>
+        <div className="flex flex-col gap-4 max-h-[58vh] overflow-y-auto pr-1">
+          {step === 0 && (<>
+            <RdField label="Event title" hint={errors.title && <span style={{ color: '#FBBF24' }}>{errors.title}</span>}>
+              <input className={RD_INPUT} style={RD_INPUT_STYLE} value={form.title} placeholder="e.g. Summer Fitness Challenge" aria-label="Event title"
+                onChange={(e) => setForm({ ...form, title: e.target.value })} />
+            </RdField>
+            <RdField label="Description" hint="Shown to members in the app.">
+              <textarea value={form.description} placeholder="What is it, who is it for?" rows={3} aria-label="Description"
+                onChange={(e) => setForm({ ...form, description: e.target.value })} className={RD_INPUT} style={{ ...RD_INPUT_STYLE, height: 'auto', paddingTop: 10 }} />
+            </RdField>
+            <div className="grid grid-cols-2 gap-3">
+              {/* Our own picker, not <input type="date">: the native one drops a white calendar over the app. */}
+              <RdField label="Date" hint={errors.date && <span style={{ color: '#FBBF24' }}>{errors.date}</span>}>
+                <DatePicker mode="future" value={form.date} onChange={(v) => setForm({ ...form, date: v })} />
+              </RdField>
+              <RdField label="Start time" hint={errors.time && <span style={{ color: '#FBBF24' }}>{errors.time}</span>}>
+                <TimePicker value={form.time} onChange={(v) => setForm({ ...form, time: v })} />
+              </RdField>
+            </div>
+            <RdField group label="How long" hint={endsAt ? `Finishes around ${endsAt}.` : 'How long the event runs.'}>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {['30', '45', '60', '90', '120'].map((m) => <Pick key={m} on={form.duration === m} onClick={() => setForm({ ...form, duration: m })}>{DURATION_LABEL[m]}</Pick>)}
+                <input className={RD_INPUT} style={{ ...RD_INPUT_STYLE, width: 100 }} type="number" min="15" step="15" value={form.duration} placeholder="60" aria-label="Minutes"
+                  onChange={(e) => setForm({ ...form, duration: e.target.value })} />
+              </div>
+            </RdField>
+          </>)}
+
+          {step === 1 && (<>
+            <RdField label="Where" hint="Leave blank if it is at the gym.">
+              <input className={RD_INPUT} style={RD_INPUT_STYLE} value={form.location} placeholder="e.g. Main floor" aria-label="Location"
+                onChange={(e) => setForm({ ...form, location: e.target.value })} />
+            </RdField>
+            <RdField group label="Places" hint="Members can sign up until this is reached.">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {['10', '20', '30', '50', '100'].map((n) => <Pick key={n} on={form.capacity === n} onClick={() => setForm({ ...form, capacity: n })}>{n}</Pick>)}
+                <input className={RD_INPUT} style={{ ...RD_INPUT_STYLE, width: 100 }} type="number" min="1" value={form.capacity} placeholder="30" aria-label="Capacity"
+                  onChange={(e) => setForm({ ...form, capacity: e.target.value })} />
+              </div>
+            </RdField>
+            <RdField group label="Who it is for" hint="The most useful line: saying beginners are welcome brings them in.">
+              <div className="flex gap-1.5 flex-wrap mb-2">
+                {FOR_WHOM.map((w) => <Pick key={w} on={form.whoIsItFor === w} onClick={() => setForm({ ...form, whoIsItFor: w })}>{w}</Pick>)}
+              </div>
+              <input className={RD_INPUT} style={RD_INPUT_STYLE} value={form.whoIsItFor} placeholder="e.g. Everyone — half the group will be first-timers" aria-label="Who it is for"
+                onChange={(e) => setForm({ ...form, whoIsItFor: e.target.value })} />
+            </RdField>
+            <RdField group label="What to bring">
+              <div className="flex gap-1.5 flex-wrap mb-2">
+                {BRING.map((b) => {
+                  const list = form.whatToBring.split(',').map((x) => x.trim()).filter(Boolean);
+                  const on = list.some((x) => x.toLowerCase() === b.toLowerCase());
+                  return (
+                    <Pick key={b} on={on} onClick={() => setForm({ ...form,
+                      whatToBring: (on ? list.filter((x) => x.toLowerCase() !== b.toLowerCase()) : [...list, b]).join(', ') })}>{on ? '✓ ' : '+ '}{b}</Pick>
+                  );
+                })}
+              </div>
+              <input className={RD_INPUT} style={RD_INPUT_STYLE} value={form.whatToBring} placeholder="e.g. Water, a towel" aria-label="What to bring"
+                onChange={(e) => setForm({ ...form, whatToBring: e.target.value })} />
+            </RdField>
+            <RdField group label="Fee" hint={form.fee.trim() === '' ? 'Blank means free, and the app says "Free".'
+              : Number(form.fee) === 0 ? 'Zero shows as "₱0" — use blank if you mean free.' : 'Members pay at the desk; the app does not take payments.'}>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <Pick on={form.fee.trim() === ''} onClick={() => setForm({ ...form, fee: '' })}>Free</Pick>
+                {['50', '100', '200', '500'].map((f) => <Pick key={f} on={form.fee === f} onClick={() => setForm({ ...form, fee: f })}>₱{f}</Pick>)}
+                <input className={RD_INPUT} style={{ ...RD_INPUT_STYLE, width: 120 }} type="number" min="0" step="50" value={form.fee} aria-label="Fee"
+                  placeholder="Other ₱" onChange={(e) => setForm({ ...form, fee: e.target.value })} />
+              </div>
+            </RdField>
+            <RdField label="Who to ask" hint="Shown to members who have a question before signing up.">
+              <input className={RD_INPUT} style={RD_INPUT_STYLE} value={form.contact} placeholder="e.g. Ask at the front desk" aria-label="Contact"
+                onChange={(e) => setForm({ ...form, contact: e.target.value })} />
+            </RdField>
+          </>)}
+
+          {step === 2 && (<>
+            <ImageField value={form.imageUrl} onChange={(imageUrl) => setForm({ ...form, imageUrl })} kind="events"
+              label="Event picture" hint="A poster or photo, shown with the event in the member app." />
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input type="checkbox" checked={form.isFeatured} className="mt-1 accent-violet-500" onChange={(e) => setForm({ ...form, isFeatured: e.target.checked })} />
+              <span className="text-[13px] leading-relaxed" style={{ color: SECOND }}>
+                <strong className="text-white">Feature this event.</strong> Pins it to the top of members&rsquo; Events. Use it sparingly — if everything is featured, nothing is.
+              </span>
+            </label>
+            <p className="text-[12.5px] font-semibold" style={{ color: MUTED }}>How members will see it</p>
+            <div className="rounded-2xl overflow-hidden" style={{ background: '#15112A', border: '1px solid rgba(255,255,255,0.08)' }}>
+              {form.imageUrl && <img src={form.imageUrl} alt="" className="w-full object-cover" style={{ aspectRatio: '16 / 9' }} />}
+              <div className="p-3 space-y-1">
+                {form.isFeatured && <span className="text-[12px] font-bold" style={{ color: '#FBBF24' }}>Featured</span>}
+                <p className="text-[14px] font-bold text-white">{form.title || 'Event name'}</p>
+                <p className="text-[12.5px]" style={{ color: SECOND }}>
+                  {form.date ? new Date(`${form.date}T00:00:00`).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Date'}
+                  {form.time ? ` · ${form.time}${endsAt ? `–${endsAt}` : ''}` : ''} · {form.location.trim() || 'At the gym'}
+                </p>
+                <p className="text-[12.5px]" style={{ color: SECOND }}>
+                  {form.fee.trim() === '' ? 'Free' : `₱${Number(form.fee).toLocaleString('en-PH')}`} · {form.capacity || 30} places{form.whoIsItFor ? ` · ${form.whoIsItFor}` : ''}
+                </p>
+                {form.description && <p className="text-[12.5px] pt-1" style={{ color: MUTED }}>{form.description}</p>}
+                {form.whatToBring && <p className="text-[12px]" style={{ color: MUTED }}>Bring: {form.whatToBring}</p>}
+              </div>
+            </div>
+          </>)}
+        </div>
+      </Modal>
+
+      <Modal isOpen={!!attendeesFor} onClose={() => setAttendeesFor(null)} hideFooter size="md"
+        title={attendeesFor ? `Signed up — ${attendeesFor.title}` : 'Signed up'}
+        subtitle={attendeesFor ? `${attendees?.length ?? '…'} of ${attendeesFor.capacity} places` : undefined}>
+        <div className="flex flex-col gap-2 max-h-[55vh] overflow-y-auto" data-attendees>
+          {attendees === null ? (
+            <p className="text-[13px] py-6 text-center" style={{ color: MUTED }}>Loading…</p>
+          ) : attendees.length === 0 ? (
+            <p className="text-[13px] py-6 text-center" style={{ color: MUTED }}>Nobody has signed up yet.</p>
+          ) : attendees.map((a) => (
+            <div key={a.id} className="flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+              <Initials name={a.name} size={32} />
+              <span className="min-w-0 flex-1">
+                <span className="block font-semibold text-white truncate">{a.name}</span>
+                <span className="block text-[12px]" style={{ color: MUTED }}>Signed up {a.at}</span>
+              </span>
+            </div>
+          ))}
+        </div>
+      </Modal>
     </div>
   );
 }

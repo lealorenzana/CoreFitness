@@ -5,6 +5,7 @@ import ConfirmDialog from '../components/ui/ConfirmDialog';
 import ImageField from '../components/ui/ImageField';
 import './attendance/att.css';
 import { showToast } from '../utils/toast';
+import { recordReason, REASON_FIELD } from '../lib/api/reasons';
 import {
   listWorkoutResources, createWorkoutResource, updateWorkoutResource, deleteWorkoutResource, linkHost, hasPreview, getResourceSaveCounts,
   type WorkoutResourceRow,
@@ -126,9 +127,11 @@ export default function Resources() {
     try { await updateWorkoutResource(r.id, { is_active: !r.is_active }); await load(); }
     catch (err) { showToast(err instanceof Error ? err.message : 'Could not update that resource', 'error'); }
   };
-  const handleDelete = async () => {
+  const handleDelete = async (why?: string) => {
     if (!toDelete) return;
-    try { await deleteWorkoutResource(toDelete.id); showToast('Resource removed', 'success'); setToDelete(null); await load(); }
+    try { await deleteWorkoutResource(toDelete.id);
+      if (why) await recordReason({ action: 'resource.removed', subjectType: 'resource', subjectId: null, summary: `Removed a resource`, reason: why });
+      showToast('Resource removed', 'success'); setToDelete(null); await load(); }
     catch (err) { showToast(err instanceof Error ? err.message : 'Could not remove that resource', 'error'); }
   };
 
@@ -222,7 +225,7 @@ export default function Resources() {
         )}
       </Modal>
 
-      <ConfirmDialog isOpen={!!toDelete} onClose={() => setToDelete(null)} onConfirm={handleDelete} title="Remove resource"
+      <ConfirmDialog isOpen={!!toDelete} onClose={() => setToDelete(null)} onConfirm={(why) => void handleDelete(why)} reason={REASON_FIELD} title="Remove resource"
         message={`Remove "${toDelete?.title}" from the library?${toDelete && saves?.get(toDelete.id)?.saved
           ? ` ${saves.get(toDelete.id)!.saved} member${saves.get(toDelete.id)!.saved === 1 ? ' has' : 's have'} it saved — it disappears from their Saved list too.`
           : ''} If you only want it out of the member app for now, Hide keeps it — and members' saves — and brings it back with one click.`}

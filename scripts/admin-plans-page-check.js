@@ -129,6 +129,9 @@ async (page) => {
   await page.waitForTimeout(200);
   CALLS.length = 0;
   await page.locator('[data-plan-retire]').click();
+  // Taking a plan off sale asks why (0219).
+  await page.locator('[data-reason-dialog]').getByLabel('Reason').fill('Replaced by a new plan');
+  await page.locator('[data-reason-confirm]').click();
   await page.waitForTimeout(500);
   const retire = CALLS.find(([k]) => k === 'patch');
   has('Retire takes it off sale and nothing else', !!retire && retire[1].is_active === false && Object.keys(retire[1]).length === 1, JSON.stringify(retire && retire[1]));

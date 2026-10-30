@@ -176,6 +176,22 @@ export async function pointsFor(sourceTable: string, sourceId: string): Promise<
   return (data as { points: number }[]).reduce((n, r) => n + r.points, 0);
 }
 
+/**
+ * Why a finished workout paid nothing (0219), or null when we cannot say for sure:
+ * 'short' — the database did not count it (fewer than 3 sets or under 10 minutes);
+ * 'today' — it counted, but another workout already paid today. Anything else (the plan,
+ * the gym's rules) stays unsaid rather than guessed.
+ */
+export async function workoutUnpaidReason(logId: string, dayStartIso: string): Promise<'short' | 'today' | null> {
+  const { data: log, error } = await supabase.from('workout_logs').select('counts').eq('id', logId).maybeSingle();
+  if (error || !log) return null;
+  if ((log as { counts?: boolean | null }).counts === false) return 'short';
+  const { data: paid, error: e2 } = await supabase.from('point_ledger').select('id')
+    .eq('source_table', 'workout_logs').neq('source_id', logId).gte('created_at', dayStartIso).limit(1);
+  if (e2) return null;
+  return paid && paid.length > 0 ? 'today' : null;
+}
+
 // ── Sound and touch ──────────────────────────────────────────────────────────
 
 let ac: AudioContext | null = null;

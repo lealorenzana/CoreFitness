@@ -5,6 +5,7 @@ import AwardModal from '../components/achievements/AwardModal';
 import { BADGE_ICON_NAMES, badgeIcon } from '../components/achievements/badgeIcons';
 import './attendance/att.css';
 import { showSuccessToast, showErrorToast } from '../utils/toast';
+import { recordReason, REASON_FIELD } from '../lib/api/reasons';
 import { todayKey } from '../utils/dates';
 import {
   listAchievements, listMetrics, createAchievement, updateAchievement, deleteAchievement, setAchievementActive,
@@ -199,10 +200,12 @@ export default function Achievements() {
       showErrorToast(err instanceof Error ? err.message : 'Could not change that');
     }
   };
-  const doDelete = async () => {
+  const doDelete = async (why?: string) => {
     if (!confirmDelete) return;
     try {
       await deleteAchievement(confirmDelete.key);
+      if (why) await recordReason({ action: 'achievement.deleted', subjectType: 'achievement', subjectId: null,
+        summary: `Deleted the badge ${confirmDelete.title}`, reason: why });
       showSuccessToast(`"${confirmDelete.title}" deleted`);
       startNew();
       await load();
@@ -396,7 +399,7 @@ export default function Achievements() {
       {awarding && <AwardModal achievement={awarding} onClose={() => setAwarding(null)} onDone={() => void load()} />}
       <ConfirmDialog isOpen={confirmDelete !== null} type="danger" title={`Delete "${confirmDelete?.title ?? ''}"`}
         message="This removes it from the catalogue entirely. If anyone has already earned it the database will refuse — retire it instead, which keeps their badge and stops new ones."
-        confirmText="Delete" onConfirm={doDelete} onClose={() => setConfirmDelete(null)} />
+        confirmText="Delete" onConfirm={(why) => void doDelete(why)} reason={REASON_FIELD} onClose={() => setConfirmDelete(null)} />
     </div>
   );
 }

@@ -134,7 +134,7 @@ async (page) => {
   await page.goto('http://localhost:5174/payments', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(2500);
   let t = await text();
-  out.push('queue: ' + grab(t, 'Coming to renew', 170));
+  out.push('queue: ' + grab(t, 'To approve', 170));
   await page.screenshot({ path: 'shots/admin-renew-queue.png' });
   // The queue card's button — the page header has its own Record payment, first in the DOM.
   await page.locator('div.rounded-xl', { hasText: 'Wants Premium' }).first().getByRole('button', { name: /Record payment/ }).click();

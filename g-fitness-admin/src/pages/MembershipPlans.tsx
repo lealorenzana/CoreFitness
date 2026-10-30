@@ -7,6 +7,8 @@ import PlanFeatureMatrix from '../components/PlanFeatureMatrix';
 import { Av, Pager } from './attendance/parts';
 import './attendance/att.css';
 import { showToast } from '../utils/toast';
+import { recordReason, REASON_FIELD } from '../lib/api/reasons';
+import ReasonDialog from '../components/ui/ReasonDialog';
 import { todayKey, addDays } from '../utils/dates';
 import { usePaged } from '../hooks/usePaged';
 import { useFitRows } from '../hooks/useFitRows';
@@ -193,7 +195,10 @@ export default function MembershipPlans() {
     }
   };
 
-  const save = async () => {
+  /** A price change and taking a plan off sale ask why (owner, 2026-10-28). */
+  const [askPrice, setAskPrice] = useState(false);
+  const [toRetire, setToRetire] = useState<MembershipPlanRow | null>(null);
+  const save = async (why?: string) => {
     if (!draft) return;
     if (!draft.name.trim()) { showToast('Give the plan the name members will see', 'error'); return; }
     if (draft.price.trim() === '' || Number(draft.price) < 0) { showToast('Set a price — ₱0 for a free plan or a trial', 'error'); return; }
@@ -206,10 +211,16 @@ export default function MembershipPlans() {
       class_bookings_per_week: draft.canBookClasses && draft.classesPerWeek.trim() !== '' ? Number(draft.classesPerWeek) : null,
       pt_sessions_per_month: draft.canBookPt && draft.ptPerMonth.trim() !== '' ? Number(draft.ptPerMonth) : null,
     };
+    const before = draft.id ? plans.find((p) => p.id === draft.id) : null;
+    const priceChanged = !!before && Number(before.price) !== payload.price;
+    if (priceChanged && !why) { setAskPrice(true); return; }
     setSaving(true);
     try {
       if (draft.id) {
         await updatePlan(draft.id, payload);
+        if (priceChanged && why) await recordReason({ action: 'plan.price_changed', subjectType: 'membership_plan', subjectId: draft.id,
+          summary: `Changed ${payload.name}'s price from ₱${Number(before!.price).toLocaleString('en-PH')} to ₱${payload.price.toLocaleString('en-PH')}`, reason: why });
+        setAskPrice(false);
         showToast(`${payload.name} saved`, 'success');
         await loadData(draft.id);
       } else {
@@ -225,18 +236,22 @@ export default function MembershipPlans() {
   };
 
   /** Retire = off sale; whoever is on it keeps it until it ends. Restore puts it back. */
-  const setOnSale = async (p: MembershipPlanRow, on: boolean) => {
+  const setOnSale = async (p: MembershipPlanRow, on: boolean, why?: string) => {
     try {
       await updatePlan(p.id, { is_active: on });
+      if (!on && why) await recordReason({ action: 'plan.off_sale', subjectType: 'membership_plan', subjectId: p.id, summary: `Took ${p.name} off sale`, reason: why });
+      setToRetire(null);
       showToast(on ? `${p.name} is on sale again` : `${p.name} is off sale — members on it keep it until it ends`, 'success');
       await loadData(on ? p.id : null);
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not change that plan', 'error');
     }
   };
-  const handleDelete = async (plan: MembershipPlanRow) => {
+  const handleDelete = async (plan: MembershipPlanRow, why?: string) => {
     try {
       const r = await retirePlan(plan.id);
+      if (why) await recordReason({ action: 'plan.retired', subjectType: 'membership_plan', subjectId: plan.id,
+        summary: `Deleted the plan ${r.planName}${r.moved > 0 ? `; ${r.moved} moved to ${r.movedTo}` : ''}`, reason: why });
       showToast(r.moved > 0 ? `${r.planName} deleted — ${r.moved} moved to ${r.movedTo}` : `${r.planName} deleted`, 'success');
       await loadData();
     } catch (err) {
@@ -442,7 +457,7 @@ export default function MembershipPlans() {
 
               <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                 {selected && (selected.is_active
-                  ? <button type="button" className="a-btn ghost" style={{ flex: 1 }} onClick={() => void setOnSale(selected, false)} data-plan-retire><Archive size={15} />Retire</button>
+                  ? <button type="button" className="a-btn ghost" style={{ flex: 1 }} onClick={() => setToRetire(selected)} data-plan-retire><Archive size={15} />Retire</button>
                   : <button type="button" className="a-btn ghost" style={{ flex: 1 }} onClick={() => void setOnSale(selected, true)}><RotateCcw size={15} />Restore</button>)}
                 <button type="button" className="a-btn violet" style={{ flex: 2 }} disabled={saving} onClick={() => void save()} data-plan-save>
                   <Check size={15} />{draft.id ? `Save ${draft.name.trim() || 'plan'}` : 'Put it on sale'}</button>
@@ -484,10 +499,17 @@ export default function MembershipPlans() {
       )}
 
       {/* retire_plan() (0062/0063): the confirmation says what happens to real people, because "Delete this plan?" does not. */}
+      <ReasonDialog isOpen={askPrice} onClose={() => setAskPrice(false)} title="Change the price"
+        message={<>Members who renew from now pay the new price; whoever paid already keeps what they paid for.</>}
+        confirmText="Save the new price" quick={['Costs went up', 'A promo', 'Matching other gyms']} onConfirm={(why) => save(why)} />
+      <ReasonDialog isOpen={!!toRetire} onClose={() => setToRetire(null)} title="Take the plan off sale"
+        message={<>Take <b className="text-white">{toRetire?.name}</b> off sale? Nobody new can buy it; members on it keep it until it ends.</>}
+        confirmText="Take it off sale" quick={['Replaced by a new plan', 'Nobody buys it', 'Seasonal plan ended']}
+        onConfirm={async (why) => { if (toRetire) await setOnSale(toRetire, false, why); }} />
       <ConfirmDialog
         isOpen={!!toDelete}
         onClose={() => setToDelete(null)}
-        onConfirm={() => { const p = toDelete; setToDelete(null); if (p) void handleDelete(p); }}
+        onConfirm={(why) => { const p = toDelete; setToDelete(null); if (p) void handleDelete(p, why); }} reason={REASON_FIELD}
         title={toDelete ? `Delete ${toDelete.name}` : 'Delete plan'}
         message={toDelete ? ((total[toDelete.id] ?? 0) > 0
           ? `${total[toDelete.id]} membership${total[toDelete.id] === 1 ? '' : 's'} will move to the free plan. They keep their dates and status; what changes is what the plan lets them do.`

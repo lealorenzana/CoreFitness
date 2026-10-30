@@ -10,13 +10,13 @@ const peso = (n: string | number) => '₱' + Number(n).toLocaleString('en-PH', {
 
 /**
  * Pay Core Fitness online (0191) — GCash, Maya, card or online banking through
- * PayMongo, for the plan's month or its yearly price. Shown only when Core
- * Fitness has PayMongo switched on; the reference-and-screenshot card below
- * stays either way. Coming back from PayMongo (?paid=…), it waits for the
+ * PayMongo, for the plan's month or its yearly price. The only way to pay the
+ * plan since 2026-10-28 (the owner: one way, no QR-and-reference form here);
+ * before Core Fitness switches PayMongo on, it says so and points to Help. Coming back from PayMongo (?paid=…), it waits for the
  * signed confirmation rather than claiming the payment went through.
  */
 export default function PayOnline({ onPaid }: { onPaid: () => void }) {
-  const [on, setOn] = useState(false);
+  const [on, setOn] = useState<boolean | null>(null);
   /** The plan's two prices, the database's (0108's billing view). */
   const [prices, setPrices] = useState<{ m: string | null; y: string | null }>({ m: null, y: null });
   useEffect(() => { void getGymBilling().then((b) => setPrices({ m: b?.price_monthly ?? null, y: b?.price_yearly ?? null })); }, []);
@@ -42,7 +42,17 @@ export default function PayOnline({ onPaid }: { onPaid: () => void }) {
 
   const monthly = priceMonthly != null && Number(priceMonthly) > 0 ? Number(priceMonthly) : null;
   const yearly = priceYearly != null && Number(priceYearly) > 0 ? Number(priceYearly) : null;
-  if (!on && !paidId) return null;
+  if (on === null && !paidId) return null;
+  if (!on && !paidId) {
+    return (
+      <Card className="!p-5" data-pay-online-off>
+        <p className="text-sm font-semibold text-white flex items-center gap-2"><CreditCard size={15} /> Pay online</p>
+        <p className="text-xs mt-1" style={{ color: MUTED }}>
+          Paying the plan online opens here once Core Fitness switches it on. Until then, ask Core Fitness in Help how to pay this month.
+        </p>
+      </Card>
+    );
+  }
   return (
     <Card className="!p-5" data-pay-online>
       <p className="text-sm font-semibold text-white flex items-center gap-2"><CreditCard size={15} /> Pay online</p>

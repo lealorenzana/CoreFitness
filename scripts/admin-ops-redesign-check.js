@@ -40,7 +40,8 @@ async (page) => {
     TPL('c4', 'Spin', 't1', 3, '18:30', 45), TPL('c5', 'Core Blast', 't2', 5, '12:30', 30), TPL('c6', 'Old Bootcamp', 't1', 6, '08:00', 60, { active: false }),
   ];
   const CLASSES = [0, 1, 2, 3, 4, 5].map((d, i) => ({ id: `cl${i}`, name: TEMPLATES[i % 5].name, trainer_id: TEMPLATES[i % 5].trainer_id,
-    scheduled_at: iso(d + 1, 6 + i * 2, 0), duration_minutes: 60, location: 'Studio A', capacity: 10, class_type: 'group', status: 'scheduled', template_id: TEMPLATES[i % 5].id }));
+    // cl0 is today, so the week always shows one, whatever the weekday (tomorrow is next week on a Saturday).
+    scheduled_at: iso(i === 0 ? 0 : d + 1, 6 + i * 2, 0), duration_minutes: 60, location: 'Studio A', capacity: 10, class_type: 'group', status: 'scheduled', template_id: TEMPLATES[i % 5].id }));
   const PLANS = [
     { id: 'pl1', name: 'Premium', price: 1500, duration_days: 30, tier: 'premium', is_active: true, can_book_classes: true, can_book_pt: true },
     { id: 'pl2', name: 'Free Plan', price: 0, duration_days: null, tier: 'free', is_active: true, can_book_classes: true, can_book_pt: false },
@@ -229,7 +230,7 @@ async (page) => {
 
   // ── Payments ──
   t = await visit('/payments', 'payments');
-  has('tiles: total, this month, pending, coming to renew', /Total collected/.test(t) && /This month/.test(t) && /Pending/.test(t) && /Coming to renew/.test(t));
+  has('tiles: total, this month, pending, to approve', /Total collected/.test(t) && /This month/.test(t) && /Pending/.test(t) && /To approve/.test(t));
   has('records by member, the drawer in the rail', (await page.locator('[data-member-row]').count()) === 5 && /End of day/.test(t) && /Should be in the drawer/.test(t));
   has('the page does not scroll', await noScroll());
   await page.getByRole('combobox', { name: 'Show' }).click();
@@ -243,10 +244,10 @@ async (page) => {
   has('every payment: method, status, a pending one to confirm, a receipt each', (await page.locator('[data-payment-row]').count()) >= 5 && /GCash/.test(t)
     && (await page.getByRole('button', { name: 'Confirm', exact: true }).count()) === 1 && (await page.getByRole('button', { name: /^Receipt INV-/ }).count()) >= 5);
   await page.screenshot({ path: 'shots/ops-payments-all.png' });
-  await page.getByRole('tab', { name: /Coming to renew/ }).click();
+  await page.getByRole('tab', { name: /To approve/ }).click();
   await page.waitForTimeout(400);
   t = await text();
-  has('coming to renew: the online reference, Record payment, Decline', /Ref GC-998877/.test(t) && (await page.getByRole('button', { name: /Record payment/ }).count()) >= 2
+  has('coming to renew: the online reference, Approve payment, Decline', /Ref GC-998877/.test(t) && (await page.getByRole('button', { name: /Approve payment/ }).count()) === 1 && (await page.getByRole('button', { name: /Record payment/ }).count()) >= 1
     && (await page.getByRole('button', { name: 'Decline', exact: true }).count()) === 1);
   await page.screenshot({ path: 'shots/ops-payments-renew.png' });
 

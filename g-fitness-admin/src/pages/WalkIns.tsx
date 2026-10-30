@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Footprints, UserPlus, Settings2, Wallet, Undo2, HelpCircle, Download, Check, Banknote, QrCode, Phone, Lightbulb, HeartHandshake, History, Tags } from 'lucide-react';
 import { RdButton, Pill, EmptyBlock, Initials, SearchField, RdTable, Tr, Td } from '../components/ui/rd';
@@ -13,6 +13,8 @@ import { supabase } from '../lib/supabaseClient';
 import { todayKey, addDays } from '../utils/dates';
 import WalkInGuide from '../components/WalkInGuide';
 import DetailSheet from '../components/ui/DetailSheet';
+import ReasonDialog from '../components/ui/ReasonDialog';
+import { recordReason } from '../lib/api/reasons';
 
 type Kind = 'day' | 'pack5' | 'pack10' | 'pack_visit';
 interface Prices { on: boolean; day: number | null; pack5: number | null; pack10: number | null; nudge: number | null }
@@ -65,6 +67,10 @@ export default function WalkIns() {
   const [method, setMethod] = useState<'cash' | 'online'>('cash');
   const [visits, setVisits] = useState<Visit[]>([]);
   const [regulars, setRegulars] = useState<Regular[] | null>(null);
+  /** Guests with pack visits left (0219) — picked from a list, until their last visit is used. */
+  const [packGuests, setPackGuests] = useState<Guest[]>([]);
+  /** The phone of a guest picked from that list — already known, so it is not looked up again over them. */
+  const pickedPhone = useRef<string | null>(null);
   const [cheapest, setCheapest] = useState<{ name: string; price: number } | null>(null);
   const [busy, setBusy] = useState(false);
   /** The guide's table is wide: it opens in a side panel, never unfolded inside the rail. */
@@ -89,13 +95,16 @@ export default function WalkIns() {
   }, [histOpen, histRange]);
 
   const load = useCallback(async () => {
-    const [{ data: s, error }, { data: v }, fg, plans] = await Promise.all([
+    const [{ data: s, error }, { data: v }, fg, plans, pg] = await Promise.all([
       supabase.from('gym_settings').select('day_pass_on, day_pass_price, pack5_price, pack10_price, guest_nudge_visits').maybeSingle(),
       supabase.rpc('guest_visits_on', { p_day: todayKey() }),
       // Before 0200 this function does not exist: the section then says nothing rather than "nobody".
       supabase.rpc('frequent_guests', { p_days: 30, p_min: 3 }),
       supabase.from('membership_plans').select('name, price, is_active').gt('price', 0).eq('is_active', true).order('price', { ascending: true }).limit(1),
+      // Before 0219 there is no such list: nothing is shown, and the phone still finds them.
+      supabase.rpc('guests_with_visits'),
     ]);
+    setPackGuests(pg.error ? [] : (pg.data ?? []) as Guest[]);
     if (error) { setPrices(null); return; }
     const r = s as { day_pass_on: boolean; day_pass_price: number | null; pack5_price: number | null; pack10_price: number | null; guest_nudge_visits: number | null } | null;
     const num = (x: number | null) => (x == null ? null : Number(x));
@@ -110,6 +119,7 @@ export default function WalkIns() {
   // The phone, once it is long enough to be one, asks who this is.
   useEffect(() => {
     if (phone.replace(/\D/g, '').length < 10) return;
+    if (pickedPhone.current === phone) return;
     const asked = phone;
     const t = setTimeout(() => {
       void (async () => {
@@ -140,12 +150,17 @@ export default function WalkIns() {
     setPhone(''); setName(''); setFound(null); setKind(null); setMethod('cash');
     await load();
   };
-  const voidIt = async (id: string) => {
+  /** Voiding takes money back off the day — it asks why (owner, 2026-10-28). */
+  const [toVoid, setToVoid] = useState<{ id: string; name: string } | null>(null);
+  const voidIt = async (reason: string) => {
+    if (!toVoid) return;
     setBusy(true);
-    const { error } = await supabase.rpc('void_guest_visit', { p_visit: id });
+    const { error } = await supabase.rpc('void_guest_visit', { p_visit: toVoid.id });
     setBusy(false);
-    if (error) { showToast(error.message, 'error'); return; }
+    if (error) throw new Error(error.message);
+    await recordReason({ action: 'walkin.voided', subjectType: 'guest_visit', subjectId: toVoid.id, summary: `Voided ${toVoid.name}'s walk-in`, reason });
     showToast('Voided', 'success');
+    setToVoid(null);
     await load();
   };
 
@@ -153,6 +168,9 @@ export default function WalkIns() {
   const cash = live.filter((v) => v.method === 'cash').reduce((a, v) => a + v.amount, 0);
   const canSell = !!prices?.on;
   const named = !!guest || name.trim().length > 0;
+  /** A pack needs a phone — it is how the desk finds the guest's visits next time (0219). */
+  const needsPhone = !guest && (chosen === 'pack5' || chosen === 'pack10') && phone.replace(/\D/g, '').length < 7;
+  const pickPackGuest = (g: Guest) => { const ph = g.phone ?? ''; pickedPhone.current = ph; setPhone(ph); setFound({ phone: ph, guest: g }); setName(''); setKind('pack_visit'); };
   const sold = (k: Kind) => live.filter((v) => v.kind === k).length;
   /** What a guest has paid in walk-ins over 30 days, when they are among the regulars (0200's frequent_guests). */
   const spentOf = (id: string) => regulars?.find((g) => g.guest_id === id)?.spent ?? null;
@@ -202,6 +220,16 @@ export default function WalkIns() {
                   ? <>Last came {ago(guest.last_visit) ?? 'never'}{guest.visits_left ? <> · has <b style={{ color: '#fff' }}>{guest.visits_left} pack visit{guest.visits_left === 1 ? '' : 's'}</b> left</> : ' · no pack visits left'}</>
                   : 'Type their phone first — a returning guest is found, with their visits and any pack.'}
               </div>
+              {packGuests.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, margin: '-6px 0 14px' }} data-pack-guests>
+                  <span className="a-sub">Has pack visits left:</span>
+                  {packGuests.map((g) => (
+                    <button key={g.id} type="button" className={`a-chip ${guest?.id === g.id ? 'on' : ''}`} onClick={() => pickPackGuest(g)} data-pack-guest={g.name}>
+                      {g.name} · {g.visits_left} left
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {/* 2 · What */}
               <div className="a-step"><span>2</span>What are they paying for?</div>
@@ -224,8 +252,8 @@ export default function WalkIns() {
                     {m === 'cash' ? <Banknote size={14} /> : <QrCode size={14} />}{m === 'cash' ? 'Cash' : 'Online'}
                   </button>
                 ))}
-                <button type="button" className="a-btn amber" style={{ marginLeft: 'auto', padding: '11px 26px', fontSize: 13 }} disabled={busy || !named || !chosen} onClick={() => void record()} data-record-visit>
-                  <Check size={16} />{!named ? 'Type their name' : chosen ? `Record visit · ${peso(priceOf(chosen))}` : 'Choose what they are paying for'}
+                <button type="button" className="a-btn amber" style={{ marginLeft: 'auto', padding: '11px 26px', fontSize: 13 }} disabled={busy || !named || !chosen || needsPhone} onClick={() => void record()} data-record-visit>
+                  <Check size={16} />{!named ? 'Type their name' : needsPhone ? 'Type their phone — a pack needs it' : chosen ? `Record visit · ${peso(priceOf(chosen))}` : 'Choose what they are paying for'}
                 </button>
               </div>
 
@@ -298,7 +326,7 @@ export default function WalkIns() {
                     <Av name={v.name} small />
                     <div className="t"><b>{v.name}{v.voided ? ' · voided' : ''}</b>
                       <small>{KIND[v.kind]} · {v.amount > 0 ? `${peso(v.amount)} · ${v.method}` : '₱0'} · {new Date(v.visited_at).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' }).toLowerCase()}</small></div>
-                    {!v.voided && <button type="button" className="a-btn ghost sm" disabled={busy} onClick={() => void voidIt(v.id)}><Undo2 size={12} />Void</button>}
+                    {!v.voided && <button type="button" className="a-btn ghost sm" disabled={busy} onClick={() => setToVoid({ id: v.id, name: v.name })}><Undo2 size={12} />Void</button>}
                   </div>
                 ))}
               </div>
@@ -378,6 +406,9 @@ export default function WalkIns() {
         })()}
       </FloatingWindow>
 
+      <ReasonDialog isOpen={!!toVoid} onClose={() => setToVoid(null)} title="Void the walk-in" danger
+        message={<>Void <b className="text-white">{toVoid?.name}</b>&rsquo;s walk-in? Its money comes off today&rsquo;s drawer.</>}
+        confirmText="Void it" quick={['Entered by mistake', 'Recorded twice', 'They changed their mind']} onConfirm={voidIt} />
       <DetailSheet open={guideOpen} onClose={() => setGuideOpen(false)} title="How walk-ins and day passes work" width={720}
         subtitle="Two ways to pay for one visit — at the desk, or in the app">
         <WalkInGuide open />

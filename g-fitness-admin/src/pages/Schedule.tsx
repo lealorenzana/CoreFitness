@@ -16,6 +16,7 @@ import {
   Download, Image as ImageIcon, FileDown, Pencil, UserPlus, MessageSquare, Repeat, CalendarRange, X, Info, ClockAlert,
 } from 'lucide-react';
 import { showToast } from '../utils/toast';
+import { recordReason, REASON_FIELD } from '../lib/api/reasons';
 import { todayKey, addDays, localDateKey } from '../utils/dates';
 import {
   listClassTemplates, createClassTemplate, deactivateClassTemplate, updateClassTemplate,
@@ -265,11 +266,12 @@ export default function Schedule() {
       setSaving(false);
     }
   };
-  const handleRetire = async () => {
+  const handleRetire = async (why?: string) => {
     const t = toRetire;
     if (!t) return;
     try {
       if (t.active) await deactivateClassTemplate(t.id); else await updateClassTemplate(t.id, { active: true });
+      if (why && t.active) await recordReason({ action: 'class.retired', subjectType: 'class_template', subjectId: t.id, summary: `Retired the class ${t.name}`, reason: why });
       showToast(`${t.name} ${t.active ? 'retired' : 'back on the timetable'}`, 'success');
       setToRetire(null);
       await load();
@@ -290,9 +292,11 @@ export default function Schedule() {
     } catch (err) { showToast(err instanceof Error ? err.message : 'Failed to add hours', 'error'); }
     finally { setSaving(false); }
   };
-  const handleDeleteHours = async () => {
+  const handleDeleteHours = async (why?: string) => {
     if (!toDeleteHours) return;
-    try { await deleteAvailability(toDeleteHours.id); showToast('Hours removed', 'success'); setToDeleteHours(null); await load(); }
+    try { await deleteAvailability(toDeleteHours.id);
+      if (why) await recordReason({ action: 'hours.removed', subjectType: 'availability', subjectId: null, summary: 'Removed a coach’s working hours', reason: why });
+      showToast('Hours removed', 'success'); setToDeleteHours(null); await load(); }
     catch (err) { showToast(err instanceof Error ? err.message : 'Failed to remove hours', 'error'); }
   };
 
@@ -670,7 +674,7 @@ export default function Schedule() {
               <RdField label="From"><TimePicker value={hoursForm.start} onChange={(v) => setHoursForm({ ...hoursForm, start: v })} /></RdField>
               <RdField label="Until"><TimePicker value={hoursForm.end} onChange={(v) => setHoursForm({ ...hoursForm, end: v })} /></RdField>
             </div>
-            <RdField label="Each booking is">
+            <RdField group label="Each booking is">
               <div className="flex gap-1.5" style={{ marginTop: 2 }}>
                 {['30', '45', '60', '90'].map((m) => <button key={m} type="button" className={`a-chip ${hoursForm.slot === m ? 'on' : ''}`} onClick={() => setHoursForm({ ...hoursForm, slot: m })}>{m} min</button>)}
               </div>
@@ -681,13 +685,13 @@ export default function Schedule() {
         </div>
       )}
 
-      <ConfirmDialog isOpen={!!toRetire} onClose={() => setToRetire(null)} onConfirm={handleRetire}
+      <ConfirmDialog isOpen={!!toRetire} onClose={() => setToRetire(null)} onConfirm={(why) => void handleRetire(why)} reason={toRetire?.active ? REASON_FIELD : undefined}
         title={toRetire?.active ? 'Retire class' : 'Put the class back'}
         message={toRetire?.active
           ? `Retire "${toRetire?.name}"? It stops making new sessions, but every session already scheduled from it stays — including anyone who has booked. Reversible at any time.`
           : `Put "${toRetire?.name}" back on the timetable? It starts making sessions again.`}
         confirmText={toRetire?.active ? 'Retire' : 'Put back'} type={toRetire?.active ? 'warning' : 'info'} />
-      <ConfirmDialog isOpen={!!toDeleteHours} onClose={() => setToDeleteHours(null)} onConfirm={handleDeleteHours} title="Remove working hours"
+      <ConfirmDialog isOpen={!!toDeleteHours} onClose={() => setToDeleteHours(null)} onConfirm={(why) => void handleDeleteHours(why)} reason={REASON_FIELD} title="Remove working hours"
         message={toDeleteHours ? `Remove ${trainerName(toDeleteHours.trainer_id)}'s ${DAY_NAMES[toDeleteHours.day_of_week]} ${clock(toDeleteHours.start_time)}–${clock(toDeleteHours.end_time)}? No new 1-on-1 slots will be offered then. Sessions already booked are not cancelled.` : ''}
         confirmText="Remove" type="danger" />
 

@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { AlertTriangle, ArrowUp, CalendarClock, Check, FileDown, FileText, ListChecks, Lock, Receipt, ShieldCheck, Wallet } from 'lucide-react';
 import './attendance/att.css';
 import GymReceiptSheet from '../components/GymReceiptSheet';
-import PayCoreFitness from '../components/PayCoreFitness';
 import PayOnline from '../components/PayOnline';
 import ApplicationDocuments from '../components/ApplicationDocuments';
 import { myGymApplication, type GymApplication } from '../lib/api/applications';
@@ -178,8 +177,9 @@ export default function Subscription() {
             <div className="a-ct"><h3><Wallet size={16} />Paying for the plan</h3></div>
             {billed ? (
               <div className="space-y-3">
+                {/* PayMongo only (owner, 2026-10-28): the manual QR-and-reference form is gone here —
+                    QR codes stay for what members pay the gym, and coaches paid directly. */}
                 <PayOnline onPaid={reloadAfterPay} />
-                <PayCoreFitness priceMonthly={sub.price_monthly} />
               </div>
             ) : (
               <div className="a-hint"><CalendarClock size={15} /><span>Nothing to pay. If Core Fitness starts billing this gym, how to pay appears here with the amount and every way to send it.</span></div>

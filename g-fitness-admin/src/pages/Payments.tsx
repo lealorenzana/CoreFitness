@@ -321,7 +321,7 @@ export default function Payments() {
           {/* Up here, not above the table: the table and End of day start on one line (2026-10-25). */}
           <PageTabs<'records' | 'renew'> label="Payments sections" value={tab} onChange={setTab} tabs={[
             { key: 'records', label: 'Records', icon: Banknote },
-            { key: 'renew', label: 'Coming to renew', icon: Send, count: reqCount },
+            { key: 'renew', label: 'To approve', icon: Send, count: reqCount },
           ]} />
           <RdButton icon={Download} onClick={() => exportPaymentsToCSV(payments)}>Export</RdButton>
           <RdButton variant="primary" icon={Plus} onClick={() => setIsModalOpen(true)}>Record payment</RdButton>
@@ -332,7 +332,7 @@ export default function Payments() {
         <StatTile compact icon={CalendarRange} label="This month" value={peso(thisMonth)} sub="by the day it was paid" />
         <StatTile compact icon={Clock} tone={pendingCount ? 'amber' : 'violet'} label="Pending" value={pendingCount} sub="waiting to be confirmed"
           active={filterStatus === 'pending'} onClick={() => { setTab('records'); setFilterStatus(filterStatus === 'pending' ? 'all' : 'pending'); setCurrentPage(1); }} />
-        <StatTile compact icon={Send} tone={reqCount ? 'amber' : 'violet'} label="Coming to renew" value={reqCount} sub="asked in the app"
+        <StatTile compact icon={Send} tone={reqCount ? 'amber' : 'violet'} label="To approve" value={reqCount} sub="paid online, or coming to pay"
           active={tab === 'renew'} onClick={() => setTab('renew')} />
       </div>
 
@@ -414,15 +414,18 @@ export default function Payments() {
              payment closes the request by itself; the only desk action of its own is Decline. */
           <RdCard className="flex flex-col min-h-0 overflow-hidden rd-fit-fill" data-renew>
             <div className="px-4 py-3" style={{ borderBottom: LINE }}>
-              <p className="text-[15px] font-semibold text-white">Coming to renew</p>
-              <p className="text-[12.5px]" style={{ color: SECOND }}>Each closes itself when you record their payment.</p>
+              <p className="text-[15px] font-semibold text-white">To approve</p>
+              <p className="text-[12.5px]" style={{ color: SECOND }}>
+                Members who paid your GCash or bank and sent the reference come first — check it reached you, then approve. Below them, members coming to pay at the desk. Each closes when you record the payment.
+              </p>
             </div>
             <div className="rd-fit-scroll p-4">
               {!requests || requests.length === 0 ? (
                 <EmptyBlock compact icon={Send} title="Nobody is on the way" body="When a member taps “Tell the desk I’m coming” in the app, they show here." />
               ) : (
                 <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
-                  {requests.map((r) => {
+                  {/* Paid ones first: money is waiting on the desk's yes (owner, 2026-10-28). */}
+                  {[...requests].sort((a, b) => Number(!!b.paid) - Number(!!a.paid)).map((r) => {
                     const current = memberMembership[r.memberId];
                     const planChange = current && current.planName !== r.planName;
                     const hours = Math.max(0, Math.round((nowMs - Date.parse(r.createdAt)) / 3_600_000));
@@ -461,7 +464,9 @@ export default function Payments() {
                           <p className="text-[12px]" style={{ color: TONE.amber.fg }}>A plan change: switch them to {r.planName} in Members → Membership first, then record the payment.</p>
                         )}
                         <div className="flex gap-1.5">
-                          <RdButton size="sm" variant="primary" icon={Banknote} disabled={!!planChange || !current} onClick={() => recordForRequest(r)}>Record payment</RdButton>
+                          <RdButton size="sm" variant="primary" icon={Banknote} disabled={!!planChange || !current} onClick={() => recordForRequest(r)} data-approve>
+                            {r.paid ? 'Approve payment' : 'Record payment'}
+                          </RdButton>
                           <RdButton size="sm" variant="ghost" onClick={() => setToDecline(r)}>Decline</RdButton>
                         </div>
                       </div>

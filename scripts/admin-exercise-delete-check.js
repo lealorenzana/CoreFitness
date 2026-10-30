@@ -103,6 +103,7 @@ async (page) => {
 
   await open('Tyre Drag');
   await del('Tyre Drag').click();
+  await page.locator('#confirm-reason').fill('Made by mistake');
   await page.getByRole('button', { name: 'Delete', exact: true }).click();
   await page.waitForTimeout(800);
   seen = await text();
@@ -111,6 +112,7 @@ async (page) => {
 
   await open('Sandbag Carry');
   await del('Sandbag Carry').click();
+  await page.locator('#confirm-reason').fill('Made by mistake');
   await page.getByRole('button', { name: 'Delete', exact: true }).click();
   await page.waitForTimeout(800);
   seen = await text();

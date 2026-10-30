@@ -361,5 +361,25 @@ async (page) => {
   out.push('…shows the points this workout was paid: ' + (/\+15 points for the workout/.test(t) ? 'yes' : 'NO'));
   out.push('…and the earned level: ' + (/Earned level: Intermediate/.test(t) ? 'yes' : 'NO'));
   await shot('moments-finish');
+
+  // 8. A workout that paid nothing says why — only what the database knows (0219).
+  const finishBare = async (id, counts) => {
+    DB.workout_logs.push({ id, member_id: 'm1', activity: 'Quick one', routine_id: 'r1', gym_workout_id: null, program_day_id: null,
+      created_at: new Date(Date.now() - 20 * 60000).toISOString(), completed_at: null, duration_minutes: null, performed_on: dstr(0), counts });
+    await go('/member/track/session/' + id);
+    await btn('Start exercise').click().catch(() => {});
+    await page.waitForTimeout(300);
+    await btn('Log set 1').first().click().catch(() => {});
+    await page.waitForTimeout(800);
+    if (await page.getByRole('dialog', { name: 'Rest' }).count()) await btn('Skip rest').click();
+    await btn('Finish workout early').click().catch(() => {});
+    await page.waitForTimeout(5500);
+    return text();
+  };
+  t = await finishBare('L10', false);
+  out.push('a workout too short to count shows no points: ' + (!/points for the workout/.test(t) ? 'yes' : 'NO'));
+  out.push('…and says what earns them: ' + (/3 or more sets and at least 10 minutes/.test(t) ? 'yes' : 'NO'));
+  t = await finishBare('L11', true);
+  out.push('a second counting workout today says the day is already paid: ' + (/once a day, and today's are already in/.test(t) && !/points for the workout/.test(t) ? 'yes' : 'NO'));
   return out.join(String.fromCharCode(10));
 }

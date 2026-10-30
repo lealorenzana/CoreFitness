@@ -237,9 +237,12 @@ async (page) => {
   await page.waitForTimeout(400);
   await page.getByRole('button', { name: 'Continue' }).click();
   await page.waitForTimeout(800);
-  const btn = page.locator('[data-paymongo-pay]').getByRole('button');
-  out.push('renewing the plan they have: one step, at its price: ' + ((await btn.count()) === 1 && /Pay ₱1,500 now/.test(await btn.innerText()) ? 'yes' : 'MISSING'));
-  out.push('…the reference way stays beside it: ' + (/Pay now online/.test(await page.locator('body').innerText()) ? 'yes' : 'MISSING'));
+  // One chooser (2026-10-28): online pre-selected, the gym's GCash and the desk beside it, one button.
+  const ways = await page.locator('[data-pay-chooser] [data-pay-way]').evaluateAll((els) => els.map((e) => e.getAttribute('data-pay-way')).join(','));
+  const btn = page.locator('[data-pay-chooser]').getByRole('button', { name: /^Pay ₱1,500 online$/ });
+  out.push('renewing the plan they have: one step, at its price: ' + ((await btn.count()) === 1
+    && (await page.locator('[data-pay-way="online"][aria-checked="true"]').count()) === 1 ? 'yes' : 'MISSING'));
+  out.push('…the reference way and the desk stay beside it, in one list: ' + (ways === 'online,transfer,desk' ? 'yes' : 'MISSING ' + ways));
   await btn.click();
   await page.waitForURL('https://checkout.paymongo.test/**', { timeout: 8000 }).catch(() => {});
   out.push('…only the plan is sent — the price is the database\u2019s: ' + (CALLS.paymongo?.purpose === 'membership' && CALLS.paymongo?.details?.plan_id === 'p3'
@@ -256,9 +259,9 @@ async (page) => {
   await go('/member/renew');
   const dp = page.locator('[data-day-pass-buy]');
   out.push('lapsed, a day pass is offered at the gym\u2019s price: ' + ((await dp.count()) === 1
-    && /Day pass — pay ₱150 now/.test(await dp.innerText()) && /book a class held today/.test(await dp.innerText()) ? 'yes' : 'MISSING'));
+    && /Pay ₱150 online/.test(await dp.innerText()) && /book a class held today/.test(await dp.innerText()) ? 'yes' : 'MISSING'));
   delete CALLS.paymongo;
-  await dp.getByRole('button').click();
+  await dp.getByRole('button', { name: /^Pay ₱150 online$/ }).click();
   await page.waitForURL('https://checkout.paymongo.test/**', { timeout: 8000 }).catch(() => {});
   out.push('…only the purpose is sent, no amount: ' + (CALLS.paymongo?.purpose === 'day_pass' && !('amount' in (CALLS.paymongo ?? {})) ? 'yes' : 'MISSING ' + JSON.stringify(CALLS.paymongo)));
   DAY.today = true;

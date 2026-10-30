@@ -216,18 +216,26 @@ async (page) => {
   await page.getByRole('button', { name: 'Continue' }).click();
   await page.waitForTimeout(800);
   let text = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
-  out.push('the sheet offers both ways to pay: ' + (/Pay at the desk/.test(text) && /Pay now online/.test(text) ? 'yes' : 'MISSING'));
-  await page.getByRole('button', { name: 'Pay now online' }).click();
-  await page.waitForTimeout(500);
-  text = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+  // One chooser (2026-10-28). PayMongo is not connected here: two ways, the gym's GCash first.
+  const ways = await page.locator('[data-pay-chooser] [data-pay-way]').evaluateAll((els) => els.map((e) => e.getAttribute('data-pay-way')).join(','));
+  out.push('not connected to PayMongo: two ways, in one list: ' + (ways === 'transfer,desk' && /Pay at the front desk/.test(text) && /Send to the gym’s GCash/.test(text) ? 'yes' : 'MISSING ' + ways));
   out.push("the gym's GCash, the exact amount and the QR: " + (/0917 123 4567/.test(text) && /G Fitness Mamburao/.test(text) && /Send exactly ₱4,200/.test(text)
     && (await page.locator('[data-pay-online] img[alt="GCash QR code"]').count()) === 1 ? 'yes' : 'MISSING ' + text.slice(0, 200)));
+  out.push('the button says what it does: ' + ((await page.getByRole('button', { name: 'Send my reference' }).count()) === 1 ? 'yes' : 'MISSING'));
+  await page.locator('[data-pay-way="desk"]').click();
+  out.push('…and follows the choice: ' + ((await page.getByRole('button', { name: 'I’ll pay at the desk' }).count()) === 1
+    && (await page.getByRole('button', { name: 'Send my reference' }).count()) === 0 ? 'yes' : 'MISSING'));
+  await page.locator('[data-pay-way="transfer"]').click();
   await shot('online-01-sheet');
-  await page.getByRole('button', { name: 'Send for the desk to confirm' }).click();
+  await page.getByRole('button', { name: 'Send my reference' }).click();
   await page.waitForTimeout(600);
   out.push('no reference, nothing sent: ' + (!CALLS.request_renewal_paid ? 'yes' : 'SENT'));
+  await page.getByLabel('Reference number from your receipt').fill('123');
+  await page.getByRole('button', { name: 'Send my reference' }).click();
+  await page.waitForTimeout(600);
+  out.push('a reference under 4 characters is refused: ' + (!CALLS.request_renewal_paid ? 'yes' : 'SENT'));
   await page.getByLabel('Reference number from your receipt').fill('1009 8765 4321');
-  await page.getByRole('button', { name: 'Send for the desk to confirm' }).click();
+  await page.getByRole('button', { name: 'Send my reference' }).click();
   await page.waitForTimeout(1300);
   const c = CALLS.request_renewal_paid;
   out.push('request_renewal_paid sent plan, method and reference: ' + (c && c.p_plan === 'p4' && c.p_method === 'pm1' && c.p_reference === '1009 8765 4321' ? 'yes' : 'MISSING ' + JSON.stringify(c)));

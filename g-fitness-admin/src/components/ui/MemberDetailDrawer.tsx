@@ -28,6 +28,8 @@ import {
 } from '../../lib/api/memberships';
 import { listPlans } from '../../lib/api/membershipPlans';
 import MembershipActionDialog from './MembershipActionDialog';
+import ReasonDialog from './ReasonDialog';
+import { recordReason } from '../../lib/api/reasons';
 import { notifyUser } from '../../lib/api/notify';
 import { bmi, bmiBand, goalProgress } from '../../lib/api/progress';
 import { formatCheckInCode } from '../../utils/checkInCode';
@@ -1731,19 +1733,24 @@ function RoomsSection({ memberId }: { memberId: string }) {
 function RecordsSection({ memberId }: { memberId: string }) {
   const [records, setRecords] = useState<MemberRecord[] | null | undefined>(undefined);
   const [busy, setBusy] = useState<string | null>(null);
+  /** Removing a record takes points back — it asks why (owner, 2026-10-28). */
+  const [toRemove, setToRemove] = useState<MemberRecord | null>(null);
   const load = useCallback(async () => { setRecords(await memberRecords(memberId)); }, [memberId]);
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
   // Before 0123, or unreadable: nothing, rather than "no records".
   if (records === undefined || records === null) return null;
-  const remove = async (r: MemberRecord) => {
+  const remove = async (reason: string) => {
+    const r = toRemove;
+    if (!r) return;
     setBusy(r.id);
     try {
       await removeRecord(r.id);
+      await recordReason({ action: 'record.removed', subjectType: 'personal_record', subjectId: r.id, memberId,
+        summary: `Removed the record ${r.exerciseName} ${recordValue(r.kind, r.value)} and its points`, reason });
       showToast(`${r.exerciseName} ${recordValue(r.kind, r.value)} removed, and its points taken back.`, 'success');
+      setToRemove(null);
       await load();
-    } catch (e) {
-      showToast(e instanceof Error ? e.message : 'That record could not be removed', 'error');
     } finally {
       setBusy(null);
     }
@@ -1758,7 +1765,7 @@ function RecordsSection({ memberId }: { memberId: string }) {
             <Row key={r.id} title={`${r.exerciseName} — ${recordValue(r.kind, r.value)}`}
               subtitle={`up from ${recordValue(r.kind, r.previous)} · ${formatDate(r.achievedAt)}`}
               right={
-                <Button size="sm" variant="ghost" disabled={busy === r.id} onClick={() => void remove(r)}
+                <Button size="sm" variant="ghost" disabled={busy === r.id} onClick={() => setToRemove(r)}
                   aria-label={`Remove record ${r.exerciseName} ${recordValue(r.kind, r.value)}`}>
                   Remove
                 </Button>
@@ -1766,6 +1773,9 @@ function RecordsSection({ memberId }: { memberId: string }) {
           ))}
         </div>
       )}
+      <ReasonDialog isOpen={!!toRemove} onClose={() => setToRemove(null)} title="Remove the record" danger
+        message={toRemove ? <>Remove <b className="text-white">{toRemove.exerciseName} — {recordValue(toRemove.kind, toRemove.value)}</b>? Its points are taken back, and it stops being the bar a real lift has to beat.</> : ''}
+        confirmText="Remove" quick={['Not a real lift', 'Typed by mistake', 'Wrong exercise']} onConfirm={remove} />
     </Section>
   );
 }

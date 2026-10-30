@@ -3,6 +3,7 @@ import { AlertTriangle, Crown, ImagePlus, Plus, Sparkles, Trash2, CalendarRange,
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Popover from '../components/ui/Popover';
+import ReasonDialog from '../components/ui/ReasonDialog';
 import './attendance/att.css';
 import { showToast } from '../utils/toast';
 import { supabase } from '../lib/supabaseClient';
@@ -145,7 +146,8 @@ export default function Programs() {
           {tab === 'programs' ? (editingProgram ? (
             <ProgramEditor key={editingProgram} program={program} workouts={workouts} exercises={exercises}
               onEditWorkout={(id) => { setTab('workouts'); setEditingWorkout(id); }}
-              onSaved={async (id) => { await load(); setEditingProgram(id); }} onClose={() => setEditingProgram(programs[0]?.id ?? null)} />
+              onSaved={async (id) => { await load(); setEditingProgram(id); }} onClose={() => setEditingProgram(programs[0]?.id ?? null)}
+              onRemoved={async () => { await load(); setEditingProgram(null); }} />
           ) : (
             <div style={{ margin: 'auto', textAlign: 'center' }}><CalendarRange size={28} style={{ color: 'var(--a-p300)', margin: '0 auto 8px' }} />
               <b>How members get a program</b>
@@ -163,12 +165,14 @@ export default function Programs() {
   );
 }
 
-function ProgramEditor({ program, workouts, exercises, onSaved, onClose, onEditWorkout }: {
+function ProgramEditor({ program, workouts, exercises, onSaved, onClose, onEditWorkout, onRemoved }: {
   program: GymProgram | null;
   workouts: GymWorkout[];
   exercises: Ex[];
   onSaved: (id: string) => Promise<void>;
   onClose: () => void;
+  /** Deleted, or retired because members are on it (0219). */
+  onRemoved: () => Promise<void>;
   /** Opens a workout on the Workouts tab — its name and exercises are edited there (2026-10-25). */
   onEditWorkout: (id: string) => void;
 }) {
@@ -181,6 +185,7 @@ function ProgramEditor({ program, workouts, exercises, onSaved, onClose, onEditW
   const [deloadEvery, setDeloadEvery] = useState<number | null>(program?.deloadEvery ?? null);
   const [cover, setCover] = useState<string | null>(program?.coverUrl ?? null);
   const [busy, setBusy] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const [cellAt, setCellAt] = useState<{ at: HTMLElement; week: number; day: number } | null>(null);
 
   const run = async (fn: () => Promise<void>) => {
@@ -203,6 +208,17 @@ function ProgramEditor({ program, workouts, exercises, onSaved, onClose, onEditW
     showToast(on ? 'Published. Your members can follow it now.' : 'Back to draft. Members no longer see it.', 'success');
     await onSaved(program.id);
   });
+  /** Deleted when nobody is on it; retired (hidden from new members) when someone is — they finish it (0219). */
+  const remove = async (reason: string) => {
+    if (!program) return;
+    const { data, error } = await supabase.rpc('delete_or_retire_program', { p_program: program.id, p_reason: reason });
+    if (error) throw new Error(error.code === 'PGRST202' ? 'Deleting programs arrives with the 0219 update.' : error.message);
+    showToast(data === 'retired'
+      ? 'Retired. Members on it keep it and finish it; new members no longer see it.'
+      : 'Deleted.', 'success');
+    setRemoving(false);
+    await onRemoved();
+  };
   const setDay = (week: number, day: number, workoutId: string) => run(async () => {
     if (!program) return;
     setCellAt(null);
@@ -230,6 +246,7 @@ function ProgramEditor({ program, workouts, exercises, onSaved, onClose, onEditW
         {program && <button type="button" className={`a-btn sm ${program.published ? '' : 'amber'}`} disabled={busy} onClick={() => void publish(!program.published)} data-publish>
           {program.published ? <><EyeOff size={13} />Unpublish</> : <><Eye size={13} />Publish</>}</button>}
         <button type="button" className="a-btn violet sm" disabled={busy} onClick={() => void save()} data-save-program><Check size={13} />Save</button>
+        {program && <button type="button" className="a-btn ghost sm" disabled={busy} onClick={() => setRemoving(true)} data-delete-program aria-label={`Delete ${program.name}`}><Trash2 size={13} />Delete</button>}
         {!program && <button type="button" className="a-btn ghost sm" onClick={onClose}>Cancel</button>}
       </div>
     </div>
@@ -284,6 +301,9 @@ function ProgramEditor({ program, workouts, exercises, onSaved, onClose, onEditW
           }),
         ])}
       </div>
+      <ReasonDialog isOpen={removing} onClose={() => setRemoving(false)} title="Delete the program" danger
+        message={<>Delete <b className="text-white">{program?.name}</b>? If nobody is on it, it is deleted for good. If members are following it, it is retired instead: they keep it and finish it, and new members no longer see it.</>}
+        confirmText="Delete" quick={['Replaced by a new one', 'Nobody uses it', 'Made by mistake']} onConfirm={remove} />
       <Popover anchor={cellAt?.at ?? null} open={!!cellAt} onClose={() => setCellAt(null)} width={240}>
         {cellAt && (
           <div className="p-1.5 flex flex-col max-h-72 overflow-y-auto" role="listbox" aria-label="Workout for the day">

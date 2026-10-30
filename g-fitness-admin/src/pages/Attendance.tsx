@@ -10,6 +10,7 @@ import {
   Smartphone, ChevronLeft, ChevronRight, Users, Banknote, Dumbbell,
 } from 'lucide-react';
 import { showToast } from '../utils/toast';
+import { recordReason, REASON_FIELD } from '../lib/api/reasons';
 import { checkInCodeOf, formatCheckInCode, normaliseCheckInCode } from '../utils/checkInCode';
 import { todayKey, localDateKey, addDays, daysBetween } from '../utils/dates';
 import { exportToCSV } from '../utils/exportUtils';
@@ -319,10 +320,12 @@ export default function Attendance() {
   };
 
   /** Undo a check-in (0035): the wrong person scanned. Only today's — what RLS allows. */
-  const handleUndo = async () => {
+  const handleUndo = async (why?: string) => {
     if (!toUndo) return;
     try {
       await deleteCheckIn(toUndo.id);
+      if (why) await recordReason({ action: 'checkin.removed', subjectType: 'attendance', subjectId: null, memberId: toUndo.member_id,
+        summary: `Removed ${nameOf(toUndo.member_id)}'s check-in`, reason: why });
       showToast(`Check-in removed for ${nameOf(toUndo.member_id)}`, 'success');
       if (last?.id === toUndo.id) setLast(null);
       setToUndo(null);
@@ -331,9 +334,13 @@ export default function Attendance() {
       showToast(err instanceof Error ? err.message : 'Could not undo that check-in', 'error');
     }
   };
-  const undoCoach = async (checkinId: string, name: string) => {
+  /** Undoing a coach's check-in asks why, as a member's does (owner, 2026-10-28). */
+  const [toUndoCoach, setToUndoCoach] = useState<{ id: string; name: string } | null>(null);
+  const undoCoach = async (checkinId: string, name: string, why?: string) => {
     try {
       await undoCoachCheckin(checkinId);
+      if (why) await recordReason({ action: 'coach_checkin.removed', subjectType: 'coach_checkin', subjectId: null, summary: `Removed ${name}'s check-in`, reason: why });
+      setToUndoCoach(null);
       showToast(`Check-in removed for ${name}`, 'success');
       if (last?.id === checkinId) setLast(null);
       setCoaches(await listDoorCoaches().catch(() => coaches));
@@ -401,7 +408,7 @@ export default function Attendance() {
                 <div className="a-sub truncate">{clock(shown.at)}{shown.kind === 'coach' ? ' · coach' : shown.activity ? ` · ${shown.activity} · ${shown.by === 'member' ? 'their pick' : 'set at desk'}` : ''}{!last ? ' · the latest today' : ''}</div>
               </div>
               <button type="button" className="a-btn ghost sm" onClick={() => {
-                if (shown.kind === 'coach') return void undoCoach(shown.id, shown.name);
+                if (shown.kind === 'coach') return setToUndoCoach({ id: shown.id, name: shown.name });
                 const row = today.find((r) => r.id === shown.id);
                 if (row) setToUndo(row);
               }}>Undo</button>
@@ -642,7 +649,7 @@ export default function Attendance() {
               <Av name={c.name} photo={c.photo} />
               <div className="t"><b>{c.name}</b><small>{c.checkedInAt ? `In at ${clock(c.checkedInAt)}` : 'Not in yet'} · <span className="a-code">{formatCheckInCode(c.id)}</span></small></div>
               {c.checkinId
-                ? <button type="button" className="a-btn ghost sm" onClick={() => void undoCoach(c.checkinId!, c.name)}>Undo</button>
+                ? <button type="button" className="a-btn ghost sm" onClick={() => setToUndoCoach({ id: c.checkinId!, name: c.name })}>Undo</button>
                 : <button type="button" className="a-btn amber sm" onClick={() => void doCoachCheckIn(c, 'manual')}>Check in</button>}
             </div>
           ))}
@@ -650,9 +657,18 @@ export default function Attendance() {
       </DetailSheet>
 
       <ConfirmDialog
+        isOpen={!!toUndoCoach}
+        onClose={() => setToUndoCoach(null)}
+        onConfirm={(why) => { if (toUndoCoach) void undoCoach(toUndoCoach.id, toUndoCoach.name, why); }} reason={REASON_FIELD}
+        title="Undo the coach's check-in"
+        message={toUndoCoach ? `Remove ${toUndoCoach.name}'s check-in? Use this when the wrong coach was scanned. They can check in again.` : ''}
+        confirmText="Undo it"
+        type="danger"
+      />
+      <ConfirmDialog
         isOpen={!!toUndo}
         onClose={() => setToUndo(null)}
-        onConfirm={handleUndo}
+        onConfirm={(why) => void handleUndo(why)} reason={REASON_FIELD}
         title="Undo Check-in"
         message={toUndo
           ? `Remove ${nameOf(toUndo.member_id)}'s ${clock(toUndo.check_in_time)} check-in? ` +

@@ -1,6 +1,6 @@
 /**
- * The gym's side of 2026-10-03's fixes: Your plan → Pay Core Fitness (0148:
- * GCash details and QR, the reference and a screenshot sent back), Members →
+ * The gym's side of 2026-10-03's fixes: Your plan pays through PayMongo only
+ * (the manual GCash form went 2026-10-28), Members →
  * Invite link (link, code, QR and the app page in one place), and Your app's
  * colour pairs with a preview of the members' app gradient.
  *
@@ -77,24 +77,14 @@ async (page) => {
   const text = () => page.evaluate(() => document.body.innerText.replace(/\s+/g, ' '));
   await page.setViewportSize({ width: 1400, height: 950 });
 
-  // ---- Your plan → Pay Core Fitness -----------------------------------------------------------
+  // ---- Your plan pays Core Fitness one way: PayMongo (2026-10-28) ------------------------------
+  // The manual GCash/QR form is gone from here; the gym's and coaches' own QR codes stay elsewhere.
   await page.goto('http://localhost:5174/subscription', { waitUntil: 'domcontentloaded' });
-  await page.getByText('Pay Core Fitness').waitFor({ timeout: 15000 });
+  await page.locator('[data-pay-online], [data-pay-online-off]').first().waitFor({ timeout: 15000 });
   let t = await text();
-  out.push('how to pay, with the GCash number and QR: ' + (/0917 555 0101/.test(t) && (await page.locator('img[alt="GCash QR code"]').count()) === 1 ? 'yes' : 'MISSING'));
-  out.push('the amount starts at the list price: ' + ((await page.locator('input[type="number"]').first().inputValue()) === '999' ? 'yes' : 'MISSING'));
-  await page.locator('select').nth(1).selectOption('3');
-  out.push('3 months: the amount follows: ' + ((await page.locator('input[type="number"]').first().inputValue()) === '2997' ? 'yes' : 'MISSING'));
-  await page.getByPlaceholder('From your GCash or bank receipt').fill('GC 9876 5432');
-  await page.locator('input[type="file"]').setInputFiles({ name: 'receipt.png', mimeType: 'image/png',
-    buffer: Buffer.from(PNG.split(',')[1], 'base64') });
-  await page.getByText('Screenshot attached').waitFor({ timeout: 5000 });
+  out.push('Your plan pays through PayMongo only, no manual QR form: ' + ((await page.locator('img[alt="GCash QR code"]').count()) === 0
+    && !/Tell Core Fitness I paid/.test(t) && !/From your GCash or bank receipt/.test(t) ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/admin-pay-core-fitness.png' });
-  await page.getByRole('button', { name: /Tell Core Fitness I paid/ }).click();
-  await page.getByText(/being checked/).waitFor({ timeout: 5000 });
-  const c = CALLS[0] || {};
-  out.push('the claim carries amount, months, reference and screenshot: ' + (Number(c.p_amount) === 2997 && c.p_months === 3 && c.p_reference === 'GC 9876 5432'
-    && /^data:image\/jpeg/.test(c.p_proof || '') ? 'yes' : 'MISSING ' + JSON.stringify({ ...c, p_proof: (c.p_proof || '').slice(0, 20) })));
 
   // ---- Members → Invite link ------------------------------------------------------------------------
   await page.goto('http://localhost:5174/members', { waitUntil: 'domcontentloaded' });

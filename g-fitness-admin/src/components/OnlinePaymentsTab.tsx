@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Check, Eye, EyeOff, Plus, QrCode, Smartphone, Trash2 } from 'lucide-react';
 import Button from './ui/Button';
+import ReasonDialog from './ui/ReasonDialog';
+import { recordReason } from '../lib/api/reasons';
 import { showToast } from '../utils/toast';
 import { getGymModules, setGymModule, type GymModule } from '../lib/api/gymApp';
 import { refreshGymModules } from '../hooks/useGymModules';
@@ -63,10 +65,15 @@ export default function OnlinePaymentsTab() {
     finally { setBusy(false); }
   };
 
-  const remove = async (m: GymPaymentMethod) => {
-    if (!window.confirm(`Remove ${m.label}? Members stop seeing it. Payments already sent with it are kept.`)) return;
-    try { await deleteGymPaymentMethod(m.id); await load(); }
-    catch (e) { showToast(e instanceof Error ? e.message : 'That could not be removed', 'error'); }
+  /** Members stop seeing it; payments already sent with it are kept. It asks why (owner, 2026-10-28). */
+  const [toRemove, setToRemove] = useState<GymPaymentMethod | null>(null);
+  const remove = async (reason: string) => {
+    const m = toRemove;
+    if (!m) return;
+    await deleteGymPaymentMethod(m.id);
+    await recordReason({ action: 'pay_method.removed', subjectType: 'gym_payment_method', subjectId: null, summary: `Removed the payment account ${m.label}`, reason });
+    setToRemove(null);
+    await load();
   };
 
   const muted = { color: 'var(--color-text-secondary)' };
@@ -130,7 +137,7 @@ export default function OnlinePaymentsTab() {
                 <p className="text-xs truncate" style={muted}>{[m.account_name, m.account_number].filter(Boolean).join(' · ') || 'QR code only'}</p>
               </div>
               <Button size="sm" variant="ghost" onClick={() => setDraft({ ...m })}>Edit</Button>
-              <button type="button" aria-label={`Remove ${m.label}`} onClick={() => void remove(m)} className="p-2 rounded-md" style={muted}><Trash2 size={15} /></button>
+              <button type="button" aria-label={`Remove ${m.label}`} onClick={() => setToRemove(m)} className="p-2 rounded-md" style={muted}><Trash2 size={15} /></button>
             </div>
           ))}
         </div>
@@ -196,10 +203,13 @@ export default function OnlinePaymentsTab() {
       </div>
 
       <p className="text-xs" style={muted}>
-        How it works for the desk: a member who pays online shows up under Payments → Coming to renew with the amount,
-        the reference number and their screenshot. Check it reached your account, then Record payment (it is filled in
+        How it works for the desk: a member who pays online shows up under Payments → To approve with the amount,
+        the reference number and their screenshot. Check it reached your account, then Approve payment (it is filled in
         for you) — or Decline it with a reason, which tells the member and lets them send it again.
       </p>
+      <ReasonDialog isOpen={!!toRemove} onClose={() => setToRemove(null)} title="Remove the payment account" danger
+        message={<>Remove <b className="text-white">{toRemove?.label}</b>? Members stop seeing it. Payments already sent with it are kept.</>}
+        confirmText="Remove" quick={['The account is closed', 'Replaced by a new account', 'Added by mistake']} onConfirm={remove} />
     </div>
   );
 }

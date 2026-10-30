@@ -286,6 +286,10 @@
       "app": "admin"
     },
     {
+      "file": "admin-fixes-check.js",
+      "app": "admin"
+    },
+    {
       "file": "admin-join-rules-check.js",
       "app": "admin"
     },

@@ -756,6 +756,84 @@ begin
 end
 $$;
 
+-- ── 9. Walk-ins: a pack's visits stay reachable until they run out ─────────
+-- The owner: "if there's still remaining in the walk-in, the person should be
+-- available in the choices until 0 left." A guest was found only by typing their
+-- exact phone, and a pack could be sold to a guest with no phone at all — those
+-- visits could never be used. Now a pack needs a phone, and the desk gets the
+-- list of guests who still have visits left, to pick from.
+create or replace function guests_with_visits()
+returns table (id uuid, name text, phone text, visits_left int, visits_this_month int, last_visit date)
+language sql stable security definer set search_path = public as $$
+  select g.id, g.name, g.phone, g.visits_left,
+         (select count(*)::int from guest_visits v where v.guest_id = g.id and v.voided_at is null
+             and date_trunc('month', v.visit_day) = date_trunc('month', manila_today())),
+         (select max(v.visit_day) from guest_visits v where v.guest_id = g.id and v.voided_at is null)
+    from guests g
+   where is_front_desk() and g.gym_id = current_gym_id() and g.visits_left > 0
+   order by g.name;
+$$;
+revoke all on function guests_with_visits() from public, anon;
+grant execute on function guests_with_visits() to authenticated;
+
+-- 0185's body, word for word, with one rule added: buying a pack needs the guest's phone.
+create or replace function record_guest_visit(p_guest uuid, p_name text, p_phone text, p_kind text, p_method text default 'cash')
+returns table (guest_id uuid, visits_left int, amount numeric, visits_this_month int, suggest_membership boolean)
+language plpgsql security definer set search_path = public as $$
+#variable_conflict use_column
+declare v_gym uuid := current_gym_id(); s record; g guests; v_amount numeric := 0; v_month int;
+begin
+  if not is_front_desk() then raise exception 'The front desk records walk-ins.' using errcode = '42501'; end if;
+  select gs.day_pass_on, gs.day_pass_price, gs.pack5_price, gs.pack10_price, gs.guest_nudge_visits into s
+    from gym_settings gs where gs.gym_id = v_gym;
+  if not coalesce(s.day_pass_on, false) then raise exception 'Day passes are off. Turn them on in Settings → Walk-ins.'; end if;
+  if p_kind not in ('day', 'pack5', 'pack10', 'pack_visit') then raise exception 'Choose a day pass, a pack, or a visit from a pack.'; end if;
+  if p_method not in ('cash', 'online') then raise exception 'Cash or online.'; end if;
+
+  if p_guest is not null then
+    select * into g from guests where id = p_guest and gym_id = v_gym for update;
+    if g.id is null then raise exception 'That guest is not on this gym''s list.'; end if;
+  else
+    if length(btrim(coalesce(p_name, ''))) = 0 then raise exception 'Type the guest''s name.'; end if;
+    if p_kind in ('pack5', 'pack10') and length(phone_key(coalesce(p_phone, ''))) < 7 then
+      raise exception 'A pack needs the guest''s phone number, so the desk can find their visits next time.';
+    end if;
+    insert into guests (gym_id, name, phone) values (v_gym, left(btrim(p_name), 80), nullif(btrim(coalesce(p_phone, '')), ''))
+    returning * into g;
+  end if;
+  if p_kind in ('pack5', 'pack10') and length(phone_key(coalesce(g.phone, ''))) < 7 then
+    raise exception 'A pack needs the guest''s phone number, so the desk can find their visits next time.';
+  end if;
+
+  if p_kind = 'day' then
+    v_amount := s.day_pass_price;
+  elsif p_kind = 'pack5' then
+    if s.pack5_price is null then raise exception 'This gym does not sell a 5-visit pack.'; end if;
+    v_amount := s.pack5_price;
+    update guests set visits_left = visits_left + 4 where id = g.id returning * into g;
+  elsif p_kind = 'pack10' then
+    if s.pack10_price is null then raise exception 'This gym does not sell a 10-visit pack.'; end if;
+    v_amount := s.pack10_price;
+    update guests set visits_left = visits_left + 9 where id = g.id returning * into g;
+  else
+    if g.visits_left < 1 then raise exception '% has no visits left on a pack.', g.name; end if;
+    update guests set visits_left = visits_left - 1 where id = g.id returning * into g;
+  end if;
+
+  insert into guest_visits (gym_id, guest_id, kind, amount, method, recorded_by)
+  values (v_gym, g.id, p_kind, v_amount, p_method, auth.uid());
+
+  select count(*)::int into v_month from guest_visits v
+   where v.guest_id = g.id and v.voided_at is null and date_trunc('month', v.visit_day) = date_trunc('month', manila_today());
+  return query select g.id, g.visits_left, v_amount, v_month,
+                      (s.guest_nudge_visits is not null and v_month >= s.guest_nudge_visits);
+exception when unique_violation then
+  raise exception 'A guest with that phone is already on the list — look them up by phone.';
+end;
+$$;
+revoke all on function record_guest_visit(uuid, text, text, text, text) from public, anon;
+grant execute on function record_guest_visit(uuid, text, text, text, text) to authenticated;
+
 -- What's new, once per person (0212).
 insert into app_releases (app, title, items)
 select 'member', 'Fair points', array[

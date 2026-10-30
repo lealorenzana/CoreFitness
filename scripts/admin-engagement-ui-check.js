@@ -195,6 +195,7 @@ async (page) => {
   await page.getByRole('button', { name: /Select all 2/ }).click();
   await page.getByRole('button', { name: 'Recall 2' }).click();
   out.push('recall several, with the count: ' + (/Recall 2 announcements/.test(await text()) && /3 inboxes in all/.test(await text()) ? 'yes' : 'MISSING'));
+  await page.locator('#confirm-reason').fill('Made by mistake');
   await page.getByRole('button', { name: 'Recall all of them' }).click();
   await page.waitForTimeout(600);
   const del = CALLS.find((c) => c[0] === 'DELETE' && c[1] === 'notifications');
@@ -213,8 +214,10 @@ async (page) => {
   await page.getByRole('button', { name: 'Select', exact: true }).click();
   await page.getByRole('button', { name: 'Past events' }).click();
   await page.getByRole('button', { name: 'Delete 2' }).click();
-  out.push('delete past events, warned about sign-ups: ' + (/Delete 2 events/.test(await text()) && /removes 1 registration/.test(await text()) ? 'yes' : 'MISSING'));
-  await page.getByRole('button', { name: 'Delete', exact: true }).click();
+  out.push('delete past events, warned about sign-ups: ' + (/Delete 2 events/.test(await text()) && /removes 1 sign-up/.test(await text()) ? 'yes' : 'MISSING'));
+  // Deleting events asks why (0219).
+  await page.locator('[data-reason-dialog]').getByLabel('Reason').fill('Old events');
+  await page.locator('[data-reason-confirm]').click();
   await page.waitForTimeout(600);
   const dev = CALLS.find((c) => c[0] === 'DELETE' && c[1] === 'events');
   out.push('…both deleted, the upcoming one kept: ' + (dev && /e1/.test(dev[3]) && /e2/.test(dev[3]) && !/e3/.test(dev[3]) ? 'yes' : 'MISSING'));

@@ -15,6 +15,7 @@ import { TONE, RD_INPUT, RD_INPUT_STYLE } from '../components/ui/rdTokens';
 import { usePaged } from '../hooks/usePaged';
 import { useFitRows } from '../hooks/useFitRows';
 import { showSuccessToast, showErrorToast } from '../utils/toast';
+import { recordReason, REASON_FIELD } from '../lib/api/reasons';
 import { listPlans } from '../lib/api/membershipPlans';
 import { supabase } from '../lib/supabaseClient';
 import {
@@ -282,12 +283,14 @@ export default function Notifications() {
    * push alert that already reached a phone is gone from our reach entirely.
    * The confirmation says so rather than implying the message was unsent.
    */
-  const recall = async () => {
+  const recall = async (why?: string) => {
     if (!toRecall) return;
     try {
       // Reports what was actually removed, not what we asked to remove — RLS
       // filters silently and a zero-row DELETE is not an error.
       const removed = await recallBroadcast(toRecall.ids);
+      if (why) await recordReason({ action: 'announcement.recalled', subjectType: 'announcement', subjectId: null,
+        summary: `Recalled “${toRecall.title}” from ${removed} inbox${removed === 1 ? '' : 'es'}`, reason: why });
       showSuccessToast(`Removed from ${removed} inbox${removed === 1 ? '' : 'es'}.`);
       setToRecall(null);
       await load();
@@ -302,9 +305,11 @@ export default function Notifications() {
   const [bulkRecall, setBulkRecall] = useState(false);
   const togglePick = (key: string) => setPicked((s) => { const n = new Set(s); if (n.has(key)) n.delete(key); else n.add(key); return n; });
   const pickedRows = recent.filter((b) => picked.has(b.key));
-  const recallMany = async () => {
+  const recallMany = async (why?: string) => {
     try {
       const removed = await recallBroadcast(pickedRows.flatMap((b) => b.ids));
+      if (why) await recordReason({ action: 'announcement.recalled', subjectType: 'announcement', subjectId: null,
+        summary: `Recalled ${pickedRows.length} announcement${pickedRows.length === 1 ? '' : 's'}: ${pickedRows.map((b) => b.title).join(', ')}`.slice(0, 300), reason: why });
       showSuccessToast(`Recalled ${pickedRows.length} announcement${pickedRows.length === 1 ? '' : 's'} from ${removed} inbox${removed === 1 ? '' : 'es'}.`);
       setBulkRecall(false); setPicked(new Set()); setSelecting(false);
       await load();
@@ -697,7 +702,7 @@ export default function Notifications() {
       <ConfirmDialog
         isOpen={!!toRecall}
         onClose={() => setToRecall(null)}
-        onConfirm={recall}
+        onConfirm={(why) => void recall(why)} reason={REASON_FIELD}
         title="Recall announcement"
         message={
           toRecall
@@ -712,7 +717,7 @@ export default function Notifications() {
       <ConfirmDialog
         isOpen={bulkRecall}
         onClose={() => setBulkRecall(false)}
-        onConfirm={recallMany}
+        onConfirm={(why) => void recallMany(why)} reason={REASON_FIELD}
         title={`Recall ${pickedRows.length} announcement${pickedRows.length === 1 ? '' : 's'}`}
         message={`Delete them from ${pickedRows.reduce((n, b) => n + b.ids.length, 0)} inboxes in all. ` +
           `${pickedRows.reduce((n, b) => n + b.readCount, 0)} have already been opened, and push alerts that reached a phone stay there — this only clears the in-app record. It cannot be undone.`}

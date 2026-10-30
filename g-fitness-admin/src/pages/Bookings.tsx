@@ -13,6 +13,7 @@ import {
   Search, CalendarRange, Download,
 } from 'lucide-react';
 import { showToast } from '../utils/toast';
+import { recordReason, REASON_FIELD } from '../lib/api/reasons';
 import { supabase } from '../lib/supabaseClient';
 import { updateBookingStatus } from '../lib/api/bookings';
 import { setPtSessionStatus } from '../lib/api/ptSessions';
@@ -239,13 +240,15 @@ export default function Bookings() {
    * `pt_sessions_update_frontdesk` both allow it, so the only thing missing was
    * the button.
    */
-  const reverse = async () => {
+  const reverse = async (why?: string) => {
     const row = toReverse;
     if (!row) return;
     const next = row.status === 'approved' ? 'rejected' : 'approved';
     setBusyId(row.id);
     try {
       await applyDecision(row, next);
+      if (why) await recordReason({ action: 'booking.reversed', subjectType: 'booking', subjectId: row.id,
+        summary: `Changed ${row.memberName}'s booking to ${next}`, reason: why });
       showToast(`Changed to ${next}. The member has been told.`, 'success');
       setToReverse(null);
       await load();
@@ -262,7 +265,7 @@ export default function Bookings() {
    * get a partial failure nobody can untangle. Failures are counted and named
    * rather than aborting the rest.
    */
-  const runBulk = async () => {
+  const runBulk = async (why?: string) => {
     if (!bulk) return;
     const targets = visible.filter((r) => selected.has(r.id) && r.status === 'pending');
     setBulkRunning(true);
@@ -278,6 +281,10 @@ export default function Bookings() {
     }
     setBulkRunning(false);
     setBulk(null);
+    if (why && done > 0) {
+      await recordReason({ action: 'booking.rejected', subjectType: 'booking', subjectId: null,
+        summary: `Rejected ${done} booking${done === 1 ? '' : 's'}`, reason: why }).catch(() => {});
+    }
     showToast(
       failed.length === 0
         ? `${done} booking${done === 1 ? '' : 's'} ${bulk}`
@@ -484,7 +491,7 @@ export default function Bookings() {
       <ConfirmDialog
         isOpen={!!bulk}
         onClose={() => setBulk(null)}
-        onConfirm={runBulk}
+        onConfirm={(why) => void runBulk(why)} reason={bulk === 'rejected' ? REASON_FIELD : undefined}
         title={bulk === 'approved' ? 'Approve selected' : 'Reject selected'}
         message={
           `${selectedPending.length} booking${selectedPending.length === 1 ? '' : 's'} will be ${bulk}, and every member is notified.` +
@@ -500,7 +507,7 @@ export default function Bookings() {
       <ConfirmDialog
         isOpen={!!toReverse}
         onClose={() => setToReverse(null)}
-        onConfirm={reverse}
+        onConfirm={(why) => void reverse(why)} reason={REASON_FIELD}
         title="Change this decision"
         message={
           toReverse

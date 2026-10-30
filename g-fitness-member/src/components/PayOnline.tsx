@@ -10,16 +10,19 @@ import type { GymPayMethod } from '../lib/api/renewalRequests';
 export interface PayOnlineValue { methodId: string | null; reference: string; proof: string | null }
 
 /**
- * Paying the gym from the app (0167): one of the gym's own GCash / Maya / bank
+ * Sending to the gym's own GCash / Maya / bank accounts (0167), or a coach's
+ * when they are paid directly — the transfer row of PayChooser. One of the
  * accounts, the exact amount to send, then the reference and a screenshot for
  * the desk to check. Nothing here moves money — the member pays in their own
  * GCash or bank app, and the gym confirms it reached them.
  */
-export default function PayOnline({ methods, amount, value, onChange }: {
+export default function PayOnline({ methods, amount, value, onChange, allowProof = true }: {
   methods: GymPayMethod[];
   amount: string;
   value: PayOnlineValue;
   onChange: (v: PayOnlineValue) => void;
+  /** A coach's package takes the reference only (0181) — no screenshot to attach. */
+  allowProof?: boolean;
 }) {
   const t = useT();
   const [copied, setCopied] = useState(false);
@@ -64,7 +67,7 @@ export default function PayOnline({ methods, amount, value, onChange }: {
           onChange={(e) => onChange({ ...value, methodId: m.id, reference: e.target.value })} />
       </Field>
 
-      <label className="flex items-center noc-press" style={{ gap: 12, cursor: 'pointer' }}>
+      {allowProof && <label className="flex items-center noc-press" style={{ gap: 12, cursor: 'pointer' }}>
         {value.proof
           ? <img src={value.proof} alt="" style={{ width: 52, height: 52, borderRadius: 10, objectFit: 'cover' }} />
           : <span className="grid place-items-center" style={{ width: 52, height: 52, borderRadius: 10, border: '1px dashed var(--color-hairline)' }}><Camera size={20} style={{ color: 'var(--color-text-muted)' }} /></span>}
@@ -76,7 +79,7 @@ export default function PayOnline({ methods, amount, value, onChange }: {
             const f = e.target.files?.[0];
             if (f) void shrinkImage(f, 1100, 'photo').then((url) => onChange({ ...value, methodId: m.id, proof: url })).catch(() => undefined);
           }} />
-      </label>
+      </label>}
 
       {big && m.qr_image && createPortal(
         <div role="dialog" aria-label={`${m.label} QR code`} onClick={() => setBig(false)}

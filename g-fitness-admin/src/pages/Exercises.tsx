@@ -4,6 +4,7 @@ import ConfirmDialog from '../components/ui/ConfirmDialog';
 import ExerciseGuideEditor from '../components/ExerciseGuideEditor';
 import './attendance/att.css';
 import { showToast } from '../utils/toast';
+import { recordReason, REASON_FIELD } from '../lib/api/reasons';
 import { supabase } from '../lib/supabaseClient';
 import { listExerciseMedia, photoUsage, saveExerciseMedia, type ExerciseMedia } from '../lib/api/exerciseMedia';
 
@@ -115,7 +116,7 @@ export default function Exercises() {
       showToast(`Hidden from the picker. ${used.routines} saved routine${used.routines === 1 ? '' : 's'} (${used.members} member${used.members === 1 ? '' : 's'}) still include it and keep working.`, 'info');
     }
   };
-  const doDelete = async () => {
+  const doDelete = async (why?: string) => {
     const row = confirmDelete;
     setConfirmDelete(null);
     if (!row) return;
@@ -127,6 +128,7 @@ export default function Exercises() {
     if (!data || data.length === 0) { showToast('Only the owner can delete an exercise', 'error'); return; }
     setRows((prev) => prev.filter((r) => r.id !== row.id));
     setPickId(null);
+    if (why) await recordReason({ action: 'exercise.deleted', subjectType: 'exercise', subjectId: null, summary: `Deleted the exercise ${row.name}`, reason: why }).catch(() => {});
     showToast(`${row.name} deleted`, 'success');
   };
 
@@ -247,7 +249,7 @@ export default function Exercises() {
 
       <ConfirmDialog isOpen={confirmDelete !== null} type="danger" title={`Delete ${confirmDelete?.name ?? ''}`}
         message="This removes it from your gym's list for good. If members have logged it, or a routine or program uses it, it cannot be deleted — hide it instead."
-        confirmText="Delete" onConfirm={() => void doDelete()} onClose={() => setConfirmDelete(null)} />
+        confirmText="Delete" onConfirm={(why) => void doDelete(why)} reason={REASON_FIELD} onClose={() => setConfirmDelete(null)} />
     </div>
   );
 }

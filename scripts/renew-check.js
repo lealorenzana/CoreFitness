@@ -218,7 +218,7 @@ async (page) => {
   await page.waitForTimeout(700);
   await page.getByRole('button', { name: 'Tomorrow' }).click();
   await shot('03-sheet');
-  await page.getByRole('button', { name: /Tell the desk/ }).click();
+  await page.getByRole('button', { name: /I’ll pay at the desk|Tell the desk/ }).click();
   await page.waitForTimeout(1200);
   await shot('04-requested');
   text = (await page.locator('main').innerText()).replace(/\s+/g, ' ');

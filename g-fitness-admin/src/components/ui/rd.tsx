@@ -607,7 +607,16 @@ export function PageTabs<K extends string>({ tabs, value, onChange, label }: {
 }
 
 /** A labelled field in the kit's look — a text input, number or textarea. */
-export function RdField({ label, hint, children }: { label: string; hint?: React.ReactNode; children: React.ReactNode }) {
+export function RdField({ label, hint, group, children }: { label: string; hint?: React.ReactNode; group?: boolean; children: React.ReactNode }) {
+  // A row of buttons is a group, never inside a <label>: a label names its first button after
+  // the whole row, and a tap on the hint presses that button.
+  if (group) return (
+    <div role="group" aria-label={label} className="block">
+      <span className="block text-[13px] font-medium mb-1.5" style={{ color: SECOND }}>{label}</span>
+      {children}
+      {hint && <span className="block text-[12px] mt-1" style={{ color: MUTED }}>{hint}</span>}
+    </div>
+  );
   return (
     <label className="block">
       <span className="block text-[13px] font-medium mb-1.5" style={{ color: SECOND }}>{label}</span>
