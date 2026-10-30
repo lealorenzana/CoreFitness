@@ -187,6 +187,12 @@ await db.exec(`select set_streak_target(5, false)`);
 await asOwner();
 await db.exec([1].map((w) => [0, 1, 2, 3, 4].map((d) => checkin(M[5], w, d)).join('\n')).join('\n'));
 for (let d = 0; d < have; d++) await db.exec(checkin(M[5], 0, d));
+// m2 (target 2, a 2-week run, nothing yet this week) would be tight on the day exactly two are left.
+// Train today, and on Monday too when today is not Monday: this week is then reached, or — on a
+// Monday — one day short with six to spare. Never tight, on any weekday.
+const todayIdx = (await one(`select manila_today() - manila_week_start() as n`)).n;
+await db.exec(`insert into attendance (gym_id, member_id, check_in_time) values ('${GYM_A}', '${M[1]}', now());`
+  + (todayIdx > 0 ? checkin(M[1], 0, 0) : ''));
 
 await as(M[0]);
 check('a member cannot run the sweep', ((await db.query(`select * from streak_nudge_sweep()`)).rows.length) === 0);
@@ -196,12 +202,14 @@ const toM5 = sent.filter((r) => r.member_id === M[4]);
 check(c5.at_risk ? 'at risk: the member is nudged once, with their streak in the title' : 'not at risk today: nobody is nudged',
   c5.at_risk ? toM5.length === 1 && /Keep your 2-week streak/.test(toM5[0].title) : toM5.length === 0, JSON.stringify(sent));
 check('a member who switched the nudge off is not nudged', !sent.some((r) => r.member_id === M[5]));
-check('a member whose week is already out of reach, or already reached, is not nudged', !sent.some((r) => r.member_id === M[0] || r.member_id === M[1]), JSON.stringify(sent));
+check('a member whose week is already reached, or still has days to spare, is not nudged', !sent.some((r) => r.member_id === M[0] || r.member_id === M[1]), JSON.stringify(sent));
 const twice = (await db.query(`select * from streak_nudge_sweep()`)).rows;
 check('running the sweep again sends nothing new', twice.length === 0, JSON.stringify(twice));
 await asOwner();
 check('the notification row exists exactly once per nudge', (await one(`select count(*)::int as n from notifications
    where user_id = '${M[4]}' and metadata->>'dedupe' like 'streak:%'`)).n === (c5.at_risk ? 1 : 0));
+// m2's days this week were only for the nudge: the history and the squad below expect none.
+await db.exec(`delete from attendance where member_id = '${M[1]}' and check_in_time >= manila_week_start() at time zone 'Asia/Manila'`);
 
 // ---- 7. a gym that switched Progress off -------------------------------------------------
 await asOwner();

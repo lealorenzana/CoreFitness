@@ -334,6 +334,14 @@ check('a member with nothing set up gets no context', (await one(`select ai_coac
   }
 
   // -- the platform: per gym, last N Manila days --
+  // The window is the last N Manila days (day > today - N), not this month: on the 31st the 1st is
+  // outside 30 days, and early in a month last month's row is inside. Ten days ago is always inside.
+  await db.exec(`reset role; insert into ai_usage_days (gym_id, member_id, day, messages, tokens_in, tokens_out)
+    values ('${GYM}', '${B}', manila_today() - 10, 7, 0, 0)
+    on conflict (gym_id, member_id, day) do update set messages = ai_usage_days.messages + 7`);
+  const win = await one(`select date_trunc('month', manila_today())::date - 1 > manila_today() - 30 as last_month,
+    date_trunc('month', manila_today())::date > manila_today() - 30 as month_start`);
+  const exp30 = 5 + 7 + (win.last_month ? 100 : 0) + (earlier && win.month_start ? 4 : 0);
   await as(PA);
   {
     const p1 = await all(`select * from platform_ai_usage(1)`);
@@ -342,7 +350,7 @@ check('a member with nothing set up gets no context', (await one(`select ai_coac
       && Number(r.tokens_out) === 1000 && Number(r.est_cost_usd) === 0.016, JSON.stringify(p1));
     const p30 = await all(`select * from platform_ai_usage()`);
     const r30 = p30.find((x) => x.gym_id === GYM);
-    check('a wider window sees more', !!r30 && Number(r30.messages) >= expMonth, JSON.stringify(p30));
+    check('a wider window sees more', !!r30 && Number(r30.messages) === exp30, `${JSON.stringify(p30)} vs ${exp30}`);
     const g = await all(`select * from platform_gym_usage(1)`);
     check('platform_gym_usage counts the coach', g.some((x) => x.gym_id === GYM && x.feature === 'coach' && Number(x.n) === 5), JSON.stringify(g));
   }
