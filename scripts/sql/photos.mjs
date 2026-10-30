@@ -101,6 +101,9 @@ await as(P.coach);
 check('unshared: the coach loses it again', !(await seesRow(s1.photo_id)));
 
 // ---- 3. a photo check-in shows that one photo to that coach ---------------------------------------
+// Since 0220 a room is a package's: the member's package with their coach.
+await db.exec(`reset role; insert into coachings (gym_id, member_id, trainer_id, kind, months, status, fee_mode, started_by, starts_on, ends_on)
+  values ('${GYM_A}', '${P.mem}', '${P.coach}', 'pt', 1, 'active', 'included', 'desk', current_date, current_date + 30)`);
 await as(P.coach);
 await db.exec(`select sync_gym_rooms()`);
 const room = (await one(`select id from rooms where kind = 'pt'`)).id;

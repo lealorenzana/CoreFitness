@@ -259,6 +259,9 @@ check('…and the plan changes nothing by itself: the target is still theirs', c
 // The squad: M[0] and M[1], target 4 a week, begun four weeks ago.
 await asOwner();
 const SQ = 'a5100000-0000-4000-8000-0000000005a1';
+// Squads are off by default since 0220: this gym has switched them on.
+await db.exec(`insert into gym_modules (gym_id, feature_key, enabled) values ('${GYM_A}', 'squads', true)
+  on conflict (gym_id, feature_key) do update set enabled = true`);
 await db.exec(`insert into squads (id, gym_id, name, code, weekly_target, created_by, created_at)
     values ('${SQ}', '${GYM_A}', 'Iron Barkada', 'IRONBK', 4, '${M[0]}', now() - interval '27 days');
   insert into squad_members (gym_id, squad_id, member_id) values ('${GYM_A}', '${SQ}', '${M[0]}'), ('${GYM_A}', '${SQ}', '${M[1]}');`);

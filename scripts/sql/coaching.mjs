@@ -171,26 +171,11 @@ await as(A);
 await db.exec(`select respond_coaching('${cI}', true)`);
 check('…who accepts: it starts', (await status(cI)) === 'active');
 
-// ---- groups ----
+// ---- groups: gone since 0220 ----
 await as(NOPT);
-check('a group cannot be started while the gym has groups off', (await tryOne(`select request_coaching('${T}', 'group', 1, null) id`)).err !== null);
-await settings(['classes', 'pick_pt', 'pick_group', 'coach_invites'], [1, 3], 'trainer_direct');
-await as(NOPT);
-const g1 = (await one(`select request_coaching('${T}', 'group', 1, null) id`)).id;
-await as(T);
-await db.exec(`select respond_coaching('${g1}', true, 0)`);
-await owner();
-const grp = await one(`select c.status, r.join_code, r.id room from coachings c join rooms r on r.id = c.room_id where c.id = '${g1}'`);
-check('a member starts a coaching group; at ₱0 it starts at once, with a group room and a code', grp?.status === 'active' && /^[A-Z]{6}$/.test(grp.join_code ?? ''), JSON.stringify(grp));
-await as(C);
-check('a wrong code finds no group', (await tryOne(`select request_coaching('${T}', 'group', 1, 'ZZZZZZ') id`)).err !== null);
-const g2 = (await one(`select request_coaching('${T2}', 'group', 1, '${grp.join_code.toLowerCase()}') id`)).id;
-await owner();
-check("a friend joins with the code — and the group's coach is the one asked, whoever they named", (await one(`select trainer_id from coachings where id = '${g2}'`)).trainer_id === T);
-await as(T);
-await db.exec(`select respond_coaching('${g2}', true, 0)`);
-await owner();
-check('…and is in the same room', (await one(`select count(*)::int n from room_members where room_id = '${grp.room}'`)).n === 2);
+check('a coaching group cannot be started', (await tryOne(`select request_coaching('${T}', 'group', 1, null) id`)).err !== null);
+await as(AD);
+check('…and a gym cannot let members pick one', (await tryExec(`select set_coaching_settings(array['pick_pt', 'pick_group'], array[1, 3], 'trainer_direct')`)) !== null);
 
 // ---- time passing ----
 await owner();

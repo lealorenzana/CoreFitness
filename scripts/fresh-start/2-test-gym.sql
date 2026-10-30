@@ -63,7 +63,7 @@ begin
     welcome_message = 'Welcome to the lab — everything here is for testing.',
     join_policy = 'closed', join_approval = 'desk', min_age = 16, waiver_required = false,
     class_booking_approval = 'coach', pt_booking_approval = 'coach',
-    coaching_modes = array['classes', 'pick_pt', 'pick_group', 'desk_assigns', 'coach_invites'],
+    coaching_modes = array['classes', 'pick_pt', 'desk_assigns', 'coach_invites'],
     coaching_lengths = array[1, 3, 6], coaching_fee_mode = 'included',
     day_pass_on = true, day_pass_price = 150, pack5_price = 650, pack10_price = 1200, guest_nudge_visits = 3,
     day_pass_classes = true, closed_days = '{}'

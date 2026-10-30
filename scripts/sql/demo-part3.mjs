@@ -70,7 +70,7 @@ await db.exec(`reset role;
       from generate_series(1, 3) d;`);
 // What production has that 0117 never knew: rooms run by demo coaches, their posts, a chat.
 await db.exec(`reset role;
-  insert into rooms (id, gym_id, kind, trainer_id, name, join_code, comments_on) values ('5eed0060-0000-4000-8000-000000000001', '${GYM}', 'group', '${COACH}', 'Morning crew', 'MORNIN', true);
+  insert into rooms (id, gym_id, kind, trainer_id, member_id, name, comments_on) values ('5eed0060-0000-4000-8000-000000000001', '${GYM}', 'pt', '${COACH}', '${MATES[0]}', 'Morning crew', true);
   insert into room_posts (gym_id, room_id, author_id, body) values ('${GYM}', '5eed0060-0000-4000-8000-000000000001', '${COACH}', 'Welcome!');
   insert into conversations (id, gym_id, member_id, trainer_id) values ('5eed0061-0000-4000-8000-000000000001', '${GYM}', '${MATES[0]}', '${COACH}');
   insert into messages (gym_id, conversation_id, sender_id, body) values ('${GYM}', '5eed0061-0000-4000-8000-000000000001', '${MATES[0]}', 'Hi coach');`);

@@ -59,15 +59,13 @@ await db.exec(`insert into memberships (member_id, gym_id, plan_id, status, star
     ('${P.prem}', '${GYM_A}', '${prem}', 'active', current_date - 1, current_date + 29),
     ('${P.prem2}', '${GYM_A}', '${prem}', 'active', current_date - 1, current_date + 29),
     ('${P.free}', '${GYM_A}', '${prem}', 'active', current_date - 1, current_date + 29);`);
+// Since 0220 a room is a package's: one trainee each. prem, prem2 and free (moved to the Free plan
+// below) each have a package with coach, so each has their own room.
 await db.exec(`select act_as_gym('${GYM_A}');
-  insert into class_templates (id, gym_id, name, trainer_id, day_of_week, start_time)
-    values ('d0000000-0000-4000-8000-000000000001', '${GYM_A}', 'Morning HIIT', '${P.coach}', 1, '07:00');
-  insert into classes (id, gym_id, name, trainer_id, scheduled_at, duration_minutes, template_id) values
-    ('d1000000-0000-4000-8000-000000000001', '${GYM_A}', 'Morning HIIT', '${P.coach}', now() - interval '7 days', 60, 'd0000000-0000-4000-8000-000000000001');
-  insert into bookings (gym_id, member_id, class_id, status) values
-    ('${GYM_A}', '${P.prem}',  'd1000000-0000-4000-8000-000000000001', 'approved'),
-    ('${GYM_A}', '${P.prem2}', 'd1000000-0000-4000-8000-000000000001', 'approved'),
-    ('${GYM_A}', '${P.free}',  'd1000000-0000-4000-8000-000000000001', 'approved');
+  insert into coachings (gym_id, member_id, trainer_id, kind, months, status, fee_mode, started_by, starts_on, ends_on) values
+    ('${GYM_A}', '${P.prem}',  '${P.coach}', 'pt', 3, 'active', 'included', 'member', current_date - 5, current_date + 85),
+    ('${GYM_A}', '${P.prem2}', '${P.coach}', 'pt', 3, 'active', 'included', 'member', current_date - 5, current_date + 85),
+    ('${GYM_A}', '${P.free}',  '${P.coach}', 'pt', 1, 'active', 'included', 'desk',   current_date - 5, current_date + 25);
   update memberships set plan_id = '${free}' where member_id = '${P.free}' and gym_id = '${GYM_A}';
   select act_as_gym(null);`);
 
@@ -75,7 +73,9 @@ await as(P.admin);
 const wk = (await one(`insert into gym_workouts (name, published) values ('Leg Day A', true) returning id`)).id;
 await as(P.coach);
 await db.exec(`select sync_gym_rooms()`);
-const room = (await one(`select id from rooms where kind = 'class'`)).id;
+const roomOf = async (m) => (await one(`select id from rooms where member_id = '${m}'`)).id;
+const room = await roomOf(P.prem), room2 = await roomOf(P.prem2), roomF = await roomOf(P.free);
+const due = (d) => `(now() at time zone 'Asia/Manila')::date + ${d}`;
 
 // ---- 1. setting classwork ------------------------------------------------------------------
 await as(P.prem);
@@ -87,18 +87,21 @@ check("another trainer cannot set classwork in coach's room",
 await as(P.coach);
 check('a due date in the past is refused',
   !!(await tryExec(`select create_assignment('${room}', 'workout', '${wk}', null, 'Leg day', null, current_date - 3)`)));
-const a1 = (await one(`select create_assignment('${room}', 'workout', '${wk}', null, 'Leg day', 'Go heavy', (now() at time zone 'Asia/Manila')::date + 3) as id`)).id;
-check('the trainer sets a workout for the room', !!a1);
-check('targets: the two with the plan, not the free member',
-  (await one(`select targets from room_classwork('${room}') where id = '${a1}'`)).targets === 2);
+const a1 = (await one(`select create_assignment('${room}', 'workout', '${wk}', null, 'Leg day', 'Go heavy', ${due(3)}) as id`)).id;
+check('the trainer sets a workout for the trainee', !!a1);
+check('targets: the trainee', (await one(`select targets from room_classwork('${room}') where id = '${a1}'`)).targets === 1);
+const aF = (await one(`select create_assignment('${roomF}', 'workout', '${wk}', null, 'Leg day', null, ${due(3)}) as id`)).id;
+check('a trainee whose plan has no rooms is not a target', (await one(`select targets from room_classwork('${roomF}') where id = '${aF}'`)).targets === 0);
 await asOwner();
-check('the targets are told; the free member is not',
-  (await one(`select count(*)::int as n from notifications where title like 'New classwork%' and user_id in ('${P.prem}', '${P.prem2}')`)).n === 2
+check('the trainee is told; the free member is not',
+  (await one(`select count(*)::int as n from notifications where title like 'New classwork%' and user_id = '${P.prem}'`)).n === 1
   && (await one(`select count(*)::int as n from notifications where title like 'New classwork%' and user_id = '${P.free}'`)).n === 0);
 
 // ---- 2. who reads what ------------------------------------------------------------------------
 await as(P.free);
 check('the free member does not see the classwork', (await all(`select id from room_assignments`)).length === 0);
+await as(P.prem2);
+check("a trainee does not see another trainee's classwork", (await all(`select id from room_assignments where id = '${a1}'`)).length === 0);
 await as(P.prem);
 check('the member can open the workout their coach set', (await all(`select id from gym_workouts where id = '${wk}'`)).length === 1);
 await as(P.memberB);
@@ -126,18 +129,17 @@ await as(P.staff);
 check('the desk can', (await all(`select id from room_submissions`)).length === 1);
 await as(P.coach);
 const det = await all(`select * from assignment_detail('${a1}')`);
-check('the trainer sees each member: one turned in, one assigned',
-  det.filter((d) => d.status === 'turned_in').length === 1 && det.filter((d) => d.status === 'assigned').length === 1);
+check('the trainer sees the trainee turned it in', det.length === 1 && det[0].status === 'turned_in', JSON.stringify(det));
 check('the review queue has it', (await all(`select * from trainer_review_queue()`)).length === 1);
 
 // ---- 4. check-ins, and points once the owner switches them on -------------------------------
 await as(P.admin);
 await db.exec(`update point_rules set is_active = true where key = 'classwork_on_time'`);
 await as(P.coach);
-const a2 = (await one(`select create_assignment('${room}', 'checkin', null, 'weight', 'Weigh-in', null, (now() at time zone 'Asia/Manila')::date + 1) as id`)).id;
-const a3 = (await one(`select create_assignment('${room}', 'checkin', null, 'question', 'How did the week feel?', null, (now() at time zone 'Asia/Manila')::date + 1, array['${P.prem}']::uuid[]) as id`)).id;
+const a2 = (await one(`select create_assignment('${room}', 'checkin', null, 'weight', 'Weigh-in', null, ${due(1)}) as id`)).id;
+const a3 = (await one(`select create_assignment('${room}', 'checkin', null, 'question', 'How did the week feel?', null, ${due(1)}, array['${P.prem}']::uuid[]) as id`)).id;
 await as(P.prem2);
-check('a question set for one member is not set for another', (await all(`select id from room_assignments where id = '${a3}'`)).length === 0);
+check('a question set for one trainee is not set for another', (await all(`select id from room_assignments where id = '${a3}'`)).length === 0);
 await as(P.prem);
 check('a weight of 5 kg is refused', !!(await tryExec(`select submit_checkin('${a2}', null, 5)`)));
 check('an empty answer is refused', !!(await tryExec(`select submit_checkin('${a3}', '  ', null)`)));
@@ -151,8 +153,6 @@ await as(P.free);
 check('the free member cannot check in', !!(await tryExec(`select submit_checkin('${a2}', null, 70)`)));
 
 // ---- 5. returning ---------------------------------------------------------------------------
-await as(P.coach2);
-const sub = (await one(`select s.id from room_submissions s where false`))?.id; // coach2 sees none
 await as(P.coach);
 const subA2 = (await one(`select submission_id from assignment_detail('${a2}') where member_id = '${P.prem}'`)).submission_id;
 await as(P.coach2);
@@ -169,8 +169,10 @@ check('a returned check-in cannot be changed', !!(await tryExec(`select submit_c
 await asOwner();
 await db.exec(`select act_as_gym('${GYM_A}');
   insert into room_assignments (gym_id, room_id, kind, checkin_type, title, due_on, created_by, created_at) values
-    ('${GYM_A}', '${room}', 'checkin', 'note', 'Old note 1', current_date - 5, '${P.coach}', now() - interval '9 days'),
-    ('${GYM_A}', '${room}', 'checkin', 'note', 'Old note 2', current_date - 4, '${P.coach}', now() - interval '9 days');
+    ('${GYM_A}', '${room}',  'checkin', 'note', 'Old note 1', current_date - 5, '${P.coach}', now() - interval '9 days'),
+    ('${GYM_A}', '${room}',  'checkin', 'note', 'Old note 2', current_date - 4, '${P.coach}', now() - interval '9 days'),
+    ('${GYM_A}', '${room2}', 'checkin', 'note', 'Old note 3', current_date - 5, '${P.coach}', now() - interval '9 days'),
+    ('${GYM_A}', '${room2}', 'checkin', 'note', 'Old note 4', current_date - 4, '${P.coach}', now() - interval '9 days');
   select act_as_gym(null);`);
 const old1 = (await one(`select id from room_assignments where title = 'Old note 1'`)).id;
 await as(P.prem);
@@ -178,15 +180,18 @@ await db.exec(`select submit_checkin('${old1}', 'Sorry, late!', null)`);
 const late = await one(`select my_status, my_points from room_classwork('${room}') where id = '${old1}'`);
 check('turned in after the due date: late, no points', late.my_status === 'late' && late.my_points === 0, JSON.stringify(late));
 await as(P.coach);
-const prog = await all(`select * from room_progress('${room}')`);
-const p2 = prog.find((r) => r.member_id === P.prem2);
+const p2 = (await all(`select * from room_progress('${room2}')`)).find((r) => r.member_id === P.prem2);
 check('prem2 has two missing and is flagged', p2?.missing === 2 && p2.flags.includes('missing_work'), JSON.stringify(p2));
-check('prem is not flagged for missing work', !prog.find((r) => r.member_id === P.prem).flags.includes('missing_work'));
-check('the latest check-in weight shows', Number(prog.find((r) => r.member_id === P.prem).latest_weight) === 72);
+const p1 = (await all(`select * from room_progress('${room}')`)).find((r) => r.member_id === P.prem);
+check('prem is not flagged for missing work', !p1.flags.includes('missing_work'), JSON.stringify(p1));
+check('the latest check-in weight shows', Number(p1.latest_weight) === 72);
 await as(P.coach2);
 check("another trainer cannot read coach's grade book", (await all(`select * from room_progress('${room}')`)).length === 0);
 
 // ---- 7. reminders --------------------------------------------------------------------------
+await as(P.coach);
+await db.exec(`select create_assignment('${room2}', 'workout', '${wk}', null, 'Leg day', null, ${due(3)});
+  select create_assignment('${room2}', 'checkin', null, 'weight', 'Weigh-in', null, ${due(1)})`);
 await as(P.prem2);
 check('the Today strip lists what is due this week', (await all(`select * from my_due_classwork()`)).length >= 2);
 check('the sweep reminds prem2 of the weigh-in due tomorrow', (await one(`select classwork_due_sweep() as n`)).n >= 1);

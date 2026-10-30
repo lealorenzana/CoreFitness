@@ -1,5 +1,5 @@
 /**
- * 0178: room pictures (a 1-on-1 shows the member; class and group rooms a picture
+ * 0178: room pictures (a 1-on-1 shows the member — since 0220 the only kind of room; class and group rooms a picture
  * their coach sets) and the coach's status (Available / Away / On leave).
  *
  *   node <repo>/scripts/sql/room-photos.mjs "<repo>"   (from a dir with pglite installed)
@@ -30,18 +30,14 @@ await db.exec(`reset role;
   insert into trainer_profiles (profile_id, gym_id) values ('${P.coach}', '${GYM}'), ('${P.coach2}', '${GYM}') on conflict do nothing;
   insert into member_profiles (profile_id, gym_id, qr_code) values ('${P.mem}', '${GYM}', 'QR-RP') on conflict do nothing;`);
 const pt = (await one(`insert into rooms (gym_id, kind, trainer_id, member_id, name) values ('${GYM}', 'pt', '${P.coach}', '${P.mem}', 'Coach · Mem') returning id`)).id;
-const grp = (await one(`insert into rooms (gym_id, kind, trainer_id, name, join_code) values ('${GYM}', 'group', '${P.coach}', 'Fat loss', 'ABCDEF') returning id`)).id;
 const ok = `https://p.supabase.co/storage/v1/object/public/media/gyms/${GYM}/content/pic.jpg`;
 
 await as(P.coach);
 const ph = await rows(`select * from my_room_photos()`);
 check("a 1-on-1 room shows the member's own photo", ph.some((r) => r.room_id === pt && r.photo_url === 'https://x/avatars/mem.jpg'), JSON.stringify(ph));
-check('the coach sets their group room picture', (await tryExec(`select set_room_photo('${grp}', '${ok}')`)) === null);
-check('…and it shows', (await one(`select photo_url from my_room_photos() where room_id = '${grp}'`)).photo_url === ok);
-check("…but not a 1-on-1's (it is the member's photo)", (await tryExec(`select set_room_photo('${pt}', '${ok}')`)) !== null);
-check('a picture from outside this gym is refused', (await tryExec(`select set_room_photo('${grp}', 'https://evil/x.jpg')`)) !== null);
+check("a coach cannot set a package room's picture (it is the member's photo)", (await tryExec(`select set_room_photo('${pt}', '${ok}')`)) !== null);
 await as(P.coach2);
-check("another coach cannot set it", (await tryExec(`select set_room_photo('${grp}', '${ok}')`)) !== null);
+check("…nor can another coach", (await tryExec(`select set_room_photo('${pt}', '${ok}')`)) !== null);
 
 await as(P.coach);
 await db.exec(`select set_my_presence('on_leave')`);

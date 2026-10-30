@@ -126,14 +126,16 @@ const DEFAULTS = `
   alter default privileges in schema public grant execute on functions to authenticated;`;
 
 /** Every migration, Supabase's grants, the real admin and the named seeds. Throws on the first failure. */
-export async function liveDb(repo, { seeds = [], log = () => {} } = {}) {
+export async function liveDb(repo, { seeds = [], log = () => {}, before = null } = {}) {
   const MIG = `${repo}/supabase/migrations`;
   const db = await PGlite.create();
   await db.exec(STUBS);
   // Before any migration runs, so every table and view a migration creates is
   // granted at creation and a later revoke is not swept away afterwards.
   await db.exec(DEFAULTS);
-  const files = readdirSync(MIG).filter((f) => /^\d{4}_.*\.sql$/.test(f)).sort();
+  // `before: '0220'` stops short of that migration, so a harness can seed the world it changes
+  // and then run it with applyMigrationsFrom().
+  const files = readdirSync(MIG).filter((f) => /^\d{4}_.*\.sql$/.test(f) && (!before || f < before)).sort();
   let seeded = false;
   const seed = async () => {
     // Supabase grants these by default; pglite does not, and without them a
@@ -162,4 +164,14 @@ export async function liveDb(repo, { seeds = [], log = () => {} } = {}) {
   // undo any `revoke ... from anon` a migration wrote (0115's, for one).
   log(`applied ${files.length}/${files.length} migrations`);
   return db;
+}
+
+/** The migrations from `from` on, in order, onto a liveDb made with `before: from`. */
+export async function applyMigrationsFrom(db, repo, from) {
+  const MIG = `${repo}/supabase/migrations`;
+  for (const f of readdirSync(MIG).filter((x) => /^\d{4}_.*\.sql$/.test(x) && x >= from).sort()) {
+    try { await db.exec(prep(readFileSync(`${MIG}/${f}`, 'utf8'))); }
+    catch (e) { throw new Error(`MIGRATION FAILED: ${f}
+   ${describe(e)}`); }
+  }
 }

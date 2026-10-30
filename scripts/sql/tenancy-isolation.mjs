@@ -1054,8 +1054,8 @@ check('a gym admin cannot make themselves the platform',
 await as(P.adminA);
 check('a gym that has renamed nothing still has words for its points',
   (await one('select points_name from gym_words()')).points_name === 'CORE Points');
-check('every part of the system starts switched on, so pasting changes nothing',
-  (await db.query("select * from my_gym_modules() where state <> 'on'")).rows.length === 0);
+check('every part of the system starts switched on but the four 0220 switched off',
+  (await db.query("select feature_key from my_gym_modules() where state <> 'on' order by 1")).rows.map((r) => r.feature_key).join() === ['classes', 'events', 'seasons', 'squads'].join());
 
 check('an owner can switch a part of the system off, and their app stops drawing it',
   await (async () => {
