@@ -31,7 +31,9 @@ async (page) => {
   };
   await page.addInitScript(([k, s]) => localStorage.setItem(k, JSON.stringify(s)), [KEY, session]);
   const iso = (d) => new Date(Date.now() + d * 86400000).toISOString();
-  const day = (d) => new Date(Date.now() + 8 * 3600000 + d * 86400000).toISOString().slice(0, 10);
+  // Calendar days in Manila, as the app counts them (utils/dates.ts): today's key, shifted by whole days.
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  const day = (d) => { const [y, m, dd] = today.split('-').map(Number); const x = new Date(Date.UTC(y, m - 1, dd + d)); return `${x.getUTCFullYear()}-${String(x.getUTCMonth() + 1).padStart(2, '0')}-${String(x.getUTCDate()).padStart(2, '0')}`; };
   const person = (id, role, first, status = 'active') => ({ id, role, status, first_name: first, last_name: 'Test', email: `${first.toLowerCase()}@gym.test`, phone: null, photo_url: null, created_at: iso(-100) });
   const TABLES = {
     profiles: [person('u1', 'admin', 'Olga'), person('s1', 'staff', 'Dina'), person('s2', 'staff', 'Cora', 'suspended'), person('t1', 'trainer', 'Tess')],
@@ -172,9 +174,14 @@ async (page) => {
   // ---- Credentials ------------------------------------------------------------------------------------
   await page.goto('http://localhost:5174/credentials', { waitUntil: 'domcontentloaded' });
   await page.getByText('First Aid / CPR').first().waitFor({ timeout: 15000 });
+  // On a fresh load the Trainers page fetches everything twice, ~0.4 s apart, and the
+  // credentials view remounts in between ("Loading credentials…" again). Read it once
+  // the network has gone quiet and the list is back, not in that gap.
+  await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+  await page.waitForFunction(() => !/Loading credentials…/.test(document.body.innerText), null, { timeout: 15000 }).catch(() => {});
   out.push('an old /credentials link lands on the Trainers credentials view: ' + (/\/trainers\?view=credentials$/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
   const t = await text();
-  out.push('issuer and expiry on the card: ' + (/Philippine Red Cross · expires in 10 days/.test(t) ? 'yes' : 'MISSING'));
+  out.push('issuer and expiry on the card: ' + (/Philippine Red Cross · expires in 10 days/.test(t) ? 'yes' : 'MISSING ' + ((t.match(/Philippine Red Cross[^·]{0,3}·[^·]{0,40}/) || [/Loading credentials/.test(t) ? 'still loading' : ''])[0])));
   out.push('an expiring count: ' + (/Expiring\s*1\b/i.test(t) && /Expiring or lapsed\s*1\b/i.test(t) ? 'yes' : 'MISSING ' + (t.match(/Expiring[^A-Z]{0,30}/i) || [''])[0]));
   out.push('the expiry sweep runs on open: ' + (CALLS.some((c) => c[1] === 'credential_expiry_sweep') ? 'yes' : 'MISSING'));
   out.push('the view keeps the Trainers tabs, a search and the by-coach panel: ' + ((await page.locator('[data-credentials-view] .a-tabs a').count()) === 3

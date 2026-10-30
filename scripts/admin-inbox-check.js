@@ -26,13 +26,18 @@ async (page) => {
   await page.addInitScript(([k, s]) => localStorage.setItem(k, JSON.stringify(s)), [KEY, session]);
   const g = { gym_id: 'gym-a', gym_name: 'gabby pogi 123', slug: 'gabby-pogi-123', short_name: 'gabby', accent: 'violet' };
   const ago = (h) => new Date(Date.now() - h * 3600000).toISOString();
-  const N = (id, title, read, h, extra = {}) => ({ id, user_id: 'u2', type: 'system', title, message: `${title} — details`, action_url: null,
-    metadata: null, read, archived_at: null, cleared_at: null, created_at: ago(h), gym_id: g.gym_id, ...extra });
+  // "Today" is Manila's calendar day: at 00:20, "an hour ago" is yesterday. Today's
+  // messages sit between Manila midnight and now, at the same fractions of the gap.
+  const manilaDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  const sinceMidnight = Date.now() - Date.parse(`${manilaDay}T00:00:00+08:00`);
+  const todayAgo = (h) => new Date(Date.now() - Math.min(h * 3600000, sinceMidnight * h / 4)).toISOString();
+  const N = (id, title, read, at, extra = {}) => ({ id, user_id: 'u2', type: 'system', title, message: `${title} — details`, action_url: null,
+    metadata: null, read, archived_at: null, cleared_at: null, created_at: at, gym_id: g.gym_id, ...extra });
   const NOTES = [
-    N('n1', '80% of this month’s AI coach messages used', false, 1, { action_url: '/gym-app' }),
-    N('n2', 'Leg press reported', false, 3),
-    N('n3', 'Day pass paid', true, 30),
-    N('n4', 'Old message', true, 200, { archived_at: ago(100), cleared_at: ago(100) }),
+    N('n1', '80% of this month’s AI coach messages used', false, todayAgo(1), { action_url: '/gym-app' }),
+    N('n2', 'Leg press reported', false, todayAgo(3)),
+    N('n3', 'Day pass paid', true, ago(30)),
+    N('n4', 'Old message', true, ago(200), { archived_at: ago(100), cleared_at: ago(100) }),
   ];
   const PATCHES = [];
 

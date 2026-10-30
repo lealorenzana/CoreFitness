@@ -38,6 +38,15 @@ async (page) => {
   const [ty, tm] = thisFirst.split('-').map(Number);
   const prevFirst = `${tm === 1 ? ty - 1 : ty}-${String(tm === 1 ? 12 : tm - 1).padStart(2, '0')}-01`;
   const prevMid = addDays(prevFirst, Math.min(Number(today.slice(8, 10)) - 1, 25));   // inside last month's same-days window
+  // Anchored to the current minute, so the check reads the same at 00:05 and at 23:55.
+  // "Waiting N days" is elapsed time floored (todayService's daysAgo), not calendar days;
+  // a class is done once its end has passed, and today's classes must start inside today.
+  const NOW = Date.now(), MIN = 60000;
+  const dayStart = Date.parse(`${today}T00:00:00+08:00`);
+  const ago = (ms) => new Date(NOW - ms).toISOString();
+  const doneStart = Math.max(dayStart, NOW - 60 * MIN);
+  const doneMinutes = Math.max(0, Math.min(45, Math.floor((NOW - doneStart) / MIN) - 2));   // ends before now, even at 00:01
+  const soon = (back) => new Date(Math.max(dayStart, NOW - back * MIN)).toISOString();    // under way, not over
 
   const people = [
     { id: OWNER, first_name: 'Gabby', last_name: 'Owner', role: 'admin', status: 'active', email: 'owner@lab.test', created_at: at(addDays(today, -400), '09:00') },
@@ -59,14 +68,14 @@ async (page) => {
       { id: 'pr3', first_name: 'Dan', last_name: 'Ocampo', created_at: at(today, '07:00') },
     ],
     classes: [
-      { id: 'c1', name: 'Morning HIIT', scheduled_at: at(today, '06:30'), duration_minutes: 45, capacity: 16, location: 'Studio', trainer_id: 't2', created_at: at(today, '00:00') },
-      { id: 'c2', name: 'Spin 45', scheduled_at: at(today, '23:00'), duration_minutes: 45, capacity: 12, location: 'Studio', trainer_id: 't1', created_at: at(today, '00:00') },
-      { id: 'c3', name: 'Strength Basics', scheduled_at: at(today, '23:15'), duration_minutes: 60, capacity: 10, location: 'Gym floor', trainer_id: 't2', created_at: at(today, '00:00') },
+      { id: 'c1', name: 'Morning HIIT', scheduled_at: new Date(doneStart).toISOString(), duration_minutes: doneMinutes, capacity: 16, location: 'Studio', trainer_id: 't2', created_at: at(today, '00:00') },
+      { id: 'c2', name: 'Spin 45', scheduled_at: soon(10), duration_minutes: 45, capacity: 12, location: 'Studio', trainer_id: 't1', created_at: at(today, '00:00') },
+      { id: 'c3', name: 'Strength Basics', scheduled_at: soon(5), duration_minutes: 60, capacity: 10, location: 'Gym floor', trainer_id: 't2', created_at: at(today, '00:00') },
     ],
     class_availability: [{ class_id: 'c1', booked_count: 14 }, { class_id: 'c2', booked_count: 9 }, { class_id: 'c3', booked_count: 10 }],
     bookings: [
-      { id: 'b1', member_id: 'ivy', class_id: 'c2', status: 'pending', requested_at: at(addDays(today, -2), '09:00') },
-      { id: 'b2', member_id: 'rhea', class_id: 'c3', status: 'pending', requested_at: at(addDays(today, -1), '09:00') },
+      { id: 'b1', member_id: 'ivy', class_id: 'c2', status: 'pending', requested_at: ago((2 * 24 + 3) * 60 * MIN) },
+      { id: 'b2', member_id: 'rhea', class_id: 'c3', status: 'pending', requested_at: ago((1 * 24 + 3) * 60 * MIN) },
     ],
     pt_sessions: [],
     renewal_requests: [
