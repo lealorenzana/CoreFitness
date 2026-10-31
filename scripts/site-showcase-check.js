@@ -101,7 +101,7 @@ async (page) => {
   // The hero names the strongest features; the Google button is one clean line.
   await page.evaluate(() => window.scrollTo(0, 0)); await page.waitForTimeout(400);
   const orbits = await page.locator('.hero-visual .orbit').allInnerTexts();
-  out.push('the hero names the AI coach, paying in the app, the coach app and check-in: ' + (orbits.some((o) => /AI coach/.test(o)) && orbits.some((o) => /QRPh/.test(o)) && orbits.some((o) => /coach app/.test(o)) && !orbits.some((o) => /Filipino/.test(o)) ? 'yes' : 'MISSING ' + JSON.stringify(orbits)));
+  out.push('the hero names the AI assistant, paying in the app, the coach app and check-in: ' + (orbits.some((o) => /AI assistant/.test(o)) && orbits.some((o) => /QRPh/.test(o)) && orbits.some((o) => /coach app/.test(o)) && !orbits.some((o) => /Filipino/.test(o)) ? 'yes' : 'MISSING ' + JSON.stringify(orbits)));
   await page.screenshot({ path: 'shots/site-hero.png' });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.evaluate(() => document.getElementById('apply').scrollIntoView()); await page.waitForTimeout(600);

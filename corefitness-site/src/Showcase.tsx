@@ -44,7 +44,7 @@ const LAYERS = [
   { z: 1, cls: 'l-qr', title: 'Check-in code', body: 'Shown at the desk or the kiosk', icon: 'qr' as const },
   { z: 2, cls: 'l-class', title: 'Next class · 6:00 PM', body: 'HIIT with Coach Ben · 4 places left', icon: 'calendar' as const },
   { z: 3, cls: 'l-streak', title: '4-week streak', body: 'Two training days left this week', icon: 'star' as const },
-  { z: 4, cls: 'l-ai', title: 'AI coach', body: '“Add 2.5 kg to your squat this week.” · Apply', icon: 'sparkle' as const },
+  { z: 4, cls: 'l-ai', title: 'AI assistant', body: '“Add 2.5 kg to your squat this week.” · Apply', icon: 'sparkle' as const },
 ];
 
 export function Phone3D() {
@@ -249,7 +249,7 @@ export function Catalogue() {
       <div className="wrap">
         <span className="eyebrow">Everything inside</span>
         <h2 className="big">{FEATURE_COUNT} things it does.<br /><span className="dim">All of them live today.</span></h2>
-        <p className="section-lede">The desk, the coaches, the members and an AI coach — in one system, for one price. Here is all of it.</p>
+        <p className="section-lede">The desk, the coaches, the members and an AI assistant — in one system, for one price. Here is all of it.</p>
         <nav className="cat-index" aria-label="Feature groups">
           {CATALOGUE.map((g) => (
             <a key={g.id} href={`#cat-${g.id}`} className={open === g.id ? 'on' : ''}><Icon name={g.icon} /> {g.title}</a>

@@ -40,16 +40,16 @@ const initials = (name: string) =>
 const FEATURES: { icon: IconName; title: string; body: string; tag: string }[] = [
   { icon: 'desk', tag: 'Desk', title: 'The front desk', body: 'Members and memberships, payments with a receipt number — cash at the desk, or GCash, Maya and bank transfers members send from the app for your desk to confirm (you can keep it desk-only), QR check-in and a kiosk members use themselves, a shop with stock that counts itself, and waivers signed in the app. Freezes, renewals and refunds follow rules you set.' },
   { icon: 'calendar', tag: 'Floor', title: 'Classes and coaches', body: 'A weekly timetable that generates itself, bookings your coaches accept, a waitlist that tells everyone waiting the moment a seat frees, and one-to-one sessions with clash checks.' },
-  { icon: 'sparkle', tag: 'AI coach', title: 'A coach in their pocket', body: 'On the membership plans you choose, members get an AI coach that builds and adjusts their routines, weekly schedule and goals. Nothing changes until they tap Apply, every change can be undone, and a stated injury gets a referral to a person, never a changed exercise. You set its daily and monthly limits.' },
+  { icon: 'sparkle', tag: 'AI assistant', title: 'A training assistant in their pocket', body: 'On the membership plans you choose, members get an AI assistant that builds and adjusts their routines, weekly schedule and goals. Nothing changes until they tap Apply, every change can be undone, and a stated injury gets a referral to a person, never a changed exercise. You set its daily and monthly limits.' },
   { icon: 'message', tag: 'Coaching', title: 'Coaching between sessions', body: 'A room for every class and one-to-one trainee, where coaches post, set workouts and check-ins members turn in from the app. Private coach–member chat, programs you build, and progress photos only the member — and the coaches they share with — can see.' },
   { icon: 'phone', tag: 'Phone', title: "The member's app", body: "Installs like an app on Android, and from the browser on iPhone. Their membership, bookings, check-in code, workouts, goals, progress and the gym's announcements — in English or Filipino." },
-  { icon: 'star', tag: 'Loyalty', title: 'Points that keep them coming', body: 'Points for turning up and personal records, badges for milestones, rewards they redeem at your desk, challenges, weekly quests, monthly seasons, squads of friends, and invite-a-friend rewards that pay only when the friend pays. The rules are yours to set.' },
+  { icon: 'star', tag: 'Loyalty', title: 'Points that keep them coming', body: 'Points for turning up and personal records, badges for milestones, rewards they redeem at your desk, challenges and weekly quests — monthly seasons and squads if you switch them on — and invite-a-friend rewards that pay only when the friend pays. The rules are yours to set.' },
   { icon: 'brush', tag: 'Brand', title: 'Your gym, your look', body: "Your name, your logo and your colour in your members' app — even your own words for members and coaches. Your plans, your prices, your cancellation reasons and your refund policy." },
   { icon: 'shield', tag: 'Privacy', title: 'Your data stays yours', body: "One gym can never see another's members — the database enforces it, and every change is checked automatically. Core Fitness looks inside your gym only when you grant support access, only for a few hours, and only to read." },
   { icon: 'toggle', tag: 'Fit', title: 'Switch off what you don’t run', body: 'No classes? No shop? Turn whole parts of the system off, and your members’ app and your menus simply stop showing them.' },
 ];
 
-const TICKER = ['QR check-in', 'Cash & GCash', 'AI coach', 'Class timetable', 'Waitlists', 'Coaching rooms', 'Coach chat', 'Programs', 'Points', 'Badges', 'Rewards', 'Challenges', 'Squads', 'Seasons', 'Workout logs', 'Personal records', 'Progress photos', 'The shop', 'Waivers', 'Freeze & renew', 'Lobby TV', 'English · Filipino', 'Your logo, your colour'];
+const TICKER = ['QR check-in', 'Cash & GCash', 'AI assistant', 'Personal training', 'Monthly packages', 'Coach chat', 'Class timetable', 'Programs', 'Points', 'Badges', 'Rewards', 'Challenges', 'Squads', 'Seasons', 'Workout logs', 'Personal records', 'Progress photos', 'The shop', 'Waivers', 'Freeze & renew', 'Lobby TV', 'English · Filipino', 'Your logo, your colour'];
 
 /** "Nine parts." — the heading counts the cards, so adding one can never leave it wrong. */
 const COUNT_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve'];
@@ -287,7 +287,7 @@ export default function App() {
                 <em><Words text="give your members an app." from={3} /></em>
               </h1>
               <p className="lede">
-                Memberships, payments in cash or in the app, QR check-in, classes, coaches and an AI coach —
+                Memberships, payments in cash or in the app, QR check-in, personal training, coaches and an AI assistant —
                 with a phone app your members actually install. Built for a real gym in Mamburao, and open to yours.
               </p>
               <div className="cta-row">
@@ -298,7 +298,7 @@ export default function App() {
             <div className="hero-visual" aria-hidden="true">
               <span className="ring r1" /><span className="ring r2" /><span className="ring r3" />
               <img src="/logo-320.webp" alt="" width={320} height={320} />
-              <span className="orbit o1"><Icon name="sparkle" /> An AI coach that plans their training</span>
+              <span className="orbit o1"><Icon name="sparkle" /> An AI assistant that plans their training</span>
               <span className="orbit o2"><Icon name="cash" /> Paid in the app · QRPh, GCash, Maya</span>
               <span className="orbit o3"><Icon name="message" /> A coach app built like a chat</span>
               <span className="orbit o4"><Icon name="qr" /> QR check-in and a kiosk</span>
@@ -426,7 +426,7 @@ export default function App() {
                       <ul>
                         <li><Icon name="check" /> {t.maxMembers !== null ? `Up to ${t.maxMembers.toLocaleString('en-PH')} members` : 'Any number of members'}
                           {t.maxStaff !== null ? `, ${t.maxStaff} staff accounts` : t.maxMembers === null ? ' and staff' : ''}</li>
-                        {t.aiMonthly !== null && <li><Icon name="check" /> {t.aiMonthly.toLocaleString('en-PH')} AI coach messages a month, more as you need them</li>}
+                        {t.aiMonthly !== null && <li><Icon name="check" /> {t.aiMonthly.toLocaleString('en-PH')} AI assistant messages a month, more as you need them</li>}
                         {t.includes.map((line) => <li key={line}><Icon name="check" /> {line}</li>)}
                       </ul>
                     )}

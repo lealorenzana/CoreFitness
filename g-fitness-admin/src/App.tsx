@@ -21,7 +21,7 @@ import GymApp from './pages/GymApp';
 import Invitations from './pages/Invitations';
 import Schedule from './pages/Schedule';
 import Bookings from './pages/Bookings';
-import Coaching from './pages/Coaching';
+import PersonalTraining from './pages/PersonalTraining';
 import EquipmentPage from './pages/Equipment';
 import WalkIns from './pages/WalkIns';
 import Events from './pages/Events';
@@ -100,8 +100,11 @@ function App() {
                 not the front desk's to change. */}
             <Route path="gym-app" element={<ProtectedRoute adminOnly><GymApp /></ProtectedRoute>} />
             <Route path="schedule" element={<Schedule />} />
-            <Route path="bookings" element={<Bookings />} />
-            <Route path="coaching" element={<Coaching />} />
+            {/* One Personal training page (simplify, 2026-10-28): sessions and packages; class bookings stay under Classes. */}
+            <Route path="personal-training" element={<PersonalTraining />} />
+            <Route path="bookings" element={<Navigate to="/personal-training?tab=sessions" replace />} />
+            <Route path="bookings/classes" element={<Bookings scope="class" />} />
+            <Route path="coaching" element={<Navigate to="/personal-training?tab=packages" replace />} />
             <Route path="equipment" element={<EquipmentPage />} />
             <Route path="events" element={<Events />} />
             <Route path="notifications" element={<Notifications />} />

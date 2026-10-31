@@ -306,6 +306,10 @@
       "app": "admin"
     },
     {
+      "file": "admin-personal-training-check.js",
+      "app": "admin"
+    },
+    {
       "file": "admin-volume-check.js",
       "app": "admin"
     },

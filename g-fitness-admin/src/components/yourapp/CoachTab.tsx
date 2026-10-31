@@ -71,10 +71,10 @@ export default function CoachTab({ enabled, sold, onToggle }: { enabled: boolean
     <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) 380px', flex: 1 }}>
       <div className="a-card a-scroll" data-card="ai-coach">
         <div className="a-ct">
-          <h3><Bot size={16} />AI coach</h3>
+          <h3><Bot size={16} />AI assistant</h3>
           {owner && sold && (
             <button type="button" className={`a-toggle ${enabled ? '' : 'off'}`} onClick={onToggle}
-              aria-pressed={enabled} aria-label={enabled ? 'Switch off the AI coach' : 'Switch on the AI coach'} />
+              aria-pressed={enabled} aria-label={enabled ? 'Switch off the AI assistant' : 'Switch on the AI assistant'} />
           )}
         </div>
         {res === null ? <p className="a-sub">Loading…</p>
@@ -82,7 +82,7 @@ export default function CoachTab({ enabled, sold, onToggle }: { enabled: boolean
           : u && (
           <>
             <p className="a-sub" style={{ marginBottom: 10 }}>
-              How much your members can talk to the coach, and how much they have this month. You see totals for the whole gym — never who asked what.
+              How much your members can talk to the assistant, and how much they have this month. You see totals for the whole gym — never who asked what.
               {!enabled && ' The coach is switched off, so your members do not see it right now.'}
             </p>
             {allow && <Credits a={allow} onRaise={() => { if (allow.plan_monthly) setMonthly(String(allow.plan_monthly)); }} />}
@@ -174,7 +174,7 @@ function Credits({ a, onRaise }: { a: AiAllowance; onRaise: () => void }) {
   const pct = a.monthly > 0 ? Math.min(100, Math.round((used / a.monthly) * 100)) : 0;
   return (
     <div className="a-card glow" style={{ marginBottom: 10 }} data-ai-credits>
-      <div className="a-ct"><h3><Coins size={16} />Your AI coach credits</h3><small>set by Core Fitness, used by your members</small></div>
+      <div className="a-ct"><h3><Coins size={16} />Your AI assistant credits</h3><small>set by Core Fitness, used by your members</small></div>
       <div className="a-grid" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 10 }}>
         <div><div className="a-lbl">Your plan gives</div><div className="a-num" style={{ fontSize: 22 }}>{a.plan_monthly != null ? a.plan_monthly.toLocaleString('en-PH') : 'No cap'}</div><div className="a-sub">messages a month</div></div>
         <div><div className="a-lbl">Your limit</div><div className="a-num" style={{ fontSize: 22 }}>{a.monthly.toLocaleString('en-PH')}</div><div className="a-sub">{below ? 'below what your plan allows' : 'the month’s allowance'}</div></div>

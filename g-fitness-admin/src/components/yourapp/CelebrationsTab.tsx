@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Check, HandHeart, PartyPopper, Smartphone, Volume2 } from 'lucide-react';
+import { Check, PartyPopper, Smartphone, Volume2 } from 'lucide-react';
 import { getCelebrations, setCelebrations, type Celebrations } from '../../lib/api/celebrations';
 import { showToast } from '../../utils/toast';
 
@@ -32,10 +32,7 @@ export default function CelebrationsTab() {
   const rows: [keyof Celebrations, string, string, typeof PartyPopper][] = [
     ['celebrations', 'Celebrations', 'Off: each moment is a small card at the top of the screen instead of the full screen.', PartyPopper],
     ['sounds', 'Sounds', 'Off: no chime for anyone at your gym. Members can also turn their own off.', Volume2],
-    // 0217: off until you switch it on. Off, there are no friends, wins or cheers at your gym.
-    ...(c && c.friends !== null ? [['friends', 'Friends & cheers',
-      'Members add each other as friends, see each other’s wins and cheer them on. Off: none of it at your gym. You see counts only; coaches see a trainee’s cheers.',
-      HandHeart] as [keyof Celebrations, string, string, typeof PartyPopper]] : []),
+    // Friends & cheers (0217) was removed by 0220.
   ];
 
   return (

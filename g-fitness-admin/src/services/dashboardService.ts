@@ -242,7 +242,7 @@ export const dashboardService = {
         message: `${pendingBookings} request${pendingBookings === 1 ? '' : 's'} waiting for approval`,
         time: 'Now',
         priority: 'high',
-        actionUrl: '/bookings',
+        actionUrl: '/personal-training',
       });
     }
 

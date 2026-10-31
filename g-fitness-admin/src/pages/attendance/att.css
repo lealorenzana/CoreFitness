@@ -14,6 +14,9 @@
   display: flex; flex-direction: column; gap: 12px; font-size: 13px; color: #fff; min-height: 0;
 }
 @media (min-width: 1280px) { .att { height: 100%; overflow: hidden; } }
+/* A page drawn inside another (Personal training's tabs, 2026-10-28) takes the space left under its header. */
+.att .att { flex: 1 1 0%; min-height: 0; }
+@media (min-width: 1280px) { .att .att { height: auto; } }
 .att i.lucide, .att svg { flex: none; }
 
 /* head */

@@ -63,7 +63,7 @@ const STEPS: { key: Step; title: string; blurb: string; icon: typeof Check }[] =
   { key: 'coaching', title: 'How coaching works', blurb: 'How members get a coach, for how long, and who is paid.', icon: Dumbbell },
   { key: 'walkins', title: 'Day passes and walk-ins', blurb: 'Whether guests can pay for a day, and what packs you sell.', icon: Banknote },
   { key: 'checkin', title: 'Checking in', blurb: 'Whether your coaches check in too, and whether members pick what they are doing.', icon: ScanLine },
-  { key: 'coach', title: 'The AI coach', blurb: 'How much your members may talk to it.', icon: Sparkles },
+  { key: 'coach', title: 'The AI assistant', blurb: 'How much your members may talk to it.', icon: Sparkles },
   { key: 'plans', title: 'Your plans', blurb: 'These came from a working gym. Make them yours before anyone pays.', icon: Tags },
   { key: 'door', title: 'How members join', blurb: 'Who can ask to join you, and how they find you.', icon: DoorOpen },
   { key: 'password', title: 'Your password', blurb: 'Replace the temporary one you were given.', icon: KeyRound },

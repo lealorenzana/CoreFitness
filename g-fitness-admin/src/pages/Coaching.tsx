@@ -35,7 +35,8 @@ const PILL: Record<CoachingRow['status'], string> = {
  * Progress is the term's days, not sessions: a coaching records its length,
  * not a number of sessions, so "8 of 12 sessions" would be invented.
  */
-export default function Coaching() {
+/** `embedded`: Personal training's Packages tab (simplify, 2026-10-28) — its title is the page's. */
+export default function Coaching({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate();
   const [settings, setSettings] = useState<CoachingSettings | null | undefined>(undefined);
   const [rows, setRows] = useState<CoachingRow[] | null>(null);
@@ -161,7 +162,7 @@ export default function Coaching() {
                               ) : <div className="a-sub" style={{ marginTop: 3 }}>{r.started_by === 'desk' ? 'Assigned by the gym' : r.started_by === 'coach' ? 'The coach offered' : 'The member asked'}</div>}
                             </div></div>
                         </td>
-                        <td className="whitespace-nowrap"><span data-tip={`${r.months} month${r.months === 1 ? '' : 's'}`}>{r.kind === 'group' ? 'Group' : '1-on-1'} · {r.months} mo</span></td>
+                        <td className="whitespace-nowrap"><span data-tip={`${r.months} month${r.months === 1 ? '' : 's'}`}>{r.months} mo</span></td>
                         <td><span className={`a-pill ${isEnding(r) ? 'a' : PILL[r.status] === 'b' ? '' : PILL[r.status]}`} style={PILL[r.status] === 'b' ? { background: '#13233d', color: '#93c5fd' } : undefined}>
                           {isEnding(r) ? 'Ending soon' : STATUS_WORDS[r.status]}</span></td>
                         <td className="whitespace-nowrap"><b>{fmt(r.ends_on)}</b> <span className={`a-sub ${isEnding(r) ? 'a-dn' : ''}`}>
@@ -210,7 +211,7 @@ export default function Coaching() {
     <div className="att" data-coaching>
       <div className="a-head">
         <div className="min-w-0">
-          <h1>Coaching</h1>
+          {!embedded && <h1>Coaching</h1>}
           <p>{settings.feeMode === 'trainer_direct' ? 'Members pay their coach directly — you see who has a coach and until when'
             : settings.feeMode === 'gym_priced' ? 'Members pay the gym for coaching — confirm payments here'
               : 'Coaching is included in your plans'}{settings.modes.includes('desk_assigns') ? ' · the desk pairs a member with a coach for a length' : ''}</p>
@@ -265,7 +266,7 @@ export default function Coaching() {
           {rows === null ? <p className="a-sub" style={{ color: 'var(--a-a300)', padding: 16 }}>Coachings could not be loaded.</p> : (
             <div ref={fitRef} className="a-scroll" style={{ flex: 1 }}>
               <table className="a-table">
-                <thead><tr><th>Member and coach</th><th>Kind</th><th>Status</th><th>Until</th><th /></tr></thead>
+                <thead><tr><th>Member and coach</th><th>Package</th><th>Status</th><th>Until</th><th /></tr></thead>
                 <tbody>
                   {paged.visible.map((r) => rowOf(r, shown.length > paged.perPage))}
                 </tbody>
@@ -360,7 +361,7 @@ export default function Coaching() {
       <FloatingWindow open={win === 'all'} onClose={() => setWin(null)} title="Coachings" icon={Handshake} count={shown.length} data-coaching-window
         tools={<span className="a-sub">{filter === 'all' ? 'All' : filter === 'ending' ? 'Ending soon' : filter[0].toUpperCase() + filter.slice(1)}{coachFilter ? ` · ${name(coachFilter)}` : ''}{term ? ` · “${q.trim()}”` : ''}</span>}>
         <div className="att" style={{ height: 'auto', overflow: 'visible', padding: '6px 18px' }}>
-          <table className="a-table"><thead><tr><th>Member and coach</th><th>Kind</th><th>Status</th><th>Until</th><th /></tr></thead>
+          <table className="a-table"><thead><tr><th>Member and coach</th><th>Package</th><th>Status</th><th>Until</th><th /></tr></thead>
             <tbody>{shown.map((r) => rowOf(r, false))}</tbody></table>
         </div>
       </FloatingWindow>

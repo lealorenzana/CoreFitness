@@ -6,7 +6,8 @@ import {
   type CoachingMode, type CoachingSettings as Settings, type FeeMode,
 } from '../lib/api/coaching';
 
-const MODES: CoachingMode[] = ['classes', 'pick_pt', 'pick_group', 'desk_assigns', 'coach_invites'];
+// Groups (pick_group) were removed by 0220 — personal training only.
+const MODES: CoachingMode[] = ['classes', 'pick_pt', 'desk_assigns', 'coach_invites'];
 const LENGTHS = [1, 2, 3, 6, 12];
 const FEES: { key: FeeMode; title: string; blurb: string }[] = [
   { key: 'included', title: 'Included in the plan', blurb: 'A member whose plan includes 1-on-1 may have a coach. Nothing extra to pay.' },
@@ -116,17 +117,17 @@ export default function CoachingSettings() {
       {s.feeMode === 'gym_priced' && (
         <div data-coaching-prices>
           <p className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>Your prices (₱)</p>
-          <p className="text-xs mt-0.5" style={muted}>Empty means not offered. A group price is per person.</p>
+          <p className="text-xs mt-0.5" style={muted}>Empty means not offered.</p>
           <div className="mt-2 overflow-x-auto">
             <table className="text-xs">
-              <thead><tr><th className="text-left pr-3 py-1" style={muted}>Length</th><th className="text-left pr-3" style={muted}>1-on-1</th><th className="text-left" style={muted}>Group</th></tr></thead>
+              <thead><tr><th className="text-left pr-3 py-1" style={muted}>Length</th><th className="text-left pr-3" style={muted}>Package</th></tr></thead>
               <tbody>
                 {s.lengths.map((m) => (
                   <tr key={m}>
                     <td className="pr-3 py-1" style={{ color: 'var(--color-text-primary)' }}>{m} mo</td>
-                    {(['pt', 'group'] as const).map((k) => (
+                    {(['pt'] as const).map((k) => (
                       <td key={k} className="pr-3">
-                        <input aria-label={`${k === 'pt' ? '1-on-1' : 'Group'} price, ${m} months`} inputMode="decimal"
+                        <input aria-label={`Package price, ${m} months`} inputMode="decimal"
                           value={prices[`${k}:${m}`] ?? ''} onChange={(e) => setPrices((p) => ({ ...p, [`${k}:${m}`]: e.target.value.replace(/[^0-9.]/g, '') }))}
                           onBlur={() => void savePrice(k, m)}
                           className="w-24 rounded-lg border px-2 py-1.5" style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-primary)' }} />

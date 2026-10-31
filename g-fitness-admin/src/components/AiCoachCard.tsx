@@ -78,7 +78,7 @@ export default function AiCoachCard({ switchedOff }: { switchedOff?: boolean }) 
   return (
     <div className="rounded-xl border p-5" data-card="ai-coach"
       style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}>
-      <h2 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>AI coach</h2>
+      <h2 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>AI assistant</h2>
 
       {res === null ? (
         <p className="mt-1 text-sm" style={muted}>Loading…</p>

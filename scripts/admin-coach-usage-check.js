@@ -132,7 +132,7 @@ async (page) => {
   // ---- the owner -----------------------------------------------------------------------------
   await open();
   let c = await cardText();
-  out.push('owner sees the AI coach card: ' + (c.includes('AI coach') && /How much your members can talk to the coach/.test(c) ? 'yes' : 'MISSING'));
+  out.push('owner sees the AI assistant card: ' + (c.includes('AI assistant') && /How much your members can talk to the assistant/.test(c) ? 'yes' : 'MISSING'));
   out.push('both limits, editable: ' + ((await page.locator(`${CARD} #ai-daily`).inputValue().catch(() => '')) === '30'
     && (await page.locator(`${CARD} #ai-monthly`).inputValue().catch(() => '')) === '1500' ? '30 / 1500' : 'MISSING'));
   out.push('the two labels: ' + (/Messages per member per day/i.test(c) && /Messages for the whole gym per month/i.test(c) ? 'yes' : 'MISSING'));
@@ -220,7 +220,7 @@ async (page) => {
   });
   await page.waitForTimeout(1500);
   c = await cardText();
-  out.push('desk card mounted: ' + (mounted === 'ok' && c.includes('AI coach') ? 'yes' : 'MISSING ' + mounted));
+  out.push('desk card mounted: ' + (mounted === 'ok' && c.includes('AI assistant') ? 'yes' : 'MISSING ' + mounted));
   out.push('desk sees the limits, read-only: ' + ((await page.locator(`${CARD} input`).count()) === 0 && /Messages per member per day\s*30/i.test(c) && /1,500/.test(c) ? 'yes' : 'MISSING'));
   out.push('desk has no Save: ' + ((await page.locator(CARD).getByRole('button', { name: 'Save' }).count()) === 0 && /Only the gym's owner can change these/.test(c) ? 'yes' : 'STILL SHOWN'));
   out.push('desk still sees the totals: ' + (/312/.test(c) && /\$0\.42/.test(c) ? 'yes' : 'MISSING'));

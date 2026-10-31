@@ -77,7 +77,7 @@ const SECTIONS: Section[] = [
   { id: 'waiver', label: 'Waiver', icon: FileSignature, words: ['par-q', 'health', 'sign', 'liability'] },
   { group: 'Members and money', label: '', icon: Building2, words: [] },
   { id: 'bookings', label: 'Bookings', icon: CalendarCheck, words: ['approve', 'class', 'booking'] },
-  { id: 'coaching', label: 'Coaching', icon: Handshake, words: ['coach', 'trainer', '1-on-1', 'price'] },
+  { id: 'coaching', label: 'Personal training', icon: Handshake, words: ['coach', 'trainer', '1-on-1', 'price'] },
   { id: 'walk-ins', label: 'Walk-ins', icon: Footprints, words: ['day pass', 'guest', 'visit pack'] },
   { id: 'refunds', label: 'Refunds', icon: Banknote, words: ['refund', 'cancel', 'fee'] },
   { id: 'payments', label: 'Online payments', icon: Smartphone, words: ['gcash', 'maya', 'qr', 'bank', 'pay'] },
@@ -515,7 +515,7 @@ export default function Settings() {
               )}
 
               {activeTab === 'bookings' && <>{head('Bookings', 'Who approves bookings — for group classes and 1-on-1 sessions separately')}<BookingApproval /></>}
-              {activeTab === 'coaching' && <>{head('Coaching', 'How members get a coach, for how long, and who is paid')}<CoachingSettings /></>}
+              {activeTab === 'coaching' && <>{head('Personal training', 'How members get a coach, for how long, and who is paid')}<CoachingSettings /></>}
               {activeTab === 'walk-ins' && (
                 <>
                   {head('Walk-ins', 'For people without a membership: paid in cash at the desk (Attendance → Walk-ins) or, if you take payments in the app, bought by the member themselves')}

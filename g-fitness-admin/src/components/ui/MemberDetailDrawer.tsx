@@ -916,7 +916,6 @@ function ProgressTab({ detail }: { detail: MemberDetail }) {
       )}
 
       <StreakSection memberId={detail.identity.profile.id} />
-      <SocialSection memberId={detail.identity.profile.id} />
 
       <Section title={latest ? `Latest measurements — ${formatDate(latest.measured_on)}` : 'Measurements'}>
         {!latest ? (
@@ -1597,32 +1596,6 @@ function StreakSection({ memberId }: { memberId: string }) {
         <MiniStat label="Best" value={`${s.best} ${s.best === 1 ? 'week' : 'weeks'}`} />
         <MiniStat label="Target" value={`${s.target} days`} sub="a week, their choice" />
         <MiniStat label="This week" value={week} />
-      </div>
-    </Section>
-  );
-}
-
-/**
- * Friends and cheers (0217), for the owner and desk: counts only — never who,
- * never what (member_social_counts). Nothing when the gym has Friends off.
- */
-function SocialSection({ memberId }: { memberId: string }) {
-  const [c, setC] = useState<{ friends: number; cheers: number } | null>(null);
-  useEffect(() => {
-    let alive = true;
-    void (async () => {
-      const { data, error } = await supabase.rpc('member_social_counts', { p_member: memberId });
-      const row = !error && Array.isArray(data) ? (data[0] as { friends: number; cheers_received: number } | undefined) : undefined;
-      if (alive) setC(row ? { friends: row.friends, cheers: row.cheers_received } : null);
-    })();
-    return () => { alive = false; };
-  }, [memberId]);
-  if (!c) return null;
-  return (
-    <Section title="Friends">
-      <div className="grid grid-cols-2 gap-2" data-social-counts>
-        <MiniStat label="Friends" value={String(c.friends)} />
-        <MiniStat label="Cheers received" value={String(c.cheers)} sub="counts only — never who or what" />
       </div>
     </Section>
   );

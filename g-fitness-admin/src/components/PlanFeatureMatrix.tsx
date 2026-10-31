@@ -38,7 +38,7 @@ interface Props {
  */
 const GROUP_OF: Record<string, string> = {
   can_book_classes: 'Booking', can_book_pt: 'Booking',
-  workout_tracker: 'Training', premium_programs: 'Training', plan_builder: 'AI coach', ai_model: 'AI coach',
+  workout_tracker: 'Training', premium_programs: 'Training', plan_builder: 'AI assistant', ai_model: 'AI assistant',
   challenges: 'Points and challenges', points_earn: 'Points and challenges', points_redeem: 'Points and challenges',
   coaching_rooms: 'Coaching',
 };
@@ -47,7 +47,7 @@ const SWITCH_OF: Record<string, string> = {
   plan_builder: 'assistant', ai_model: 'assistant', challenges: 'engagement', points_earn: 'points', points_redeem: 'points',
   coaching_rooms: 'rooms',
 };
-const GROUP_ORDER = ['Booking', 'Training', 'Coaching', 'Points and challenges', 'AI coach', 'Other'];
+const GROUP_ORDER = ['Booking', 'Training', 'Coaching', 'Points and challenges', 'AI assistant', 'Other'];
 const BOOKING_ROWS: FeatureDef[] = [
   { key: 'can_book_classes', label: 'Book classes', description: 'Members on the plan book seats in group classes.' } as FeatureDef,
   { key: 'can_book_pt', label: 'Book 1-on-1 and have a coach', description: 'Members on the plan book 1-on-1 sessions, and (when coaching is included) pick a coach.' } as FeatureDef,

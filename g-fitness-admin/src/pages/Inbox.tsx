@@ -46,8 +46,8 @@ const KINDS: Record<string, { label: string; icon: LucideIcon; tone: Tone }> = {
 const kindOf = (t: string) => KINDS[t] ?? { label: 'Other', icon: Bell, tone: 'gray' as Tone };
 /** The sidebar's names for the pages a message can open. */
 const PAGES: [string, string][] = [
-  ['/members', 'Members'], ['/invitations', 'Invitations'], ['/trainers', 'Trainers'], ['/coaching', 'Coaching'],
-  ['/schedule', 'Schedule'], ['/bookings', 'Bookings'], ['/payments', 'Payments'], ['/shop', 'Shop'],
+  ['/members', 'Members'], ['/invitations', 'Invitations'], ['/trainers', 'Trainers'], ['/personal-training', 'Personal training'], ['/coaching', 'Personal training'],
+  ['/schedule', 'Schedule'], ['/bookings/classes', 'Class bookings'], ['/bookings', 'Personal training'], ['/payments', 'Payments'], ['/shop', 'Shop'],
   ['/membership-plans', 'Plans'], ['/revenue', 'Revenue'], ['/retention', 'Retention'], ['/activity', 'Activity log'],
   ['/challenges', 'Challenges'], ['/rewards', 'Rewards'], ['/equipment', 'Equipment'], ['/rooms', 'Rooms'],
   ['/gym-app', 'Your app'], ['/settings', 'Settings'], ['/subscription', 'Your plan'], ['/help', 'Help'], ['/support', 'Help'],

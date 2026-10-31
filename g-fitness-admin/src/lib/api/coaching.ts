@@ -5,7 +5,7 @@ import { supabase } from '../supabaseClient';
  * of every coaching, assigning a coach, and confirming a payment to the gym.
  * Writes are definer functions only; the database's words are the errors.
  */
-export type CoachingMode = 'classes' | 'pick_pt' | 'pick_group' | 'desk_assigns' | 'coach_invites';
+export type CoachingMode = 'classes' | 'pick_pt' | 'desk_assigns' | 'coach_invites';
 export type FeeMode = 'included' | 'gym_priced' | 'trainer_direct';
 
 export interface CoachingSettings { modes: CoachingMode[]; lengths: number[]; feeMode: FeeMode }
@@ -69,8 +69,7 @@ export async function memberCoaching(memberId: string): Promise<CoachingRow | nu
 
 export const MODE_WORDS: Record<CoachingMode, { title: string; blurb: string }> = {
   classes: { title: 'Timetable classes', blurb: 'Members book seats in your classes.' },
-  pick_pt: { title: 'Members pick a coach (1-on-1)', blurb: 'From a coach’s profile, for a length you offer.' },
-  pick_group: { title: 'Members pick a coach as a group', blurb: 'One starts it, friends join with a code — one group room.' },
+  pick_pt: { title: 'Members pick a coach', blurb: 'From a coach’s profile, a package for a length you offer.' },
   desk_assigns: { title: 'The desk assigns a coach', blurb: 'You or the front desk pick the coach for a member.' },
   coach_invites: { title: 'Coaches invite trainees', blurb: 'A coach offers to coach a member, who accepts.' },
 };

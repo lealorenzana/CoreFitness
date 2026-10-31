@@ -99,7 +99,11 @@ export interface Today {
   walkIns: number | null;
   cash: { cashIn: number; payments: number; closed: boolean } | null;
   classes: TodayClass[] | null;
+  /** Today's confirmed 1-on-1 sessions (simplify, 2026-10-28) — the card when the gym runs no classes. */
+  sessions: TodaySession[] | null;
 }
+
+export interface TodaySession { id: string; startsAt: string; member: string | null; coach: string | null; done: boolean }
 
 export async function loadToday(): Promise<Today> {
   const day = todayKey();
@@ -143,8 +147,26 @@ export async function loadToday(): Promise<Today> {
     }));
   })().catch(() => null);
 
-  const [c, w, k, cl] = await Promise.all([checkIns, walkIns, cash, classes]);
-  return { checkIns: c, walkIns: w, cash: k, classes: cl };
+  const sessions = (async (): Promise<TodaySession[]> => {
+    const { data, error } = await supabase.from('pt_sessions')
+      .select('id, starts_at, duration_minutes, member_id, trainer_id')
+      .eq('status', 'approved').gte('starts_at', from).lt('starts_at', to).order('starts_at');
+    if (error) throw error;
+    const rows = (data ?? []) as { id: string; starts_at: string; duration_minutes: number | null; member_id: string; trainer_id: string }[];
+    if (!rows.length) return [];
+    const ids = Array.from(new Set(rows.flatMap((r) => [r.member_id, r.trainer_id])));
+    const { data: people } = await supabase.from('gym_people').select('id, first_name, last_name').in('id', ids);
+    const names = new Map(((people ?? []) as { id: string; first_name: string; last_name: string }[])
+      .map((p) => [p.id, `${p.first_name} ${p.last_name}`.trim()]));
+    const now = Date.now();
+    return rows.map((r) => ({
+      id: r.id, startsAt: r.starts_at, member: names.get(r.member_id) ?? null, coach: names.get(r.trainer_id) ?? null,
+      done: new Date(r.starts_at).getTime() + (r.duration_minutes ?? 60) * 60000 < now,
+    }));
+  })().catch(() => null);
+
+  const [c, w, k, cl, se] = await Promise.all([checkIns, walkIns, cash, classes, sessions]);
+  return { checkIns: c, walkIns: w, cash: k, classes: cl, sessions: se };
 }
 
 // ── This month, against the last ───────────────────────────────────────────────

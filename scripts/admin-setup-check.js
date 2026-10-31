@@ -96,7 +96,7 @@ async (page) => {
   await page.goto('http://localhost:5174/admin/setup', { waitUntil: 'domcontentloaded' });
   await page.getByText('Setting up Ana Fitness').waitFor({ timeout: 15000 });
   let t = await text();
-  out.push('the rail lists every step: ' + (['Your gym', 'When you are open', 'How your app looks', 'Your words', 'What you run', 'Who approves bookings', 'How coaching works', 'Day passes and walk-ins', 'Checking in', 'The AI coach', 'Your plans', 'How members join', 'Ready to open'].every((s) => t.includes(s)) ? 'yes' : 'MISSING'));
+  out.push('the rail lists every step: ' + (['Your gym', 'When you are open', 'How your app looks', 'Your words', 'What you run', 'Who approves bookings', 'How coaching works', 'Day passes and walk-ins', 'Checking in', 'The AI assistant', 'Your plans', 'How members join', 'Ready to open'].every((s) => t.includes(s)) ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/admin-setup-1.png' });
 
   await next();                                    // gym → hours
@@ -126,7 +126,7 @@ async (page) => {
   out.push('the checking-in step asks about coaches and members’ picks: ' + (/Whether your coaches check in too/.test(await text()) ? 'yes' : 'MISSING'));
   await next();                                    // checking in → coach
   t = await text();
-  out.push('the AI coach step: ' + (/How much your members may talk to it/.test(t) ? 'shown (the plan sells it)' : 'MISSING'));
+  out.push('the AI assistant step: ' + (/How much your members may talk to it/.test(t) ? 'shown (the plan sells it)' : 'MISSING'));
   await next();                                    // coach → plans
   page.once('dialog', (d) => d.accept());
   await page.getByLabel('Remove Free Trial').click();

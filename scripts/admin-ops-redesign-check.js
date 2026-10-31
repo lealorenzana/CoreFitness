@@ -191,8 +191,9 @@ async (page) => {
   await page.getByRole('option', { name: 'Jen Lacsamana' }).click();
   has('…and picking a coach shows them in the box', /Jen Lacsamana/.test(await page.getByRole('combobox', { name: 'Coach' }).innerText()));
 
-  // ── Bookings (rebuilt to the approved mock-up, 2026-10-20) ──
-  t = await visit('/bookings', 'bookings');
+  // ── Bookings (rebuilt to the approved mock-up, 2026-10-20). Since the simplify (2026-10-28) the
+  //    same page is drawn twice: Class bookings (/bookings/classes) and Personal training → Sessions. ──
+  t = await visit('/bookings/classes', 'bookings');
   has('one search, date chips, kind and status, four cards', (await page.getByLabel('Search bookings').count()) === 1 && /This week/.test(t) && /Next 30 days/.test(t)
     && (await page.locator('[data-booking-cards] > *').count()) === 4 && /Waiting for a decision/.test(t) && /Need checking/.test(t));
   has('the week grouped by day', (await page.locator('[data-queue] .a-daygroup').count()) >= 2);
@@ -208,11 +209,11 @@ async (page) => {
   // the rest show who they wait for and a reminder — never Approve.
   const approveN = await page.getByRole('button', { name: /^(Approve|Confirm)$/ }).count();
   const waitN = await page.locator('[data-waiting-coach]').count();
-  has('waiting: three — Confirm only on what the coach accepted, Remind on the rest', (await page.locator('[data-booking-row]').count()) === 3
-    && approveN >= 1 && waitN >= 1 && approveN + waitN === 3 && (await page.locator('[data-remind-coach]').count()) === waitN, `approve ${approveN}, waiting ${waitN}`);
+  has('waiting classes: Confirm only on what the coach accepted, Remind on the rest', (await page.locator('[data-booking-row]').count()) === 2
+    && approveN === 1 && waitN === 1 && (await page.locator('[data-remind-coach]').count()) === waitN, `approve ${approveN}, waiting ${waitN}`);
   has('coach then desk: "accepted — your turn to confirm"', /Bianca Soriano accepted — your turn to confirm/.test(t));
-  has('warnings, never blocks: an expired membership and a plan without 1-on-1', /Membership is expired/.test(t) && /Free Plan does not include personal training/.test(t));
   has('bulk: select all — only what the gym may decide', new RegExp(`Select all ${approveN} pending`).test(t));
+  const classWarnings = t;
   has('no row runs past the edge of the queue', await page.evaluate(() => { const b = document.querySelector('[data-queue]'); const r = b && b.getBoundingClientRect();
     return !!r && [...document.querySelectorAll('[data-booking-row] button')].every((x) => x.getBoundingClientRect().right <= r.right + 1); }));
   await page.screenshot({ path: 'shots/ops-bookings-waiting.png' });
@@ -227,6 +228,14 @@ async (page) => {
   await page.locator('[data-view="history"]').click();
   await page.waitForTimeout(300);
   has('history: before today, with an export', /Export/.test(await text()));
+  // The 1-on-1 half: Personal training → Sessions, waiting — the coach approves at this gym, so it waits with Remind.
+  await visit('/personal-training?tab=sessions', 'pt-sessions');
+  await page.locator('[data-view="waiting"]').click();
+  await page.waitForTimeout(400);
+  const ptText = await text();
+  has('Sessions: the 1-on-1 waits for its coach, with Remind', (await page.locator('[data-booking-row]').count()) === 1 && (await page.locator('[data-remind-coach]').count()) === 1);
+  has('warnings, never blocks: an expired membership and a plan without 1-on-1', /Membership is expired/.test(classWarnings + ptText) && /Free Plan does not include personal training/.test(ptText));
+  has('Personal training does not scroll', await noScroll());
 
   // ── Payments ──
   t = await visit('/payments', 'payments');

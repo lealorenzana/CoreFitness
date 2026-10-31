@@ -97,16 +97,21 @@ export const NAV: Entry[] = [
       { label: 'Members', path: '/members', icon: Users, noun: 'members' },
       { label: 'Invitations', path: '/invitations', icon: MailPlus },
       { label: 'Trainers', path: '/trainers', icon: Dumbbell, adminOnly: true, noun: 'trainers' },
-      // Coaching terms (0181): who trains with whom until when; payments to confirm.
-      { label: 'Coaching', path: '/coaching', icon: Handshake, module: 'coaching' },
     ],
+  },
+  // Personal training (simplify, 2026-10-28): single sessions and monthly
+  // packages on one page — what to decide, sessions, packages. It replaced
+  // Bookings (for 1-on-1) and Coaching.
+  {
+    label: 'Personal training', path: '/personal-training', icon: Handshake, area: 'bookings',
+    alsoMatches: ['/bookings', '/coaching'],
   },
   {
     label: 'Classes',
     icon: CalendarDays,
     children: [
       { label: 'Schedule', path: '/schedule', icon: CalendarDays, module: 'classes', area: 'bookings' },
-      { label: 'Bookings', path: '/bookings', icon: Calendar, module: 'classes', area: 'bookings' },
+      { label: 'Class bookings', path: '/bookings/classes', icon: Calendar, module: 'classes', area: 'bookings' },
     ],
   },
   {
@@ -184,7 +189,8 @@ export const NAV_TIPS: Record<string, string> = {
   '/invitations': 'Invite owners, desk staff and coaches by email',
   '/trainers': 'Your coaches: their hours, sessions, ratings and who they coach',
   '/schedule': 'The class timetable: create classes, rooms and coaches',
-  '/bookings': 'Every class booking and 1-on-1 session, with cancellations',
+  '/personal-training': 'Single sessions and monthly packages: what to decide, sessions, packages',
+  '/bookings/classes': 'Every class booking, with cancellations — while the gym runs classes',
   '/payments': 'Record a payment, print a receipt, close the cash drawer',
   '/shop': 'What the gym sells at the counter, its stock, and the sales',
   '/membership-plans': 'The plans members can buy: prices, lengths and what each unlocks',

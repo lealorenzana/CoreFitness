@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import {
-  Bell, Bot, Building2, Calendar, Camera, Check, Coins, Copy, CreditCard, DoorOpen, Dumbbell, Flag, Globe, HeartHandshake, Image,
+  Bell, Bot, Building2, Calendar, CalendarHeart, Camera, Check, Coins, Copy, CreditCard, DoorOpen, Dumbbell, Flag, Globe, HeartHandshake, Image,
   Lock, MessageSquare, PartyPopper, NotebookPen, Palette, Printer, QrCode, RefreshCw, Salad, Share2, ShoppingBag, Smartphone, Sparkles,
   ToggleRight, Trophy, Tv, Type, UserCheck, UserPlus, Users, type LucideIcon,
 } from 'lucide-react';
@@ -50,7 +50,7 @@ const MEMBER_APP = 'https://corefitness-gym.vercel.app';
  */
 const APP_TABS: [AppTab, string, LucideIcon][] = [
   ['look', 'Look', Palette], ['words', 'Words', Type], ['runs', 'What you run', ToggleRight],
-  ['join', 'Joining', DoorOpen], ['coach', 'AI coach', Bot], ['pay', 'Payments', CreditCard], ['tv', 'Lobby TV', Tv],
+  ['join', 'Joining', DoorOpen], ['coach', 'AI assistant', Bot], ['pay', 'Payments', CreditCard], ['tv', 'Lobby TV', Tv],
   ['moments', 'Celebrations', PartyPopper],
 ];
 type AppTab = 'look' | 'words' | 'runs' | 'coach' | 'join' | 'pay' | 'tv' | 'moments';
@@ -68,6 +68,7 @@ const MODULE_ICONS: Record<string, LucideIcon> = {
   classes: Calendar, coaching: HeartHandshake, progress: NotebookPen, workouts: NotebookPen, photos: Camera, progress_photos: Camera,
   meals: Salad, meal_plans: Salad, engagement: Coins, points: Coins, challenges: Flag, squads: Users, seasons: Trophy,
   shop: ShoppingBag, referrals: UserPlus, push: Bell, assistant: Bot, rooms: MessageSquare, equipment: Dumbbell, lobby_tv: Tv,
+  events: CalendarHeart,
 };
 
 export default function GymApp() {

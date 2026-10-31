@@ -70,10 +70,15 @@ const DECIDER_WORD: Record<'admin' | 'staff' | 'trainer' | 'system', string> = {
   system: 'the system',
 };
 
-export default function Bookings() {
+/**
+ * `scope`: one kind only — Personal training's Sessions tab passes 'pt', the
+ * Classes section's page 'class' (simplify, 2026-10-28). `embedded`: drawn
+ * under Personal training's own title, so this page's title is left out.
+ */
+export default function Bookings({ scope, embedded = false }: { scope?: 'pt' | 'class'; embedded?: boolean } = {}) {
   const [rows, setRows] = useState<QueueRow[]>([]);
   const [filter, setFilter] = useState<'all' | BookingStatus>('all');
-  const [kindFilter, setKindFilter] = useState<'all' | 'class' | 'pt'>('all');
+  const [kindFilter, setKindFilter] = useState<'all' | 'class' | 'pt'>(scope ?? 'all');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState('');
@@ -150,7 +155,7 @@ export default function Bookings() {
     await notifyUser({
       userId: r.trainerId, type: 'booking', title: 'A booking is waiting for you',
       message: `${r.memberName} asked for ${r.title}${r.when ? ' on ' + new Date(r.when).toLocaleString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''}. Accept or decline it in the app.`,
-      actionUrl: '/trainer/bookings', dedupe: `remind:${r.kind}:${r.id}:${todayKey()}`,
+      actionUrl: '/trainer/schedule', dedupe: `remind:${r.kind}:${r.id}:${todayKey()}`,
     }).then(() => { setReminded((s) => new Set(s).add(r.id)); showToast(`${r.trainerName ?? 'The coach'} was reminded`, 'success'); })
       .catch(() => showToast('The reminder could not be sent', 'error'));
   };
@@ -211,7 +216,7 @@ export default function Bookings() {
         decision === 'approved'
           ? `${row.title} on ${whenText} is confirmed. See you there.`
           : `${row.title} on ${whenText} could not be approved. Ask the front desk for another slot.`,
-      actionUrl: '/member/booking-history',
+      actionUrl: '/member/sessions',
     }).catch(() => {
       // The booking IS decided; only the notice failed. Saying "failed to update
       // booking" here would be a lie that sends staff to re-approve.
@@ -348,10 +353,10 @@ export default function Bookings() {
   return (
     <div className="att" data-bookings>
       <div className="a-head">
-        <div className="min-w-0">
-          <h1>Bookings</h1>
-          <p>Every class booking and 1-on-1, by day{modes ? <> · <span style={{ color: 'var(--a-p300)' }}>classes: {MODE_WORD[modes.class].toLowerCase()} · 1-on-1: {MODE_WORD[modes.pt].toLowerCase()}</span></> : ''}</p>
-        </div>
+        {!embedded && <div className="min-w-0">
+          <h1>{scope === 'class' ? 'Class bookings' : 'Bookings'}</h1>
+          <p>{scope === 'class' ? 'Every class booking, by day' : 'Every class booking and 1-on-1, by day'}{modes ? <> · <span style={{ color: 'var(--a-p300)' }}>classes: {MODE_WORD[modes.class].toLowerCase()} · 1-on-1: {MODE_WORD[modes.pt].toLowerCase()}</span></> : ''}</p>
+        </div>}
         <nav className="a-tabs" aria-label="Bookings views" data-rd-tabs>
           <button type="button" className={view === 'day' ? 'on' : ''} onClick={() => { setView('day'); setFilter('all'); }}><CalendarDays size={14} />By day</button>
           <button type="button" className={view === 'waiting' ? 'on' : ''} onClick={() => { setView('waiting'); setFilter('pending'); }} data-view="waiting"><Hourglass size={14} />Waiting <em>{pendingCount}</em></button>
@@ -377,9 +382,9 @@ export default function Bookings() {
           <DatePicker value={historyFrom} mode="history" onChange={setHistoryFrom} triggerClassName="a-btn a-btn-tight" triggerAriaLabel="History from"
             triggerLabel={<><CalendarRange size={15} />{historyFrom ? `From ${dayTitle(historyFrom)}` : 'Last 30 days'}</>} />
         )}
-        <select className={`a-chip ${kindFilter !== 'all' ? 'on' : ''}`} value={kindFilter} onChange={(e) => setKindFilter(e.target.value as typeof kindFilter)} aria-label="Kind">
+        {!scope && <select className={`a-chip ${kindFilter !== 'all' ? 'on' : ''}`} value={kindFilter} onChange={(e) => setKindFilter(e.target.value as typeof kindFilter)} aria-label="Kind">
           <option value="all">Both kinds</option><option value="class">Classes</option><option value="pt">1-on-1</option>
-        </select>
+        </select>}
         {view !== 'waiting' && (
           <select className={`a-chip ${filter !== 'all' ? 'on' : ''}`} value={filter} onChange={(e) => setFilter(e.target.value as typeof filter)} aria-label="Status">
             <option value="all">Any status</option><option value="pending">Waiting</option><option value="approved">Confirmed</option><option value="rejected">Declined</option><option value="cancelled">Cancelled</option>

@@ -50,7 +50,7 @@ const PLACES: Place[] = [
   { title: 'Sell at the counter', href: '/shop', page: '/shop', tag: 'Action', words: 'shop products sale pos' },
   // Engagement
   { title: 'Gym goal', href: '/challenges?tab=gg', page: '/challenges', tag: 'Tab', words: 'together target' },
-  { title: 'Squads', href: '/challenges?tab=sq', page: '/challenges', tag: 'Tab', words: 'groups teams friends' },
+  { title: 'Squads', href: '/challenges?tab=sq', page: '/challenges', tag: 'Tab', words: 'groups teams' },
   { title: 'Reward requests', href: '/rewards?tab=requests', page: '/rewards', tag: 'Tab', words: 'redeem approve points' },
   { title: 'Rewards catalogue', href: '/rewards?tab=catalogue', page: '/rewards', tag: 'Tab', words: 'prizes items' },
   { title: 'How members earn points', href: '/rewards?tab=earning', page: '/rewards', tag: 'Tab', words: 'point rules' },

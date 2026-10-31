@@ -198,8 +198,8 @@ export function activityHref(row: ActivityFeedRow): string | null {
       return row.member_id ? `/members/${row.member_id}` : null;
     case 'payment':        return '/payments';
     case 'attendance':     return '/attendance';
-    case 'booking':
-    case 'pt_session':     return '/bookings';
+    case 'booking':        return '/bookings/classes';
+    case 'pt_session':     return '/personal-training?tab=sessions';
     case 'event':          return '/events';
     case 'plan':           return '/membership-plans';
     case 'class_template': return '/schedule';

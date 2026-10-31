@@ -1,7 +1,8 @@
 /**
- * 0181 on the gym's side: Settings → Coaching (the ways in, the lengths, who
- * is paid, the gym's prices), and the Coaching page — confirm a payment to the
- * gym, assign a coach, see who trains with whom until when.
+ * 0181 on the gym's side: Settings → Personal training (the ways in, the
+ * lengths, who is paid, the gym's package prices — no groups since 0220), and
+ * Personal training → Packages — confirm a payment to the gym, assign a coach,
+ * see who trains with whom until when.
  *
  * Fixture from admin-booking-approval-check.js.
  */
@@ -101,16 +102,16 @@ async (page) => {
   const text = () => page.evaluate(() => document.body.innerText.replace(/\s+/g, ' '));
   await page.setViewportSize({ width: 1400, height: 950 });
   await page.goto('http://localhost:5174/settings?tab=coaching', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^Coaching$/ }).first().waitFor({ timeout: 15000 });
-  await page.getByRole('button', { name: /^Coaching$/ }).first().click();
+  await page.getByRole('button', { name: /^Personal training$/ }).first().waitFor({ timeout: 15000 });
+  await page.getByRole('button', { name: /^Personal training$/ }).first().click();
   await page.locator('[data-coaching-settings]').waitFor({ timeout: 10000 });
   let t = await text();
-  out.push('Settings → Coaching: the ways in, lengths and who is paid: ' + (/Members pick a coach as a group/.test(t) && /Lengths members choose from/.test(t) && /Paid to the coach/.test(t) ? 'yes' : 'MISSING'));
-  out.push("priced by the gym shows the gym's prices: " + ((await page.getByLabel('1-on-1 price, 3 months').inputValue()) === '2400' ? 'yes' : 'MISSING'));
-  await page.locator('[data-coaching-mode="pick_group"]').click();
+  out.push('Settings → Personal training: the ways in, lengths and who is paid, and no groups: ' + (/Members pick a coach/.test(t) && !/as a group/.test(t) && /Lengths members choose from/.test(t) && /Paid to the coach/.test(t) ? 'yes' : 'MISSING'));
+  out.push("priced by the gym shows the gym's package prices: " + ((await page.getByLabel('Package price, 3 months').inputValue()) === '2400' ? 'yes' : 'MISSING'));
+  await page.locator('[data-coaching-mode="coach_invites"]').click();
   await page.waitForTimeout(700);
   let c = CALLS.filter(([f]) => f === 'set_coaching_settings').pop();
-  out.push('turning on groups saves the ways in, lengths and fee together: ' + (c && c[1].p_modes.includes('pick_group') && c[1].p_lengths.join() === '1,3,6' && c[1].p_fee_mode === 'gym_priced' ? 'yes' : 'MISSING ' + JSON.stringify(CALLS)));
+  out.push('a way in saves with the lengths and fee together: ' + (c && !c[1].p_modes.includes('coach_invites') && c[1].p_lengths.join() === '1,3,6' && c[1].p_fee_mode === 'gym_priced' ? 'yes' : 'MISSING ' + JSON.stringify(CALLS)));
   await page.locator('[data-fee-mode="trainer_direct"]').click();
   await page.waitForTimeout(700);
   c = CALLS.filter(([f]) => f === 'set_coaching_settings').pop();
@@ -118,11 +119,11 @@ async (page) => {
   out.push('…and the price table goes, since the gym is not paid: ' + ((await page.locator('[data-coaching-prices]').count()) === 0 ? 'yes' : 'STILL SHOWN'));
 
   SETTINGS.fee = 'gym_priced';
-  await page.goto('http://localhost:5174/coaching', { waitUntil: 'domcontentloaded' });
+  await page.goto('http://localhost:5174/personal-training?tab=packages', { waitUntil: 'domcontentloaded' });
   await page.getByText('Payments to confirm').waitFor({ timeout: 15000 });
   await page.waitForTimeout(800);
   t = await text();
-  out.push('the Coaching page: a payment to confirm, with its reference: ' + (/Lea Lorenzana with Rae Santos/.test(t) && /ref GC-1234/.test(t) ? 'yes' : 'MISSING'));
+  out.push('Packages: a payment to confirm, with its reference: ' + (/Lea Lorenzana with Rae Santos/.test(t) && /ref GC-1234/.test(t) ? 'yes' : 'MISSING'));
   out.push('…and who trains with whom, until when: ' + (/Ana Reyes with Rae Santos/.test(t) && /until/i.test(t) && /day \d+ of \d+/.test(t) ? 'yes' : 'MISSING'));
   out.push('the redesign (2026-10-20): four cards, the chips, coach load: ' + ((await page.locator('[data-coaching-cards] > *').count()) === 4 && /Ending in 14 days/.test(t) && /Ending soon/.test(t) && /Coach load/.test(t) && /How it works here/.test(t) ? 'yes' : 'MISSING'));
   await page.getByRole('button', { name: /^Confirm$/ }).click();

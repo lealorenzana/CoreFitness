@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useGymModules, moduleOn } from '../hooks/useGymModules';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
@@ -238,6 +239,8 @@ export default function Dashboard() {
   const [hours, setHours] = useState<{ open: string | null; close: string | null }>({ open: null, close: null });
   const [needs, setNeeds] = useState<NeedsYou | null>(null);
   const [today, setToday] = useState<Today | null>(null);
+  // A gym without classes (off by default since 0220) sees today's 1-on-1 sessions in that card.
+  const classesOn = moduleOn(useGymModules(), 'classes');
   const [month, setMonth] = useState<MonthNumbers | null>(null);
   const [watch, setWatch] = useState<AtRisk[] | null | undefined | 'loading'>('loading');
 
@@ -303,7 +306,7 @@ export default function Dashboard() {
       <TaskRow key="bookings" testId="bookings" icon={CalendarClock}
         title={`${plural(b.count, 'booking')} to decide`}
         detail={b.oldestDays == null ? 'classes and 1-on-1 requests' : b.oldestDays === 0 ? 'oldest asked today' : `oldest waiting ${plural(b.oldestDays, 'day')}`}
-        action="Review" onClick={() => navigate('/bookings')} />) });
+        action="Review" onClick={() => navigate('/personal-training')} />) });
   }
   if (needs?.signups && needs.signups.count > 0) {
     const s = needs.signups;
@@ -348,6 +351,7 @@ export default function Dashboard() {
   const dateLine = new Date().toLocaleDateString('en-PH', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Manila' });
 
   const classes = today?.classes ?? null;
+  const sessionsToday = today?.sessions ?? null;
   const stillToCome = classes ? classes.filter((c) => !c.done).length : 0;
 
   return (
@@ -426,6 +430,7 @@ export default function Dashboard() {
           </Card>
 
           <Card style={{ gridColumn: '2 / 4' }}>
+            {classesOn ? (<>
             <CardHead title="Today's classes" right={
               <span className="flex items-center gap-3">
                 {classes && classes.length > 0 && <span className="text-[11px]" style={{ color: TEXT_2 }}>{stillToCome} of {classes.length} still to come</span>}
@@ -470,6 +475,41 @@ export default function Dashboard() {
                 );
               })}
             </div>
+            </>) : (<>
+            <CardHead title="Today's sessions" right={
+              <span className="flex items-center gap-3">
+                {sessionsToday && sessionsToday.length > 0 && <span className="text-[11px]" style={{ color: TEXT_2 }}>{sessionsToday.filter((x) => !x.done).length} of {sessionsToday.length} still to come</span>}
+                <button onClick={() => setPanel('trainers')} className="text-[11px] font-semibold inline-flex items-center gap-1" style={{ color: YELLOW }}
+                  data-tip="Coaches ranked by sessions run in the last 90 days, then by rating">
+                  <Award size={12} /> Coach ranking
+                </button>
+              </span>
+            } />
+            <div className="flex-1 min-h-0 overflow-y-auto" data-today-sessions>
+              {today === null ? (
+                <p className="text-[12px]" style={{ color: TEXT_MUTED }}>Loading…</p>
+              ) : sessionsToday === null ? (
+                <Failed what="today's sessions" />
+              ) : sessionsToday.length === 0 ? (
+                <p className="text-[12px]" style={{ color: TEXT_2 }}>No 1-on-1 sessions today. <button className="font-semibold" style={{ color: YELLOW }} onClick={() => navigate('/personal-training?tab=sessions')}>Open Personal training</button></p>
+              ) : sessionsToday.map((x) => (
+                <div key={x.id} className="flex items-center gap-3 py-2 min-w-0" style={{ borderTop: `1px solid ${BORDER}` }}>
+                  <span className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ background: 'var(--color-surface-raised)', color: x.done ? TEXT_MUTED : VIOLET_300 }}>
+                    {x.done ? <Check size={14} /> : <Dumbbell size={14} />}
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-[13px] font-medium truncate" style={{ color: x.done ? TEXT_MUTED : '#fff' }}>
+                      {timeOf(x.startsAt)} · {x.member ?? 'A member'}
+                    </span>
+                    <span className="block text-[11px] truncate" style={{ color: TEXT_2 }}>
+                      {[x.coach ? `with ${x.coach}` : null, x.done ? 'done' : null].filter(Boolean).join(' · ') || 'Single session'}
+                    </span>
+                  </span>
+                </div>
+              ))}
+            </div>
+            </>)}
           </Card>
         </div>
 
