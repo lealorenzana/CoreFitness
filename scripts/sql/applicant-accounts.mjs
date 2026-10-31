@@ -42,6 +42,8 @@ await owner();
 await db.exec(`insert into auth.users (id, email, raw_user_meta_data) values
   ('${ANA}', 'Ana@IronDen.ph', '{"signup_source":"gym_applicant","application_token":"${tok}","first_name":"Ana","last_name":"Cruz"}'),
   ('${EVE}', 'eve@evil.ph', '{"signup_source":"gym_applicant","application_token":"${tokEve}","first_name":"Eve","last_name":"X"}')`);
+// Ana confirms her address (0222: an unconfirmed account is never given a gym).
+await db.exec(`update auth.users set email_confirmed_at = now() where id = '${ANA}'`);
 const app = await one(`select id, applicant_id from gym_applications where status_token = '${tok}'`);
 check('the sign-up ties the application to the new account', app.applicant_id === ANA, JSON.stringify(app));
 check('…and gives the account a profile with no gym', (await one(`select active_gym_id is null and first_name = 'Ana' ok from profiles where id = '${ANA}'`))?.ok === true);

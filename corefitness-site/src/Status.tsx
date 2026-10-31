@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from './supabase';
 import Documents, { type AppDocument } from './Documents';
+import SignInMethods from './SignInMethods';
 
 const ADMIN_APP = 'https://corefitness-admin.vercel.app';
 const peso = (n: number) => '₱' + n.toLocaleString('en-PH');
@@ -205,8 +206,8 @@ export default function StatusPage({ token, accountId, onSignOut }: {
           {s.status === 'approved' && (
             <div className="status-callout is-good">
               <p><strong>{s.gym_name} is in.</strong> Sign in at <a href={ADMIN_APP}>the gym app</a> with {accountId
-                ? 'this same email and password'
-                : 'the account you made when you applied (or, if you applied before accounts, the temporary password Core Fitness gives you)'},
+                ? 'this same account — your email and password, or Google'
+                : 'the account you made when you applied — your email and password, or Google'},
                 then set your gym up.
                 {s.plan?.trial_days ? ` Your ${s.plan.trial_days}-day free trial has started.` : ''}</p>
               <a className="cta" href={ADMIN_APP}>Open the gym app</a>
@@ -225,6 +226,7 @@ export default function StatusPage({ token, accountId, onSignOut }: {
           {s.id && s.documents && (s.status === 'pending' || s.status === 'approved') && (
             <Documents applicationId={s.id} documents={s.documents} onChanged={load} locked={s.status !== 'pending'} />
           )}
+          {accountId && <SignInMethods />}
           {!accountId && s.status === 'pending' && (
             <div className="status-callout">
               <p>Before we can let {s.gym_name} in, we check six business documents — your permit, DTI or SEC registration, BIR 2303,

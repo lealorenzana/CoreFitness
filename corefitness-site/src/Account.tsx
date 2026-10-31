@@ -85,6 +85,14 @@ function SignIn() {
   /** Applied before accounts (0187)? One made with the same, confirmed, address finds the application. */
   const [making, setMaking] = useState(false);
   const [made, setMade] = useState(false);
+  /** The confirmation email again (plan Part A): the account only opens once its address is confirmed. */
+  const [resent, setResent] = useState<string | null>(null);
+  const resend = async () => {
+    if (!supabase || !email.trim()) { setError('Type the email you applied with first.'); return; }
+    const { error: e } = await supabase.auth.resend({ type: 'signup', email: email.trim(), options: { emailRedirectTo: `${window.location.origin}/#account` } });
+    setResent(e ? e.message : `Sent again to ${email.trim()} — open the newest email.`);
+  };
+  const unconfirmed = !!error && /Confirm your email/.test(error);
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!supabase) { setError('This page cannot reach Core Fitness right now.'); return; }
@@ -109,6 +117,8 @@ function SignIn() {
         <h1 className="status-title">Check your email</h1>
         <p className="status-lede">Open the link we sent to {email.trim()} to confirm it, then sign in here. Your application is found by that address.</p>
         <button type="button" className="cta" onClick={() => { setMade(false); setMaking(false); }}>Sign in</button>
+        <p className="note">Nothing arrived? <button type="button" className="link-btn" onClick={() => void resend()} data-resend>Send the link again</button></p>
+        {resent && <p className="note" role="status">{resent}</p>}
       </div>
     );
   }
@@ -132,6 +142,10 @@ function SignIn() {
             value={password} onChange={(e) => setPassword(e.target.value)} />
         </div>
         {error && <p className="note bad full" role="alert">{error}</p>}
+        {unconfirmed && (
+          <p className="note full">Lost the email? <button type="button" className="link-btn" onClick={() => void resend()} data-resend>Send the link again</button></p>
+        )}
+        {resent && <p className="note full" role="status">{resent}</p>}
         <div className="submit-row full">
           <button className="cta" type="submit" disabled={busy}>{busy ? 'One moment…' : making ? 'Make my account' : 'Sign in'}</button>
           <p className="note">{making

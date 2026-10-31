@@ -514,6 +514,10 @@
       "app": "site"
     },
     {
+      "file": "site-account-check.js",
+      "app": "site"
+    },
+    {
       "file": "site-showcase-check.js",
       "app": "site"
     },

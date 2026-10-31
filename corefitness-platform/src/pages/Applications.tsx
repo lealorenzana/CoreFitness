@@ -4,6 +4,7 @@ import {
   applicationAccounts, createGym, deleteApplicant, documentSummaries, emailApplicant, listApplications, rejectApplication,
   setGymPlan, slugFor, splitName, statusLink, type Application, type DocSummary,
 } from '../lib/platform';
+import { supabase } from '../lib/supabaseClient';
 import ApplicationDocs from '../components/ApplicationDocs';
 import ApplicationThread from '../components/ApplicationThread';
 import InviteOwner from '../components/InviteOwner';
@@ -213,9 +214,11 @@ export default function Applications() {
               if (v.start && v.start !== TRIAL_FIRST && app.plan_key) await setGymPlan(gymId, app.plan_key, null);
               await load();
               setMailNote(await emailApplicant(app, 'application_approved', `${app.gym_name} is in`,
-                `${app.gym_name} is in. Sign in at https://corefitness-admin.vercel.app with the email and password you chose when you applied, and set your gym up.`));
-              // The gym exists; it has nobody in it. Straight on to the owner.
-              setDialog({ kind: 'owner', gymId, app });
+                `${app.gym_name} is in. Sign in at https://corefitness-admin.vercel.app with the account you applied with — your email and password, or Google — and set your gym up.`));
+              // Since 0222 the application's own account is made the owner with the gym, so there is
+              // nobody to name. Before 0222 is pasted the gym has no owner yet: name one as before.
+              const { data: owned, error: noMarker } = await supabase.rpc('migration_0222_applied');
+              setDialog(noMarker || owned !== true ? { kind: 'owner', gymId, app } : null);
             }}
           />
         )}
