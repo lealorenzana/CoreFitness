@@ -758,6 +758,20 @@ export async function documentSummaries(): Promise<Map<string, DocSummary>> {
   try { return new Map((await call<DocSummary[]>('platform_application_documents_summary')).map((r) => [r.application_id, r])); }
   catch { return new Map(); }
 }
+/** 0224: an application on a paid plan — what it owes before approval, and its latest payment (null: none yet). */
+export interface AppPayment {
+  application_id: string; plan_name: string; amount: number; months: number;
+  payment_id: string | null; status: 'pending' | 'paid' | 'refused' | null; method_label: string | null;
+  reference: string | null; reason: string | null; created_at: string | null; decided_at: string | null;
+}
+/** Per application with something to pay. Empty before 0224 — and then nothing is asked to pay first. */
+export async function applicationPayments(): Promise<Map<string, AppPayment>> {
+  try { return new Map((await call<AppPayment[]>('platform_application_payments')).map((r) => [r.application_id, r])); }
+  catch { return new Map(); }
+}
+/** The platform found the payment in its own history — or did not, and says why. */
+export const confirmApplicationPayment = (id: string, ok: boolean, reason: string | null) =>
+  call<void>('confirm_application_payment', { p_payment: id, p_ok: ok, p_reason: reason });
 /** Which applications have an account behind them (0187). Empty before 0187. */
 export async function applicationAccounts(): Promise<Set<string>> {
   try { return new Set((await call<{ application_id: string; has_account: boolean }[]>('platform_application_accounts')).filter((r) => r.has_account).map((r) => r.application_id)); }

@@ -31,7 +31,10 @@ const peso = (n: number) => '₱' + n.toLocaleString('en-PH');
  */
 /** `#status/<token>`: an applicant's own page (0148). Read from the hash so it survives any static host. */
 const statusToken = () => /^#status\/([a-f0-9]{32,})$/i.exec(window.location.hash)?.[1] ?? null;
-/** `#account`: an applicant signed in (0187). */
+/** `#account`: an applicant signed in (0187). Back from PayMongo (0224, `?paid=`), the page opens there too. */
+if (!window.location.hash && /[?&](paid|cancelled)=/.test(window.location.search)) {
+  window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#account`);
+}
 const isAccount = () => window.location.hash === '#account';
 
 const initials = (name: string) =>

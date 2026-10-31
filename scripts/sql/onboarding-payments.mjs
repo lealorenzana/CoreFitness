@@ -171,6 +171,14 @@ await as(P.pa);
 await db.exec(`reset role; insert into application_documents (application_id, kind, path, status, expires_on)
   select '${app.id}', k, '${app.id}/' || k, 'verified', ${TODAY} + 300
     from unnest(array['permit', 'dti_sec', 'bir_2303', 'owner_id', 'front_photo', 'barangay']) k`);
+// 0222: the applicant's own confirmed account becomes the owner.
+await db.exec(`reset role; insert into auth.users (id, email, email_confirmed_at, raw_user_meta_data)
+  values ('a1480000-0000-4000-8000-0000000000aa', 'ana@ironden.ph', now(), '{}') on conflict do nothing;
+  insert into profiles (id, first_name, last_name, email, status, role)
+  values ('a1480000-0000-4000-8000-0000000000aa', 'Ana', 'Cruz', 'ana@ironden.ph', 'active', 'member') on conflict (id) do nothing`);
+// 0224: a paid plan is paid before approval. Paid here directly; payment has its own suite (application-payment.mjs).
+await db.exec(`reset role; insert into application_payments (application_id, plan_key, months, amount, method, method_label, reference, status)
+  select '${app.id}', d.plan_key, d.months, d.amount, 'gcash', 'GCash', 'PAID-BEFORE-1', 'paid' from application_plan_due('${app.id}') d`);
 await as(P.pa);
 await db.exec(`select create_gym('Iron Den', 'iron-den', '${app.id}')`);
 await asAnon();

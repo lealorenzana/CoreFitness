@@ -165,6 +165,8 @@ const GLOBAL = [
   'osm_gyms', 'osm_tiles', 'gym_suggestions',
   // 0187: an applicant's documents belong to an application, before any gym exists.
   'application_documents',
+  // 0224: an applicant's payment for their plan, before any gym exists — definer functions only, no policy.
+  'application_payments',
   // 0188: what a gym tells the platform — like support tickets, definer functions only, no policy.
   'platform_ratings', 'feature_requests', 'testimonials',
   // 0189: what a gym bought from the platform (AI coach top-ups) — definer functions only, no policy.

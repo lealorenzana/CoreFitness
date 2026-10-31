@@ -518,6 +518,10 @@
       "app": "site"
     },
     {
+      "file": "site-pay-check.js",
+      "app": "site"
+    },
+    {
       "file": "site-showcase-check.js",
       "app": "site"
     },

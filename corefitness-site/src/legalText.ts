@@ -32,7 +32,7 @@
  * anybody to agree: agreeing to a draft records nothing true. A site deployed
  * with newer, unpublished wording therefore calls *that wording* a draft.
  */
-export const VERSION = '2026-10-11';
+export const VERSION = '2026-10-31';
 
 export type DocKey = 'terms' | 'dpa' | 'privacy';
 
@@ -98,7 +98,8 @@ export function buildDocs(f: Facts): Record<DocKey, LegalDoc> {
         ] },
         { id: 'joining', title: '3. Applying and getting started', body: [
           'You apply on this website and make an account with your email and a password. You also get a private link to your application. We read every application ourselves and answer there, and by email when we can.',
-          'Before we approve a gym we check six documents you upload: your Mayor\'s or business permit, DTI or SEC registration, BIR Certificate of Registration (2303), barangay business clearance, the owner\'s valid government ID, and a photo of the gym\'s front. We tell you which we verified, and why we could not accept one.',
+          'Before we approve a gym we check six documents you upload: your Mayor\'s or business permit, DTI or SEC registration, BIR Certificate of Registration (2303), barangay business clearance, the owner\'s valid government ID, and a photo of the gym\'s front. You send all six together. We tell you which we verified, and why we could not accept one; we may also ask again for one we had verified (if it has expired or cannot be read). You then send only those, again together.',
+          'If you chose a paid plan, you pay for it once all six are verified and before we approve the gym: online through PayMongo, or by GCash, Maya or bank with the reference number, which we check. Your plan starts the day we approve the gym, for the month or year you paid. A free trial pays nothing first. If we decline the application after you have paid, we refund the payment in full.',
           'We may decline an application, and you may call yours off. Either way it is shown to you, and you may ask us to delete the account you made: we then delete it and your documents.',
           'When we approve it, the account you made becomes the gym\'s owner account. You then set the gym up in the gym app, and send a renewed permit each January and any document before it runs out.',
         ] },

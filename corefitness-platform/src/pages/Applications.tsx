@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { CheckCircle2, ClipboardList, Clock, Copy, FileCheck2, FileQuestion, Inbox, KeyRound, Layers, Link2, Mail, MapPin, MessageCircle, MessageSquare, Phone, Settings2, Sparkles, Users, XCircle } from 'lucide-react';
+import { Banknote, CheckCircle2, ClipboardList, Clock, Copy, FileCheck2, FileQuestion, Inbox, KeyRound, Layers, Link2, Mail, MapPin, MessageCircle, MessageSquare, Phone, Settings2, Sparkles, Users, XCircle } from 'lucide-react';
 import {
-  applicationAccounts, createGym, deleteApplicant, documentSummaries, emailApplicant, listApplications, rejectApplication,
-  setGymPlan, slugFor, splitName, statusLink, type Application, type DocSummary,
+  applicationAccounts, applicationPayments, confirmApplicationPayment, createGym, deleteApplicant, documentSummaries, emailApplicant, listApplications, rejectApplication,
+  setGymPlan, slugFor, splitName, statusLink, type AppPayment, type Application, type DocSummary,
 } from '../lib/platform';
 import { supabase } from '../lib/supabaseClient';
 import ApplicationDocs from '../components/ApplicationDocs';
@@ -22,7 +22,7 @@ const when = (iso: string) =>
 const daysSince = (iso: string) => Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000));
 
 type Show = 'pending' | 'approved' | 'rejected' | 'withdrawn' | 'all';
-type Dialog = { kind: 'in' | 'down' | 'talk' | 'docs' | 'delete'; app: Application } | { kind: 'owner'; gymId: string; app: Application };
+type Dialog = { kind: 'in' | 'down' | 'talk' | 'docs' | 'delete' | 'pay'; app: Application } | { kind: 'owner'; gymId: string; app: Application };
 
 /**
  * Gyms asking to join, from the website — in the admin app's layout
@@ -38,12 +38,14 @@ export default function Applications() {
   /** 0187: each application's documents, and which have an account behind them. */
   const [docs, setDocs] = useState<Map<string, DocSummary>>(new Map());
   const [accounts, setAccounts] = useState<Set<string>>(new Set());
+  /** 0224: what each application on a paid plan owes before approval, and its latest payment. */
+  const [pays, setPays] = useState<Map<string, AppPayment>>(new Map());
   const [mailNote, setMailNote] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const [a, d, acc] = await Promise.all([listApplications(), documentSummaries(), applicationAccounts()]);
-      setApps(a); setDocs(d); setAccounts(acc); setError(null);
+      const [a, d, acc, p] = await Promise.all([listApplications(), documentSummaries(), applicationAccounts(), applicationPayments()]);
+      setApps(a); setDocs(d); setAccounts(acc); setPays(p); setError(null);
     }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not load the applications'); }
   }, []);
@@ -130,6 +132,8 @@ export default function Applications() {
                         <span className="chip muted">{accounts.has(app.id) ? 'Has an account' : 'No account — status link only'}</span>
                       </span>
                     )}
+                    {/* 0224: a paid plan is paid before approval. */}
+                    {pays.has(app.id) && <PayChip p={pays.get(app.id)!} onCheck={() => setDialog({ kind: 'pay', app })} />}
                     {/* 0111: the two things worth knowing before you create a gym. Neither blocks anything. */}
                     {app.already_a_gym && <span className="meta" style={{ color: 'var(--warn)' }}>This email already owns a gym here. Letting them in again makes a second one.</span>}
                     {!!app.duplicates && app.duplicates > 0 && <span className="meta" style={{ color: 'var(--warn)' }}>Applied {app.duplicates + 1} times in total, from this email or this gym name.</span>}
@@ -139,8 +143,9 @@ export default function Applications() {
                   {app.status === 'pending' ? (
                     <span className="actions">
                       {/* Approve waits for the documents (0187) — the database refuses it too. */}
-                      <button className="btn" disabled={!!docs.get(app.id)?.missing.length}
-                        data-tip={docs.get(app.id)?.missing.length ? 'Verify all six documents first' : undefined}
+                      <button className="btn" disabled={!!docs.get(app.id)?.missing.length || (pays.has(app.id) && pays.get(app.id)!.status !== 'paid')}
+                        data-tip={docs.get(app.id)?.missing.length ? 'Verify all six documents first'
+                          : pays.has(app.id) && pays.get(app.id)!.status !== 'paid' ? `Waits for their payment for ${pays.get(app.id)!.plan_name}` : undefined}
                         onClick={() => setDialog({ kind: 'in', app })}>Let them in</button>
                       <button className="btn ghost" onClick={() => setDialog({ kind: 'down', app })}>Turn down</button>
                     </span>
@@ -167,8 +172,9 @@ export default function Applications() {
               <li><FileCheck2 size={15} /><span><b>You verify their documents</b>Permit, DTI/SEC, BIR 2303, barangay clearance, the owner's ID and a photo of the gym's front — Let them in opens once all six are verified.</span></li>
               <li><KeyRound size={15} /><span><b>You name the owner</b>An applicant with an account becomes the owner with the password they chose; anyone else gets a temporary one, shown to you once.</span></li>
               <li><Settings2 size={15} /><span><b>They set the gym up</b>Name, logo and colours at /admin/setup — none of Core Fitness's.</span></li>
-              <li><Clock size={15} /><span><b>Their free trial runs</b>It ends on its own date; reminders go before it does.</span></li>
-              <li><Copy size={15} /><span><b>They pay from anywhere</b>GCash, Maya or bank, to the details on Settings → How gyms pay. They send the reference and a screenshot from Your plan; you check it and verify it on Money.</span></li>
+              <li><Banknote size={15} /><span><b>A paid plan pays first</b>Once the six are verified they pay on their application page — online, or GCash, Maya or bank with a reference you confirm here. Let them in opens once it is paid; the plan starts that day.</span></li>
+              <li><Clock size={15} /><span><b>Or their free trial runs</b>It pays nothing first and ends on its own date; reminders go before it does.</span></li>
+              <li><Copy size={15} /><span><b>Later payments, from anywhere</b>GCash, Maya or bank, to the details on Settings → How gyms pay. They send the reference and a screenshot from Your plan; you check it and verify it on Money.</span></li>
             </ol>
           </section>
           <section className="card side-fill">
@@ -199,7 +205,8 @@ export default function Applications() {
             blurb="The link name is what their members type — …/join/…  Small letters, numbers and dashes, and it cannot be changed casually afterwards."
             fields={[
               { key: 'slug', label: 'Link name', required: true, initial: slugFor(dialog.app.gym_name) },
-              ...(dialog.app.plan_key && dialog.app.plan_key !== 'trial' && dialog.app.plan_name ? [{
+              // A paid plan they paid for (0224) starts on approval; only an unpriced one is still a choice here.
+              ...(!pays.has(dialog.app.id) && dialog.app.plan_key && dialog.app.plan_key !== 'trial' && dialog.app.plan_name ? [{
                 key: 'start', label: 'Start them on',
                 options: [TRIAL_FIRST, `${dialog.app.plan_name} straight away`],
               }] : []),
@@ -228,7 +235,9 @@ export default function Applications() {
         {dialog?.kind === 'down' && (
           <Ask
             title={`Turn ${dialog.app.gym_name} down?`}
-            blurb="They are shown the reason you give, so write it for them to read."
+            blurb={pays.get(dialog.app.id)?.status === 'paid'
+              ? `They are shown the reason you give, so write it for them to read. They have paid ${peso(pays.get(dialog.app.id)!.amount)} by ${pays.get(dialog.app.id)!.method_label} — the gym terms promise it back in full, so refund it.`
+              : 'They are shown the reason you give, so write it for them to read.'}
             fields={[{ key: 'reason', label: 'Why', required: true, placeholder: 'Outside the area we can support for now' }]}
             confirmLabel="Turn them down"
             onCancel={close}
@@ -251,6 +260,19 @@ export default function Applications() {
         title={dialog?.kind === 'docs' ? `${dialog.app.gym_name}'s documents` : ''}
         subtitle={dialog?.kind === 'docs' ? `${dialog.app.owner_name} · ${dialog.app.email}` : undefined}>
         {dialog?.kind === 'docs' && <ApplicationDocs app={dialog.app} onChanged={() => void load()} />}
+      </Modal>
+
+      <Modal open={dialog?.kind === 'pay'} onClose={close} size="sm" label="Their payment">
+        {dialog?.kind === 'pay' && pays.get(dialog.app.id) && (
+          <PayCheck app={dialog.app} p={pays.get(dialog.app.id)!} onCancel={close} onDone={async (ok, reason) => {
+            const app = dialog.app; const p = pays.get(app.id)!;
+            await confirmApplicationPayment(p.payment_id!, ok, reason);
+            setDialog(null); await load();
+            setMailNote(await emailApplicant(app, 'application_message', ok ? 'Your payment is confirmed' : 'We could not find your payment',
+              ok ? `We found your ${p.method_label} payment (ref ${p.reference}) for ${p.plan_name}. We let you in next — you will hear from us.`
+                 : `We could not find your ${p.method_label} payment (ref ${p.reference}): ${reason}\n\nCheck the reference number and send it again on your application page.`));
+          }} />
+        )}
       </Modal>
 
       <Modal open={dialog?.kind === 'delete'} onClose={close} size="sm" label="Delete their account">
@@ -345,5 +367,61 @@ function Reach({ app, onTalk }: { app: Application; onTalk: () => void }) {
         </button>
       )}
     </span>
+  );
+}
+
+const peso = (n: number) => '₱' + Number(n).toLocaleString('en-PH');
+
+/** 0224: where an application's payment stands. A payment to check opens the check. */
+function PayChip({ p, onCheck }: { p: AppPayment; onCheck: () => void }) {
+  const what = `${peso(p.amount)} for ${p.plan_name}${p.months === 12 ? ', a year' : ''}`;
+  return (
+    <span className="chips" data-pay-chip>
+      {p.status === 'paid' ? <span className="chip ok"><Banknote size={12} /> Paid {what}{p.method_label ? ` · ${p.method_label}` : ''}</span>
+        : p.status === 'pending' ? (
+          <button type="button" className="chip" onClick={onCheck} data-pay-check>
+            <Banknote size={12} /> {p.method_label} payment to check · ref {p.reference} <b className="unread">check</b>
+          </button>
+        ) : <span className="chip muted"><Banknote size={12} /> {what} · not paid yet{p.status === 'refused' ? ` (ref ${p.reference} not found)` : ''}</span>}
+    </span>
+  );
+}
+
+/** Confirm a payment found in Core Fitness's own GCash, Maya or bank history — or say it was not, and why. */
+function PayCheck({ app, p, onDone, onCancel }: {
+  app: Application; p: AppPayment; onDone: (ok: boolean, reason: string | null) => Promise<void>; onCancel: () => void;
+}) {
+  const [refusing, setRefusing] = useState(false);
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const go = async (ok: boolean) => {
+    setBusy(true); setErr(null);
+    try { await onDone(ok, ok ? null : reason.trim()); }
+    catch (e) { setErr(e instanceof Error ? e.message : 'Could not save that'); setBusy(false); }
+  };
+  return (
+    <div className="ask" data-pay-dialog>
+      <h3>{app.gym_name}&rsquo;s payment</h3>
+      <p className="meta">{peso(p.amount)} for {p.plan_name}{p.months === 12 ? ' (a year)' : ' (a month)'} by {p.method_label}, reference <b>{p.reference}</b>.
+        Find it in your own {p.method_label} history before confirming.</p>
+      {refusing ? (
+        <>
+          <input value={reason} maxLength={500} placeholder="Why — they read this" aria-label="Why the payment was not found"
+            onChange={(e) => setReason(e.target.value)} />
+          <div className="actions">
+            <button className="btn" disabled={busy || reason.trim().length < 3} onClick={() => void go(false)}>Say it was not found</button>
+            <button className="btn ghost" onClick={() => setRefusing(false)}>Back</button>
+          </div>
+        </>
+      ) : (
+        <div className="actions">
+          <button className="btn" disabled={busy} onClick={() => void go(true)} data-pay-confirm>Confirm — it arrived</button>
+          <button className="btn ghost" disabled={busy} onClick={() => setRefusing(true)}>Not found</button>
+          <button className="btn ghost" onClick={onCancel}>Cancel</button>
+        </div>
+      )}
+      {err && <p className="err">{err}</p>}
+    </div>
   );
 }

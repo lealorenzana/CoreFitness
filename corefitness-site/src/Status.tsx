@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from './supabase';
 import Documents, { type AppDocument } from './Documents';
 import SignInMethods from './SignInMethods';
+import PayPlan from './PayPlan';
 
 const ADMIN_APP = 'https://corefitness-admin.vercel.app';
 const peso = (n: number) => '₱' + n.toLocaleString('en-PH');
@@ -180,7 +181,7 @@ export default function StatusPage({ token, accountId, onSignOut }: {
             <b>{s.status === 'rejected' ? 'Not this time' : 'We read it'}</b>
             <span>{s.decided_at ? day(s.decided_at) : 'usually a day or two'}</span>
           </li>
-          <li className={step === 3 ? 'now' : ''}><b>Set up and pay</b><span>{s.status === 'approved' ? 'your turn' : 'after we let you in'}</span></li>
+          <li className={step === 3 ? 'now' : ''}><b>{price ? 'Pay, then set up' : 'Set up'}</b><span>{s.status === 'approved' ? 'your turn' : price ? 'once documents are verified' : 'after we let you in'}</span></li>
         </ol>
       </div>
 
@@ -190,7 +191,9 @@ export default function StatusPage({ token, accountId, onSignOut }: {
             <div className="status-callout">
               <p>We read every application ourselves and usually answer within a day or two. Ask anything below — pricing, setup,
                 moving your members over. We answer here{s.email ? `, and by ${s.email}` : ''} or your phone if you asked us to.</p>
-              <p className="note">Want to start straight away? Ask us how to pay — we can send our GCash, Maya or bank details here and let you in once it arrives.</p>
+              <p className="note">{price
+                ? `On ${s.plan?.name ?? 'a paid plan'}, you pay here once your six documents are verified — online, or by GCash, Maya or bank — and we let you in once it arrives.`
+                : 'The free trial needs no payment: we let you in once your six documents are verified.'}</p>
             </div>
           )}
           {s.status === 'withdrawn' && (
@@ -209,7 +212,7 @@ export default function StatusPage({ token, accountId, onSignOut }: {
                 ? 'this same account — your email and password, or Google'
                 : 'the account you made when you applied — your email and password, or Google'},
                 then set your gym up.
-                {s.plan?.trial_days ? ` Your ${s.plan.trial_days}-day free trial has started.` : ''}</p>
+                {price ? ` ${s.plan?.name} has started — paid until ${s.paid_until ? day(s.paid_until) : 'the date on Your plan'}.` : s.plan?.trial_days ? ` Your ${s.plan.trial_days}-day free trial has started.` : ''}</p>
               <a className="cta" href={ADMIN_APP}>Open the gym app</a>
             </div>
           )}
@@ -226,6 +229,7 @@ export default function StatusPage({ token, accountId, onSignOut }: {
           {s.id && s.documents && (s.status === 'pending' || s.status === 'approved') && (
             <Documents applicationId={s.id} documents={s.documents} onChanged={load} locked={s.status !== 'pending'} />
           )}
+          {accountId && s.id && s.status === 'pending' && <PayPlan applicationId={s.id} onChanged={load} />}
           {accountId && <SignInMethods />}
           {!accountId && s.status === 'pending' && (
             <div className="status-callout">

@@ -47,6 +47,8 @@ async (page) => {
     { id: 'a3', gym_name: 'Old Gym', owner_name: 'Old Owner', email: 'old@x.ph', phone: '09170000000', address: null, member_estimate: null, message: null,
       status: 'approved', reason: null, gym_id: 'g2', created_at: iso(40), duplicates: 0, already_a_gym: false },
   ];
+  const PAYS = [{ application_id: 'a2', plan_name: 'Standard', amount: 999, months: 1, payment_id: 'p1', status: 'pending', method_label: 'GCash',
+    reference: 'GC-777001', reason: null, created_at: iso(0.2), decided_at: null }];
   const THREAD = [{ id: 'm1', from_platform: false, body: 'How much for 200 members?', author_name: null, created_at: iso(2) },
     { id: 'm2', from_platform: true, body: 'Premium is ₱1,999 a month.', author_name: 'Lea Lorenzana', created_at: iso(1.5) }];
   const CLAIMS = [{ id: 'c1', gym_id: 'g3', gym_name: 'Harbour Strength', plan_key: 'standard', plan_name: 'Standard', price_monthly: '999', paid_until: day(12),
@@ -130,6 +132,9 @@ async (page) => {
 
   Object.assign(RPC, {
     platform_application_documents_summary: () => ['a1', 'a2', 'a3', 'a4'].map(summary),
+    // 0224: Bulwark's plan is paid before approval — a GCash reference waiting to be checked.
+    platform_application_payments: () => PAYS,
+    confirm_application_payment: (b) => { CALLS.push(['confirmpay', b]); PAYS[0].status = b.p_ok ? 'paid' : 'refused'; PAYS[0].reason = b.p_reason; return null; },
     platform_application_accounts: () => [{ application_id: 'a1', has_account: true }, { application_id: 'a4', has_account: true }],
     application_document_kinds: () => KINDS,
     application_documents_of: (b) => DOCS[b.p_application] ?? [],
@@ -168,8 +173,23 @@ async (page) => {
   const bulwark = page.locator('.app-row').filter({ hasText: 'Bulwark Gym' });
   out.push('each application says where its documents stand: ' + (/Documents 5\/6 verified/.test(await iron.innerText()) && /1 to check/.test(await iron.innerText())
     && /Documents 6\/6 verified/.test(await bulwark.innerText()) ? 'yes' : 'MISSING'));
-  out.push('Let them in is shut until all six are verified: ' + ((await iron.getByRole('button', { name: 'Let them in' }).isDisabled())
-    && !(await bulwark.getByRole('button', { name: 'Let them in' }).isDisabled()) ? 'yes' : 'NO'));
+  out.push('Let them in is shut until all six are verified: ' + ((await iron.getByRole('button', { name: 'Let them in' }).isDisabled()) ? 'yes' : 'NO'));
+  // 0224: a paid plan pays before approval.
+  out.push('…and, on a paid plan, until it is paid: ' + ((await bulwark.getByRole('button', { name: 'Let them in' }).isDisabled())
+    && /GCash payment to check · ref GC-777001/.test(await bulwark.innerText()) && (await iron.locator('[data-pay-chip]').count()) === 0 ? 'yes' : 'NO'));
+  await bulwark.locator('[data-pay-check]').click();
+  const payDialog = page.locator('[data-pay-dialog]');
+  await payDialog.waitFor({ timeout: 8000 });
+  out.push('the check shows the amount, plan and reference to find: ' + (/₱999 for Standard \(a month\) by GCash, reference GC-777001/.test(await payDialog.innerText()) ? 'yes' : 'MISSING ' + (await payDialog.innerText())));
+  await payDialog.locator('[data-pay-confirm]').click();
+  await page.waitForTimeout(900);
+  const cp = CALLS.find((c) => c[0] === 'confirmpay');
+  out.push('confirming records it: ' + (cp && cp[1].p_payment === 'p1' && cp[1].p_ok === true ? 'yes' : 'MISSING ' + JSON.stringify(cp)));
+  const payMail = CALLS.filter((c) => c[0] === 'email').find((c) => /payment is confirmed/.test(c[1].subject ?? ''));
+  out.push('…the applicant is emailed: ' + (payMail && payMail[1].to === 'ben@bulwark.ph' && /GC-777001/.test(payMail[1].body) ? 'yes' : 'MISSING'));
+  out.push('…and paid, Let them in opens: ' + (!(await bulwark.getByRole('button', { name: 'Let them in' }).isDisabled())
+    && /Paid ₱999 for Standard/.test(await bulwark.innerText()) ? 'yes' : 'NO'));
+  CALLS.splice(0, CALLS.length, ...CALLS.filter((c) => c[0] !== 'email'));
   out.push('whether there is an account to sign in with: ' + (/Has an account/.test(await iron.innerText()) && /No account/.test(await bulwark.innerText()) ? 'yes' : 'MISSING'));
 
   await iron.locator('[data-docs-chip]').click();

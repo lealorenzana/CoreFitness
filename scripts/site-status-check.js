@@ -68,7 +68,7 @@ async (page) => {
   const t = await page.locator('main').innerText();
   out.push('a page of its own, no marketing around it: ' + ((await page.locator('.hero').count()) === 0 && (await page.locator('#pricing').count()) === 0 ? 'yes' : 'STILL SHOWN'));
   out.push('opens at its top: ' + ((await page.evaluate(() => window.scrollY)) < 10 ? 'yes' : 'NO ' + (await page.evaluate(() => window.scrollY))));
-  out.push('where it stands: ' + (/Being read/.test(t) && /Set up and pay/.test(t) ? 'yes' : 'MISSING'));
+  out.push('where it stands: ' + (/Being read/.test(t) && /Pay, then set up|Set up/.test(t) ? 'yes' : 'MISSING'));
   out.push('the plan beside it: ' + (/Standard/.test(t) && /₱999 a month/.test(t) ? 'yes' : 'MISSING'));
   out.push('a way to pay, sent while pending: ' + (/0917 555 0101/.test(t) && (await page.locator('.bubble .pay-card').count()) === 1 ? 'yes, as a card' : 'MISSING'));
   out.push('a switched-off method says so: ' + (/no longer offered/.test(t) ? 'yes' : 'MISSING'));
