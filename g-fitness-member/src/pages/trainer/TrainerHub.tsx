@@ -1,29 +1,26 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import WhatsNew from '../../components/WhatsNew';
 import TodayPanel from './hub/TodayPanel';
 import YouSheet from './hub/YouSheet';
 import TraineeWinCard from '../../components/trainer/TraineeWinCard';
+import OfferPackageSheet from '../../components/trainer/OfferPackageSheet';
 import { arrivalLeft, claimCoachOpening, coachOpening, startArrival } from '../../lib/api/coachMoments';
 import { buzz, holdMoments, loadMomentPrefs, play, showMoment } from '../../lib/moments';
 import { splashGone } from '../../lib/momentWatch';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import {
-  Bell, CalendarBlank, Camera, CaretRight, ChartLineUp, ChatCircleDots, ClipboardText, Hash, MagnifyingGlass, Plus, QrCode, Sun, UsersThree, X,
-  type Icon,
-} from '@phosphor-icons/react';
+import { Bell, ChatCircleDots, MagnifyingGlass, Plus, QrCode, Sun, X } from '@phosphor-icons/react';
 import Avatar from '../../components/ui/Avatar';
 import GlassSheet from '../../components/ui/GlassSheet';
 import CoachCheckInSheet from '../../components/ui/CoachCheckInSheet';
-import { LineRow, NocButton } from '../../components/ui/noc';
-import { Field, TextArea, TextInput } from '../../components/ui/Field';
 import { SkeletonList } from '../../components/ui/Skeleton';
 import { toast } from '../../components/ui/Toast';
 import { errorMessage } from '../../utils/errorMessage';
 import { supabase } from '../../lib/supabaseClient';
-import { createGroup, deleteRoom, myRoomPhotos, myRooms, reviewQueue, setArchived, setRoomPhoto, syncRooms, updateRoom, type ReviewItem, type Room } from '../../lib/api/rooms';
+import { myRooms, reviewQueue, syncRooms, type ReviewItem, type Room } from '../../lib/api/rooms';
 import { useLongPress } from '../../hooks/useLongPress';
 import { myConversations, type Conversation } from '../../lib/api/chat';
-import { uploadContentPhoto } from '../../lib/api/exerciseMedia';
+import { getCoachingSettings, myCoachings, type Coaching, type CoachingSettings } from '../../lib/api/coaching';
+import { listMyTrainerMembers, type TrainerRosterRow } from '../../lib/api/trainerRoster';
 import { myPresence, setMyPresence, PRESENCE_LABEL, type Presence } from '../../lib/api/presence';
 import { getUnreadCount } from '../../lib/api/notifications';
 import { getCurrentTrainerId } from '../../services/trainerService';
@@ -35,43 +32,48 @@ import { moduleOn } from '../../lib/gymApp';
 import type { ClassRow } from '../../types/db';
 
 /**
- * The trainer app, Discord style (2026-10-11, from the Discord mobile screens
- * the gym owner sent) — but a coach's tool, not a chat app:
+ * The coach app, Discord style (2026-10-11; kept by the owner through the
+ * simplify, 2026-10-28) — a coach's tool, not a chat app:
  *
- *   rail      Messages on top (1-on-1 trainees, like Discord's DMs), then each
- *             class and coaching group as a round "server" with an amber count
- *             of work to review, then + for a new group
- *   Messages  search · Requests (booking requests) · Members · +; a Today strip
- *             of the classes you teach today where Discord has "active now";
- *             what waits for your comment; then one row per trainee — last
- *             message, when, unread — opening your 1-on-1 room with them
- *   a room    its name, People and picture; ROOM channels (# stream …) and,
- *             for a class, UPCOMING sessions where Discord has voice channels
- *   panel     you, bottom: photo, name, status (Available/Away/On leave) and
- *             the bell — tap yourself for your profile, where Schedule, Hours,
- *             Coaching, Library and Settings live
+ *   rail      Today; Personal training (everyone you coach, like Discord's
+ *             DMs); then one round photo per package trainee, with an amber
+ *             count of what waits for you; then + Start coaching someone
+ *   panel     Today (requests, the day, Needs you), or Personal training — one
+ *             row per person, "On a package" and "Single sessions"
+ *   bottom    you: photo, name, status (Available/Away/On leave), your check-in
+ *             QR and the bell — tap yourself for the You sheet, where Schedule,
+ *             Hours, Packages, Library and Settings live
  *
- * There is no tab bar. Everything else opens full screen with Back, as a
- * Discord channel does. The open room is in the address (`?room=`).
+ * There is no tab bar. A person opens their place (`/trainer/pt/:memberId`)
+ * full screen with Back, as a Discord channel does. Classes and coaching groups
+ * have no rooms since 0220.
  */
-type Kind = Room['kind'];
 const PRESENCE_TONE: Record<Presence, string> = {
   available: 'var(--color-primary-300)', away: 'var(--color-secondary)', on_leave: 'var(--color-text-muted)',
 };
 const RAIL_BG = 'color-mix(in srgb, var(--color-bg) 70%, #000)';
 const PANEL_SPACE = 92; // room for the floating panel at the bottom
 
+/** One person this coach trains: their package (if any), chat and room merged. */
+export interface PtPerson {
+  id: string; name: string; photo: string | null;
+  coaching: Coaching | null; room: Room | null; conv: Conversation | null; upcoming: number;
+}
+
 export default function TrainerHub() {
   const navigate = useNavigate();
   const app = useGymApp();
-  const roomsOn = moduleOn(app, 'rooms');
+  const classesOn = moduleOn(app, 'classes');
   const [params, setParams] = useSearchParams();
   const [rooms, setRooms] = useState<Room[] | null | undefined>(null);
   const [convs, setConvs] = useState<Conversation[]>([]);
-  const [photos, setPhotos] = useState<Map<string, string | null>>(new Map());
+  const [coachings, setCoachings] = useState<Coaching[]>([]);
+  const [roster, setRoster] = useState<TrainerRosterRow[]>([]);
+  const [settings, setSettings] = useState<CoachingSettings | null>(null);
   const [queue, setQueue] = useState<ReviewItem[]>([]);
   const [today, setToday] = useState<ClassRow[]>([]);
-  const [upcoming, setUpcoming] = useState<ClassRow[]>([]);
+  /** The coach's classes Monday to Sunday of this week, for the You sheet's Schedule tile. */
+  const [classesWeek, setClassesWeek] = useState(0);
   const [requests, setRequests] = useState(0);
   const [bell, setBell] = useState(0);
   const [me, setMe] = useState<{ id: string; name: string; photo: string | null } | null>(null);
@@ -80,10 +82,8 @@ export default function TrainerHub() {
   /** The owner turned coach check-in on (0200): the panel gets a QR button. */
   const [coachCheckin, setCoachCheckin] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
-  const [creating, setCreating] = useState(params.get('new') === '1');
+  const [offering, setOffering] = useState(false);
   const [q, setQ] = useState('');
-  /** A room held on the rail: its settings sheet. */
-  const [held, setHeld] = useState<Room | null>(null);
   const [trainerId, setTrainerId] = useState<string | null>(null);
   /** The user bar's You panel (redesign, 2026-10-27). */
   const [youOpen, setYouOpen] = useState(false);
@@ -121,31 +121,34 @@ export default function TrainerHub() {
     await syncRooms();
     const { data } = await supabase.auth.getUser();
     const uid = data.user?.id ?? null;
-    const [r, c, qu, ph, prof, pres, unread] = await Promise.all([
-      myRooms(), myConversations(), reviewQueue(), myRoomPhotos(),
+    const [r, c, co, ro, st, qu, prof, pres, unread] = await Promise.all([
+      myRooms(), myConversations(), myCoachings().catch(() => null), listMyTrainerMembers().catch(() => [] as TrainerRosterRow[]),
+      getCoachingSettings().catch(() => null), reviewQueue(),
       uid ? supabase.from('profiles').select('first_name, last_name, photo_url').eq('id', uid).maybeSingle() : Promise.resolve({ data: null }),
       uid ? myPresence(uid) : Promise.resolve('available' as Presence),
       uid ? getUnreadCount(uid).catch(() => 0) : Promise.resolve(0),
     ]);
-    setRooms(r); setConvs(c ?? []); setQueue(qu); setPhotos(ph); setPresence(pres); setBell(unread);
+    setRooms(r); setConvs(c ?? []); setCoachings((co ?? []).filter((x) => x.iAm !== 'member')); setRoster(ro);
+    setSettings(st); setQueue(qu); setPresence(pres); setBell(unread);
     // Before 0200 the column does not exist: no button, never an error.
     const door = await supabase.from('gym_settings').select('coach_checkin_on').maybeSingle();
     setCoachCheckin(!door.error && !!(door.data as { coach_checkin_on?: boolean } | null)?.coach_checkin_on);
     const p = (prof as { data: { first_name: string | null; last_name: string | null; photo_url: string | null } | null }).data;
     if (uid) setMe({ id: uid, name: [p?.first_name, p?.last_name].filter(Boolean).join(' ') || 'You', photo: p?.photo_url ?? null });
-    // Today's classes, and the requests still this coach's to decide (the same rule Today and Bookings use).
+    // The requests still this coach's to decide (the same rule Today uses), and — where the gym runs classes — today's classes.
     const tid = await getCurrentTrainerId().catch(() => null);
     setTrainerId(tid);
     if (tid) {
       const [reqs, modes, cls] = await Promise.all([loadTrainerRequests(tid).catch(() => null), getBookingModes().catch(() => null),
-        listTrainerClasses(tid).catch(() => [] as ClassRow[])]);
-      // Today's classes from the coach's own list (the timeline needs every one, with its room and places).
+        classesOn ? listTrainerClasses(tid).catch(() => [] as ClassRow[]) : Promise.resolve([] as ClassRow[])]);
       setToday(cls.filter((x) => !!x.scheduled_at && new Date(x.scheduled_at).toDateString() === new Date().toDateString()));
-      if (reqs && modes) setRequests(reqs.filter((r) => coachDecides(r, modes)).length);
-      const now = Date.now();
-      setUpcoming(cls.filter((x) => !!x.scheduled_at && new Date(x.scheduled_at).getTime() > now).sort((a, b) => (a.scheduled_at ?? '').localeCompare(b.scheduled_at ?? '')));
+      if (reqs && modes) setRequests(reqs.filter((rq) => coachDecides(rq, modes)).length);
+      // Monday 00:00 to next Monday 00:00, on the phone's own clock.
+      const monday = new Date(); monday.setHours(0, 0, 0, 0); monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+      const next = new Date(monday); next.setDate(monday.getDate() + 7);
+      setClassesWeek(cls.filter((x) => x.scheduled_at && new Date(x.scheduled_at) >= monday && new Date(x.scheduled_at) < next).length);
     }
-  }, []);
+  }, [classesOn]);
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
   // A coach who has not finished their first steps (0212) is taken there — once a session if they chose Later.
   useEffect(() => {
@@ -157,14 +160,35 @@ export default function TrainerHub() {
     });
   }, [navigate]);
 
-  const active = useMemo(() => (rooms ?? []).filter((r) => !r.archived), [rooms]);
-  const servers = useMemo(() => active.filter((r) => r.kind !== 'pt'), [active]);
-  const open = servers.find((r) => r.id === params.get('room')) ?? null;
-  // Today is the first stop (redesign, 2026-10-27); Messages and each room are a tap on the rail.
-  const view: 'today' | 'messages' | 'room' = open ? 'room' : params.get('view') === 'messages' ? 'messages' : 'today';
-  const select = (id: string | null) => setParams(id ? { room: id } : {}, { replace: true });
-  const showMessages = () => setParams({ view: 'messages' }, { replace: true });
-  const unreadDMs = convs.reduce((n, c) => n + (c.muted ? 0 : c.unread), 0);
+  /** Everyone this coach trains, one row each: package, chat, room and roster merged on the member. */
+  const people = useMemo(() => {
+    const byId = new Map<string, PtPerson>();
+    const get = (id: string, name: string, photo: string | null) => {
+      let x = byId.get(id);
+      if (!x) { x = { id, name, photo, coaching: null, room: null, conv: null, upcoming: 0 }; byId.set(id, x); }
+      if (!x.photo && photo) x.photo = photo;
+      return x;
+    };
+    // A package: the running one wins, else the newest that had a room (its room is kept, read-only).
+    const order = [...coachings].sort((a, b) => (a.status === 'active' ? -1 : 0) - (b.status === 'active' ? -1 : 0) || b.createdAt.localeCompare(a.createdAt));
+    for (const c of order) {
+      if (c.iAm !== 'coach' || !(c.status === 'active' || (c.status === 'ended' && c.roomId))) continue;
+      const x = get(c.memberId, c.memberName, c.memberPhoto);
+      if (!x.coaching) { x.coaching = c; x.room = (rooms ?? []).find((r) => r.id === c.roomId) ?? null; }
+    }
+    for (const c of convs) get(c.otherId, c.otherName, c.otherPhoto).conv = c;
+    for (const r of roster) get(r.member_id, r.name, r.photo_url).upcoming = r.upcoming_with_me;
+    return [...byId.values()];
+  }, [coachings, convs, roster, rooms]);
+  const unreadOf = (x: PtPerson) => (x.conv && !x.conv.muted ? x.conv.unread : 0) + (x.room?.toReview ?? 0);
+  const packaged = people.filter((x) => x.coaching);
+  const canOffer = !!settings?.modes.includes('coach_invites');
+
+  // Today is the first stop; Personal training is the next button (`?view=messages` from before still opens it).
+  const view: 'today' | 'pt' = params.get('view') === 'pt' || params.get('view') === 'messages' ? 'pt' : 'today';
+  const showToday = () => setParams({}, { replace: true });
+  const showPt = () => setParams({ view: 'pt' }, { replace: true });
+  const unreadAll = people.reduce((n, x) => n + unreadOf(x), 0);
 
   const changeStatus = async (p: Presence) => {
     try { await setMyPresence(p); setPresence(p); setStatusOpen(false); toast.success(`You are ${PRESENCE_LABEL[p].toLowerCase()}`); }
@@ -178,63 +202,54 @@ export default function TrainerHub() {
       {/* What changed for coaches (0212), once. */}
       <WhatsNew app="trainer" />
       {/* ---- the rail ---- */}
-      <nav aria-label="Your rooms" className="flex flex-col items-center flex-none scrollbar-hide"
+      <nav aria-label="Your trainees" className="flex flex-col items-center flex-none scrollbar-hide"
         style={{ width: 74, gap: 8, padding: `12px 0 ${PANEL_SPACE}px`, overflowY: 'auto' }}>
-        <RailButton label="Today" on={view === 'today'} onClick={() => select(null)} badge={requests + queue.length} dataAttr="today">
+        <RailButton label="Today" on={view === 'today'} onClick={showToday} badge={requests + queue.length} dataAttr="today">
           <span className="grid place-items-center" style={{ width: 46, height: 46, borderRadius: 'inherit',
             background: view === 'today' ? 'var(--color-primary)' : 'var(--color-surface)', color: view === 'today' ? '#fff' : 'var(--color-text-secondary)' }}>
             <Sun size={23} weight={view === 'today' ? 'fill' : 'regular'} />
           </span>
         </RailButton>
-        <RailButton label="Messages" on={view === 'messages'} onClick={showMessages} badge={unreadDMs} dataAttr="home">
+        <RailButton label="Personal training" on={view === 'pt'} onClick={showPt} badge={unreadAll} dataAttr="pt">
           <span className="grid place-items-center" style={{ width: 46, height: 46, borderRadius: 'inherit',
-            background: view === 'messages' ? 'var(--color-primary)' : 'var(--color-surface)', color: view === 'messages' ? '#fff' : 'var(--color-text-secondary)' }}>
-            <ChatCircleDots size={24} weight={view === 'messages' ? 'fill' : 'regular'} />
+            background: view === 'pt' ? 'var(--color-primary)' : 'var(--color-surface)', color: view === 'pt' ? '#fff' : 'var(--color-text-secondary)' }}>
+            <ChatCircleDots size={24} weight={view === 'pt' ? 'fill' : 'regular'} />
           </span>
         </RailButton>
         <span aria-hidden style={{ width: 28, height: 2, borderRadius: 2, background: 'var(--color-border)' }} />
-        {roomsOn && (['class', 'group'] as Kind[]).map((k) => {
-          const list = servers.filter((r) => r.kind === k);
-          if (list.length === 0) return null;
-          return (
-            <div key={k} className="flex flex-col items-center" style={{ gap: 10 }} data-rail-group={k}>
-              {list.map((r) => (
-                <RailButton key={r.id} label={r.name} on={open?.id === r.id} onClick={() => select(r.id)} onLong={() => setHeld(r)} badge={r.toReview} room={r.id}>
-                  <RoomPicture name={r.name} photo={photos.get(r.id) ?? null} />
-                </RailButton>
-              ))}
-            </div>
-          );
-        })}
-        {roomsOn && (
-          <RailButton label="New group" on={false} onClick={() => setCreating(true)}>
-            <span className="grid place-items-center" style={{ width: 46, height: 46, borderRadius: 'inherit', background: 'var(--color-surface)', color: 'var(--color-primary-300)' }}>
+        {/* One round photo per package trainee (simplify, 2026-10-28). */}
+        {packaged.map((x) => (
+          <RailButton key={x.id} label={x.name.split(' ')[0]} on={false} onClick={() => navigate(`/trainer/pt/${x.id}`)} badge={unreadOf(x)} trainee={x.id}>
+            <span className="block" style={{ opacity: x.coaching?.status === 'active' ? 1 : 0.55 }}>
+              <Avatar name={x.name} photoUrl={x.photo} size={46} />
+            </span>
+          </RailButton>
+        ))}
+        {canOffer && (
+          <RailButton label="Start coaching someone" on={false} onClick={() => setOffering(true)} dataAttr="offer">
+            <span className="grid place-items-center" style={{ width: 46, height: 46, borderRadius: 'inherit', background: 'var(--color-surface)', color: 'var(--color-secondary)' }}>
               <Plus size={20} />
             </span>
           </RailButton>
         )}
       </nav>
 
-      {/* ---- the panel: Messages, or the open room ---- */}
+      {/* ---- the panel: Today, or Personal training ---- */}
       <section className="flex-1 min-w-0 flex flex-col overflow-y-auto scrollbar-hide"
         style={{ background: 'var(--color-bg)', borderTopLeftRadius: 18, padding: `14px 14px ${PANEL_SPACE}px`, borderLeft: '1px solid var(--color-separator)' }}>
-        {view === 'room' && open ? (
-          <RoomPanel room={open} upcoming={upcoming.filter((c) => sameClass(c.name, open.name)).slice(0, 5)}
-            onPhoto={(url) => setPhotos((m) => new Map(m).set(open.id, url))} />
-        ) : view === 'today' ? (
+        {view === 'today' ? (
           <TodayPanel trainerId={trainerId} classes={today} queue={queue} onRequests={setRequests} arriving={arriving} />
         ) : (
           <>
             <div className="flex items-center justify-between" style={{ gap: 8 }}>
-              <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--color-text-primary)' }}>Messages</h1>
-              {roomsOn && (
-                <button type="button" aria-label="New group" onClick={() => setCreating(true)} className="grid place-items-center noc-press flex-none"
-                  style={{ width: 36, height: 36, borderRadius: 12, background: 'var(--color-primary)', color: '#fff' }}>
+              <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--color-text-primary)' }}>Personal training</h1>
+              {canOffer && (
+                <button type="button" aria-label="Start coaching someone" onClick={() => setOffering(true)} className="grid place-items-center noc-press flex-none"
+                  style={{ width: 36, height: 36, borderRadius: 12, background: 'var(--color-secondary)', color: 'var(--color-bg)' }}>
                   <Plus size={18} weight="bold" />
                 </button>
               )}
             </div>
-            {/* Search is a box, always there (the Requests button moved to Today, where it is a decision). */}
             <label className="flex items-center" style={{ gap: 10, marginTop: 10, height: 42, padding: '0 12px', borderRadius: 12,
               background: 'var(--color-surface)', border: '1px solid var(--color-hairline)' }}>
               <MagnifyingGlass size={16} aria-hidden style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
@@ -242,23 +257,7 @@ export default function TrainerHub() {
                 className="flex-1 min-w-0 bg-transparent outline-none" style={{ fontSize: 14, color: 'var(--color-text-primary)' }} />
               {q && <button type="button" aria-label="Clear the search" onClick={() => setQ('')} style={{ color: 'var(--color-text-muted)' }}><X size={15} /></button>}
             </label>
-
-            <DMList convs={convs} rooms={active.filter((r) => r.kind === 'pt')} q={q} onOpenRoom={(id) => navigate(`/trainer/rooms/${id}`)}
-              onOpenConv={(id) => navigate(`/trainer/messages/${id}`)} />
-
-            <p className="eyebrow" style={{ marginTop: 18 }}>Members</p>
-            <LineRow icon={UsersThree} title="Your trainees" meta="Notes, plans and progress for everyone you coach"
-              action={<CaretRight size={14} />} actionTone="muted" onClick={() => navigate('/trainer/members')} last />
-
-            {(rooms ?? []).some((r) => r.archived) && (
-              <div style={{ marginTop: 18 }}>
-                <p style={{ fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>Closed rooms</p>
-                {(rooms ?? []).filter((r) => r.archived).map((r) => (
-                  <button key={r.id} type="button" onClick={() => navigate(`/trainer/rooms/${r.id}`)} className="w-full text-left noc-press"
-                    style={{ padding: '9px 4px', fontSize: 14, color: 'var(--color-text-secondary)', opacity: 0.7 }}>{r.name}</button>
-                ))}
-              </div>
-            )}
+            <PtList people={people} q={q} unreadOf={unreadOf} onOpen={(id, single) => navigate(`/trainer/pt/${id}${single ? '?tab=chat' : ''}`)} canOffer={canOffer} onOffer={() => setOffering(true)} />
           </>
         )}
       </section>
@@ -300,7 +299,7 @@ export default function TrainerHub() {
       <TraineeWinCard />
       {me && <CoachCheckInSheet open={qrOpen} onClose={() => setQrOpen(false)} trainerId={me.id} />}
       {me && <YouSheet open={youOpen} onClose={() => setYouOpen(false)} me={me} presence={presence} tones={PRESENCE_TONE}
-        onPresence={(p) => void changeStatus(p)} />}
+        onPresence={(p) => void changeStatus(p)} classesThisWeek={classesWeek} />}
 
       <GlassSheet open={statusOpen} onClose={() => setStatusOpen(false)} title="Your status" subtitle="Members see it on your card">
         <div className="flex flex-col" style={{ gap: 8, padding: '0 var(--gutter) 16px' }}>
@@ -318,18 +317,9 @@ export default function TrainerHub() {
         </div>
       </GlassSheet>
 
-      <RoomSettingsSheet room={held} photo={held ? photos.get(held.id) ?? null : null} onClose={() => setHeld(null)}
-        onChanged={() => { setHeld(null); void load(); }} onPhoto={(id, url) => setPhotos((m) => new Map(m).set(id, url))} />
-
-      <NewGroupSheet open={creating} onClose={() => { setCreating(false); if (params.get('new')) setParams({}, { replace: true }); }} />
+      {settings && <OfferPackageSheet open={offering} onClose={() => setOffering(false)} settings={settings} onSent={() => void load()} />}
     </div>
   );
-}
-
-/** A class's room is named after the class; its sessions share the name. */
-function sameClass(className: string, roomName: string): boolean {
-  const a = className.trim().toLowerCase(), b = roomName.trim().toLowerCase();
-  return a === b || b.startsWith(a) || a.startsWith(b);
 }
 
 function Badge({ n }: { n: number }) {
@@ -341,15 +331,16 @@ function Badge({ n }: { n: number }) {
   );
 }
 
-function RailButton({ label, on, onClick, onLong, badge, room, dataAttr, children }: {
-  label: string; on: boolean; onClick: () => void; onLong?: () => void; badge?: number; room?: string; dataAttr?: string; children: React.ReactNode;
+function RailButton({ label, on, onClick, onLong, badge, trainee, dataAttr, children }: {
+  label: string; on: boolean; onClick: () => void; onLong?: () => void; badge?: number; trainee?: string; dataAttr?: string; children: React.ReactNode;
 }) {
-  // Hold a room for its settings, as in Discord (never the browser's image menu).
+  // A held picture never opens the browser's image menu.
   const lp = useLongPress(() => onLong?.());
   // Every rail button says what it is underneath (wave 1, 2026-10-27): "MH" alone told a new coach nothing.
   return (
     <button type="button" onClick={() => { if (!lp.consumed()) onClick(); }} {...(onLong ? lp.handlers : {})}
-      aria-label={label} aria-pressed={on} data-rail-room={room} data-rail-home={dataAttr === 'home' || undefined} data-rail-today={dataAttr === 'today' || undefined}
+      aria-label={label} aria-pressed={on} data-rail-trainee={trainee} data-rail-pt={dataAttr === 'pt' || undefined}
+      data-rail-home={dataAttr === 'pt' || undefined} data-rail-today={dataAttr === 'today' || undefined} data-rail-offer={dataAttr === 'offer' || undefined}
       className="flex flex-col items-center flex-none noc-press select-none" style={{ width: 70, gap: 4, WebkitTouchCallout: 'none' }}>
       <span className="relative block" style={{ width: 46, height: 46 }}>
         {/* Discord's pill: a bar at the edge marks the open one. */}
@@ -358,29 +349,9 @@ function RailButton({ label, on, onClick, onLong, badge, room, dataAttr, childre
         <span className="block overflow-hidden" style={{ width: 46, height: 46, borderRadius: on ? 15 : 23, transition: 'border-radius .15s' }}>{children}</span>
         {badge ? <Badge n={badge} /> : null}
       </span>
-      <span aria-hidden data-rail-label className="block truncate" style={{ maxWidth: 68, fontSize: 12, lineHeight: 1.15, textAlign: 'center',
+      <span aria-hidden data-rail-label className="block" style={{ maxWidth: 68, fontSize: 12, lineHeight: 1.15, textAlign: 'center',
+        overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
         fontWeight: on ? 700 : 500, color: on ? 'var(--color-text-primary)' : 'var(--color-text-muted)' }}>{label}</span>
-    </button>
-  );
-}
-
-function RoomPicture({ name, photo, size = 46 }: { name: string; photo: string | null; size?: number }) {
-  if (photo) return <img src={photo} alt="" draggable={false} style={{ width: size, height: size, objectFit: 'cover', pointerEvents: 'none' }} />;
-  const parts = name.replace(/[·|]/g, ' ').split(/\s+/).filter(Boolean);
-  return (
-    <span className="grid place-items-center" style={{ width: size, height: size, fontSize: size > 50 ? 16 : 13, fontWeight: 800, color: '#fff',
-      background: 'color-mix(in srgb, var(--color-primary) 55%, #18181e)' }}>
-      {(parts.slice(0, 2).map((p) => p[0]).join('') || '?').toUpperCase()}
-    </span>
-  );
-}
-
-function HeadButton({ label, onClick, badge, wide, children }: { label: string; onClick: () => void; badge?: number; wide?: boolean; children: React.ReactNode }) {
-  return (
-    <button type="button" aria-label={label} onClick={onClick} className="relative inline-flex items-center justify-center noc-press flex-none"
-      style={{ height: 38, minWidth: 38, gap: 6, padding: wide ? '0 12px' : '0 10px', borderRadius: 12, background: 'var(--color-surface)', color: 'var(--color-text-primary)' }}>
-      {children}
-      {badge ? <span aria-hidden className="absolute" style={{ top: 6, right: 6, width: 8, height: 8, borderRadius: 4, background: 'var(--color-secondary)' }} /> : null}
     </button>
   );
 }
@@ -394,216 +365,58 @@ const ago = (iso: string | null) => {
   return `${Math.round(m / 43200)}mo`;
 };
 
-/** One row per trainee: a conversation when there is one, else their 1-on-1 room. */
-function DMList({ convs, rooms, q, onOpenRoom, onOpenConv }: {
-  convs: Conversation[]; rooms: Room[]; q: string; onOpenRoom: (id: string) => void; onOpenConv: (id: string) => void;
+/** Personal training: one row per person — on a package first, then single sessions. */
+function PtList({ people, q, unreadOf, onOpen, canOffer, onOffer }: {
+  people: PtPerson[]; q: string; unreadOf: (x: PtPerson) => number; onOpen: (id: string, single: boolean) => void; canOffer: boolean; onOffer: () => void;
 }) {
-  const named = (s: string) => s.toLowerCase().includes(q.trim().toLowerCase());
-  // A 1-on-1 room is named "<trainee> · 1-on-1"; matched on the person, so a
-  // trainee with both a chat and a room is one row (Lea showed twice, 2026-10-27).
-  const person = (s: string) => s.replace(/\s*·\s*1-on-1\s*$/i, '').trim().toLowerCase();
-  const ptPeople = new Set(rooms.map((r) => person(r.name)));
-  const talked = new Set(convs.map((c) => person(c.otherName)));
-  const rows = [
-    ...convs.filter((c) => named(c.otherName)).map((c) => ({ key: c.id, name: c.otherName, photo: c.otherPhoto, pt: ptPeople.has(person(c.otherName)), line: c.lastMessage ? `${c.lastFromMe ? 'You: ' : ''}${c.lastMessage}` : 'No messages yet', at: c.lastMessageAt, unread: c.muted ? 0 : c.unread, open: () => onOpenConv(c.id) })),
-    ...rooms.filter((r) => !talked.has(person(r.name)) && named(r.name)).map((r) => ({ key: r.id, name: r.name.replace(/\s*·\s*1-on-1\s*$/i, ''), photo: null as string | null, pt: true, line: r.toReview ? `${r.toReview} to review` : 'No messages yet', at: r.lastPostAt, unread: r.toReview, open: () => onOpenRoom(r.id) })),
-  ];
-  if (rows.length === 0) {
-    return <p style={{ fontSize: 13, marginTop: 18, color: 'var(--color-text-muted)' }} data-dm-empty>{q ? 'No trainee by that name.' : 'Your 1-on-1 trainees appear here once they book you or start a coaching term.'}</p>;
+  const shown = people.filter((x) => x.name.toLowerCase().includes(q.trim().toLowerCase()));
+  const at = (x: PtPerson) => x.conv?.lastMessageAt ?? x.room?.lastPostAt ?? null;
+  const sorted = (list: PtPerson[]) => [...list].sort((a, b) => unreadOf(b) - unreadOf(a) || (at(b) ?? '').localeCompare(at(a) ?? '') || a.name.localeCompare(b.name));
+  const pkg = sorted(shown.filter((x) => x.coaching)), single = sorted(shown.filter((x) => !x.coaching));
+  if (people.length === 0) {
+    return (
+      <div style={{ marginTop: 18 }} data-pt-empty>
+        <p style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
+          Nobody yet. People appear here when they book a session with you or start a package.
+        </p>
+        {canOffer && <button type="button" onClick={onOffer} style={{ marginTop: 8, fontSize: 13.5, fontWeight: 600, color: 'var(--color-secondary)' }}>+ Start coaching someone</button>}
+      </div>
+    );
   }
+  if (shown.length === 0) return <p style={{ fontSize: 13, marginTop: 18, color: 'var(--color-text-muted)' }} data-dm-empty>No trainee by that name.</p>;
+  const row = (x: PtPerson) => {
+    const u = unreadOf(x);
+    const line = x.conv?.lastMessage ? `${x.conv.lastFromMe ? 'You: ' : ''}${x.conv.lastMessage}`
+      : x.room?.toReview ? `${x.room.toReview} to review`
+      : x.upcoming ? `${x.upcoming} session${x.upcoming === 1 ? '' : 's'} ahead` : 'No messages yet';
+    const pill = x.coaching ? (x.coaching.status === 'active' ? `${x.coaching.months} mo` : 'Ended') : null;
+    return (
+      <button key={x.id} type="button" onClick={() => onOpen(x.id, !x.coaching)} className="flex items-center text-left noc-press" data-dm-row data-pt-row={x.coaching ? 'package' : 'single'}
+        style={{ gap: 12, padding: '9px 4px', borderRadius: 12 }}>
+        <Avatar name={x.name} photoUrl={x.photo} size={44} />
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center" style={{ gap: 8 }}>
+            <span className="truncate" style={{ fontSize: 15, fontWeight: u ? 800 : 600, color: 'var(--color-text-primary)' }}>{x.name}</span>
+            {pill && <span data-pt-tag style={{ fontSize: 12, padding: '1px 7px', borderRadius: 999, flex: 'none',
+              border: `1px solid ${x.coaching?.status === 'active' ? 'var(--color-primary-300)' : 'var(--color-hairline)'}`,
+              color: x.coaching?.status === 'active' ? 'var(--color-primary-300)' : 'var(--color-text-muted)' }}>{pill}</span>}
+            <span className="flex-1" />
+            <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{ago(at(x))}</span>
+          </span>
+          <span className="flex items-center" style={{ gap: 8 }}>
+            <span className="truncate flex-1" style={{ fontSize: 13, color: u ? 'var(--color-text-primary)' : 'var(--color-text-muted)' }}>{line}</span>
+            {u > 0 && <span style={{ minWidth: 19, height: 19, padding: '0 5px', borderRadius: 10, fontSize: 11, fontWeight: 800, lineHeight: '19px', textAlign: 'center', background: 'var(--color-secondary)', color: 'var(--color-bg)' }}>{u}</span>}
+          </span>
+        </span>
+      </button>
+    );
+  };
   return (
     <div className="flex flex-col" style={{ marginTop: 14 }} data-dm-list>
-      {rows.map((r) => (
-        <button key={r.key} type="button" onClick={r.open} className="flex items-center text-left noc-press" data-dm-row style={{ gap: 12, padding: '9px 4px', borderRadius: 12 }}>
-          <Avatar name={r.name} photoUrl={r.photo} size={44} />
-          <span className="min-w-0 flex-1">
-            <span className="flex items-center" style={{ gap: 8 }}>
-              <span className="truncate" style={{ fontSize: 15, fontWeight: r.unread ? 800 : 600, color: 'var(--color-text-primary)' }}>{r.name}</span>
-              {r.pt && <span data-pt-tag style={{ fontSize: 10.5, padding: '1px 6px', borderRadius: 999, border: '1px solid var(--color-hairline)', color: 'var(--color-text-muted)', flex: 'none' }}>1-on-1</span>}
-              <span className="flex-1" />
-              <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{ago(r.at)}</span>
-            </span>
-            <span className="flex items-center" style={{ gap: 8 }}>
-              <span className="truncate flex-1" style={{ fontSize: 13, color: r.unread ? 'var(--color-text-primary)' : 'var(--color-text-muted)' }}>{r.line}</span>
-              {r.unread > 0 && <span style={{ minWidth: 19, height: 19, padding: '0 5px', borderRadius: 10, fontSize: 11, fontWeight: 800, lineHeight: '19px', textAlign: 'center', background: 'var(--color-secondary)', color: 'var(--color-bg)' }}>{r.unread}</span>}
-            </span>
-          </span>
-        </button>
-      ))}
+      {pkg.length > 0 && <p className="eyebrow" data-pt-section="package">On a package · {pkg.length}</p>}
+      {pkg.map(row)}
+      {single.length > 0 && <p className="eyebrow" style={{ marginTop: pkg.length ? 16 : 0 }} data-pt-section="single">Single sessions · {single.length}</p>}
+      {single.map(row)}
     </div>
-  );
-}
-
-/** A class or group, opened: its channels, and a class's next sessions. */
-function RoomPanel({ room, upcoming, onPhoto }: { room: Room; upcoming: ClassRow[]; onPhoto: (url: string) => void }) {
-  const navigate = useNavigate();
-  const file = useRef<HTMLInputElement>(null);
-  const channels: { tab: string; label: string; blurb: string; icon: Icon; badge?: number }[] = [
-    { tab: 'stream', label: 'stream', blurb: 'Posts and photos', icon: Hash },
-    { tab: 'classwork', label: 'classwork', blurb: room.dueSoon ? `${room.dueSoon} due this week` : 'Work you set, and what comes back', icon: ClipboardText, badge: room.toReview },
-    { tab: 'progress', label: 'progress', blurb: 'How the room is doing', icon: ChartLineUp },
-    { tab: 'people', label: 'people', blurb: `${room.memberCount} member${room.memberCount === 1 ? '' : 's'}`, icon: UsersThree },
-  ];
-  const pick = async (f: File | undefined) => {
-    if (!f) return;
-    try { const url = await uploadContentPhoto(f); await setRoomPhoto(room.id, url); onPhoto(url); toast.success('Room picture set.'); }
-    catch (e) { toast.error(errorMessage(e, 'Could not set the picture')); }
-  };
-  const go = (tab: string) => navigate(`/trainer/rooms/${room.id}${tab === 'stream' ? '' : `?tab=${tab}`}`);
-  return (
-    <div data-room-panel>
-      <div className="flex items-center" style={{ gap: 8 }}>
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate" style={{ fontSize: 20, fontWeight: 800, color: 'var(--color-text-primary)' }}>{room.name}</h1>
-          <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
-            {room.kind === 'class' ? 'Class' : 'Coaching group'} · {room.memberCount} member{room.memberCount === 1 ? '' : 's'}{room.dueSoon ? ` · ${room.dueSoon} due this week` : ''}
-          </p>
-        </div>
-        <HeadButton label="People" onClick={() => go('people')}><UsersThree size={17} /></HeadButton>
-        {room.isMine && (
-          <HeadButton label="Set the room picture" onClick={() => file.current?.click()}><Camera size={17} /></HeadButton>
-        )}
-        <input ref={file} type="file" accept="image/*" hidden onChange={(e) => void pick(e.target.files?.[0])} />
-      </div>
-      {room.description && <p style={{ fontSize: 13, marginTop: 8, color: 'var(--color-text-secondary)' }}>{room.description}</p>}
-
-      <p className="eyebrow" style={{ marginTop: 18 }}>Channels</p>
-      <div className="flex flex-col" style={{ gap: 2, marginTop: 4 }} data-channels>
-        {channels.map((c) => {
-          const ChannelIcon = c.icon;
-          return (
-            <button key={c.tab} type="button" onClick={() => go(c.tab)} data-channel={c.tab}
-              className="w-full flex items-center text-left noc-press" style={{ gap: 10, padding: '8px', borderRadius: 12 }}>
-              <span className="grid place-items-center flex-none" style={{ width: 34, height: 34, borderRadius: 10,
-                background: 'var(--color-surface-raised)', border: '1px solid var(--color-hairline)', color: 'var(--color-text-secondary)' }}>
-                <ChannelIcon size={16} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block" style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>{c.label}</span>
-                <span className="block truncate" style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{c.blurb}</span>
-              </span>
-              {c.badge ? <span style={{ minWidth: 19, height: 19, padding: '0 5px', borderRadius: 10, fontSize: 11, fontWeight: 800, lineHeight: '19px', textAlign: 'center', background: 'var(--color-secondary)', color: 'var(--color-bg)' }}>{c.badge}</span> : null}
-            </button>
-          );
-        })}
-      </div>
-
-      {room.kind === 'class' && (
-        <>
-          <p className="eyebrow" style={{ marginTop: 18 }}>Coming up</p>
-          {upcoming.length === 0 ? (
-            <p style={{ fontSize: 13, marginTop: 6, color: 'var(--color-text-muted)' }}>None on your schedule yet.</p>
-          ) : (
-            <div className="flex flex-col" style={{ gap: 2, marginTop: 4 }} data-sessions>
-              {upcoming.map((c) => (
-                <button key={c.id} type="button" onClick={() => navigate('/trainer/schedule')} className="w-full flex items-center text-left noc-press" style={{ gap: 10, padding: '10px 8px', borderRadius: 10 }}>
-                  <CalendarBlank size={17} style={{ color: 'var(--color-text-muted)' }} />
-                  <span className="min-w-0 flex-1">
-                    <span className="block" style={{ fontSize: 15, color: 'var(--color-text-primary)' }}>
-                      {new Date(c.scheduled_at ?? '').toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' })} · {new Date(c.scheduled_at ?? '').toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}
-                    </span>
-                    <span className="block" style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{[c.location, c.capacity ? `${c.capacity} places` : null].filter(Boolean).join(' · ')}</span>
-                  </span>
-                  <CaretRight size={14} style={{ color: 'var(--color-text-muted)' }} />
-                </button>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-function NewGroupSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const navigate = useNavigate();
-  const [name, setName] = useState('');
-  const [about, setAbout] = useState('');
-  const [busy, setBusy] = useState(false);
-  const create = async () => {
-    setBusy(true);
-    try {
-      const id = await createGroup(name, about);
-      toast.success('Group started. Share its code from People.');
-      setName(''); setAbout(''); onClose();
-      navigate(`/trainer/rooms/${id}?tab=people`);
-    } catch (e) { toast.error(errorMessage(e, 'The group could not be started')); }
-    finally { setBusy(false); }
-  };
-  return (
-    <GlassSheet open={open} onClose={onClose} title="New coaching group" subtitle="Members join with a 6-letter code"
-      footer={<NocButton variant="action" className="w-full" disabled={busy || name.trim().length < 2} onClick={() => void create()}>Start the group</NocButton>}>
-      <div className="flex flex-col" style={{ gap: 14 }}>
-        <Field label="Name">
-          <TextInput value={name} maxLength={80} placeholder="e.g. 8-week fat loss" aria-label="Group name" onChange={(e) => setName(e.target.value)} />
-        </Field>
-        <Field label="What it is for (optional)">
-          <TextArea value={about} rows={3} aria-label="Group description" onChange={(e) => setAbout(e.target.value.slice(0, 500))}
-            placeholder="Two check-ins a week, one workout, weigh-in on Mondays." />
-        </Field>
-      </div>
-    </GlassSheet>
-  );
-}
-
-/** Held on the rail: the room's own settings (2026-10-11), like a Discord server's. */
-function RoomSettingsSheet({ room, photo, onClose, onChanged, onPhoto }: {
-  room: Room | null; photo: string | null; onClose: () => void; onChanged: () => void; onPhoto: (id: string, url: string) => void;
-}) {
-  const navigate = useNavigate();
-  const file = useRef<HTMLInputElement>(null);
-  const [name, setName] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [shown, setShown] = useState<string | null>(null);
-  if (room && shown !== room.id) { setShown(room.id); setName(room.name); }
-  const mine = !!room?.isMine;
-  const run = async (fn: () => Promise<unknown>, ok: string) => {
-    setBusy(true);
-    try { await fn(); toast.success(ok); onChanged(); }
-    catch (e) { toast.error(errorMessage(e, 'That did not work')); }
-    finally { setBusy(false); }
-  };
-  const pick = async (f: File | undefined) => {
-    if (!f || !room) return;
-    try { const url = await uploadContentPhoto(f); await setRoomPhoto(room.id, url); onPhoto(room.id, url); toast.success('Room picture set.'); }
-    catch (e) { toast.error(errorMessage(e, 'Could not set the picture')); }
-  };
-  const row = (label: string, onClick: () => void, tone?: 'action') => (
-    <button type="button" disabled={busy} onClick={onClick} className="w-full text-left noc-press disabled:opacity-50"
-      style={{ padding: '13px 14px', borderRadius: 12, fontSize: 15, fontWeight: 600, background: 'var(--color-surface)',
-        color: tone === 'action' ? 'var(--color-secondary)' : 'var(--color-text-primary)' }}>{label}</button>
-  );
-  return (
-    <GlassSheet open={room !== null} onClose={onClose} title={room?.name ?? ''}
-      subtitle={room ? `${room.kind === 'class' ? 'Class room' : 'Coaching group'} · ${room.memberCount} member${room.memberCount === 1 ? '' : 's'}` : undefined}>
-      {room && (
-        <div className="flex flex-col" style={{ gap: 8, padding: '0 var(--gutter) 16px' }} data-room-settings>
-          <div className="flex items-center" style={{ gap: 12, marginBottom: 6 }}>
-            <span className="overflow-hidden flex-none" style={{ width: 56, height: 56, borderRadius: 18 }}><RoomPicture name={room.name} photo={photo} size={56} /></span>
-            {mine && <NocButton variant="ghost" onClick={() => file.current?.click()}>Change picture</NocButton>}
-            <input ref={file} type="file" accept="image/*" hidden onChange={(e) => void pick(e.target.files?.[0])} />
-          </div>
-          {mine && room.kind === 'group' && (
-            <div className="flex items-end" style={{ gap: 8 }}>
-              <Field label="Name"><TextInput value={name} maxLength={80} aria-label="Room name" onChange={(e) => setName(e.target.value)} /></Field>
-              <NocButton variant="action" disabled={busy || name.trim().length < 2 || name.trim() === room.name}
-                onClick={() => void run(() => updateRoom(room.id, { name: name.trim() }), 'Renamed.')}>Save</NocButton>
-            </div>
-          )}
-          {row(room.kind === 'group' ? 'People and join code' : 'People', () => { onClose(); navigate(`/trainer/rooms/${room.id}?tab=people`); })}
-          {row('Classwork', () => { onClose(); navigate(`/trainer/rooms/${room.id}?tab=classwork`); })}
-          {mine && row(room.commentsOn ? 'Turn comments off' : 'Turn comments on',
-            () => void run(() => updateRoom(room.id, { commentsOn: !room.commentsOn }), room.commentsOn ? 'Comments are off.' : 'Comments are on.'))}
-          {mine && row('Close this room', () => {
-            if (!window.confirm(`Close "${room.name}"? It stays readable, and nothing new can be posted.`)) return;
-            void run(() => setArchived(room.id, true), 'The room is closed.');
-          })}
-          {mine && room.kind === 'group' && row('Delete this group', () => {
-            if (!window.confirm(`Delete "${room.name}"? Its posts, comments and classwork are deleted for everyone. This cannot be undone.`)) return;
-            void run(() => deleteRoom(room.id), 'The group was deleted.');
-          }, 'action')}
-        </div>
-      )}
-    </GlassSheet>
   );
 }

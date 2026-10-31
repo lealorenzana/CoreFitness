@@ -295,7 +295,7 @@ async (page) => {
   //  Part 2 — nobody waits in silence
   // ════════════════════════════════════════════════════════════════════════
   await plant(T1);
-  await page.goto('http://localhost:5173/trainer/bookings', { waitUntil: 'domcontentloaded' });
+  await page.goto('http://localhost:5173/trainer/schedule', { waitUntil: 'domcontentloaded' }); // This week holds what Bookings did (simplify, 2026-10-28)
   await page.waitForTimeout(5500);
   const queue = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
 
@@ -310,7 +310,8 @@ async (page) => {
     // ' Accept' — an anchored regex matches textContent unnormalised and finds
     // nothing, which reads as 'the buttons are missing' rather than 'the test
     // is wrong'.
-    2, await page.locator('button', { hasText: /Accept/ }).count());
+    // This week's ✓ is an icon button named "Accept" (simplify, 2026-10-28).
+    2, await page.getByRole('button', { name: 'Accept', exact: true }).count());
   await page.screenshot({ path: 'shots/19-trainer-overdue-queue.png' });
 
   // ════════════════════════════════════════════════════════════════════════

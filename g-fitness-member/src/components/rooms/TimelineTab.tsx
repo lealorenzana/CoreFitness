@@ -29,8 +29,13 @@ const POLL_MS = 6000;
  * The gym can switch chat off (`chat`): the room still holds notes and
  * routines, and says why there is no box to type in.
  */
-export default function TimelineTab({ room, mode }: { room: Room; mode: 'trainer' | 'member' }) {
+export default function TimelineTab({ room, mode, with: withPerson }: {
+  room: Room | null; mode: 'trainer' | 'member';
+  /** Who the chat is with, when the screen knows (a trainee's place, 2026-10-28); with no room, just the messages. */
+  with?: { id: string; name: string };
+}) {
   const navigate = useNavigate();
+  const withId = withPerson?.id ?? null, withName = withPerson?.name ?? '';
   const app = useGymApp();
   const chatOn = moduleOn(app, 'chat');
   const coachWord = word(app, 'trainer', true);
@@ -50,21 +55,21 @@ export default function TimelineTab({ room, mode }: { room: Room; mode: 'trainer
 
   const otherForLoad = useRef<string | null>(null);
   const load = useCallback(async () => {
-    const page = await coachTimeline(room.id);
+    const page = room ? await coachTimeline(room.id) : undefined;
     if (page) {
       setItems(page);
       if (page.length < 30) setMore(false);
       return;
     }
-    // Before 0174 there is no timeline: show the chat on its own rather than
-    // nothing, so a member is never cut off from their coach in between.
+    // No room (single sessions), or before 0174: the chat on its own, so a
+    // member is never cut off from their coach.
     const withId = otherForLoad.current;
     const c = withId ? (await myConversations())?.find((x) => x.otherId === withId) : undefined;
     if (!c) { setItems(withId ? [] : null); setMore(false); return; }
     const msgs = await listMessages(c.id).catch(() => []);
     setItems([...msgs].reverse().map((m) => ({ kind: 'message' as const, id: m.id, at: m.createdAt, authorId: m.senderId, body: m.body, refId: c.id, extra: {} })));
     setMore(false);
-  }, [room.id]);
+  }, [room]);
 
   // The conversation with the other person, marked read whenever the room is looked at.
   const otherId = other?.id ?? null;
@@ -87,7 +92,10 @@ export default function TimelineTab({ room, mode }: { room: Room; mode: 'trainer
       const uid = data.user?.id ?? null;
       // Who is on the other side: the coach for a member; for the coach, the member.
       let o: { id: string; name: string } | null = null;
-      if (mode === 'member') o = { id: room.trainerId, name: room.trainerName };
+      // The screen already knows who it is with (a trainee's place): no lookup to miss.
+      if (withId) o = { id: withId, name: withName };
+      else if (!room) o = null;
+      else if (mode === 'member') o = { id: room.trainerId, name: room.trainerName };
       else {
         const people = await roomPeople(room.id).catch(() => []);
         const m = people.find((p) => !p.isTrainer);
@@ -100,7 +108,7 @@ export default function TimelineTab({ room, mode }: { room: Room; mode: 'trainer
     })();
     const t = window.setInterval(() => { void load(); }, POLL_MS);
     return () => { alive = false; window.clearInterval(t); };
-  }, [load, mode, room.id, room.trainerId, room.trainerName]);
+  }, [load, mode, room, withId, withName]);
 
   // Messages written with no signal, still on the phone (lib/outbox.ts).
   const queuedJobs = useSyncExternalStore(subscribeOutbox, () => pending('message'), () => NONE);
@@ -132,7 +140,7 @@ export default function TimelineTab({ room, mode }: { room: Room; mode: 'trainer
     setDoneNow((d) => ({ ...d, [id]: next }));
     try {
       await markFeedback(id, next);
-      if (next) toast.success(`Done — ${room.trainerName.split(' ')[0]} will see it.`);
+      if (next) toast.success(`Done — ${(room?.trainerName ?? other?.name ?? 'your coach').split(' ')[0]} will see it.`);
     } catch (err) {
       setDoneNow((d) => ({ ...d, [id]: !next }));
       toast.error(errorMessage(err, 'Could not save that'));
@@ -141,7 +149,7 @@ export default function TimelineTab({ room, mode }: { room: Room; mode: 'trainer
 
   const loadEarlier = async () => {
     const first = shown[0];
-    if (!first) return;
+    if (!first || !room) return;
     const page = await coachTimeline(room.id, first.at);
     if (!page) return;
     setOlder((prev) => [...[...page].reverse(), ...prev]);
@@ -169,7 +177,7 @@ export default function TimelineTab({ room, mode }: { room: Room; mode: 'trainer
     return <p style={{ fontSize: 13, color: 'var(--color-secondary)' }}>This room's timeline could not be loaded. Pull to refresh, or try again later.</p>;
   }
 
-  const coachName = mode === 'member' ? room.trainerName.split(' ')[0] : 'You';
+  const coachName = mode === 'member' ? (room?.trainerName ?? other?.name ?? 'your coach').split(' ')[0] : 'You';
   // "Seen" under your last message once the other person has opened the chat since.
   const lastMine = [...shown].reverse().find((x) => x.kind === 'message' && x.authorId === me) ?? null;
   const seen = !!(lastMine && conv?.otherReadAt && conv.otherReadAt >= lastMine.at);

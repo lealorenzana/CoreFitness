@@ -62,6 +62,10 @@
       "app": "member"
     },
     {
+      "file": "trainer-place-check.js",
+      "app": "member"
+    },
+    {
       "file": "trainer-lively-check.js",
       "app": "member"
     },

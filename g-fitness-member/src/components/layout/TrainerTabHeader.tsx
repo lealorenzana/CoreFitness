@@ -25,13 +25,8 @@ function titleFor(tab: TrainerTab, now: Date, fullName: string | undefined): [st
         now.toLocaleDateString('en-US', { weekday: 'long' }),
         now.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }),
       ];
-    case 'rooms':
-      return ['Rooms', 'Your classes, trainees and groups'];
     case 'schedule':
-      return ['Schedule', 'What you teach'];
-    case 'bookings':
-      // Not "you decide these": at some gyms the desk does (0180).
-      return ['Bookings', 'Requests for your time'];
+      return ['Schedule', 'Your sessions and hours'];
     case 'profile':
       // The name arrives with the identity read; until then the line holds its
       // height empty rather than showing a placeholder name.
@@ -92,24 +87,32 @@ export default function TrainerTabHeader({ tab }: { tab: TrainerTab }) {
       )}
 
       {!isHome && (
-        <button type="button" onClick={() => navigate('/trainer/home')} aria-label="Back to messages" data-hub-back
+        <button type="button" onClick={() => navigate('/trainer/home')} aria-label="Back to the hub" data-hub-back
           className="flex items-center noc-press" style={{ gap: 6, marginBottom: 10, fontSize: 13, color: 'var(--color-text-secondary)' }}>
-          <ArrowLeft size={17} /> Messages
+          <ArrowLeft size={17} /> Back
         </button>
       )}
-      <div className="flex items-start justify-between" style={{ gap: 12 }}>
-        <h1 key={tab.id} className="noc-rise min-w-0">
-          <span className="screen-title block">{line1}</span>
-          <span className="screen-title block truncate" style={{ color: 'var(--color-text-muted)' }}>
-            {line2 || ' '}
-          </span>
-        </h1>
-        {!isHome && <div style={{ paddingTop: 4 }}>{actions}</div>}
-      </div>
-
-      <p className="eyebrow" style={{ marginTop: 12 }}>{named.eyebrow}</p>
-
-      <div className="rule" style={{ marginTop: 12 }} />
+      {isHome ? (
+        <>
+          <h1 key={tab.id} className="noc-rise min-w-0">
+            <span className="screen-title block">{line1}</span>
+            <span className="screen-title block truncate" style={{ color: 'var(--color-text-muted)' }}>{line2 || ' '}</span>
+          </h1>
+          <p className="eyebrow" style={{ marginTop: 12 }}>{named.eyebrow}</p>
+          <div className="rule" style={{ marginTop: 12 }} />
+        </>
+      ) : (
+        // One title and one quiet line (wave 2, 2026-10-27): the second big
+        // line was cut off on a phone ("Requests for you…") and the eyebrow
+        // under it said the same thing a third time.
+        <div className="flex items-start justify-between" style={{ gap: 12 }}>
+          <h1 key={tab.id} className="noc-rise min-w-0">
+            <span className="screen-title block truncate">{line1}</span>
+            <span className="block" style={{ fontSize: 12.5, marginTop: 2, color: 'var(--color-text-muted)' }} data-header-sub>{line2}</span>
+          </h1>
+          <div style={{ paddingTop: 4 }}>{actions}</div>
+        </div>
+      )}
 
       {rail.length > 0 ? (
         <nav aria-label={`${named.label} screens`} className="rail" style={{

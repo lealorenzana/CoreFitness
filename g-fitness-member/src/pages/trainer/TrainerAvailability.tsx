@@ -76,7 +76,7 @@ const TIME_OPTIONS = Array.from({ length: 33 }, (_, i) => {
   return `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
 });
 
-export default function TrainerAvailability() {
+export default function TrainerAvailability({ embedded = false }: { embedded?: boolean } = {}) {
   const [trainerId, setTrainerId] = useState('');
   const [rows, setRows] = useState<TrainerAvailabilityRow[]>([]);
   const [bookedDows, setBookedDows] = useState<Set<number>>(new Set());
@@ -204,8 +204,8 @@ export default function TrainerAvailability() {
     .filter(([, items]) => items.length > 0);
 
   return (
-    <Page>
-      <PageTitle back fallback="/trainer/schedule" title="Bookable hours" subtitle="When members can book you 1-on-1" />
+    <Page dockClear={!embedded}>
+      {!embedded && <PageTitle back fallback="/trainer/schedule" title="Bookable hours" subtitle="When members can book you 1-on-1" />}
 
       {loading ? (
         <SkeletonList count={3} />

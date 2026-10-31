@@ -38,10 +38,8 @@ const ROUTES: [string, FeatureKey][] = [
   ['/member/refer', 'referrals'],
   ['/member/pause-or-cancel', 'requests'],
   // trainer
-  ['/trainer/rooms', 'rooms'],
-  ['/trainer/coaching', 'coaching'],
-  ['/trainer/messages', 'chat'],
-  ['/trainer/schedule', 'classes'],
+  // Schedule holds 1-on-1 sessions and hours too, so it is never gated by Classes (simplify, 2026-10-28).
+  ['/trainer/packages', 'coaching'],
   ['/trainer/achievements', 'engagement'],
 ];
 

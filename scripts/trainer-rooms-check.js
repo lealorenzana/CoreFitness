@@ -1,8 +1,8 @@
 /**
- * Coaching rooms, the trainer's side (0128/0129): the Rooms tab, a room's four
- * tabs, posting, assigning a check-in, reviewing a hand-in (with the sets the
+ * Coaching rooms, the trainer's side (0128/0129; a package's room since 0220):
+ * the rail photo, the trainee's place and its tabs, assigning a check-in, reviewing a hand-in (with the sets the
  * member logged) and returning it with a comment, the grade book's flags, and
- * the group code. The rules themselves are proven in scripts/sql/rooms.mjs and
+ * an old room link landing on the place. The rules themselves are proven in scripts/sql/rooms.mjs and
  * classwork.mjs; this proves the screens send and show them.
  *
  * Setup copied from trainer-assign-check.js.
@@ -124,14 +124,15 @@ async (page) => {
 
   // ---- coaching rooms fixture (0128/0129) -------------------------------------------------
   const today = dstr(0);
+  // Since 0220 a room is a coaching package's: Ana's, with this coach.
   const ROOMS = [
-    { id: 'rm1', kind: 'class', name: 'Morning HIIT', description: null, trainer_id: 't1', trainer_name: 'Coach Rae',
-      member_count: 2, post_count: 1, last_post_at: iso(-1, 9, 0), comments_on: true, archived: false,
+    { id: 'rm1', kind: 'pt', name: 'Ana Reyes · 1-on-1', description: null, trainer_id: 't1', trainer_name: 'Coach Rae',
+      member_count: 1, post_count: 1, last_post_at: iso(-1, 9, 0), comments_on: true, archived: false,
       join_code: null, is_mine: ROLE === 'trainer', full_access: FULL },
-    { id: 'rm2', kind: 'group', name: '8-week fat loss', description: 'Two check-ins a week', trainer_id: 't1', trainer_name: 'Coach Rae',
-      member_count: 1, post_count: 0, last_post_at: null, comments_on: true, archived: false,
-      join_code: ROLE === 'trainer' ? 'QWERTY' : null, is_mine: ROLE === 'trainer', full_access: FULL },
   ];
+  const COACHINGS = [{ id: 'k1', member_id: 'mb1', member_name: 'Ana Reyes', member_photo: null, trainer_id: 't1', trainer_name: 'Coach Rae',
+    trainer_photo: null, kind: 'pt', room_id: 'rm1', months: 3, status: 'active', fee_mode: 'included', price: null, pay_reference: null,
+    pay_sent_at: null, starts_on: dstr(-10), ends_on: dstr(80), started_by: 'member', created_at: iso(-10, 9, 0), i_am: 'coach' }];
   const POSTS = [{ post_id: 'po1', created_at: iso(-1, 9, 0), body: 'Bring water tomorrow!', photo_url: null, video_url: null,
     author_name: 'Coach Rae', can_delete: ROLE === 'trainer',
     comments: [{ id: 'c1', body: 'Got it coach!', created_at: iso(-1, 10, 0), author: 'Ana R.', is_trainer: false, can_delete: false }] }];
@@ -149,9 +150,10 @@ async (page) => {
   const FN = {
     sync_gym_rooms: () => 0,
     my_rooms: () => ROOMS.map((r) => ({ ...r, full_access: FULL })),
+    my_coachings: () => COACHINGS,
     room_badges: () => [{ room_id: 'rm1', to_review: ROLE === 'trainer' ? 1 : 0, due_soon: 2 }],
     trainer_review_queue: () => ROLE !== 'trainer' ? [] : [{ submission_id: 's1', assignment_id: 'w1', room_id: 'rm1',
-      room_name: 'Morning HIIT', title: 'Leg day', member_name: 'Ana Reyes', turned_in_at: iso(0, 7, 0), late: false }],
+      room_name: 'Ana Reyes · 1-on-1', title: 'Leg day', member_name: 'Ana Reyes', turned_in_at: iso(0, 7, 0), late: false }],
     room_stream: () => [
       ...(DB.room_posts || []).map((p) => ({ post_id: p.id, created_at: p.created_at, body: p.body, photo_url: null,
         video_url: p.video_url, author_name: 'Coach Rae', can_delete: true, comments: [] })),
@@ -292,40 +294,30 @@ async (page) => {
 
   const pressTab = async (name) => { await page.getByRole('tab', { name }).click().catch(async () => page.getByRole('button', { name, exact: true }).click()); await page.waitForTimeout(800); };
 
-  await go('/trainer/rooms');
+  await go('/trainer/home');
   let t = await text();
-  // The hub, Discord style (2026-10-11; Today first since 2026-10-27): no tab bar; Today, Messages, then the rooms rail.
+  // The hub, Discord style (kept through the simplify, 2026-10-28): no tab bar; Today, Personal training, then a photo per package trainee.
   out.push('no tab bar: ' + ((await page.locator('nav[aria-label="Main"]').count()) === 0 ? 'yes' : 'STILL SHOWN'));
   out.push('Today first, with what waits for a comment: ' + (/Needs you/i.test(t) && /1 piece of classwork to check/.test(t) && /Ana Reyes · Leg day/.test(t) ? 'shown' : 'MISSING ' + t.slice(0, 400)));
-  const rail = await page.evaluate(() => [...document.querySelectorAll('[data-rail-room]')].map((b) => b.getAttribute('aria-label')));
-  out.push('class and group rooms on the rail: ' + (rail.includes('Morning HIIT') && rail.includes('8-week fat loss') ? 'shown' : 'MISSING ' + JSON.stringify(rail)));
-  await page.locator('[data-rail-home]').click();
+  out.push('the package trainee on the rail, and no class or group rooms: ' + ((await page.locator('[data-rail-trainee="mb1"]').count()) === 1
+    && (await page.locator('[data-rail-room]').count()) === 0 ? 'shown' : 'MISSING'));
+  await page.locator('[data-rail-pt]').click();
   await page.waitForTimeout(800);
-  out.push('1-on-1 trainees are in Messages, not the rail: ' + ((await page.locator('[data-rail-group="pt"]').count()) === 0 && (await page.locator('[data-dm-row], [data-dm-empty]').count()) > 0 ? 'yes' : 'MISSING'));
-  out.push('Members one tap away: ' + ((await page.getByText('Your trainees', { exact: true }).count()) === 1 ? 'yes' : 'MISSING'));
+  out.push('Personal training lists her on a package: ' + ((await page.locator('[data-pt-section="package"]').count()) === 1
+    && /Ana Reyes/.test(await page.locator('[data-pt-row="package"]').first().innerText()) ? 'yes' : 'MISSING'));
   out.push('the coach floating at the bottom with status and bell: ' + ((await page.locator('[data-user-panel][data-presence]').count()) === 1 && (await page.getByRole('button', { name: 'Notifications' }).count()) === 1 ? 'shown' : 'MISSING'));
   await page.screenshot({ path: 'shots/trainer-rooms.png' });
 
-  // A room on the rail opens its channels; a channel opens the room full screen.
-  await page.locator('[data-rail-room="rm1"]').click();
-  await page.waitForTimeout(500);
-  const chans = await page.evaluate(() => [...document.querySelectorAll('[data-channels] button')].map((b) => b.textContent.trim()));
-  out.push('a room lists its channels: ' + (chans.some((c) => /^stream/.test(c)) && chans.some((c) => /^classwork/.test(c)) ? 'yes' : 'MISSING ' + JSON.stringify(chans)));
-  await page.screenshot({ path: 'shots/trainer-hub-room.png' });
-  await page.locator('[data-channels] button', { hasText: 'stream' }).click();
+  // Her photo on the rail opens her place: Chat · Classwork · Progress · About.
+  await page.locator('[data-rail-trainee="mb1"]').click();
   await page.waitForTimeout(1300);
   t = await text();
-  out.push('opens the room: ' + (/\/trainer\/rooms\/rm1$/.test(page.url()) ? 'rm1' : 'MISSING ' + page.url()));
-  out.push('four tabs: ' + (['Stream', 'Classwork', 'People', 'Progress'].every((x) => t.includes(x)) ? 'Stream · Classwork · People · Progress' : 'MISSING'));
-  out.push('the stream with a comment: ' + (/Bring water tomorrow!/.test(t) && /Got it coach!/.test(t) ? 'shown' : 'MISSING'));
-  await page.getByLabel('New post').fill('Class moved to 7:30 on Friday');
-  await page.getByRole('button', { name: 'Post', exact: true }).click();
-  await page.waitForTimeout(1200);
-  out.push('posting: ' + ((DB.room_posts || []).some((p) => p.body === 'Class moved to 7:30 on Friday' && p.room_id === 'rm1' && p.gym_id === 'gym-1')
-    && /Class moved to 7:30 on Friday/.test(await text()) ? 'sent and shown' : 'MISSING ' + JSON.stringify(DB.room_posts)));
-  await page.screenshot({ path: 'shots/trainer-room-stream.png' });
+  out.push('opens her place: ' + (/\/trainer\/pt\/mb1$/.test(page.url()) ? 'mb1' : 'MISSING ' + page.url()));
+  const tabs = await page.getByRole('tab').allInnerTexts();
+  out.push('four tabs: ' + (['Chat', 'Classwork', 'Progress', 'About'].every((x) => tabs.some((y) => y.startsWith(x))) ? 'Chat · Classwork · Progress · About' : 'MISSING ' + JSON.stringify(tabs)));
+  out.push('the chat first: ' + ((await page.locator('[data-timeline]').count()) === 1 ? 'yes' : 'MISSING'));
 
-  await pressTab('Classwork');
+  await pressTab(/^Classwork/);
   t = await text();
   out.push('classwork with counts: ' + (/Leg day/.test(t) && /1 of 2 turned in/.test(t) && /1 to review/.test(t) ? 'shown' : 'MISSING'));
   await page.getByRole('button', { name: 'Assign', exact: true }).first().click();
@@ -338,7 +330,7 @@ async (page) => {
   await page.waitForTimeout(1200);
   const ca = CALLS.create_assignment;
   out.push('assigning a check-in: ' + (ca && ca.p_room === 'rm1' && ca.p_kind === 'checkin' && ca.p_checkin_type === 'weight'
-    && ca.p_title === 'Monday weigh-in' && ca.p_assigned_to === null ? 'sent to the whole room' : 'MISSING ' + JSON.stringify(ca)));
+    && ca.p_title === 'Monday weigh-in' && ca.p_assigned_to === null ? 'sent to her room' : 'MISSING ' + JSON.stringify(ca)));
 
   await page.getByText('Leg day', { exact: true }).first().click();
   await page.waitForTimeout(1300);
@@ -351,15 +343,14 @@ async (page) => {
     && /You: Great depth!/.test(await text()) ? 'sent and shown' : 'MISSING ' + JSON.stringify(CALLS.return_submission)));
   await page.screenshot({ path: 'shots/trainer-return.png' });
 
+  // An old room link (a notification from before) lands on her place, on the same tab.
   await go('/trainer/rooms/rm1?tab=progress');
+  await page.waitForTimeout(800);
   t = await text();
-  out.push('grade book flags: ' + (/2\+ missing/.test(t) && /No workout in 10 days/.test(t) && /1 person needs a look/.test(t) ? 'shown' : 'MISSING'));
+  out.push('an old room link opens her place: ' + (/\/trainer\/pt\/mb1\?tab=progress$/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
+  out.push('grade book flags: ' + (/Ana needs a look: 2\+ missing, no workout in 10 days/.test(t) ? 'shown' : 'MISSING'));
   out.push('grade book figures: ' + (/5 of last 8 classes/.test(t) && /64\.5 kg/.test(t) && /33%/.test(t) ? 'shown' : 'MISSING'));
   await page.screenshot({ path: 'shots/trainer-progress.png', fullPage: true });
-
-  await go('/trainer/rooms/rm2?tab=people');
-  t = await text();
-  out.push('group code for its trainer: ' + (/QWERTY/.test(t) && /Make a new code/.test(t) ? 'shown' : 'MISSING'));
 
   await go('/trainer/home');
   out.push('home nudge: ' + (/1 piece of classwork to check/.test(await text()) ? 'shown' : 'MISSING'));

@@ -73,13 +73,12 @@ const BookingHistory = lazyPage(() => import('./pages/BookingHistory'));
 const TrainerProfilePage = lazyPage(() => import('./pages/TrainerProfile'));
 const Trainers = lazyPage(() => import('./pages/Trainers'));
 import TrainerHome from './pages/trainer/TrainerHome';
-const TrainerMembers = lazyPage(() => import('./pages/trainer/TrainerMembers'));
+const TraineePlace = lazyPage(() => import('./pages/trainer/TraineePlace'));
+const TrainerOldLink = lazyPage(() => import('./pages/trainer/TrainerOldLink'));
 const TrainerSchedule = lazyPage(() => import('./pages/trainer/TrainerSchedule'));
-const TrainerAvailability = lazyPage(() => import('./pages/trainer/TrainerAvailability'));
 const TrainerSettings = lazyPage(() => import('./pages/trainer/TrainerSettings'));
 const TrainerExercises = lazyPage(() => import('./pages/trainer/TrainerExercises'));
-const TrainerBookings = lazyPage(() => import('./pages/trainer/TrainerBookings'));
-const TrainerCoaching = lazyPage(() => import('./pages/trainer/TrainerCoaching'));
+const TrainerPackages = lazyPage(() => import('./pages/trainer/TrainerPackages'));
 const TrainerProfile = lazyPage(() => import('./pages/trainer/TrainerProfile'));
 const TrainerEditProfile = lazyPage(() => import('./pages/trainer/TrainerEditProfile'));
 const Achievements = lazyPage(() => import('./pages/Achievements'));
@@ -266,23 +265,22 @@ function App() {
           <Route path="today" element={<TrainerHome />} />
           {/* A coach's first steps (0212): the hub sends them here until they finish. */}
           <Route path="welcome" element={<TrainerSetup />} />
-          <Route path="members" element={<TrainerMembers />} />
+          {/* Personal training (simplify, 2026-10-28): one place per trainee — Chat · Classwork · Progress · About. */}
+          <Route path="pt/:memberId" element={<TraineePlace />} />
+          <Route path="packages" element={<TrainerPackages />} />
           {/* A coach writes or edits their trainee's routine (0174). */}
           <Route path="members/:memberId/routine/:routineId" element={<RoutineEditor />} />
-          {/* Rooms (0128/0129): the trainer's Google Classroom. */}
-          <Route path="rooms" element={<TrainerHub />} />
-          <Route path="rooms/:roomId" element={<Room />} />
           <Route path="rooms/:roomId/work/:assignmentId" element={<AssignmentDetail />} />
-          {/* Chat with a trainee lives in your 1-on-1 room with them (0174); old links land there. */}
-          <Route path="messages" element={<CoachPlaceRedirect />} />
-          <Route path="messages/:conversationId" element={<CoachPlaceRedirect />} />
           <Route path="schedule" element={<TrainerSchedule />} />
-          {/* Sub-route of Schedule rather than a sixth nav tab — the bottom bar
-              is full at five, and hours are something you set occasionally, not
-              a destination you switch to. */}
-          <Route path="availability" element={<TrainerAvailability />} />
-          <Route path="bookings" element={<TrainerBookings />} />
-          <Route path="coaching" element={<TrainerCoaching />} />
+          {/* Old links land on the new home, never a blank page (Review Focus 1). */}
+          <Route path="members" element={<TrainerOldLink />} />
+          <Route path="rooms" element={<Navigate to="/trainer/home?view=pt" replace />} />
+          <Route path="rooms/:roomId" element={<TrainerOldLink />} />
+          <Route path="messages" element={<Navigate to="/trainer/home?view=pt" replace />} />
+          <Route path="messages/:conversationId" element={<TrainerOldLink />} />
+          <Route path="coaching" element={<TrainerOldLink />} />
+          <Route path="bookings" element={<Navigate to="/trainer/home" replace />} />
+          <Route path="availability" element={<Navigate to="/trainer/schedule?tab=hours" replace />} />
           <Route path="equipment" element={<Equipment />} />
           <Route path="profile" element={<TrainerProfile />} />
           <Route path="profile/edit" element={<TrainerEditProfile />} />

@@ -1479,6 +1479,18 @@ img { -webkit-user-drag: none; user-select: none; }
   background: radial-gradient(circle at 32% 28%, #fff6d8, var(--color-primary-300) 40%, color-mix(in srgb, var(--color-primary-300) 55%, #000) 100%);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary-300) 70%, #000); }
 
+/* A room's progress marks, with words (wave 2). */
+.pg-mk { display: inline-flex; align-items: center; gap: 4px; height: 26px; min-width: 26px; padding: 0 7px; border-radius: 8px; font-size: 12px; font-weight: 700; justify-content: center; }
+.pg-on { background: var(--color-primary-light); color: var(--color-primary-300); }
+.pg-late { background: var(--color-surface-raised); color: var(--color-text-secondary); border: 1px solid var(--color-hairline); }
+.pg-miss { background: var(--color-secondary-light); color: var(--color-secondary-300); }
+.pg-due { border: 1px dashed var(--color-hairline); color: var(--color-text-muted); }
+
+/* The You sheet's four work tiles (wave 2). */
+.you-tile { border: 1px solid var(--color-hairline); border-radius: 16px; padding: 12px; background: var(--color-surface); text-align: left; min-width: 0; }
+.you-tile b { display: block; font-size: 14.5px; margin-top: 8px; color: var(--color-text-primary); }
+.you-tile small { display: block; font-size: 12px; margin-top: 2px; color: var(--color-text-muted); }
+
 @media (prefers-reduced-motion: reduce) {
   .td-arrive { animation: none; }
   .tw-card { transition: none; }

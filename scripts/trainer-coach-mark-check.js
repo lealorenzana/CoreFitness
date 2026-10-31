@@ -260,12 +260,14 @@ async (page) => {
   };
   const text = async () => (await page.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ');
 
-  await go('/trainer/members');
-  await page.getByRole('button', { name: /Lea Lorenzana/ }).first().click();
+  const sub = async (name) => { await page.getByRole('tab', { name, exact: true }).click(); await page.waitForTimeout(700); return text(); };
+  // A trainee's place, About (simplify, 2026-10-28): the streak under Progress, routines and plan under Training.
+  await go('/trainer/pt/mb1?tab=about');
   await page.waitForTimeout(1500);
-  let t = await text();
+  let t = await sub('Progress');
   out.push("the trainee's gym streak, and that it is at risk: " + (/Gym streak/.test(t) && /5 weeks running/.test(t)
     && /needs 2 more — every day left/.test(t) && /aims for 3 days a week · best 7 weeks/.test(t) ? 'yes' : 'MISSING'));
+  t = await sub('Training');
   out.push('the trainee sheet lists both routines: ' + (/Coach push day/.test(t) && /My pull day/.test(t) ? 'yes' : 'MISSING'));
   // 0174: a routine the member's AI coach made reads "AI coach" (a human coach's reads as theirs).
   const marks = (t.match(/AI coach/g) || []).length;
@@ -284,10 +286,9 @@ async (page) => {
   out.push('no meal guide on the trainee sheet: ' + (MEAL_ASKS.length === 0 && await page.locator('[data-trainee-meals]').count() === 0 && !/Meal guide/i.test(t) ? 'yes' : 'STILL SHOWN'));
 
   BEFORE_0145 = true;
-  await go('/trainer/members');
-  await page.getByRole('button', { name: /Lea Lorenzana/ }).first().click();
+  await go('/trainer/pt/mb1?tab=about');
   await page.waitForTimeout(1500);
-  t = await text();
+  t = await sub('Training');
   out.push('before 0145 the routines still list: ' + (/Coach push day/.test(t) && /My pull day/.test(t) ? 'yes' : 'MISSING'));
   out.push('before 0145 the column was asked for and refused: ' + (refusedSource > 0 ? 'yes' : 'MISSING'));
   out.push('before 0145 nothing is marked: ' + (!/AI coach|Set by the coach/.test(t) ? 'yes' : 'STILL SHOWN'));

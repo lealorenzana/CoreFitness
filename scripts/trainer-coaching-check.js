@@ -131,28 +131,44 @@ async (page) => {
 
   await page.setViewportSize({ width: 393, height: 852 });
   const out = [];
-  await page.goto('http://localhost:5173/trainer/coaching', { waitUntil: 'domcontentloaded' });
+  await page.goto('http://localhost:5173/trainer/packages', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#boot', { state: 'detached', timeout: 9000 }).catch(() => {});
-  await page.getByText('Lea Lorenzana').first().waitFor({ timeout: 15000 });
+  await page.getByText('Lea asks for').first().waitFor({ timeout: 15000 });
   await page.waitForTimeout(800);
   const text = async () => (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+  const tab = async (name) => { await page.getByRole('tab', { name }).click(); await page.waitForTimeout(500); };
   let t = await text();
-  out.push('the request, the payment to check, and the trainee with until when: '
-    + (/Asking you/.test(t) && /Paid you/.test(t) && /ref GC-777/.test(t) && /Joy Tan/.test(t) && /Until/.test(t) ? 'yes' : 'MISSING'));
+  // Wave 2 (2026-10-27): tabs — Needs you · Training · Ended · Payments.
+  out.push('Needs you holds the request and the payment to check, each saying what to do: '
+    + (/Lea asks for a 3 months package/.test(t) && /Set your price, then accept/.test(t) && /Ana paid ₱1,500 · ref GC-777/.test(t) && /Check it reached you/.test(t) ? 'yes' : 'MISSING ' + t.slice(0, 300)));
+  out.push('…the tab counts them: ' + ((await page.getByRole('tab', { name: 'Needs you · 2' }).count()) === 1 ? 'yes' : 'MISSING'));
   out.push('Accept waits for the coach to say their price: ' + (await page.getByRole('button', { name: /^Accept$/ }).first().isDisabled() ? 'yes' : 'NO'));
   await page.getByLabel('Price for Lea Lorenzana').fill('1500');
   await page.getByRole('button', { name: /^Accept$/ }).first().click();
   await page.waitForTimeout(900);
   let c = CC.find(([f]) => f === 'respond_coaching');
   out.push('accepting sends the price: ' + (c && c[1].p_id === 'k1' && c[1].p_accept === true && c[1].p_price === 1500 ? 'yes' : 'MISSING ' + JSON.stringify(CC)));
-  await page.getByRole('button', { name: /^Received$/ }).click();
+  await page.getByRole('button', { name: /^It arrived$/ }).click();
   await page.waitForTimeout(900);
   c = CC.find(([f]) => f === 'confirm_coaching_payment');
-  out.push('Received confirms that payment: ' + (c && c[1].p_id === 'k2' && c[1].p_received === true ? 'yes' : 'MISSING'));
+  out.push('It arrived confirms that payment: ' + (c && c[1].p_id === 'k2' && c[1].p_received === true ? 'yes' : 'MISSING'));
+  out.push('one toast at a time: ' + ((await page.locator('[role="status"], [data-toast]').count()) <= 1 ? 'yes' : 'STACKED'));
+  await page.screenshot({ path: 'shots/trainer-coaching.png' });
+
+  // Offering moved behind a button, into a sheet with the same fields.
+  await page.getByRole('button', { name: 'Start coaching someone' }).click();
+  await page.waitForTimeout(700);
+  out.push('Start coaching someone opens the offer: ' + ((await page.locator('[data-invite]').count()) === 1 && (await page.getByLabel('Member to invite').count()) === 1 ? 'yes' : 'MISSING'));
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(500);
+
+  await tab(/^Training/);
+  t = await text();
+  out.push('Training shows the trainee with until when: ' + (/Joy Tan/.test(t) && /until/.test(t) ? 'yes' : 'MISSING'));
+  await tab('Payments');
   t = await text();
   out.push('how members pay this coach, and that the gym never sees it: ' + (/How members pay you/.test(t) && /0917 000 1111/.test(t) && /never sees this money/.test(t) ? 'yes' : 'MISSING'));
-  await page.screenshot({ path: 'shots/trainer-coaching.png', fullPage: true });
   out.push('a coach paid directly can connect their own PayMongo: ' + ((await page.locator('[data-connect-paymongo]').count()) === 1
     && /Get paid online/.test(await page.locator('[data-connect-paymongo]').innerText()) ? 'yes' : 'MISSING'));
-  return out.join('\n');
+  return out.join(String.fromCharCode(10));
 }

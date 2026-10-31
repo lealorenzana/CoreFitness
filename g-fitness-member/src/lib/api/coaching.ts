@@ -51,6 +51,12 @@ export async function getCoachingSettings(): Promise<CoachingSettings | null> {
 }
 
 /** NULL on a failed read, so a screen can say so instead of "no coach". */
+/** Packages waiting on this coach (simplify, 2026-10-28): asked for, or paid to the coach and to check. */
+export async function loadPackageAsks(): Promise<Coaching[]> {
+  return ((await myCoachings()) ?? []).filter((c) => c.iAm === 'coach'
+    && (c.status === 'requested' || (c.status === 'payment_sent' && c.feeMode === 'trainer_direct')));
+}
+
 export async function myCoachings(): Promise<Coaching[] | null> {
   const { data, error } = await supabase.rpc('my_coachings');
   if (error) return null;

@@ -60,7 +60,8 @@ export default function RoutineEditor() {
   // A coach writing or editing their trainee's routine (0174): the same editor,
   // saved through coach_save_routine, which checks the coach may.
   const coachMode = !!traineeId;
-  const doneTo = coachMode ? '/trainer/members' : '/member/track';
+  // Back to that trainee's About → Training, where their routines are listed (simplify, 2026-10-28).
+  const doneTo = coachMode ? `/trainer/pt/${traineeId}?tab=about` : '/member/track';
   // "Add to a routine" from the exercise library hands its exercise over here.
   const addExerciseId = (useLocation().state as { addExerciseId?: string } | null)?.addExerciseId ?? null;
   const isNew = !routineId || routineId === 'new';

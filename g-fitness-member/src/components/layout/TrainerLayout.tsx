@@ -19,9 +19,9 @@ import ModuleGate from '../ModuleGate';
 /**
  * The trainer shell — the member shell's structure (Nocturne), top to bottom:
  *
- *   hub      — /trainer/home and /trainer/rooms are TrainerHub, Discord style:
- *              a rail of rooms, Messages, and the coach floating at the bottom
- *   header   — Schedule, Bookings and Profile: a Back to the hub, the title, the rail
+ *   hub      — /trainer/home is TrainerHub, Discord style: a rail of Today,
+ *              Personal training and package trainees, the coach at the bottom
+ *   header   — Schedule and Profile: a Back to the hub, the title, the rail
  *   <main>   — the one scroller; every other screen is full screen with Back
  *   toolbar  — on Profile only: Schedule · Hours · Coaching · Library · Settings
  *
@@ -39,7 +39,7 @@ export default function TrainerLayout() {
   const sync = useSyncExternalStore(subscribeSaved, syncTick, () => 0);
   const mainRef = useRef<HTMLDivElement>(null);
   // The hub (TrainerHub) is the app's home, Discord style: no header, no gutter, no bar.
-  const hub = location.pathname === '/trainer/home' || location.pathname === '/trainer/rooms';
+  const hub = location.pathname === '/trainer/home';
   const root = hub ? null : trainerTabRootFor(location.pathname);
 
   useScrollMemory(mainRef, location.pathname + location.search);

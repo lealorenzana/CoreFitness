@@ -74,6 +74,6 @@ async (page) => {
   const s = SAVED[0] || {};
   out.push('saved through coach_save_routine for that member and routine: '
     + (s.p_member === 'mb1' && s.p_routine === 'r2' && s.p_name === 'Home circuit' && Array.isArray(s.p_exercises) && s.p_exercises[0]?.exercise_id === 'e1' ? 'yes' : 'MISSING ' + JSON.stringify(s)));
-  out.push('back to the trainee list: ' + (/\/trainer\/members$/.test(new URL(page.url()).pathname) ? 'yes' : 'MISSING ' + page.url()));
+  out.push('back to that trainee’s place: ' + (/\/trainer\/pt\/mb1$/.test(new URL(page.url()).pathname) ? 'yes' : 'MISSING ' + page.url()));
   return out.join('\n');
 }

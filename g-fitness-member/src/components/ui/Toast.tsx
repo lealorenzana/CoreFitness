@@ -30,7 +30,9 @@ let _setToasts: React.Dispatch<React.SetStateAction<ToastItem[]>> | null = null;
 
 const push = (message: string, type: ToastType) => {
   const id = ++_counter;
-  _setToasts?.((prev) => [...prev, { id, message, type }]);
+  // One at a time (2026-10-27): the newest replaces the last, so two never
+  // stack over the page — a decision and its follow-up read as one line.
+  _setToasts?.(() => [{ id, message, type }]);
   // Refusals stay a little longer: they are usually a sentence to read, and a
   // confirmation is usually a word to glance at.
   setTimeout(() => {

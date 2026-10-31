@@ -92,7 +92,7 @@ async (page) => {
 
   // 1. The rail says what each button is.
   const labels = await page.locator('[data-rail-label]').allInnerTexts();
-  out.push('the rail is labelled: ' + (['Today', 'Messages', 'Morning HIIT', 'New group'].every((l) => labels.includes(l)) ? 'yes' : 'MISSING ' + JSON.stringify(labels)));
+  out.push('the rail is labelled: ' + (['Today', 'Personal training'].every((l) => labels.includes(l)) && !labels.some((l) => /HIIT|New group/.test(l)) ? 'yes' : 'MISSING ' + JSON.stringify(labels)));
 
   // 2. The first open of the day: the three numbers, counting up.
   const arrived = await page.waitForSelector('[data-day-strip].td-arrive', { timeout: 4000 }).then(() => true, () => false);
@@ -145,6 +145,6 @@ async (page) => {
   await page.waitForTimeout(400);
   await page.locator('[data-found]').getByText('Ana Reyes').click();
   await page.waitForTimeout(1000);
-  out.push('Find a trainee opens their sheet: ' + (/\/trainer\/members\?open=m2/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
+  out.push('Find a trainee opens their place: ' + (/\/trainer\/pt\/m2/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
   return out.join(String.fromCharCode(10));
 }

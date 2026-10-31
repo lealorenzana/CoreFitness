@@ -115,7 +115,7 @@ async (page) => {
 
   await page.setViewportSize({ width: 393, height: 852 });
   const out = [];
-  await page.goto('http://localhost:5173/trainer/bookings', { waitUntil: 'domcontentloaded' });
+  await page.goto('http://localhost:5173/trainer/schedule', { waitUntil: 'domcontentloaded' }); // This week holds what Bookings did (simplify, 2026-10-28)
   await page.waitForSelector('#boot', { state: 'detached', timeout: 9000 }).catch(() => {});
   await page.waitForTimeout(3500);
   await page.screenshot({ path: 'shots/trainer-booking-modes.png' });

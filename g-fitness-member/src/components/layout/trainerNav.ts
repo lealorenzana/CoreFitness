@@ -1,7 +1,7 @@
 import type { Icon } from '@phosphor-icons/react';
 import {
   Barbell,
-  Bell, CalendarBlank, ClockCountdown, House, Trophy, User, UsersThree, Tray,
+  Bell, CalendarBlank, ClockCountdown, House, Trophy, User, UsersThree,
 } from '@phosphor-icons/react';
 import { visibleDestinations, type Destination, type WordReader } from './memberNav';
 import { hasOwnWords, moduleOn, word, type FeatureKey, type GymApp } from '../../lib/gymApp';
@@ -15,7 +15,7 @@ import { hasOwnWords, moduleOn, word, type FeatureKey, type GymApp } from '../..
  * file creates a screen.
  */
 
-export type TrainerTabId = 'home' | 'rooms' | 'schedule' | 'bookings' | 'profile';
+export type TrainerTabId = 'home' | 'schedule' | 'profile';
 
 export interface TrainerTab {
   id: TrainerTabId;
@@ -37,13 +37,9 @@ export interface TrainerTab {
 
 export const TRAINER_TABS: TrainerTab[] = [
   { id: 'home', label: 'Home', path: '/trainer/home', icon: House, eyebrow: 'Your coaching day' },
-  // Rooms (0128): a Google Classroom per class, per 1-on-1 trainee and per
-  // coaching group. The roster it replaced as a tab is "All my members" inside.
-  { id: 'rooms', label: 'Rooms', path: '/trainer/rooms', icon: UsersThree, eyebrow: 'Classwork and feedback', module: 'rooms' },
-  { id: 'schedule', label: 'Schedule', path: '/trainer/schedule', icon: CalendarBlank, eyebrow: 'Classes and hours', module: 'classes',
-    words: (w) => ({ eyebrow: w('classes', true) + ' and hours' }) },
-  { id: 'bookings', label: 'Bookings', path: '/trainer/bookings', icon: Tray, eyebrow: 'Classes and 1-on-1',
-    words: (w) => ({ eyebrow: w('classes', true) + ' and 1-on-1' }) },
+  // Personal training, packages and each trainee's place live under the hub (simplify, 2026-10-28).
+  // Schedule holds sessions and hours, so no switch hides it.
+  { id: 'schedule', label: 'Schedule', path: '/trainer/schedule', icon: CalendarBlank, eyebrow: 'Sessions and hours' },
   { id: 'profile', label: 'Profile', path: '/trainer/profile', icon: User, eyebrow: 'Account and ratings' },
 ];
 
@@ -52,10 +48,9 @@ export const TRAINER_TABS: TrainerTab[] = [
  * — the same load-bearing order as `memberNav.ts`. Longest prefix wins.
  */
 const TRAINER_TAB_PATHS: string[][] = [
-  ['/trainer/home', '/trainer/notifications', '/trainer/messages'],
-  ['/trainer/rooms', '/trainer/members'],
+  ['/trainer/home', '/trainer/notifications', '/trainer/messages', '/trainer/pt', '/trainer/packages',
+   '/trainer/rooms', '/trainer/members'],
   ['/trainer/schedule', '/trainer/availability'],
-  ['/trainer/bookings'],
   ['/trainer/profile', '/trainer/settings', '/trainer/achievements',
    '/trainer/change-password', '/trainer/change-email'],
 ];
@@ -93,21 +88,15 @@ export const TRAINER_RAILS: Record<TrainerTabId, Destination[]> = {
   home: [
     { label: 'Updates', path: '/trainer/notifications', icon: Bell },
     // Coaching terms (0181): requests, Received, trainees and until when.
-    { label: 'Coaching', path: '/trainer/coaching', icon: UsersThree, module: 'coaching' },
+    { label: 'Packages', path: '/trainer/packages', icon: UsersThree, module: 'coaching' },
     { label: 'Equipment', path: '/trainer/equipment', icon: Barbell, module: 'equipment' },
-    { label: 'Bookable hours', path: '/trainer/availability', icon: ClockCountdown },
+    { label: 'Bookable hours', path: '/trainer/schedule?tab=hours', icon: ClockCountdown },
     // The gym's exercise guides (0121) — a coach writes them between sessions.
     { label: 'Exercises', path: '/trainer/exercises', icon: Barbell },
     { label: 'Achievements', path: '/trainer/achievements', icon: Trophy, module: 'engagement' },
   ],
-  rooms: [
-    // The roster the Rooms tab replaced, unchanged.
-    { label: 'All my members', path: '/trainer/members', icon: UsersThree },
-    { label: 'Coaching', path: '/trainer/coaching', icon: UsersThree, module: 'coaching' },
-  ],
   // Schedule leads with its own Bookable hours panel, so a pill would repeat it.
   schedule: [],
-  bookings: [],
   // Schedule · Hours · Coaching · Library · Settings ride on the profile's toolbar (TrainerToolbar).
   // The profile's screens moved to the You sheet (redesign, 2026-10-27).
   profile: [],

@@ -247,11 +247,11 @@ async (page) => {
 
   await go('/trainer/messages/cv1');
   await page.waitForTimeout(1200);
-  out.push("an old chat link opens that trainee's room: " + (/\/trainer\/rooms\/rm1/.test(page.url()) ? 'rm1' : 'MISSING ' + page.url()));
-  out.push('…found by who the chat is with: ' + (CALLS.pt_room_with?.p_other === 'm1' ? 'yes' : 'MISSING'));
+  // Since the simplify (2026-10-28) a trainee's place is /trainer/pt/<member>: found by who the chat is with.
+  out.push("an old chat link opens that trainee's place: " + (/\/trainer\/pt\/m1(\?|$)/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
   await go('/trainer/messages');
   await page.waitForTimeout(1200);
-  out.push('the bare Messages link, with two trainees, opens the list of rooms: ' + (/\/trainer\/rooms\/?(\?|$)/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
+  out.push('the bare Messages link opens Personal training: ' + (/\/trainer\/home\?view=pt$/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
   await page.screenshot({ path: 'shots/trainer-chat.png' });
   return out.join('\n');
 }

@@ -1,6 +1,6 @@
 import { supabase } from '../../lib/supabaseClient';
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ClockCountdown, MapPin, PencilSimple, Plus, Users, X } from '@phosphor-icons/react';
 import { SkeletonList } from '../../components/ui/Skeleton';
 import DateRail, { buildRail } from '../../components/ui/DateRail';
@@ -18,6 +18,10 @@ import { errorMessage } from '../../utils/errorMessage';
 import { readCache, writeCache } from '../../lib/pageCache';
 import type { ClassRow } from '../../types/db';
 import { Page } from '../../components/ui/page';
+import WeekTab from '../../components/trainer/WeekTab';
+import TrainerAvailability from './TrainerAvailability';
+import { useGymApp } from '../../hooks/useGymApp';
+import { moduleOn, word } from '../../lib/gymApp';
 import { Chip, Eyebrow, NocButton, Panel, ProgressBar, StatusPill, TextTabs } from '../../components/ui/noc';
 
 /**
@@ -383,7 +387,7 @@ interface ScheduleSnapshot {
 
 const CACHE_KEY = 'trainer:schedule';
 
-export default function TrainerSchedule() {
+function ClassesTab() {
   const navigate = useNavigate();
   const cached = readCache<ScheduleSnapshot>(CACHE_KEY);
   const [classes, setClasses] = useState<ClassRow[]>(cached?.classes ?? []);
@@ -514,7 +518,7 @@ export default function TrainerSchedule() {
   const noHours = availability.length === 0;
 
   return (
-    <Page>
+    <div className="flex flex-col noc-stack" data-classes-tab>
       {/* "12 classes assigned to you" counted every occurrence ever, past
           included, which is not a number a trainer can act on. */}
       <p style={{ fontSize: 12.5, color: 'var(--color-text-muted)' }}>
@@ -527,7 +531,7 @@ export default function TrainerSchedule() {
 
       {/* Bookable hours — a summary, not an editor. Amber when unset, because
           "no hours" means members literally cannot book this trainer. */}
-      <Panel glow={noHours ? 'action' : 'structure'} onClick={() => navigate('/trainer/availability')}>
+      <Panel glow={noHours ? 'action' : 'structure'} onClick={() => navigate('/trainer/schedule?tab=hours')}>
         <div className="flex items-center" style={{ gap: 12 }}>
           <ClockCountdown size={22} weight="duotone" className="flex-none"
             style={{ color: noHours ? 'var(--color-secondary)' : 'var(--color-primary-300)' }} />
@@ -669,6 +673,36 @@ export default function TrainerSchedule() {
           setReloadKey((k) => k + 1);
         }}
       />
+    </div>
+  );
+}
+
+type ScheduleTab = 'week' | 'hours' | 'classes';
+
+/**
+ * Schedule (simplify, 2026-10-28): This week — the sessions to run and the
+ * requests to decide, which used to be Bookings — Your hours (was its own page),
+ * and Classes, only where the gym runs them. The tab is in the address
+ * (`?tab=hours`), so the You sheet's Hours tile and old links land on it.
+ */
+export default function TrainerSchedule() {
+  const app = useGymApp();
+  const classesOn = moduleOn(app, 'classes');
+  const [params, setParams] = useSearchParams();
+  const [trainerId, setTrainerId] = useState<string | null>(null);
+  useEffect(() => { void getCurrentTrainerId().then(setTrainerId).catch(() => setTrainerId(null)); }, []);
+  const tabs: { id: ScheduleTab; label: string }[] = [
+    { id: 'week', label: 'This week' }, { id: 'hours', label: 'Your hours' },
+    ...(classesOn ? [{ id: 'classes' as ScheduleTab, label: word(app, 'classes', true) }] : []),
+  ];
+  const asked = params.get('tab') as ScheduleTab | null;
+  const tab: ScheduleTab = tabs.some((t) => t.id === asked) ? (asked as ScheduleTab) : 'week';
+  return (
+    <Page>
+      <TextTabs<ScheduleTab> label="Schedule" tabs={tabs} active={tab} onChange={(t) => setParams(t === 'week' ? {} : { tab: t }, { replace: true })} />
+      {tab === 'week' && <WeekTab trainerId={trainerId} classesOn={classesOn} />}
+      {tab === 'hours' && <TrainerAvailability embedded />}
+      {tab === 'classes' && classesOn && <ClassesTab />}
     </Page>
   );
 }

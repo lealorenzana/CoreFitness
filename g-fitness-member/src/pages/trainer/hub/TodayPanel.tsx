@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CaretRight, Check, ClipboardText, MagnifyingGlass, UserCircleMinus, X } from '@phosphor-icons/react';
+import { CaretRight, Check, ClipboardText, HandWaving, MagnifyingGlass, Receipt, UserCircleMinus, X } from '@phosphor-icons/react';
 import Avatar from '../../../components/ui/Avatar';
 import { LineRow } from '../../../components/ui/noc';
 import { toast } from '../../../components/ui/Toast';
@@ -14,13 +14,14 @@ import type { ClassRow } from '../../../types/db';
 import { useGymApp } from '../../../hooks/useGymApp';
 import { moduleOn } from '../../../lib/gymApp';
 import { errorMessage } from '../../../utils/errorMessage';
+import { loadPackageAsks, monthsLabel, peso, type Coaching } from '../../../lib/api/coaching';
 import {
   coachDecides, decideRequest, decidedText, loadTrainerRequests, waitedLabel, type TrainerRequest,
 } from '../../../services/trainerRequests';
 
 /** A trainee not seen for this many days is someone to reach out to. */
 const QUIET_DAYS = 7;
-/** Requests decided here; the rest wait on Bookings, which is their own page. */
+/** Requests decided here; the rest wait on Schedule. */
 const REQUEST_PREVIEW = 3;
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
@@ -41,7 +42,7 @@ interface Slot { key: string; at: string; title: string; meta: string; open: () 
  * Top to bottom: find a trainee; the day in three numbers (which count up with a
  * chime on the first open of the day, 0218); requests decided right here — ✓
  * accepts, ✕ asks once more, then declines — with the rest a tap away on
- * Bookings; the day as a timeline; and who needs them. Every line is read,
+ * Schedule; then packages asked for or paid (simplify, 2026-10-28); the day as a timeline; and who needs them. Every line is read,
  * never assumed: a name comes from the coach's own roster, and a request whose
  * person the roster does not have shows what was booked, not a made-up name.
  */
@@ -55,6 +56,7 @@ export default function TodayPanel({ trainerId, classes, queue, onRequests, arri
   const [sessions, setSessions] = useState<PtSessionRow[]>([]);
   const [roster, setRoster] = useState<TrainerRosterRow[]>([]);
   const [requests, setRequests] = useState<TrainerRequest[] | null>(null);
+  const [asks, setAsks] = useState<Coaching[]>([]);
   const [modes, setModes] = useState<BookingModes>({ classMode: 'coach', ptMode: 'coach' });
   const [asking, setAsking] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -73,30 +75,32 @@ export default function TodayPanel({ trainerId, classes, queue, onRequests, arri
   useEffect(() => {
     let alive = true;
     void (async () => {
-      const [s, r] = await Promise.all([
+      const [s, r, a] = await Promise.all([
         trainerId ? listTrainerPtSessions(trainerId).catch(() => []) : Promise.resolve([]),
         listMyTrainerMembers().catch(() => []),
+        loadPackageAsks().catch(() => [] as Coaching[]),
         loadRequests(),
       ]);
-      if (alive) { setSessions(s); setRoster(r); }
+      if (alive) { setSessions(s); setRoster(r); setAsks(a); }
     })();
     return () => { alive = false; };
   }, [trainerId, loadRequests]);
 
-  const open = (requests ?? []).filter((r) => coachDecides(r, modes) || decided[r.id]);
+  // Class requests only where the gym runs classes (0220: off unless the owner switches them on).
+  const open = (requests ?? []).filter((r) => (r.kind === 'pt' || classesOn) && (coachDecides(r, modes) || decided[r.id]));
   const waiting = open.filter((r) => !decided[r.id]).length;
   useEffect(() => { if (requests) onRequests?.(waiting); }, [requests, waiting, onRequests]);
 
   const names = new Map(roster.map((m) => [m.member_id, m]));
   const slots: Slot[] = [
-    ...classes.filter((c) => c.scheduled_at && isToday(c.scheduled_at)).map((c) => ({
+    ...(classesOn ? classes : []).filter((c) => c.scheduled_at && isToday(c.scheduled_at)).map((c) => ({
       key: `c${c.id}`, at: c.scheduled_at as string, title: c.name,
       meta: [c.location, c.capacity ? `${c.capacity} places` : null].filter(Boolean).join(' · '),
       open: () => navigate('/trainer/schedule'), live: false,
     })),
     ...sessions.filter((s) => s.status === 'approved' && isToday(s.starts_at)).map((s) => ({
       key: `p${s.id}`, at: s.starts_at, title: names.get(s.member_id) ? `1-on-1 · ${names.get(s.member_id)!.name}` : '1-on-1',
-      meta: `${s.duration_minutes} min`, open: () => navigate('/trainer/bookings'), live: false,
+      meta: `${s.duration_minutes} min`, open: () => navigate(`/trainer/pt/${s.member_id}`), live: false,
     })),
   ].sort((a, b) => a.at.localeCompare(b.at));
   // The one happening now, or the next to come, carries the lit dot.
@@ -146,7 +150,7 @@ export default function TodayPanel({ trainerId, classes, queue, onRequests, arri
           {found.length === 0 ? (
             <p style={{ fontSize: 13, padding: '8px 2px', color: 'var(--color-text-muted)' }}>No trainee of yours by that name.</p>
           ) : found.map((m) => (
-            <button key={m.member_id} type="button" onClick={() => navigate(`/trainer/members?open=${m.member_id}`)}
+            <button key={m.member_id} type="button" onClick={() => navigate(`/trainer/pt/${m.member_id}`)}
               className="w-full flex items-center text-left noc-press" style={{ gap: 10, padding: '8px 2px' }}>
               <Avatar name={m.name} photoUrl={m.photo_url} size={34} />
               <span className="min-w-0 flex-1">
@@ -164,7 +168,7 @@ export default function TodayPanel({ trainerId, classes, queue, onRequests, arri
       {/* The day in three numbers. Requests are amber: they wait on the coach. */}
       <div className={`td-strip${arriving ? ' td-arrive' : ''}`} data-day-strip>
         <DayNumber value={slots.length} label={slots.length === 1 ? 'session today' : 'sessions today'} run={arriving} />
-        <DayNumber value={waiting} label={waiting === 1 ? 'request' : 'requests'} run={arriving} act={waiting > 0} />
+        <DayNumber value={waiting + asks.length} label={waiting + asks.length === 1 ? 'request' : 'requests'} run={arriving} act={waiting + asks.length > 0} />
         <DayNumber value={needYou} label="need you" run={arriving} />
       </div>
 
@@ -207,11 +211,27 @@ export default function TodayPanel({ trainerId, classes, queue, onRequests, arri
               );
             })}
             {open.length > REQUEST_PREVIEW && (
-              <button type="button" onClick={() => navigate('/trainer/bookings')} className="w-full flex items-center noc-press"
+              <button type="button" onClick={() => navigate('/trainer/schedule')} data-see-all className="w-full flex items-center noc-press"
                 style={{ gap: 6, padding: '10px 0 2px', borderTop: '1px solid var(--color-separator)', fontSize: 13, fontWeight: 700, color: 'var(--color-secondary)' }}>
-                See all {open.length} in Bookings <CaretRight size={13} />
+                See all {open.length} in Schedule <CaretRight size={13} />
               </button>
             )}
+          </section>
+        </>
+      )}
+
+      {/* Packages asked for, or paid to this coach and to check — decided on Packages. */}
+      {asks.length > 0 && (
+        <>
+          <p className="eyebrow" style={{ marginTop: 18 }}>Packages</p>
+          <section aria-label="Package requests" data-package-asks>
+            {asks.map((c, i) => (
+              <LineRow key={c.id} icon={c.status === 'requested' ? HandWaving : Receipt} tone="act"
+                title={c.status === 'requested' ? `${c.memberName} asks for a ${monthsLabel(c.months)} package` : `${c.memberName} paid ${c.price != null ? peso(c.price) : 'you'}`}
+                meta={c.status === 'requested' ? 'Accept or decline on Packages' : 'Check it reached you, then the package starts'}
+                action={<CaretRight size={14} />} actionTone="muted"
+                onClick={() => navigate('/trainer/packages?tab=needs')} last={i === asks.length - 1} />
+            ))}
           </section>
         </>
       )}
@@ -219,7 +239,7 @@ export default function TodayPanel({ trainerId, classes, queue, onRequests, arri
       <p className="eyebrow" style={{ marginTop: 18 }}>Your day</p>
       {slots.length === 0 ? (
         <p style={{ fontSize: 13, marginTop: 6, color: 'var(--color-text-muted)' }}>
-          No classes or 1-on-1s today.{' '}{classesOn && <button type="button" onClick={() => navigate('/trainer/schedule')} style={{ color: 'var(--color-primary-300)' }}>See your week</button>}
+          {classesOn ? 'No classes or sessions today.' : 'No sessions today.'}{' '}<button type="button" onClick={() => navigate('/trainer/schedule')} style={{ color: 'var(--color-primary-300)' }}>See your week</button>
         </p>
       ) : (
         <section aria-label="Your day" style={{ marginTop: 8 }} data-day>
@@ -259,7 +279,7 @@ export default function TodayPanel({ trainerId, classes, queue, onRequests, arri
                   title={d == null ? `${m.name} hasn’t been in yet` : `${m.name} hasn’t been in for ${d} days`}
                   meta="Their notes, plan and progress"
                   action={<CaretRight size={14} />} actionTone="muted"
-                  onClick={() => navigate(`/trainer/members?open=${m.member_id}`)}
+                  onClick={() => navigate(`/trainer/pt/${m.member_id}?tab=about`)}
                   last={i === quiet.length - 1} />
               );
             })}
