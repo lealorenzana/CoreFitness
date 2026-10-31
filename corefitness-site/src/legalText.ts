@@ -32,7 +32,7 @@
  * anybody to agree: agreeing to a draft records nothing true. A site deployed
  * with newer, unpublished wording therefore calls *that wording* a draft.
  */
-export const VERSION = '2026-10-31';
+export const VERSION = '2026-11-01';
 
 export type DocKey = 'terms' | 'dpa' | 'privacy';
 
@@ -250,6 +250,7 @@ export function buildDocs(f: Facts): Record<DocKey, LegalDoc> {
           'If we decline an application or you call it off, you can delete your account yourself (erased after 7 days) and your documents go with it; the application itself stays as the record. Documents of an approved gym are kept while it uses the service.',
           'Billing records are kept as long as the law requires financial records to be kept.',
           'Owner and staff accounts are kept while the gym uses the service, and archived — not erased — after, so the gym\'s history still makes sense. Any of them can delete their own account (erased after 7 days; what they recorded for the gym stays, under "Deleted member") — except the only owner of an open gym, who first asks us to close the gym or hand it to another owner.',
+          'We may suspend any account in every gym at once — for fraud, abuse or a legal order. We record why, tell the person the reason when they sign in and by email, and tell their gyms only that we suspended it; the reason stays between us and them. Only we lift it, and we keep the record of it.',
         ] },
         { id: 'rights', title: '7. Your rights under RA 10173', body: [
           'Ask what we hold about you, have it corrected, object to how it is used, and ask for it to be deleted where the law allows.',

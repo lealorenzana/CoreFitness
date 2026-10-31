@@ -126,6 +126,10 @@
       "app": "member"
     },
     {
+      "file": "member-suspended-check.js",
+      "app": "member"
+    },
+    {
       "file": "member-checkin-sheet-check.js",
       "app": "member"
     },
@@ -507,6 +511,10 @@
     },
     {
       "file": "platform-applicant-check.js",
+      "app": "platform"
+    },
+    {
+      "file": "platform-people-check.js",
       "app": "platform"
     },
     {

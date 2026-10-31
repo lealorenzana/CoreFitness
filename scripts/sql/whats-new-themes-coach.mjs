@@ -41,7 +41,9 @@ await as(M);
 let r = (await one(`select my_whats_new('member') w`)).w;
 check('a member is shown the newest member note', r && r.app === 'member' && r.items.length >= 1, JSON.stringify(r));
 await db.exec(`select mark_release_seen('${r.id}')`);
-check('…once: after seeing it, nothing more', (await one(`select my_whats_new('member') w`)).w === null);
+// Later migrations seed more member notes (0219–0221), so the next unseen one may follow — never this one again.
+const after = (await one(`select my_whats_new('member') w`)).w;
+check('…once: after seeing it, never that note again', after === null || after.id !== r.id, JSON.stringify(after));
 check('the admin note is not the member\'s', (await one(`select my_whats_new('admin') w`)).w?.app === 'admin');
 await as(ST);
 check('the desk sees the admin note too', (await one(`select my_whats_new('admin') w`)).w?.app === 'admin');

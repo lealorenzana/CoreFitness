@@ -22,6 +22,8 @@ export default function Account() {
   /** 0225: asked to delete the account — when it is erased (null: not asked); undefined while unknown. */
   const [eraseAfter, setEraseAfter] = useState<string | null | undefined>(undefined);
   const [deleted, setDeleted] = useState(false);
+  /** 0226: suspended by Core Fitness — the reason, shown to them alone. */
+  const [suspension, setSuspension] = useState<{ reason: string; suspended_at: string } | null>(null);
 
   useEffect(() => {
     if (!supabase) { setSession(null); return; }
@@ -32,6 +34,8 @@ export default function Account() {
 
   const load = useCallback(async () => {
     if (!supabase) return;
+    const { data: sus } = await supabase.rpc('my_platform_suspension');
+    setSuspension((sus as { reason: string; suspended_at: string } | null) ?? null);
     const { data: del } = await supabase.rpc('my_account_deletion');
     setEraseAfter((del as { pending: { erase_after: string } | null } | null)?.pending?.erase_after ?? null);
     const { data, error: e } = await supabase.rpc('my_applications');
@@ -45,6 +49,15 @@ export default function Account() {
   if (session === undefined) return <div className="status-page"><p className="status-loading">Opening…</p></div>;
   if (!session) return <SignIn deleted={deleted} />;
   if (apps === null || eraseAfter === undefined) return <div className="status-page"><p className="status-loading">Finding your application…</p></div>;
+  if (suspension) return (
+    <div className="status-page" data-platform-suspended>
+      <h1 className="status-title">Your account is suspended</h1>
+      <p className="status-lede">Core Fitness suspended it on {day(suspension.suspended_at)}, so your application is on hold.</p>
+      <p data-suspension-reason>{suspension.reason}</p>
+      <p className="note">We sent this to your email too. If you think it is a mistake, reply to that email.</p>
+      <button type="button" className="cta ghost" onClick={() => void signOut()}>Sign out</button>
+    </div>
+  );
   if (eraseAfter) return <DeletionPending eraseAfter={eraseAfter} onKept={() => void load()} onSignOut={() => void signOut()} />;
 
   const chosen = pick ?? (apps.length === 1 ? apps[0]!.id : null);

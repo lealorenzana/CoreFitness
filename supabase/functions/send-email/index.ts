@@ -50,7 +50,9 @@ const KINDS = [
   "owner_credentials", "password_reset", "invitation",
   "application_approved", "application_rejected",
   // 0187: the platform's answers to an applicant, and its verdict on their documents.
-  "application_message", "application_documents", "test",
+  "application_message", "application_documents",
+  // 0226: the platform tells a person their account is suspended (with the reason) or active again.
+  "account_suspended", "test",
 ];
 
 /** Plain text becomes a readable HTML body. No template engine, no images. */

@@ -54,9 +54,12 @@ check('each tier carries its size and AI allowance', p('starter').max_members ==
   && p('growth').max_members === 400 && p('growth').ai_monthly_cap === 1500 && p('pro').max_members === null && p('pro').ai_monthly_cap === 4000);
 check('Standard and Premium still work for the gyms on them', p('standard').is_active && p('premium').is_active);
 check('the trial keeps 30 days and 300 AI messages', p('trial').ai_monthly_cap === 300);
-const off = (await one(`select count(*)::int n from platform_plan_features where plan_key in ('starter','growth','pro') and not enabled`)).n;
-const on = (await one(`select count(*)::int n from platform_plan_features where plan_key in ('starter','growth','pro') and enabled`)).n;
-check('every switch is on in every tier', off === 0 && on === 3 * (await one(`select count(*)::int n from platform_features`)).n);
+// 0209 made the lobby TV a Pro feature; every other switch is on in every tier.
+const off = (await one(`select count(*)::int n from platform_plan_features where plan_key in ('starter','growth','pro') and not enabled and feature_key <> 'lobby_tv'`)).n;
+const on = (await one(`select count(*)::int n from platform_plan_features where plan_key in ('starter','growth','pro') and enabled and feature_key <> 'lobby_tv'`)).n;
+const tv = (await one(`select string_agg(plan_key || ':' || enabled, ',' order by plan_key) s from platform_plan_features where plan_key in ('starter','growth','pro') and feature_key = 'lobby_tv'`)).s;
+check('every switch is on in every tier (the lobby TV only on Pro, 0209)', off === 0 && on === 3 * ((await one(`select count(*)::int n from platform_features`)).n - 1)
+  && tv === 'growth:false,pro:true,starter:false', `${off} off, ${on} on, tv ${tv}`);
 
 // ---- the allowance and top-ups ----
 await db.exec(`update gyms set plan = 'pro' where id = '${GYM}';

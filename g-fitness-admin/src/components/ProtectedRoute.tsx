@@ -3,6 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { getGymContext } from '../lib/gymContext';
 import { DeletionPending } from './DeleteAccount';
+import Suspended from './Suspended';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -24,10 +25,11 @@ interface ProtectedRouteProps {
  */
 export default function ProtectedRoute({ children, adminOnly = false }: ProtectedRouteProps) {
   const [status, setStatus] =
-    useState<'checking' | 'authorized' | 'unauthorized' | 'forbidden' | 'unset-up' | 'waiting-for-owner' | 'invite' | 'deleting'>('checking');
+    useState<'checking' | 'authorized' | 'unauthorized' | 'forbidden' | 'unset-up' | 'waiting-for-owner' | 'invite' | 'deleting' | 'suspended'>('checking');
   /** 0225: the account asked to be deleted — when it is erased; keeping it re-runs the check. */
   const [eraseAfter, setEraseAfter] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
+  const [suspension, setSuspension] = useState<{ reason: string; suspended_at: string } | null>(null);
   const [inviteToken, setInviteToken] = useState('');
   const { pathname } = useLocation();
 
@@ -46,6 +48,12 @@ export default function ProtectedRoute({ children, adminOnly = false }: Protecte
       const meta = session.user.user_metadata;
       if (meta?.invite_pending && typeof meta.invite_token === 'string') {
         if (active) { setInviteToken(meta.invite_token); setStatus('invite'); }
+        return;
+      }
+      // Suspended by Core Fitness (0226): nothing opens; they are shown why.
+      const { data: sus } = await supabase.rpc('my_platform_suspension');
+      if (sus) {
+        if (active) { setSuspension(sus as { reason: string; suspended_at: string }); setStatus('suspended'); }
         return;
       }
       // Asked to delete the account (0225): nothing opens until they keep it or leave.
@@ -91,6 +99,7 @@ export default function ProtectedRoute({ children, adminOnly = false }: Protecte
   }, [adminOnly, pathname, tick]);
 
   if (status === 'invite') return <Navigate to={`/admin/invite/${inviteToken}`} replace />;
+  if (status === 'suspended' && suspension) return <Suspended reason={suspension.reason} since={suspension.suspended_at} />;
   if (status === 'deleting' && eraseAfter) return <DeletionPending eraseAfter={eraseAfter} onKept={() => setTick((n) => n + 1)} />;
   if (status === 'checking') {
     return (

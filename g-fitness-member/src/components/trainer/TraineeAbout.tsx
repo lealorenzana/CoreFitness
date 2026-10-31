@@ -81,6 +81,14 @@ export default function TraineeAbout({ member, onChat, initialTab = 'progress' }
   const [recommendation, setRecommendation] = useState('');
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState<{ text: string; ok: boolean } | null>(null);
+  /** 0226: Core Fitness suspended this person — the fact only, never the reason. */
+  const [byPlatform, setByPlatform] = useState(false);
+  useEffect(() => {
+    void (async () => {
+      const { data, error } = await supabase.rpc('gym_suspended_people');
+      setByPlatform(!error && Array.isArray(data) && (data as unknown[]).some((r) => (typeof r === 'string' ? r : Object.values(r as Record<string, string>)[0]) === member.id));
+    })();
+  }, [member.id]);
 
   const load = useCallback(async () => {
     setDetailLoading(true);
@@ -184,6 +192,12 @@ export default function TraineeAbout({ member, onChat, initialTab = 'progress' }
 
   return (
     <div data-trainee-about data-trainee-sheet>
+      {byPlatform && (
+        <p data-platform-suspended-mark style={{ fontSize: 12.5, marginBottom: 10, padding: '9px 12px', borderRadius: 10,
+          border: '1px solid var(--color-secondary)', color: 'var(--color-secondary)' }}>
+          Suspended by Core Fitness — they cannot use the app until Core Fitness lifts it.
+        </p>
+      )}
       {notice && (
         <div className="flex items-start" style={{
           gap: 10, padding: '10px 12px', borderRadius: 10, marginBottom: 10,

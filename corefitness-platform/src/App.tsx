@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { Activity, Building2, CreditCard, Grid3x3, History, Inbox, Layers, HardDrive, LayoutDashboard, LifeBuoy, Search, LogOut, Megaphone, MessageSquareHeart, Sparkles, Settings as SettingsIcon, TrendingUp, type LucideIcon } from 'lucide-react';
+import { Activity, Building2, CreditCard, Grid3x3, History, Inbox, Layers, HardDrive, LayoutDashboard, LifeBuoy, Search, LogOut, Megaphone, MessageSquareHeart, Sparkles, Settings as SettingsIcon, TrendingUp, UserSearch, type LucideIcon } from 'lucide-react';
 import { supabase } from './lib/supabaseClient';
 import { CHANGED, isPlatformAdmin, listApplications, listTickets, sweepBilling } from './lib/platform';
 import SignIn from './pages/SignIn';
@@ -23,6 +23,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import TooltipLayer from './components/TooltipLayer';
 import ActivityPage from './pages/Activity';
 import Usage from './pages/Usage';
+import People from './pages/People';
 import Settings from './pages/Settings';
 import SupportView from './pages/SupportView';
 
@@ -47,6 +48,7 @@ const PAGES: Page[] = [
   { group: 'The service', path: '/overview', label: 'Overview', icon: LayoutDashboard, title: 'Overview', lede: 'The whole service at a glance — and what needs you.' },
   { group: 'The service', path: '/gyms', label: 'Gyms', icon: Building2, title: 'Gyms', lede: 'Every gym on Core Fitness: who runs it, how busy, what it pays.' },
   { group: 'The service', path: '/growth', label: 'Growth', icon: TrendingUp, title: 'Growth', lede: 'The service as a business — and the gyms about to leave it.' },
+  { group: 'The service', path: '/people', label: 'People', icon: UserSearch, title: 'People', lede: 'Anyone with an account, across every gym — and suspending one.' },
   { group: 'The service', path: '/usage', label: 'Usage', icon: Grid3x3, title: 'Usage', lede: 'Every gym against every feature — who uses what, and what nobody has found.' },
   { group: 'Talk to gyms', path: '/applications', label: 'Applications', icon: Inbox, title: 'Applications', lede: 'Gyms asking to join, from the website.' },
   { group: 'Talk to gyms', path: '/support', label: 'Support', icon: LifeBuoy, title: 'Support', lede: 'What gym owners and desks have asked Core Fitness.' },
@@ -190,6 +192,7 @@ function Shell() {
                 <Route path="/capacity" element={<Capacity />} />
                 <Route path="/activity" element={<ActivityPage />} />
                 <Route path="/usage" element={<Usage />} />
+                <Route path="/people" element={<People />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/platform" element={<Platform />} />
                 <Route path="*" element={<Navigate to="/overview" replace />} />

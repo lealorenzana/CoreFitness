@@ -504,7 +504,7 @@ export const listEmails = (days = 30) => call<SentEmail[]>('platform_email_log',
 export async function sendEmail(m: {
   to: string; toName?: string | null; subject: string; body: string;
   kind: 'owner_credentials' | 'password_reset' | 'invitation'
-      | 'application_approved' | 'application_rejected' | 'application_message' | 'application_documents' | 'test';
+      | 'application_approved' | 'application_rejected' | 'application_message' | 'application_documents' | 'account_suspended' | 'test';
   gymId?: string | null;
 }): Promise<{ id: string; configured: boolean; status: string; error?: string; message?: string }> {
   const { data: { session } } = await supabase.auth.getSession();
@@ -894,3 +894,34 @@ export const listReleases = () => call<Release[]>('platform_releases');
 export const saveRelease = (r: { id: string | null; app: ReleaseApp; title: string; items: string[] }) =>
   call<string>('platform_save_release', { p_id: r.id, p_app: r.app, p_title: r.title, p_items: r.items });
 export const deleteRelease = (id: string) => call<void>('platform_delete_release', { p_id: id });
+
+// ---- 0226: People — anyone, across every gym; the platform suspends and lifts ----
+export interface PersonRow {
+  id: string; name: string | null; email: string;
+  gyms: { gym: string; role: string; status: string }[];
+  applicant: boolean; platform_admin: boolean;
+  suspended_reason: string | null; suspended_at: string | null;
+}
+export interface SuspendedRow { id: string; name: string | null; email: string; reason: string; suspended_at: string; gyms: string[] }
+export const searchPeople = (q: string) => call<PersonRow[]>('platform_search_people', { p_q: q });
+export const suspendedPeople = () => call<SuspendedRow[]>('platform_suspended_people');
+export const suspendPerson = (id: string, reason: string) => call<void>('platform_suspend', { p_person: id, p_reason: reason });
+export const liftSuspension = (id: string) => call<void>('platform_lift_suspension', { p_person: id });
+
+/** Tells the person themself — the only place the reason goes. Says plainly when no mail went. */
+export async function emailSuspension(p: { email: string; name: string | null }, lifted: boolean, reason?: string): Promise<string> {
+  const first = (p.name ?? '').split(' ')[0] || 'there';
+  try {
+    const r = await sendEmail({
+      to: p.email, toName: p.name ?? undefined, kind: 'account_suspended',
+      subject: lifted ? 'Your Core Fitness account is active again' : 'Your Core Fitness account is suspended',
+      body: lifted
+        ? `Hi ${first},\n\nCore Fitness has lifted the suspension on your account. You can sign in to every app again.\n\n— Core Fitness`
+        : `Hi ${first},\n\nCore Fitness has suspended your account, so you cannot use the member, coach or gym apps for now.\n\nThe reason: ${reason}\n\nIf you think this is a mistake, reply to this email.\n\n— Core Fitness`,
+    });
+    if (!r.configured) return `Not emailed — no mail provider is set up yet. They see ${lifted ? 'it' : 'the reason'} when they sign in.`;
+    return r.status === 'sent' ? `Emailed to ${p.email}.` : `The email to ${p.email} did not go: ${r.error ?? r.status}.`;
+  } catch (e) {
+    return `Not emailed: ${e instanceof Error ? e.message : 'unknown error'}.`;
+  }
+}

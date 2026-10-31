@@ -30,6 +30,7 @@ async (page) => {
   const DEL = { pending: null, blocked: 'You own Ana Fitness. Ask Core Fitness to close the gym or hand it to another owner first — then its members are told and can switch.' };
   const ERASE = new Date(Date.now() + 7 * 86400000).toISOString();
   const CALLS = [];
+  let SUS = null;
   const me = () => ({ id: 'u2', role: ROLE, status: 'active', first_name: 'Ana', last_name: 'Lisa',
     email: 'ana@anafitness.test', phone: '09093498899', photo_url: null, created_at: new Date().toISOString() });
 
@@ -44,6 +45,7 @@ async (page) => {
     if (path.startsWith('/auth/v1/')) return json(path.includes('/user') ? session.user : session);
     if (path.startsWith('/rest/v1/rpc/')) {
       const fn = path.split('/rest/v1/rpc/')[1];
+      if (fn === 'my_platform_suspension') return json(SUS);
       if (fn === 'my_account_deletion') return json({ pending: DEL.pending, blocked: DEL.blocked });
       if (fn === 'request_account_deletion') { CALLS.push(['request']); DEL.pending = { requested_at: new Date().toISOString(), erase_after: ERASE }; return json(ERASE); }
       if (fn === 'cancel_account_deletion') { CALLS.push(['cancel']); DEL.pending = null; return json(true); }
@@ -92,5 +94,11 @@ async (page) => {
   await page.locator('[data-keep-account]').click();
   await page.waitForTimeout(1500);
   out.push('Keep my account cancels it and the app opens: ' + (CALLS.some((c) => c[0] === 'cancel') && (await pend.count()) === 0 ? 'yes' : 'MISSING'));
+  // 0226: suspended by Core Fitness — only the suspension opens, with the reason.
+  SUS = { reason: 'Payments reported as fraudulent by two gyms.', suspended_at: new Date().toISOString() };
+  await open('/dashboard');
+  const sus = page.locator('[data-platform-suspended]');
+  out.push('suspended by Core Fitness: only that opens, with the reason: ' + ((await sus.count()) === 1 && /fraudulent/.test(await sus.innerText())
+    && (await page.locator('aside nav').count()) === 0 ? 'yes' : 'MISSING'));
   return out.join('\n');
 }

@@ -1,4 +1,5 @@
 import AddMemberWizard from '../components/members/AddMemberWizard';
+import { platformSuspendedIds } from '../lib/api/platformSuspensions';
 import { setAccountStatus } from '../lib/api/accountEvents';
 import {
   declineMembershipRequest, listOpenMembershipRequests,
@@ -142,6 +143,9 @@ export default function Members() {
   const [plans, setPlans] = useState<MembershipPlanRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [showArchived, setShowArchived] = useState(false);
+  /** 0226: people Core Fitness suspended — marked, never explained. */
+  const [byPlatform, setByPlatform] = useState<Set<string>>(new Set());
+  useEffect(() => { void (async () => { setByPlatform(await platformSuspendedIds()); })(); }, []);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -711,6 +715,7 @@ export default function Members() {
                   <tr key={m.id} data-member-row onClick={() => setViewingId(m.id)} style={{ cursor: 'pointer', height: filtered.length > perPage ? fitRowHeight : undefined }}>
                     <td><div className="a-who"><Av name={m.fullName} photo={m.photoUrl} />
                       <div className="min-w-0"><b className="block truncate">{m.fullName}</b>
+                        {byPlatform.has(m.id) && <span className="a-sub" data-platform-suspended-mark style={{ color: 'var(--a-a300)' }}>Suspended by Core Fitness</span>}
                         <div className="a-sub truncate">{m.experienceLevel ? m.experienceLevel[0].toUpperCase() + m.experienceLevel.slice(1) : 'No level set'}{joined ? ` · joined ${joined}` : ''}</div></div></div></td>
                     <td>{m.phone ? formatPhoneNumber(m.phone) : <span className="a-sub">—</span>}</td>
                     <td>{m.planName}</td>

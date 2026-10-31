@@ -78,6 +78,7 @@ const Trainers = lazyPage(() => import('./pages/Trainers'));
 import TrainerHome from './pages/trainer/TrainerHome';
 import { TourHost } from './components/tour/Tour';
 import { DeletionPending } from './components/account/DeleteAccount';
+import Suspended from './components/account/Suspended';
 const TraineePlace = lazyPage(() => import('./pages/trainer/TraineePlace'));
 const TrainerOldLink = lazyPage(() => import('./pages/trainer/TrainerOldLink'));
 const TrainerSchedule = lazyPage(() => import('./pages/trainer/TrainerSchedule'));
@@ -95,7 +96,7 @@ const JoinGym = lazyPage(() => import('./pages/JoinGym'));
 const AcceptInvite = lazyPage(() => import('./pages/AcceptInvite'));
 
 
-type RoleCheck = 'checking' | 'authorized' | 'unauthorized' | 'invite' | 'deleting';
+type RoleCheck = 'checking' | 'authorized' | 'unauthorized' | 'invite' | 'deleting' | 'suspended';
 
 /** An invited account that has not finished its first-sign-in form (0202). */
 function pendingInvite(meta: Record<string, unknown> | undefined): string | null {
@@ -128,6 +129,7 @@ function RoleProtectedRoute({
   /** 0225: the account asked to be deleted — when it is erased; keeping it re-runs the check. */
   const [eraseAfter, setEraseAfter] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
+  const [suspension, setSuspension] = useState<{ reason: string; suspended_at: string } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -143,6 +145,12 @@ function RoleProtectedRoute({
       const invite = pendingInvite(session.user.user_metadata);
       if (invite) {
         if (active) setStatus('invite');
+        return;
+      }
+      // Suspended by Core Fitness (0226): nothing opens; they are shown why.
+      const { data: sus } = await supabase.rpc('my_platform_suspension');
+      if (sus) {
+        if (active) { setSuspension(sus as { reason: string; suspended_at: string }); setStatus('suspended'); }
         return;
       }
       // Asked to delete the account (0225): nothing opens until they keep it or leave.
@@ -176,6 +184,7 @@ function RoleProtectedRoute({
 
   if (status === 'checking') return null;
   if (status === 'invite') return <InviteRedirect />;
+  if (status === 'suspended' && suspension) return <Suspended reason={suspension.reason} since={suspension.suspended_at} />;
   if (status === 'deleting' && eraseAfter) return <DeletionPending eraseAfter={eraseAfter} onKept={() => setTick((n) => n + 1)} />;
   if (status === 'unauthorized') return <Navigate to={redirectTo} replace />;
   return <>{children}</>;

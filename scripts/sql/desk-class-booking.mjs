@@ -75,7 +75,9 @@ check("…and the weekly quota (two a week, two already)", /allows 2 class/.test
 await as(M);
 check('a member cannot use it', /Only the gym/.test((await tryOne(`select desk_book_class('${M}', '${await (async () => { const x = await newClass(); await as(M); return x; })()}')`)).err ?? ''));
 await as(M);
-check("a member's own booking is still held by the unsigned waiver", /waiver/.test((await tryOne(`insert into bookings (gym_id, member_id, class_id, status) values ('${GYM}', '${M}', '${await (async () => { const x = await newClass(); await as(M); return x; })()}', 'pending') returning id`)).err ?? ''));
+// A week with no bookings yet, so the weekly quota does not answer first.
+const own = await tryOne(`insert into bookings (gym_id, member_id, class_id, status) values ('${GYM}', '${M}', '${await (async () => { const x = await newClass(10, `now() + interval '28 days'`); await as(M); return x; })()}', 'pending') returning id`);
+check("a member's own booking is still held by the unsigned waiver", /waiver/.test(own.err ?? ''), own.err ?? 'booked');
 
 await owner();
 check('closed to visitors', !(await one(`select has_function_privilege('anon', 'desk_book_class(uuid, uuid)', 'execute') x`)).x);
