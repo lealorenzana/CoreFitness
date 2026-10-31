@@ -276,13 +276,12 @@ async (page) => {
   out.push('…and the streak with its tier: ' + (/13-week streak · Blaze/.test(t) && (await page.locator('.lv-flame--blaze').count()) === 1 ? 'yes' : 'NO'));
   await page.screenshot({ path: 'shots/lively-today.png' });
 
-  // 2. Train: this week as one ring, and the last workout (no workout under way, which would come first).
+  // 2. Train (simplify, 2026-10-28): Your plan says when the last workout was; the week's ring moved to Today's streak.
   DB.workout_logs = DB.workout_logs.filter((l) => l.completed_at);
   await go('/member/book-class');
   await page.waitForTimeout(1200);
   t = await text();
-  out.push('Train shows this week as one ring: ' + ((await page.locator('[data-train-ring] [aria-label="3/4"]').count()) === 1 ? 'yes' : 'NO'));
-  out.push('…and the last workout: ' + (/Last time: Push day, 2 days ago/.test(t) ? 'yes' : 'NO ' + (t.match(/Last time[^.]{0,60}/) || [''])[0]));
+  out.push("Train's Your plan says when you last trained: " + (/last time 2 days ago/.test(t) ? 'yes' : 'NO ' + (t.match(/Your plan.{0,160}/) || [''])[0]));
   await page.screenshot({ path: 'shots/lively-train.png' });
 
   // 3. You: the trophy room.

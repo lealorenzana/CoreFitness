@@ -274,7 +274,7 @@ export default function Home() {
       title: `${b.title} · ${clock(b.startsAt)}`,
       meta: `${b.subtitle ?? ''}${more}`.replace(/^ · /, '') || undefined,
       pill: b.status === 'pending' ? { label: 'Awaiting approval', tone: 'structure' } : undefined,
-      onClick: () => navigate('/member/booking-history'),
+      onClick: () => navigate('/member/sessions'),
     });
   }
 

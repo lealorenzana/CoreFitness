@@ -28,7 +28,7 @@ export const notificationHelpers = {
       'booking',
       'Booking Confirmed',
       `Your session with ${trainerName} on ${date} at ${time} is confirmed.`,
-      '/member/booking-history'
+      '/member/sessions'
     );
   },
 

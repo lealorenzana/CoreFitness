@@ -122,6 +122,8 @@ export interface MyBooking {
   payment: 'paid' | 'included' | 'unknown';
   /** The coach, for the avatar and a rebook. Null for a class with no coach set. */
   trainerId: string | null;
+  /** The coach's name, for "with Ben" and the chat (simplify, 2026-10-28); null when not known. */
+  trainerName: string | null;
   trainerPhoto: string | null;
   /** 0081: who cancelled and why, when it was cancelled. */
   cancelledByRole: 'member' | 'trainer' | 'staff' | 'admin' | 'system' | null;
@@ -555,6 +557,7 @@ export async function listMyBookings(memberId: string): Promise<MyBooking[]> {
       status: b.status,
       cancellable: b.status === 'pending' || b.status === 'approved',
       trainerId: b.classes?.trainer_id ?? null,
+      trainerName: b.classes?.trainer_id ? nameById.get(b.classes.trainer_id) ?? null : null,
       trainerPhoto: b.classes?.trainer_id ? photoById.get(b.classes.trainer_id) ?? null : null,
       ...cancelInfo(b as unknown as Record<string, unknown>),
     })),
@@ -582,6 +585,7 @@ export async function listMyBookings(memberId: string): Promise<MyBooking[]> {
       // starts, with a reason — the button was hiding a right they had.
       cancellable: s.status === 'pending' || s.status === 'approved',
       trainerId: s.trainer_id,
+      trainerName: nameById.get(s.trainer_id) ?? null,
       trainerPhoto: photoById.get(s.trainer_id) ?? null,
       ...cancelInfo(s as unknown as Record<string, unknown>),
     })),

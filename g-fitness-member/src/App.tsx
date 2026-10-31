@@ -32,7 +32,6 @@ const AddFriend = lazyPage(() => import('./pages/friends/AddFriend'));
 const FriendCode = lazyPage(() => import('./pages/friends/FriendCode'));
 const ReachedTargets = lazyPage(() => import('./pages/progress/ReachedTargets'));
 const BodyReadings = lazyPage(() => import('./pages/progress/BodyReadings'));
-const MemberRooms = lazyPage(() => import('./pages/rooms/MemberRooms'));
 const Room = lazyPage(() => import('./pages/rooms/Room'));
 const AssignmentDetail = lazyPage(() => import('./pages/rooms/AssignmentDetail'));
 const TrainerHub = lazyPage(() => import('./pages/trainer/TrainerHub'));
@@ -66,7 +65,9 @@ const Waiver = lazyPage(() => import('./pages/Waiver'));
 const EditProfile = lazyPage(() => import('./pages/EditProfile'));
 const AttendanceHistory = lazyPage(() => import('./pages/AttendanceHistory'));
 const TrainPage = lazyPage(() => import('./pages/train/TrainPage'));
-const MyCoach = lazyPage(() => import('./pages/MyCoach'));
+const ToCoachTab = lazyPage(() => import('./pages/train/ToCoachTab'));
+const CoachChat = lazyPage(() => import('./pages/CoachChat'));
+const BookSession = lazyPage(() => import('./pages/BookSession'));
 const GymMap = lazyPage(() => import('./pages/GymMap'));
 const Equipment = lazyPage(() => import('./pages/Equipment'));
 const BookingHistory = lazyPage(() => import('./pages/BookingHistory'));
@@ -313,10 +314,14 @@ function App() {
           <Route path="chatbot" element={<ChatbotPage />} />
           <Route path="events" element={<Events />} />
           <Route path="trainers" element={<Trainers />} />
-          <Route path="coach" element={<MyCoach />} />
+          {/* Your coach, My bookings and Rooms became Train → Coach (simplify, 2026-10-28). */}
+          <Route path="coach" element={<ToCoachTab />} />
           <Route path="equipment" element={<Equipment />} />
           <Route path="book-class" element={<TrainPage />} />
-          <Route path="booking-history" element={<BookingHistory />} />
+          <Route path="booking-history" element={<ToCoachTab />} />
+          <Route path="sessions" element={<BookingHistory />} />
+          <Route path="book-session" element={<BookSession />} />
+          <Route path="chat/:trainerId" element={<CoachChat />} />
           <Route path="trainer/:trainerId" element={<TrainerProfilePage />} />
           <Route path="trainer/:trainerId/evaluations" element={<MyEvaluations />} />
           {/* There is one membership screen, not two. `/member/membership` was a
@@ -332,7 +337,7 @@ function App() {
           <Route path="progress-photos" element={<ProgressPhotos />} />
           <Route path="coach-notes" element={<CoachPlaceRedirect />} />
           <Route path="shop" element={<ShopMenu />} />
-          <Route path="rooms" element={<MemberRooms />} />
+          <Route path="rooms" element={<ToCoachTab />} />
           <Route path="rooms/:roomId" element={<Room />} />
           {/* Messages and Coach notes are the 1-on-1 room's Together tab now (0174). */}
           <Route path="messages" element={<CoachPlaceRedirect />} />
@@ -384,7 +389,7 @@ function App() {
               "your session is confirmed" arrives somewhere that does not
               mention their session. Fixing the SQL would not help the rows
               already sitting in the table; an alias fixes both. */}
-          <Route path="bookings" element={<Navigate to="/member/booking-history" replace />} />
+          <Route path="bookings" element={<ToCoachTab />} />
           <Route path="book" element={<Navigate to="/member/book-class?tab=classes" replace />} />
           <Route path="renew-membership" element={<RenewMembership />} />
           {/* Asking the desk to pause or stop (0118). The screen asks; the desk

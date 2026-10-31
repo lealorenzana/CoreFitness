@@ -309,7 +309,7 @@ async (page) => {
   await page.getByRole('button', { name: /^Ask$/ }).click();
   await page.waitForTimeout(1200);
   out.push('asking sends the coach, 1-on-1 and the length: ' + (CALLS.request_coaching?.p_trainer === 't1' && CALLS.request_coaching?.p_kind === 'pt' && CALLS.request_coaching?.p_months === 3 ? 'yes' : 'MISSING ' + JSON.stringify(CALLS.request_coaching)));
-  out.push('…and lands on Your coach: ' + (/\/member\/coach$/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
+  out.push('…and lands on Train → Coach: ' + (/\/member\/book-class\?tab=coach$/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
 
   // ---- Your coach: waiting for payment ----
   STATE.status = 'awaiting_payment';
@@ -351,7 +351,7 @@ async (page) => {
   DB.public_trainers[0].presence = 'on_leave';
   await go('/member/coach');
   t = await text();
-  out.push('active: until when, and the room: ' + (/Until/.test(t) && /Open your room/.test(t) ? 'yes' : 'MISSING'));
+  out.push('active: until when, and the chat: ' + (/Until/.test(t) && /Open chat/.test(t) ? 'yes' : 'MISSING'));
   out.push('the coach on leave is said: ' + ((await page.locator('[data-coach-away]').count()) === 1 ? 'yes' : 'MISSING'));
   await page.getByRole('button', { name: /Pick a stand-in coach/ }).click();
   await page.waitForTimeout(600);

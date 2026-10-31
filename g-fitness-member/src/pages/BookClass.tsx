@@ -768,7 +768,7 @@ export default function BookClass({ mode }: { mode?: 'classes' | 'pt' } = {}) {
                           action={a.word}
                           actionTone={a.tone}
                           onClick={a.mine
-                            ? () => navigate('/member/booking-history')
+                            ? () => navigate('/member/sessions')
                             : a.bookable ? () => setConfirmClass(c)
                               : c.spotsLeft === 0 && c.waitlistOpen ? () => setWaitClass(c) : undefined}
                           last={i === dayClasses.length - 1}

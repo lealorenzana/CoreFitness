@@ -1,5 +1,5 @@
 /**
- * One place per coach (0174). The 1-on-1 room opens on Together: the chat, the
+ * One place per coach (0174). The package room opens on Chat (Together until 2026-10-28): the chat, the
  * coach's notes (with "Mark as done") and the routines the coach wrote, in one
  * timeline with a message box. Coaching no longer has separate Messages and
  * Notes tabs, and an old chat link (/member/messages/<id>) lands in the room.
@@ -69,10 +69,11 @@ async (page) => {
   };
   await page.setViewportSize({ width: 393, height: 852 });
 
-  // ---- the room opens on Together ----
+  // ---- the room opens on Chat ----
   await go('/member/rooms/rm1');
   let t = await text();
-  out.push('the 1-on-1 room opens on Together: ' + ((await page.locator('[data-timeline]').count()) === 1 && /Together/.test(t) ? 'yes' : 'MISSING'));
+  out.push('the package room opens on Chat: ' + ((await page.locator('[data-timeline]').count()) === 1
+    && (await page.getByRole('tab', { name: 'Chat', selected: true }).count()) === 1 ? 'yes' : 'MISSING'));
   out.push('chat, the note and the routine are in one list: '
     + (/See you Friday/.test(t) && /Great depth on squats/.test(t) && /Ben wrote a routine/.test(t) && /Leg day v2/.test(t) ? 'yes' : 'MISSING ' + t.slice(0, 300)));
   const order = await page.evaluate(() => [...document.querySelectorAll('[data-timeline-kind]')].map((e) => e.getAttribute('data-timeline-kind')));
@@ -108,10 +109,10 @@ async (page) => {
   out.push('back online, it goes: ' + (SENT.some((b) => b.p_conversation === 'c1' && b.p_body === 'On my way, no signal here') ? 'yes' : 'MISSING'));
   out.push('…and is no longer waiting: ' + ((await page.locator('[data-waiting-message]').count()) === 0 ? 'yes' : 'STILL WAITING'));
 
-  // ---- Coaching has no separate Messages / Notes ----
+  // ---- Rooms is Train → Coach now (simplify, 2026-10-28): no separate Messages or Notes anywhere ----
   await go('/member/rooms');
-  const tabs = await page.evaluate(() => [...document.querySelectorAll('[data-hub="coaching"] [role="tab"]')].map((e) => e.textContent.trim()));
-  out.push('Coaching: no Messages or Notes tab: ' + (tabs.length > 0 && !tabs.some((x) => /Messages|Notes/.test(x)) ? tabs.join(' · ') : 'MISSING ' + JSON.stringify(tabs)));
+  const tabs = await page.getByRole('tab').allInnerTexts();
+  out.push('Rooms lands on Train → Coach, with no Messages or Notes tab: ' + (/tab=coach/.test(page.url()) && !tabs.some((x) => /Messages|Notes/.test(x)) ? tabs.join(' · ') : 'MISSING ' + page.url() + JSON.stringify(tabs)));
 
   // ---- an old chat link lands in the room ----
   await go('/member/messages/c1');

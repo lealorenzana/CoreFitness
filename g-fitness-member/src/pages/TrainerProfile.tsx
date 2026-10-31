@@ -182,7 +182,7 @@ export default function TrainerProfile() {
     .filter((c) => c.scheduled_at != null && new Date(c.scheduled_at).getTime() > now)
     .slice(0, 5);
 
-  const bookWith = () => trainer && navigate('/member/book-class', { state: { trainerId: trainer.id } });
+  const bookWith = () => trainer && navigate('/member/book-session', { state: { trainerId: trainer.id } });
 
   return (
     <Page>
@@ -435,7 +435,7 @@ export default function TrainerProfile() {
                       title={c.name}
                       meta={[at.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }), c.location].filter(Boolean).join(' · ')}
                       action="Book"
-                      onClick={() => navigate('/member/book-class')}
+                      onClick={() => navigate('/member/book-class?tab=classes')}
                       last={i === upcoming.length - 1}
                     />
                   );

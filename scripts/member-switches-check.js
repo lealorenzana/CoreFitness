@@ -297,15 +297,16 @@ async (page) => {
   await page.screenshot({ path: 'shots/member-switches-more.png' });
   await page.keyboard.press('Escape').catch(() => {});
 
-  // Train, with no classes to book, opens the free library.
+  // Train always opens on Workout (simplify, 2026-10-28); with classes off there is no Classes tab.
   await go('/member/home');
   // Scoped to the tab bar: Today has a "Training plan" link that /^Train/ also matches.
   await page.locator('nav[aria-label="Main"]').getByText('Train', { exact: true }).click();
   await page.waitForTimeout(1000);
-  out.push('Train falls back to free workouts: ' + (page.url().includes('/member/workouts') ? 'yes' : 'NO (' + page.url() + ')'));
+  const trainTabs = (await page.getByRole('tab').allInnerTexts()).map((x) => x.trim());
+  out.push('Train opens on Workout, with no Classes tab: ' + (page.url().endsWith('/member/book-class') && !trainTabs.includes('Classes') ? 'yes' : 'NO (' + page.url() + ' ' + JSON.stringify(trainTabs) + ')'));
 
   // A link that outlived the switch.
-  for (const [path, name] of [['/member/shop', 'the shop'], ['/member/rooms', 'coaching rooms'], ['/member/book-class', 'classes']]) {
+  for (const [path, name] of [['/member/shop', 'the shop'], ['/member/rooms/rm1', 'coaching rooms']]) {
     await go(path);
     t = await text();
     out.push(path + ' says not at this gym: ' + (/Not at this gym/.test(t) && /Nothing of yours was deleted/.test(t) ? 'yes' : 'MISSING'));
@@ -332,12 +333,15 @@ async (page) => {
   const tools = await page.evaluate(() => document.querySelector('[data-you-sheet]')?.innerText.replace(/\s+/g, ' ') ?? '');
   await page.keyboard.press('Escape');
   out.push('trainer tools: ' + tools);
-  out.push('trainer tools drop Schedule when classes are off: ' + (!/Schedule/.test(tools) && /Settings/.test(tools) ? 'yes' : 'STILL SHOWN'));
-  await go('/trainer/rooms');
-  t = await text();
-  out.push('/trainer/rooms says not at this gym: ' + (/Not at this gym/.test(t) ? 'yes' : 'MISSING'));
-  await go('/trainer/messages');
-  t = await text();
-  out.push('/trainer/messages says not at this gym: ' + (/Not at this gym/.test(t) ? 'yes' : 'MISSING'));
+  // Schedule holds 1-on-1 sessions and hours, so it stays with classes off (simplify, 2026-10-28) — only its Classes tab goes.
+  out.push('trainer tools keep Schedule with classes off: ' + (/Schedule/.test(tools) && /Settings/.test(tools) ? 'yes' : 'MISSING'));
+  await go('/trainer/schedule');
+  const schedTabs = (await page.getByRole('tab').allInnerTexts()).map((x) => x.trim());
+  out.push('…without its Classes tab: ' + (!schedTabs.includes('Classes') && schedTabs.length > 0 ? 'yes' : 'STILL SHOWN ' + JSON.stringify(schedTabs)));
+  // Old room and message links land on Personal training (TrainerOldLink).
+  for (const path of ['/trainer/rooms', '/trainer/messages']) {
+    await go(path);
+    out.push(path + ' lands on Personal training: ' + (/\/trainer\/(home\?view=pt|pt\/)/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
+  }
   return out.join('\n');
 }

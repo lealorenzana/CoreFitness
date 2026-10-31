@@ -24,9 +24,12 @@ import type { BookingStatus } from '../types/db';
 import { Page, PageTitle } from '../components/ui/page';
 import { Chip, Eyebrow, InlineStat, NocButton, Panel, StatusPill, TextTabs } from '../components/ui/noc';
 import CancelBookingDialog from '../components/ui/CancelBookingDialog';
+import { useGymApp } from '../hooks/useGymApp';
+import { moduleOn } from '../lib/gymApp';
 
 /**
- * My bookings — classes and 1-on-1 in one place (reworked 2026-09-18).
+ * Your sessions — See all from Train → Coach (it was My bookings; simplify,
+ * 2026-10-28): 1-on-1 sessions, and classes where the gym runs them.
  *
  *   Next up     the soonest session, with a countdown, the coach, the room,
  *               Add to calendar and Cancel
@@ -113,6 +116,7 @@ export default function BookingHistory() {
   const [loading, setLoading] = useState(true);
   const [pendingCancel, setPendingCancel] = useState<MyBooking | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const classesOn = moduleOn(useGymApp(), 'classes');
 
   /** `quiet` = a background refresh: no skeleton flash, no toast on a blip. */
   const load = useCallback(async (quiet = false) => {
@@ -141,7 +145,7 @@ export default function BookingHistory() {
       }));
       setEvaluate(new Set(open.filter((x): x is string => !!x)));
     } catch (err) {
-      if (!quiet) toast.error(errorMessage(err, 'Could not load your bookings'));
+      if (!quiet) toast.error(errorMessage(err, 'Could not load your sessions'));
     } finally {
       if (!quiet) setLoading(false);
     }
@@ -175,13 +179,14 @@ export default function BookingHistory() {
   const cancelledCount = inMonth.filter(closed).length;
 
   const afterCancelled = async () => {
-    toast.success(pendingCancel?.kind === 'pt' ? 'Session cancelled' : 'Booking cancelled');
+    toast.success(pendingCancel?.kind === 'pt' ? 'Session cancelled' : 'Class cancelled');
     setPendingCancel(null);
     await load();
   };
 
-  const bookAgain = (r: MyBooking) =>
-    navigate('/member/book-class', r.kind === 'pt' && r.trainerId ? { state: { trainerId: r.trainerId } } : undefined);
+  const bookAgain = (r: MyBooking) => (r.kind === 'pt'
+    ? navigate('/member/book-session', r.trainerId ? { state: { trainerId: r.trainerId } } : undefined)
+    : navigate('/member/book-class?tab=classes'));
 
   // Upcoming grouped by day.
   const groups: [string, MyBooking[]][] = [];
@@ -279,11 +284,11 @@ export default function BookingHistory() {
         back
         hub={false}
         fallback="/member/book-class?tab=coach"
-        title="My bookings"
-        subtitle="Classes and 1-on-1 — what's coming, what happened"
+        title="Your sessions"
+        subtitle="What's coming, what happened"
         action={
           <button
-            onClick={() => navigate('/member/book-class')}
+            onClick={() => navigate('/member/book-session')}
             className="inline-flex items-center"
             style={{
               gap: 5, height: 36, padding: '0 14px', borderRadius: 999,
@@ -345,12 +350,12 @@ export default function BookingHistory() {
             </Panel>
           ) : (
             <Panel glow="structure">
-              <Eyebrow>Nothing booked</Eyebrow>
+              <Eyebrow>Nothing coming up</Eyebrow>
               <p style={{ fontSize: 17, fontWeight: 700, marginTop: 8, color: 'var(--color-text-primary)' }}>Your week is open</p>
               <p style={{ fontSize: 13, marginTop: 6, lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>
-                Book a class or a 1-on-1 and it shows here straight away, even before the coach confirms it.
+                Book a session and it shows here straight away, even before the coach confirms it.
               </p>
-              <NocButton variant="fill" className="w-full" style={{ marginTop: 14 }} onClick={() => navigate('/member/book-class')}>
+              <NocButton variant="fill" className="w-full" style={{ marginTop: 14 }} onClick={() => navigate('/member/book-session')}>
                 Book a session
               </NocButton>
             </Panel>
@@ -358,13 +363,13 @@ export default function BookingHistory() {
 
           {/* ── This month ── */}
           <div className="grid" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
-            <InlineStat value={inMonth.length} label="booked this month" />
+            <InlineStat value={inMonth.length} label="this month" />
             <InlineStat value={attended} label="attended" />
             <InlineStat value={cancelledCount} label="cancelled or declined" />
           </div>
 
           <TextTabs<Tab>
-            label="Bookings"
+            label="Your sessions"
             tabs={[
               { id: 'upcoming', label: `Upcoming · ${upcoming.length}` },
               { id: 'past', label: `Past · ${past.length}` },
@@ -374,11 +379,12 @@ export default function BookingHistory() {
             onChange={setTab}
           />
 
-          <div className="flex" style={{ gap: 8, marginTop: -8 }}>
+          {/* Classes and 1-on-1 apart only where there are classes to tell apart (simplify, 2026-10-28). */}
+          {(classesOn || rows.some((r) => r.kind === 'class')) && <div className="flex" style={{ gap: 8, marginTop: -8 }}>
             <Chip label="All" on={kind === 'all'} onClick={() => setKind('all')} />
             <Chip label="Classes" on={kind === 'class'} onClick={() => setKind('class')} icon={<UsersThree size={13} weight="bold" />} />
             <Chip label="1-on-1" on={kind === 'pt'} onClick={() => setKind('pt')} icon={<Barbell size={13} weight="bold" />} />
-          </div>
+          </div>}
 
           {visible.length === 0 ? (
             <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--color-text-muted)' }}>

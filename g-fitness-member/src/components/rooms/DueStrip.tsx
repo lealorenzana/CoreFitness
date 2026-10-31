@@ -27,7 +27,7 @@ export default function DueStrip() {
           onClick={() => navigate(`/member/rooms/${d.roomId}?tab=classwork`)} />
       ))}
       {items.length > 3 && (
-        <LineRow title={`${items.length - 3} more`} meta="All your rooms" onClick={() => navigate('/member/rooms')} last />
+        <LineRow title={`${items.length - 3} more`} meta="Your package" onClick={() => navigate('/member/book-class?tab=coach')} last />
       )}
     </section>
   );

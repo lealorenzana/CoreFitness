@@ -1,11 +1,12 @@
 /**
- * The door (0200) on the phone: a member picks what they are doing today on
- * their QR sheet, from the gym's own activities, and may make it their usual
- * (a different pick for today leaves the usual alone); a coach, when the owner
- * has coach check-in on, has a QR button on the hub that opens their own
- * rotating code (CFC1.…) and their week; with it off there is no button.
+ * Train since the simplify (2026-10-28): **Workout** (Your plan — your week,
+ * today's workout with Start, your saved workouts — and Library) and **Coach**
+ * (your package with its unread chat, your sessions coming and past, each
+ * opening the chat with that coach, Book a session, Find a coach). **Classes**
+ * appears between them only when the gym switches Classes on. Old homes —
+ * My bookings, Rooms, Your coach — land on Coach.
  *
- * Member dev server on :5173. Screenshots to shots/door-member-*.png.
+ * Fixture from member-coach-term-check.js. Member dev server on :5173.
  */
 async (page) => {
   await page.unrouteAll({ behavior: 'ignoreErrors' });
@@ -20,42 +21,188 @@ async (page) => {
     return out;
   };
   const exp = Math.floor(Date.now() / 1000) + 3600;
-  const sessionFor = (id, email) => ({
-    access_token: `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: id, role: 'authenticated', exp })}.sig`,
-    refresh_token: 'r', token_type: 'bearer', expires_in: 3600, expires_at: exp,
-    user: { id, aud: 'authenticated', role: 'authenticated', email, app_metadata: {}, user_metadata: {} },
-  });
   const now = new Date();
-  const dstr = (d) => { const x = new Date(now); x.setDate(now.getDate() + d); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; };
-  const iso = (d, h, m = 0) => { const x = new Date(now); x.setDate(now.getDate() + d); x.setHours(h, m, 0, 0); return x.toISOString(); };
-  const MEMBER = 'a3f92b00-0000-4000-8000-000000000001';
-  const COACH = 'b7c2d100-0000-4000-8000-000000000002';
-  const ME = { id: MEMBER, first_name: 'Lea', last_name: 'Lorenzana', email: 'lea@door-test.com', role: 'member', status: 'active', phone: null, photo_url: null, created_at: iso(-90, 9) };
-  const COACH_ROW = { id: COACH, first_name: 'Gabby', last_name: 'Coach', email: 'coach@door-test.com', role: 'trainer', status: 'active', phone: null, photo_url: null, created_at: iso(-90, 9) };
-  const PREMIUM = { id: 'p3', name: 'Premium', tier: 'premium', price: 1500, duration_days: 30, is_active: true, description: 'All',
-    can_book_classes: true, can_book_pt: true, class_bookings_per_week: null, pt_sessions_per_month: null };
-  const DB = {
-    profiles: [ME, COACH_ROW],
-    member_profiles: [{ profile_id: MEMBER, experience_level: 'beginner', qr_code: MEMBER, created_at: iso(-90, 9), profiles: ME }],
-    membership_plans: [PREMIUM],
-    memberships: [{ id: 'ms1', member_id: MEMBER, plan_id: 'p3', status: 'active', start_date: dstr(-5), expiry_date: dstr(25), never_expires: false, frozen_at: null, created_at: iso(-5, 9), membership_plans: PREMIUM }],
-    attendance: [{ id: 'a1', member_id: MEMBER, check_in_time: iso(-2, 18), method: 'qr', activity: 'Class' }],
-    gym_settings: [{ id: true, gym_name: 'Core Fitness Lab', address: 'Mamburao', phone: null, email: null, opening_time: '06:00', closing_time: '21:00',
-      // The Lab's real list (2026-10-18): thirty of them pushed the QR off the sheet.
-      activity_options: ['Strength', 'Free Weights', 'Weight Machines', 'Bodyweight', 'Cardio', 'Treadmill', 'Stationary Bike', 'Elliptical', 'Rowing',
-        'Jump Rope', 'HIIT', 'Circuit Training', 'Functional Training', 'Core & Abs', 'Group Class', 'Zumba', 'Aerobics', 'Yoga', 'Pilates', 'Spinning',
-        'Dance', 'Boxing', 'Muay Thai', 'Martial Arts', 'Stretching & Mobility', 'Sports', 'Personal Training', 'Class', 'Other'], member_activity_pick: true, coach_checkin_on: true, updated_at: iso(0, 9), updated_by: null }],
-    checkin_picks: [{ member_id: MEMBER, today: null, today_on: null, usual: 'Cardio' }],
-    coach_checkins: [{ id: 'cc1', trainer_id: COACH, day: dstr(-1), check_in_time: iso(-1, 6, 12) }],
+  const iso = (d, h, m) => { const x = new Date(now); x.setDate(now.getDate() + d); x.setHours(h, m, 0, 0); return x.toISOString(); };
+  const dstr = (d) => { const x = new Date(now); x.setDate(now.getDate() + d);
+    return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; };
+
+  const ME = { id: 'm1', first_name: 'Lea', last_name: 'Lorenzana', email: 'lea@corefitness-test.com',
+    role: 'member', status: 'active', phone: null, photo_url: null, created_at: iso(-90, 9, 0) };
+  const session = {
+    access_token: `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: 'm1', role: 'authenticated', exp })}.sig`,
+    refresh_token: 'r', token_type: 'bearer', expires_at: exp,
+    user: { id: 'm1', aud: 'authenticated', role: 'authenticated', email: ME.email, app_metadata: {}, user_metadata: {} },
   };
-  const CALLS = [];
+  await page.addInitScript(([k, s]) => {
+    localStorage.setItem(k, JSON.stringify(s));
+    localStorage.setItem('user', JSON.stringify({ id: 'm1', name: 'Lea Lorenzana', email: 'lea@corefitness-test.com', role: 'member' }));
+  }, [KEY, session]);
+
+  const QUARTER = { id: 'p4', name: 'Quarterly', tier: 'premium', price: 4200, duration_days: 90, is_active: true,
+    description: 'Three months', can_book_classes: true, can_book_pt: true, class_bookings_per_week: null, pt_sessions_per_month: null };
+  const PREMIUM = { id: 'p3', name: 'Premium', tier: 'premium', price: 1500, duration_days: 30, is_active: true,
+    description: 'All', can_book_classes: true, can_book_pt: true, class_bookings_per_week: null, pt_sessions_per_month: null };
+  const EX = [
+    { id: 'e1', name: 'Barbell Squat', muscle_group: 'legs', equipment: 'barbell', is_timed: false, is_active: true, sort_order: 1 },
+    { id: 'e2', name: 'Leg Press', muscle_group: 'legs', equipment: 'machine', is_timed: false, is_active: true, sort_order: 2 },
+    { id: 'e3', name: 'Plank', muscle_group: 'core', equipment: 'bodyweight', is_timed: true, is_active: true, sort_order: 3 },
+  ];
+  let n = 0;
+  const uid = (p) => `${p}-${++n}`;
+  const DB = {
+    profiles: [ME],
+    member_profiles: [{ profile_id: 'm1', experience_level: 'beginner', qr_code: 'QR', created_at: iso(-90, 9, 0), profiles: ME }],
+    membership_plans: [PREMIUM, QUARTER],
+    renewal_requests: [], payments: [{ id: 'pay1', member_id: 'm1', membership_id: 'ms1', amount: 1500, method: 'cash', status: 'completed', due_date: null, invoice_number: 'INV-2026-0002', notes: null, recorded_by: 'u9', paid_on: dstr(-10), created_at: iso(-10, 10, 0), plan_id: 'p3', plan_name: 'Premium' }],
+    memberships: [{ id: 'ms1', member_id: 'm1', plan_id: 'p3', status: 'active', start_date: dstr(-9), expiry_date: dstr(21),
+      never_expires: false, frozen_at: null, created_at: iso(-10, 9, 0), membership_plans: PREMIUM }],
+    exercises: EX,
+    attendance: [-1, -3, -7, -8, -9, -14, -15, -16].map((d, i) => ({ id: 'a' + i, member_id: 'm1', check_in_time: iso(d, 18, 20 + i), method: 'qr', activity: 'Gym floor' })),
+    workout_routines: [{ id: 'r1', member_id: 'm1', name: 'Leg day', notes: null, position: 0, updated_at: iso(-1, 9, 0) },
+      { id: 'r2', member_id: 'm1', name: 'Arms day', notes: null, position: 1, updated_at: iso(-1, 9, 0) }],
+    workout_routine_exercises: [
+      { id: 'x1', routine_id: 'r1', position: 0, exercise_id: 'e1', custom_name: null, target_sets: 3,
+        target_reps: 8, target_weight_kg: 60, target_seconds: null, rest_seconds: 90 },
+      { id: 'x2', routine_id: 'r1', position: 1, exercise_id: 'e2', custom_name: null, target_sets: 2,
+        target_reps: 12, target_weight_kg: 100, target_seconds: null, rest_seconds: 60 },
+      { id: 'x3', routine_id: 'r1', position: 2, exercise_id: 'e3', custom_name: null, target_sets: 2,
+        target_reps: null, target_weight_kg: null, target_seconds: 20, rest_seconds: 30 }],
+    workout_logs: [{ id: 'L1', member_id: 'm1', activity: 'Leg day', routine_id: 'r1', created_at: new Date(Date.now() - 6 * 60000).toISOString(),
+      completed_at: null, duration_minutes: null, performed_on: dstr(0) }],
+    workout_sets: [],
+    gym_plans: [{ id: 'g1', member_id: 'm1', day_of_week: new Date().getDay(), remind_at: '18:00:00', active: true,
+      last_reminded_on: null, routine_id: null, created_at: iso(-5, 9, 0) },
+      { id: 'g2', member_id: 'm1', day_of_week: (new Date().getDay() + 2) % 7, remind_at: '18:00:00', active: true,
+      last_reminded_on: null, routine_id: null, created_at: iso(-5, 9, 0) }],
+    workout_resources: [
+      { id: 'w1', title: 'Yoga With Adriene', provider: 'YouTube', url: 'https://youtube.com/x', image_url: null, description: 'Yoga', category: 'Follow-along', level: 'all_levels', is_active: true, sort_order: 1 },
+      { id: 'w2', title: 'Bodyweight workouts', provider: 'Darebee', url: 'https://darebee.com', image_url: null, description: 'No equipment', category: 'Bodyweight', level: 'beginner', is_active: true, sort_order: 2 },
+      { id: 'w3', title: 'StrongLifts 5x5', provider: 'StrongLifts', url: 'https://stronglifts.com', image_url: null, description: 'Barbell', category: 'Strength programs', level: 'beginner', is_active: true, sort_order: 3 },
+    ],
+    saved_resources: [],
+    // The coach's roster (0082): one trainee.
+    my_trainer_members: [{ member_id: 'mb1', name: 'Lea Lorenzana', photo_url: null, experience_level: 'beginner',
+      last_visit: iso(-1, 18, 0), visits_last_30: 6 }],
+    gym_programs: [
+      { id: 'pF', name: 'Starter Strength', description: null, cover_url: null, level: 'beginner', weeks: 2,
+        premium: false, published: true, hidden: false, created_at: iso(-5, 9, 0) },
+      { id: 'pP', name: 'Advanced Block', description: null, cover_url: null, level: 'advanced', weeks: 1,
+        premium: true, published: true, hidden: false, created_at: iso(-4, 9, 0) },
+    ],
+    classes: [{ id: 'c1', name: 'Sunrise HIIT', level: 'all_levels', class_type: 'hiit', location: 'Studio', capacity: 10,
+      scheduled_at: iso(1, 7, 0), duration_minutes: 60, trainer_id: 't1', status: 'scheduled' }],
+    class_availability: [{ class_id: 'c1', capacity: 10, booked_count: 2 }],
+    bookings: [],
+    pt_sessions: [
+      { id: 's1', member_id: 'm1', trainer_id: 't1', starts_at: iso(2, 9, 0), duration_minutes: 60, status: 'approved', notes: null, created_at: iso(-2, 9, 0) },
+      { id: 's2', member_id: 'm1', trainer_id: 't2', starts_at: iso(5, 18, 0), duration_minutes: 60, status: 'pending', notes: null, created_at: iso(-1, 9, 0) },
+      { id: 's3', member_id: 'm1', trainer_id: 't2', starts_at: iso(-6, 18, 0), duration_minutes: 60, status: 'approved', notes: null, created_at: iso(-9, 9, 0) }],
+    messages: [{ id: 'mg1', conversation_id: 'cv2', sender_id: 't2', body: 'Bring water', created_at: iso(-3, 9, 0) }],
+    public_trainers: [
+      { id: 't1', first_name: 'Rae', last_name: 'Santos', photo_url: null, specialization: 'Strength', bio: null, availability: null,
+        years_experience: 5, certifications: null, focus_areas: null, achievements: null, gym_id: 'gym-1', presence: 'available' },
+      { id: 't2', first_name: 'Ben', last_name: 'Cruz', photo_url: null, specialization: 'Strength', bio: null, availability: null,
+        years_experience: 3, certifications: null, focus_areas: null, achievements: null, gym_id: 'gym-1', presence: 'available' },
+      { id: 't3', first_name: 'Yoga', last_name: 'Yu', photo_url: null, specialization: 'Yoga', bio: null, availability: null,
+        years_experience: 2, certifications: null, focus_areas: null, achievements: null, gym_id: 'gym-1', presence: 'available' }],
+    trainer_payment_methods: [{ id: 'pm1', trainer_id: 't1', kind: 'gcash', label: 'GCash', account_name: 'Rae Santos',
+      account_number: '0917 222 3333', qr_url: null, active: true, created_at: iso(-3, 9, 0) }],
+    coaching_prices: [],
+    gym_settings: [{ id: true, gym_name: 'Core Fitness', address: 'Mamburao', phone: null, email: null,
+      opening_time: '06:00', closing_time: '21:00', logo_url: null, short_name: 'CF', tagline: null,
+      activity_options: [], updated_at: iso(0, 9, 0), updated_by: null }],
+  };
+  const FEATURES = ['workout_tracker', 'plan_builder', 'ai_model', 'points_earn', 'points_redeem', 'challenges']
+    .map((key) => ({ key, label: key, description: key, enabled: true }));
+
+  // Embeds the fixture understands: routine → its exercises → exercise names;
+  // a log → its sets → exercise names.
+  const embed = (t, r) => {
+    if (t === 'workout_routines') {
+      return { ...r, workout_routine_exercises: DB.workout_routine_exercises.filter((x) => x.routine_id === r.id)
+        .map((x) => ({ ...x, exercises: EX.find((e) => e.id === x.exercise_id) ?? null })) };
+    }
+    if (t === 'workout_logs') {
+      return { ...r, workout_sets: DB.workout_sets.filter((s) => s.log_id === r.id)
+        .map((s) => ({ ...s, exercises: EX.find((e) => e.id === s.exercise_id) ?? null })) };
+    }
+    return r;
+  };
   const match = (rows, params) => rows.filter((r) => params.every(([k, v]) => {
-    if (['select', 'order', 'limit', 'offset', 'columns'].includes(k) || !(k in r)) return true;
+    if (['select', 'order', 'limit', 'offset', 'columns'].includes(k)) return true;
+    if (!(k in r)) return true;
+    if (v === 'is.null') return r[k] == null;
+    if (v === 'not.is.null') return r[k] != null;
     let m = /^eq\.(.*)$/.exec(v); if (m) return String(r[k]) === m[1];
     m = /^gte\.(.*)$/.exec(v); if (m) return String(r[k]) >= m[1];
     m = /^lte\.(.*)$/.exec(v); if (m) return String(r[k]) <= m[1];
     return true;
   }));
+
+
+  const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+  const UPLOADED = [];
+  DB.progress_photos = [
+    { id: 'ph1', member_id: 'm1', path: 'gym-1/m1/a.jpg', pose: 'front', taken_on: dstr(-60), note: 'Start, 74 kg', created_at: iso(-60, 9, 0) },
+    { id: 'ph2', member_id: 'm1', path: 'gym-1/m1/b.jpg', pose: 'front', taken_on: dstr(-2), note: '69 kg', created_at: iso(-2, 9, 0) },
+    { id: 'ph3', member_id: 'm1', path: 'gym-1/m1/c.jpg', pose: 'side', taken_on: dstr(-2), note: null, created_at: iso(-2, 9, 1) },
+  ];
+  DB.member_share_prefs = [{ member_id: 'm1', share_photos: false }];
+  const ROOM = { id: 'rm1', kind: 'pt', name: 'Lea · 1-on-1', description: null, trainer_id: 't1', trainer_name: 'Coach Rae',
+    member_count: 1, post_count: 0, last_post_at: null, comments_on: true, archived: false, join_code: null, is_mine: false, full_access: true };
+  const CALLS = {};
+  let n2 = 0;
+  const STATE = { status: 'active', modules: { classes: false } };
+  const coachingRow = () => ({ id: 'k1', member_id: 'm1', member_name: 'Lea Lorenzana', member_photo: null, trainer_id: 't1',
+    trainer_name: 'Rae Santos', trainer_photo: null, kind: 'pt', room_id: 'rm1', months: 3, status: STATE.status,
+    fee_mode: 'trainer_direct', price: 1500, pay_reference: null, pay_sent_at: null,
+    starts_on: STATE.status === 'active' ? dstr(-5) : null, ends_on: STATE.status === 'active' ? dstr(85) : null,
+    started_by: 'member', created_at: iso(-5, 9, 0), standin_id: null, standin_trainer_id: null, standin_name: null,
+    standin_from: null, standin_to: null, group_code: null, i_am: 'member' });
+  const FN = {
+    my_gym_app: () => [{ gym_id: 'gym-1', gym_name: 'Core Fitness', slug: 'core-fitness', short_name: null, logo_url: null,
+      accent: 'violet', accent_action: null, points_name: null, points_name_short: null, welcome_message: null, tagline: null,
+      vocabulary: null, modules: STATE.modules }],
+    my_conversations: () => [
+      { id: 'cv1', other_id: 't1', other_name: 'Rae Santos', other_photo: null, last_message: 'See you Friday', last_from_me: false,
+        last_message_at: iso(-1, 9, 0), unread: 2, muted: false, other_read_at: null },
+      { id: 'cv2', other_id: 't2', other_name: 'Ben Cruz', other_photo: null, last_message: 'Bring water', last_from_me: false,
+        last_message_at: iso(-3, 9, 0), unread: 0, muted: false, other_read_at: null }],
+    coaching_settings: () => [{ modes: ['classes', 'pick_pt', 'desk_assigns', 'coach_invites'], lengths: [1, 3, 6], fee_mode: 'trainer_direct' }],
+    my_coachings: () => (STATE.status ? [coachingRow()] : []),
+    // 0192: this coach takes payments online into their own PayMongo account.
+    gym_online_pay: () => ({ gym: false, trainers: ['t1'] }),
+    my_member_checkouts: () => (STATE.coachPaid ? [{ id: 'co9', purpose: 'coaching', description: 'Coaching, 1 month with Rae Santos', amount: '1500',
+      status: 'paid', method: 'gcash', created_at: iso(0, 9, 0), paid_at: iso(0, 9, 1) }] : []),
+    request_coaching: () => { STATE.status = 'requested'; return 'k1'; },
+    submit_coaching_payment: () => { STATE.status = 'payment_sent'; return null; },
+    set_coaching_standin: () => 'sd1',
+    coaching_sweep: () => 0,
+    reserve_progress_photo: (b) => { const id = 'new' + (++n2); const p = `gym-1/m1/new${n2}.jpg`;
+      DB.progress_photos.unshift({ id, member_id: 'm1', path: p, pose: b.p_pose, taken_on: b.p_taken_on || dstr(0), note: b.p_note, created_at: new Date().toISOString() });
+      return [{ photo_id: id, path: p }]; },
+    set_share_photos: (b) => { DB.member_share_prefs[0].share_photos = b.p_share; return null; },
+    delete_progress_photo: () => null,
+    sync_gym_rooms: () => 0,
+    my_rooms: () => [ROOM],
+    room_badges: () => [],
+    room_classwork: () => [{ id: 'wp', kind: 'checkin', checkin_type: 'photo', title: 'Front photo, week 4', instructions: 'Same spot, same light.',
+      due_on: dstr(2), gym_workout_id: null, workout_name: null, created_at: iso(-1, 9, 0), whole_room: true, targets: 1, turned_in: 0,
+      late: 0, missing: 0, to_review: 0, my_status: 'assigned', my_answer_text: null, my_answer_number: null, my_return_comment: null, my_points: 0 }],
+    submit_checkin_photo: () => 's1',
+  };
+  const RPC = {
+    refund_quote: [{ percent: 70, amount: 1050, rule_label: 'Pro-rata for the 21 unused days of your term.', days_elapsed: 9,
+      has_visited: true, paid_total: 1500, days_total: 30, days_unused: 21, prorata_percent: 70, floor_percent: 50, basis: 'prorata', fee_deducted: 0 }],
+    gym_traffic: [1,2,3,4,5,6,0].flatMap((dow) => ['6am','9am','12pm','3pm','6pm','9pm'].map((band, k) =>
+      ({ dow, band, visits: [8, 5, 2, 4, 14, 3][k] * 4, weeks: 4 }))),
+    my_features: FEATURES, plan_allows: true, member_points_balance: 0,
+    member_progression: [{ level: 1, points: 0, next_level_points: 100 }], sync_my_achievements: 0,
+    member_commitments: [], my_trainer_ratings: [],
+    my_booking_modes: [{ class_mode: 'off', pt_mode: 'instant' }],
+    member_last_sets: [{ exercise_id: 'e1', set_number: 1, reps: 8, weight_kg: 50, duration_seconds: null },
+      { exercise_id: 'e1', set_number: 2, reps: 8, weight_kg: 50, duration_seconds: null }],
+  };
 
   await page.route(`**://${REF}.supabase.co/**`, async (route) => {
     const req = route.request();
@@ -68,106 +215,172 @@ async (page) => {
     });
     const one = (req.headers()['accept'] || '').includes('vnd.pgrst.object');
     const json = (b, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(b),
-      headers: { 'Content-Range': '0-0/1', 'Access-Control-Allow-Origin': '*', 'Access-Control-Expose-Headers': 'Content-Range' } });
-    const sub = (() => {
-      try {
-        const raw = (req.headers()['authorization'] || '').split(' ')[1].split('.')[1];
-        return JSON.parse(Buffer.from(raw.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString()).sub;
-      } catch { return null; }
-    })();
-    const me = DB.profiles.find((p) => p.id === sub) ?? ME;
-    if (path.startsWith('/auth/v1/')) return json(path.includes('/user') ? sessionFor(me.id, me.email).user : sessionFor(me.id, me.email));
-    if (path.startsWith('/rest/v1/rpc/')) {
-      const fn = path.split('/rest/v1/rpc/')[1];
-      let body = {}; try { body = JSON.parse(req.postData() || '{}'); } catch { /* none */ }
-      CALLS.push([fn, body]);
-      if (fn === 'my_gym_context') return json([{ gym_id: 'gym-1', gym_name: 'Core Fitness Lab', slug: 'lab', role: me.role, status: 'active',
-        lock_reason: null, short_name: null, logo_url: null, accent: 'violet', gym_count: 1 }]);
-      if (fn === 'set_my_checkin_pick') {
-        const row = DB.checkin_picks[0];
-        row.today = body.p_activity; row.today_on = dstr(0);
-        if (body.p_usual === true) row.usual = body.p_activity; else if (body.p_usual === false) row.usual = null;
-        return json([{ today: row.today, usual: row.usual }]);
+      headers: { 'Content-Range': '0-9/10', 'Access-Control-Allow-Origin': '*', 'Access-Control-Expose-Headers': 'Content-Range' } });
+
+    if (path.startsWith('/auth/v1/')) return json(path.includes('/user') ? session.user : { ...session });
+    if (path.startsWith('/rest/v1/rpc/')) { const fn = path.split('/rest/v1/rpc/')[1];
+      // One gym (docs/TENANCY.md): my_gym_context answers from this fixture's
+      // own profiles, so the sign-in gates see the role they always did.
+      if (fn === 'my_gym_context') {
+        // Each fixture keeps its rows differently (DB, TABLES, tables()); take
+        // whichever exists rather than naming one and crashing the run in the others.
+        const rows = (() => {
+          try { return DB.profiles; } catch { /* not this fixture */ }
+          try { return TABLES.profiles; } catch { /* nor this */ }
+          try { return tables().profiles; } catch { /* nor this */ }
+          return [];
+        })() || [];
+        // Who is asking: the `sub` of the bearer token the app just sent. Read
+        // from the request rather than a fixture variable, because the fixtures
+        // name their session differently and some mint one per role.
+        const sub = (() => {
+          try {
+            const raw = (route.request().headers()['authorization'] || '').split(' ')[1].split('.')[1];
+            return JSON.parse(Buffer.from(raw.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString()).sub;
+          } catch { return null; }
+        })();
+        const me = rows.find((p) => p.id === sub) || rows[0];
+        return json(me ? [{ gym_id: 'gym-1', gym_name: 'Core Fitness', slug: 'core-fitness',
+          role: me.role, status: me.status, lock_reason: null, short_name: null, logo_url: null,
+          accent: 'violet', gym_count: 1 }] : []);
       }
-      if (fn === 'my_features') return json(['workout_tracker'].map((key) => ({ key, label: key, description: key, enabled: true })));
-      if (fn === 'my_rooms' || fn === 'my_conversations' || fn === 'review_queue' || fn === 'my_room_photos' || fn === 'room_badges') return json([]);
-      return json(null);
+      if (fn in FN) { const b = JSON.parse(req.postData() || '{}'); CALLS[fn] = b; return json(FN[fn](b)); }
+      return json(fn in RPC ? RPC[fn] : null); }
+    if (path.startsWith('/functions/v1/paymongo-checkout')) {
+      CALLS.paymongo = JSON.parse(req.postData() || '{}');
+      return json({ configured: true, url: 'https://checkout.paymongo.test/cs_coach', id: 'co9' });
+    }
+    // Private storage (0132): signed links, and uploads into reserved slots.
+    if (path.startsWith('/storage/v1/object/sign/')) {
+      if (req.method() === 'POST') {
+        const b = JSON.parse(req.postData() || '{}');
+        return json((b.paths || []).map((p) => ({ path: p, signedURL: `/object/sign/progress/${p}?token=t`, error: null })));
+      }
+      return route.fulfill({ status: 200, contentType: 'image/png', body: PNG });
+    }
+    if (path.startsWith('/storage/v1/object/progress/')) {
+      UPLOADED.push(path.replace('/storage/v1/object/progress/', ''));
+      return json({ Key: path });
     }
     if (!path.startsWith('/rest/v1/')) return json([]);
     const t = path.split('/rest/v1/')[1].replace('gym_people', 'profiles');
-    if (req.method() !== 'GET') return json([], 201);
-    const rows = match(DB[t] ?? [], params);
-    return json(one ? (rows[0] ?? null) : rows);
+    DB[t] = DB[t] ?? [];
+    const method = req.method();
+    if (method === 'POST') {
+      const body = JSON.parse(req.postData() || '[]');
+      const list = (Array.isArray(body) ? body : [body]).map((r) => ({
+        id: uid(t), created_at: new Date().toISOString(),
+        ...(t === 'workout_logs' ? { performed_on: dstr(0), completed_at: null, duration_minutes: null } : {}),
+        ...r,
+      }));
+      DB[t].push(...list);
+      return json(one ? list[0] : list, 201);
+    }
+    if (method === 'PATCH') {
+      const body = JSON.parse(req.postData() || '{}');
+      const hit = match(DB[t], params);
+      hit.forEach((r) => Object.assign(r, body));
+      return json(one ? hit[0] ?? null : hit);
+    }
+    if (method === 'DELETE') {
+      const hit = match(DB[t], params);
+      DB[t] = DB[t].filter((r) => !hit.includes(r));
+      if (t === 'workout_routines') DB.workout_routine_exercises = DB.workout_routine_exercises.filter((x) => !hit.some((h) => h.id === x.routine_id));
+      return json(hit);
+    }
+    const rows = match(DB[t], params).map((r) => embed(t, r));
+    return json(one ? rows[0] ?? null : rows);
   });
 
-  const out = [];
-  const has = (label, ok, detail = '') => out.push(`${label}: ${ok ? 'yes' : 'MISSING ' + detail}`);
-  const errs = [];
-  page.on('pageerror', (e) => errs.push(e.message.slice(0, 160)));
   await page.setViewportSize({ width: 393, height: 852 });
-  const go = async (p, who) => {
-    await page.evaluate(([k, s, trainer]) => {
-      localStorage.setItem(k, JSON.stringify(s));
-      if (trainer) localStorage.setItem('trainerMode', 'true'); else localStorage.removeItem('trainerMode');
-    }, [KEY, sessionFor(who.id, who.email), who.role === 'trainer']).catch(() => undefined);
+  const out = [];
+  const say = (label, ok, extra = '') => out.push(`${label}: ${ok ? 'yes' : 'MISSING ' + extra}`);
+  const go = async (p) => {
     await page.goto(`http://localhost:5173${p}`, { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#boot', { state: 'detached', timeout: 9000 }).catch(() => {});
     await page.waitForTimeout(1800);
   };
-  await page.addInitScript(([k, s]) => { if (!localStorage.getItem(k)) localStorage.setItem(k, JSON.stringify(s)); }, [KEY, sessionFor(MEMBER, ME.email)]);
-
-  // ── Redesign, Train: Workout · Classes · Coach, one row of tabs, old links still land ───────────────────
-  const say = (label, ok, extra = '') => out.push(`${label}: ${ok ? 'yes' : 'MISSING ' + extra}`);
   const tabsNow = async () => page.getByRole('tablist').first().getByRole('tab').evaluateAll((els) => els.map((e) => [e.innerText.trim(), e.getAttribute('aria-selected')]));
   const selected = async () => ((await tabsNow()).find(([, s]) => s === 'true') ?? [''])[0];
   const main = async () => (await page.locator('main').innerText()).replace(/\s+/g, ' ');
 
-  await go('/member/book-class', ME);
-  await page.waitForTimeout(1200);
-  const tabs = await tabsNow();
-  say('Train has Workout, Classes and Coach, opening on Workout', JSON.stringify(tabs.map(([n]) => n)) === JSON.stringify(['Workout', 'Classes', 'Coach']) && (await selected()) === 'Workout', JSON.stringify(tabs));
+  // ── Train: Workout · Coach, opening on Workout; no Classes while the gym has them off ──
+  await go('/member/book-class');
+  let tabs = await tabsNow();
+  say('Train has Workout and Coach, opening on Workout', JSON.stringify(tabs.map(([n]) => n)) === JSON.stringify(['Workout', 'Coach']) && (await selected()) === 'Workout', JSON.stringify(tabs));
   say('…one row of tabs on the page', (await page.getByRole('tablist').count()) === 1, String(await page.getByRole('tablist').count()));
-  say('the header says Your training', /Your training/.test(await page.locator('header').first().innerText()));
   let m = await main();
-  say('Workout: today\'s hero with one filled button', (await page.locator('[data-train-hero]').count()) === 1
-    && /Start a workout|Start workout|Continue|See routines/.test(m), m.slice(0, 120));
-  const rows = ['This week', "Today's workout", 'Routines', 'Free workouts', 'Progress'];
-  say('…and the training screens as described rows', rows.every((r) => m.includes(r)), m.slice(0, 400));
-  say('…each row with its icon tile', (await page.locator('[data-row-icon]').count()) >= rows.length);
+  say('Workout: Your plan, then Library', m.indexOf('Your plan') >= 0 && m.indexOf('Library') > m.indexOf('Your plan'), m.slice(0, 200));
+  const days = await page.locator('[data-your-plan]').innerText();
+  say('…your week as its days', /(Sun|Mon|Tue|Wed|Thu|Fri|Sat) · (Sun|Mon|Tue|Wed|Thu|Fri|Sat)/.test(days), days.slice(0, 200));
+  say('…a workout under way says Continue', /A workout is under way/.test(days) && /Continue/.test(days), days.slice(0, 300));
+  say('…your workouts, counted', /Your workouts/.test(days) && /2 saved/.test(days), days.slice(0, 300));
+  const lib = await page.locator('[data-library-tile]').allInnerTexts();
+  say('Library: Free workouts and Programs', lib.length === 2 && /Free workouts/.test(lib[0]) && /Programs/.test(lib[1]), JSON.stringify(lib));
+  say('…no rows that moved away (Progress, Challenges, Equipment)', !/Challenges|Equipment|Body, targets/.test(m), m.slice(0, 400));
   await page.screenshot({ path: 'shots/member-train-workout.png' });
-  await page.getByRole('button', { name: /^Routines/ }).first().click();
+  await page.locator('[data-library-tile]').first().click();
   await page.waitForTimeout(1000);
-  say('a row opens its screen (Routines → /member/track)', /\/member\/track/.test(page.url()), page.url());
+  say('a tile opens its screen (Free workouts → /member/workouts)', /\/member\/workouts$/.test(page.url()), page.url());
 
-  await go('/member/book-class?tab=classes', ME);
-  await page.waitForTimeout(1500);
+  // ── Coach: your package, your sessions, book one ──
+  await go('/member/book-class?tab=coach');
   m = await main();
-  say('Classes: the class booking, with the events under it', (await selected()) === 'Classes' && (await page.locator('[data-train-events]').count()) === 1, m.slice(0, 200));
-  say('…and still one row of tabs', (await page.getByRole('tablist').count()) === 1);
+  say('Coach: your package, then your sessions', (await selected()) === 'Coach' && m.indexOf('Your package') >= 0 && m.indexOf('Your sessions') > m.indexOf('Your package'), m.slice(0, 300));
+  say('…the package with its coach, length and unread', /Rae Santos/.test(m) && /Package · 3 months/.test(m) && (await page.locator('[data-package-unread]').innerText().catch(() => '')) === '2', m.slice(0, 300));
+  // Started 5 days ago, ends in 85: about 6% through.
+  const pct = Number(await page.locator('[data-my-package] [role="progressbar"]').first().getAttribute('aria-valuenow').catch(() => 'NaN'));
+  say('…how far through, as a real bar', pct >= 4 && pct <= 8 && /Until/.test(m), String(pct));
+  const sess = await page.locator('[data-coach-sessions]').innerText();
+  say('…sessions coming and past, each with its coach', /With Rae Santos · confirmed/.test(sess) && /With Ben Cruz · waiting for them to say yes/.test(sess) && /With Ben Cruz · done/.test(sess), sess.replace(/\s+/g, ' ').slice(0, 300));
+  say('…Book a session and Find a coach', (await page.getByRole('button', { name: 'Book a session', exact: true }).count()) === 1
+    && (await page.getByRole('button', { name: 'Find a coach', exact: true }).count()) === 1);
+  say('…no word "booking" on the tab', !/booking/i.test(m), m.slice(0, 300));
+  await page.screenshot({ path: 'shots/member-train-coach.png', fullPage: true });
+
+  // A session with the package coach opens the package's room; with anyone else, the chat on its own.
+  await page.locator('[data-coach-sessions]').getByText(/With Rae Santos/).first().click();
+  await page.waitForTimeout(1600);
+  say('a session with your package coach opens the package room, on Chat', /\/member\/rooms\/rm1/.test(page.url()) && (await selected()) === 'Chat', `${page.url()} ${await selected()}`);
+  await go('/member/book-class?tab=coach');
+  await page.locator('[data-coach-sessions]').getByText(/With Ben Cruz · done/).first().click();
+  await page.waitForTimeout(1600);
+  say('a single-session coach opens their chat', /\/member\/chat\/t2$/.test(page.url()) && (await page.locator('[data-coach-chat="t2"]').count()) === 1
+    && /Bring water/.test(await main()), `${page.url()} ${(await main()).slice(0, 200)}`);
+  await page.screenshot({ path: 'shots/member-coach-chat.png' });
+
+  await go('/member/book-class?tab=coach');
+  await page.getByRole('button', { name: 'Book a session', exact: true }).click();
+  await page.waitForTimeout(1500);
+  say('Book a session is its own page', /\/member\/book-session$/.test(page.url()) && /Book a session/.test(await main()), page.url());
+  await go('/member/sessions');
+  m = await main();
+  say('See all: every session, with no Classes chip while classes are off', /Your sessions/.test(m) && !/Classes/.test(m), m.slice(0, 300));
+
+  // ── Classes switched on: a tab between Workout and Coach ──
+  STATE.modules = { classes: true };
+  await go('/member/book-class?tab=classes');
+  tabs = await tabsNow();
+  say('with Classes on: Workout · Classes · Coach', JSON.stringify(tabs.map(([n]) => n)) === JSON.stringify(['Workout', 'Classes', 'Coach']) && (await selected()) === 'Classes', JSON.stringify(tabs));
   await page.screenshot({ path: 'shots/member-train-classes.png' });
+  STATE.modules = { classes: false };
+  await go('/member/book-class?tab=classes');
+  say('…and off again, a Classes link opens Workout', (await selected()) === 'Workout', await selected());
 
-  await go('/member/book-class?tab=coach', ME);
-  await page.waitForTimeout(1500);
-  m = await main();
-  say('Coach: 1-on-1 booking, then My bookings, Coaches and Rooms', (await selected()) === 'Coach' && /My bookings/.test(m), m.slice(0, 300));
-  await page.screenshot({ path: 'shots/member-train-coach.png' });
-
-  for (const [from, want] of [['/member/book-class?show=pt', 'Coach'], ['/member/book-class?show=events', 'Classes'], ['/member/book', 'Classes'], ['/member/bookings', null]]) {
-    await go(from, ME);
-    await page.waitForTimeout(1300);
-    if (want) say(`an old link ${from} opens ${want}`, (await selected()) === want, `${await selected()} ${page.url()}`);
-    else say(`an old link ${from} still lands on My bookings`, /\/member\/booking-history/.test(page.url()), page.url());
+  // ── Old links land on the new homes ──
+  for (const [from, want] of [['/member/book-class?show=pt', /tab=coach/], ['/member/booking-history', /tab=coach/], ['/member/bookings', /tab=coach/],
+    ['/member/rooms', /tab=coach/], ['/member/coach', /tab=coach/], ['/member/rooms/gone', /tab=coach/], ['/member/book', /book-class/]]) {
+    await go(from);
+    say(`an old link ${from} lands on Train`, want.test(page.url()), page.url());
   }
-
-  await go('/member/book-class?tab=classes', ME);
-  await page.waitForTimeout(1200);
-  await page.getByRole('tab', { name: /Coach/ }).click();
-  await page.waitForTimeout(800);
-  await page.getByRole('button', { name: /^My bookings/ }).first().click();
-  await page.waitForTimeout(1200);
-  await page.goBack();
-  await page.waitForTimeout(1300);
-  say('Back from a Coach row returns to the Coach tab', (await selected()) === 'Coach' && /tab=coach/.test(page.url()), page.url());
+  await page.evaluate(() => history.pushState({ trainerId: 't1' }, '', '/member/trainer/t1'));
+  await go('/member/trainer/t1');
+  const book = page.getByRole('button', { name: /^Book/ }).first();
+  if (await book.count()) {
+    await book.click();
+    await page.waitForTimeout(1500);
+    say("a coach's Book opens Book a session", /\/member\/book-session/.test(page.url()), page.url());
+  }
   say('nothing scrolls sideways', await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   return out.join('\n');
 }

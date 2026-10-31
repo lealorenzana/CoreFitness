@@ -127,7 +127,7 @@ export default function Trainers() {
   const yours = cards.filter((c) => c.yours)
     .sort((a, b) => (b.lastWithYou ?? '').localeCompare(a.lastWithYou ?? ''));
   const freeThisWeek = cards.filter((c) => c.nextFree && new Date(c.nextFree).getTime() - now < 7 * 86_400_000).length;
-  const book = (c: CoachCard) => navigate('/member/book-class', { state: { trainerId: c.trainer.id } });
+  const book = (c: CoachCard) => navigate('/member/book-session', { state: { trainerId: c.trainer.id } });
   const open = (c: CoachCard) => navigate(`/member/trainer/${c.trainer.id}`);
   const plain = !goal && !q;
 

@@ -44,7 +44,7 @@ export default function TrainWith({ trainerId, firstName, presence }: {
 
   if (open) {
     return (
-      <NocButton variant="ghost" onClick={() => navigate('/member/coach')}>
+      <NocButton variant="ghost" onClick={() => navigate('/member/book-class?tab=coach')}>
         {open.trainerId === trainerId ? `${firstName} is your coach — see details` : 'You already have a coach — see Your coach'}
       </NocButton>
     );
@@ -62,7 +62,7 @@ export default function TrainWith({ trainerId, firstName, presence }: {
       await requestCoaching(trainerId, kind, months);
       toast.success(`${firstName} has your request`);
       setSheet(false);
-      navigate('/member/coach');
+      navigate('/member/book-class?tab=coach');
     } catch (e) {
       toast.error(errorMessage(e));
     } finally {

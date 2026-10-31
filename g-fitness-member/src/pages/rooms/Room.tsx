@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Page, PageTitle } from '../../components/ui/page';
 import { NocButton, TextTabs } from '../../components/ui/noc';
 import { SkeletonList } from '../../components/ui/Skeleton';
@@ -13,7 +13,7 @@ import TimelineTab from '../../components/rooms/TimelineTab';
 import { deleteRoom, leaveRoom, myRooms, setArchived, updateRoom, type Room as RoomT } from '../../lib/api/rooms';
 
 type Tab = 'together' | 'stream' | 'classwork' | 'people' | 'progress';
-const KIND: Record<RoomT['kind'], string> = { class: 'Class', pt: '1-on-1', group: 'Coaching group' };
+const KIND: Record<RoomT['kind'], string> = { class: 'Class', pt: 'Package', group: 'Coaching group' };
 
 /**
  * One room, Google Classroom style (0128/0129). The same screen serves the
@@ -36,8 +36,10 @@ export default function Room() {
   }, [roomId]);
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
-  const fallback = mode === 'trainer' ? (room?.kind === 'pt' ? '/trainer/home' : `/trainer/rooms?room=${roomId}`) : '/member/rooms';
+  const fallback = mode === 'trainer' ? (room?.kind === 'pt' ? '/trainer/home' : `/trainer/rooms?room=${roomId}`) : '/member/book-class?tab=coach';
   if (room === undefined) return <Page><PageTitle back fallback={fallback} title="Room" /><SkeletonList /></Page>;
+  // A member's room that is gone (a class or group room, deleted by 0220) lands on Train → Coach.
+  if (room === null && mode === 'member') return <Navigate to="/member/book-class?tab=coach" replace />;
   if (room === null) {
     return (
       <Page>
@@ -51,7 +53,7 @@ export default function Room() {
   // chat, notes and the coach's routines in one timeline — then classwork.
   const pt = room.kind === 'pt';
   const tabs: { id: Tab; label: string }[] = pt
-    ? [{ id: 'together', label: 'Together' }, { id: 'classwork', label: 'Classwork' },
+    ? [{ id: 'together', label: 'Chat' }, { id: 'classwork', label: 'Classwork' },
        ...(mode === 'trainer' ? [{ id: 'progress' as Tab, label: 'Progress' }] : [])]
     : [{ id: 'stream', label: 'Stream' }, { id: 'classwork', label: 'Classwork' }, { id: 'people', label: 'People' },
        ...(mode === 'trainer' ? [{ id: 'progress' as Tab, label: 'Progress' }] : [])];
@@ -117,11 +119,9 @@ export default function Room() {
         {mode === 'member' && (
           <NocButton variant="ghost" disabled={busy}
             onClick={() => {
-              const back = room.kind === 'group' ? 'You can join again with its code.'
-                : room.kind === 'class' ? 'Booking this class again brings it back.'
-                : 'Booking a new session with this coach brings it back.';
+              const back = 'Your chat with the coach stays on Train → Coach.';
               if (!window.confirm(`Leave "${room.name}"? It disappears from your rooms. ${back}`)) return;
-              void run(() => leaveRoom(room.id), 'You left the room.', () => navigate('/member/rooms'));
+              void run(() => leaveRoom(room.id), 'You left the room.', () => navigate('/member/book-class?tab=coach'));
             }}>
             Leave this room
           </NocButton>

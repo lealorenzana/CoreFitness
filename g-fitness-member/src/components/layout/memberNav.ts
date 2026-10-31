@@ -79,7 +79,7 @@ const TAB_PATHS: string[][] = [
   // having taken one — including the aliases old notification rows still point
   // at (/member/book, /member/bookings).
   ['/member/book-class', '/member/training', '/member/book', '/member/bookings',
-   '/member/booking-history', '/member/progress', '/member/achievements',
+   '/member/booking-history', '/member/sessions', '/member/book-session', '/member/chat', '/member/coach', '/member/progress', '/member/achievements',
    '/member/track', '/member/plan', '/member/gym-plan', '/member/workouts', '/member/programs', '/member/program/',
    '/member/trainers', '/member/trainer/', '/member/events', '/member/challenges', '/member/season', '/member/squad', '/member/rooms', '/member/messages', '/member/progress-photos',
    '/member/workout-history', '/member/coach-notes'],
@@ -112,12 +112,11 @@ export function tabForPath(pathname: string): TabId | null {
 }
 
 /**
- * Where a tab opens for this gym. Train opens Book a session — unless the gym
- * does not run classes (0110), when it opens the free workout library, which
- * is never switched off; landing on "not at this gym" from a tab would be a dead end.
+ * Where a tab opens for this gym. Train always opens on Workout, which every
+ * gym has (simplify, 2026-10-28) — it used to open the class booking, and the
+ * free library for a gym without classes.
  */
-export function tabPath(tab: Tab, app: GymApp | null): string {
-  if (tab.id === 'train' && !moduleOn(app, 'classes')) return '/member/workouts';
+export function tabPath(tab: Tab, _app: GymApp | null): string {
   return tab.path;
 }
 
@@ -156,7 +155,7 @@ export interface Destination {
 }
 
 
-export type HubId = 'plan' | 'progress' | 'coaching' | 'compete' | 'inbox';
+export type HubId = 'progress' | 'compete' | 'inbox';
 
 /**
  * Sections: screens that belong together, behind one tab strip.
@@ -170,27 +169,14 @@ export type HubId = 'plan' | 'progress' | 'coaching' | 'compete' | 'inbox';
  * leaves the section rather than walking back through its tabs.
  */
 export const HUBS: { id: HubId; label: string; tabs: Destination[] }[] = [
-  // One Workouts section (2026-10-10): today's workout, the routines you
-  // repeat, the programs that build week on week, and the free library. The
-  // week planner (/member/gym-plan) opens from Today.
-  { id: 'plan', label: 'Workouts', tabs: [
-    { label: 'Today', path: '/member/workouts/today' },
-    { label: 'Routines', path: '/member/track', module: 'progress' },
-    { label: 'Programs', path: '/member/programs', module: 'programs' },
-    { label: 'Free workouts', path: '/member/workouts' },
-  ] },
+  // Workouts and Coaching were sections here; since the simplify (2026-10-28)
+  // they are Train's Workout and Coach tabs, and their screens open from there.
   { id: 'progress', label: 'Progress', tabs: [
     { label: 'Overview', path: '/member/progress', module: 'progress' },
     { label: 'Body', path: '/member/progress?tab=body', module: 'progress' },
     { label: 'Targets', path: '/member/progress?tab=goals', module: 'targets' },
     { label: 'Photos', path: '/member/progress-photos', module: 'photos' },
     { label: 'Achievements', path: '/member/achievements', module: 'engagement' },
-  ] },
-  { id: 'coaching', label: 'Coaching', tabs: [
-    { label: 'Bookings', path: '/member/booking-history', module: 'classes' },
-    { label: 'Your coach', path: '/member/coach', module: 'coaching' },
-    { label: 'Coaches', path: '/member/trainers', module: 'coaching', words: (w) => w('trainers', true) },
-    { label: 'Rooms', path: '/member/rooms', module: 'rooms' },
   ] },
   // Updates and Announcements were two screens for "what's new" (2026-10-10).
   { id: 'inbox', label: 'Inbox', tabs: [
@@ -268,7 +254,8 @@ export const EVERYTHING: { group: string; items: Destination[] }[] = [
   {
     group: 'Workouts',
     items: [
-      { label: 'Book a session', path: '/member/book-class?tab=classes' , module: 'classes', icon: CalendarPlus, blurb: 'Group classes and 1-on-1 sessions' },
+      { label: 'Book a session', path: '/member/book-session' , module: 'coaching', icon: CalendarPlus, blurb: 'A 1-on-1 with a coach' },
+      { label: 'Classes', path: '/member/book-class?tab=classes' , module: 'classes', icon: UsersThree, blurb: 'Group classes and gym events' },
       { label: "Today's workout", path: '/member/workouts/today', icon: Barbell, blurb: 'Everything planned for today' },
       { label: 'Plan your week', path: '/member/gym-plan' , module: 'progress', icon: CalendarCheck, blurb: 'Training days and reminders' },
       { label: 'Routines', path: '/member/track' , module: 'progress', icon: ListChecks, blurb: 'Your saved workouts' },
@@ -290,10 +277,10 @@ export const EVERYTHING: { group: string; items: Destination[] }[] = [
   {
     group: 'Coaching',
     items: [
-      { label: 'My bookings', path: '/member/booking-history' , module: 'classes', icon: CalendarCheck, blurb: 'Coming and past' },
+      { label: 'Your coach', path: '/member/book-class?tab=coach' , module: 'coaching', icon: ChatsCircle, blurb: 'Your package, your sessions, chat' },
+      { label: 'Your sessions', path: '/member/sessions', icon: CalendarCheck, blurb: 'Coming and past' },
       { label: 'Coaches', path: '/member/trainers' , module: 'coaching',
         words: (w) => w('trainers', true), icon: ChalkboardTeacher, blurb: 'Who coaches here' },
-      { label: 'Rooms', path: '/member/rooms' , module: 'rooms', icon: ChatsCircle, blurb: 'Your coach’s rooms and messages' },
     ],
   },
   {
@@ -331,7 +318,7 @@ export const EVERYTHING: { group: string; items: Destination[] }[] = [
 
 /** The four tiles at the top of More: the places members open most (redesign, 2026-10-26). */
 export const MORE_TILES: Destination[] = [
-  { label: 'Book', path: '/member/book-class?tab=classes', module: 'classes', icon: CalendarPlus },
+  { label: 'Book', path: '/member/book-session', module: 'coaching', icon: CalendarPlus },
   { label: 'Progress', path: '/member/progress', module: 'progress', icon: ChartLineUp },
   { label: 'Rewards', path: '/member/rewards', module: 'points', icon: Gift },
   { label: 'Payments', path: '/member/payments', icon: Receipt },

@@ -1,8 +1,9 @@
 /**
- * Coaching rooms, the member's side (0128/0129): Today's "Due this week", the
- * Rooms list, an invite link filling the code, joining, a room's three tabs (no
- * Progress, no post box), commenting, a weight check-in, starting a set workout
- * in the player, and the plan gate locking classwork and comments.
+ * Coaching rooms, the member's side (0128/0129; since 0220 a room is a
+ * package's): Today's "Due this week", the old Rooms list landing on Train →
+ * Coach, the package room's two tabs (Chat · Classwork, no Progress), a weight
+ * check-in, starting a set workout in the player, and the plan gate locking
+ * classwork.
  *
  * Setup copied from trainer-assign-check.js, signed in as a member.
  */
@@ -124,12 +125,9 @@ async (page) => {
   // ---- coaching rooms fixture (0128/0129) -------------------------------------------------
   const today = dstr(0);
   const ROOMS = [
-    { id: 'rm1', kind: 'class', name: 'Morning HIIT', description: null, trainer_id: 't1', trainer_name: 'Coach Rae',
-      member_count: 2, post_count: 1, last_post_at: iso(-1, 9, 0), comments_on: true, archived: false,
+    { id: 'rm1', kind: 'pt', name: 'Ana Reyes · 1-on-1', description: null, trainer_id: 't1', trainer_name: 'Coach Rae',
+      member_count: 1, post_count: 1, last_post_at: iso(-1, 9, 0), comments_on: true, archived: false,
       join_code: null, is_mine: ROLE === 'trainer', full_access: FULL },
-    { id: 'rm2', kind: 'group', name: '8-week fat loss', description: 'Two check-ins a week', trainer_id: 't1', trainer_name: 'Coach Rae',
-      member_count: 1, post_count: 0, last_post_at: null, comments_on: true, archived: false,
-      join_code: ROLE === 'trainer' ? 'QWERTY' : null, is_mine: ROLE === 'trainer', full_access: FULL },
   ];
   const POSTS = [{ post_id: 'po1', created_at: iso(-1, 9, 0), body: 'Bring water tomorrow!', photo_url: null, video_url: null,
     author_name: 'Coach Rae', can_delete: ROLE === 'trainer',
@@ -293,23 +291,13 @@ async (page) => {
   let t = await text();
   out.push('Today: due this week: ' + (/Due this week/.test(t) && /Weigh-in/.test(t) ? 'shown' : 'MISSING'));
 
-  await go('/member/rooms?code=abcdef');
-  t = await text();
-  out.push('my rooms: ' + (/Morning HIIT/.test(t) && /Class · Coach Rae/.test(t) && /8-week fat loss/.test(t) ? 'shown' : 'MISSING'));
-  out.push('invite link fills the code: ' + ((await page.getByLabel('Group code').inputValue()) === 'ABCDEF' ? 'ABCDEF' : 'MISSING'));
-  await page.screenshot({ path: 'shots/member-rooms.png' });
-  await page.getByRole('button', { name: 'Join', exact: true }).click();
-  await page.waitForTimeout(1300);
-  out.push('joining: ' + (CALLS.join_room?.p_code === 'ABCDEF' && /\/member\/rooms\/rm2/.test(page.url()) ? 'joined, room opened' : 'MISSING ' + page.url()));
+  await go('/member/rooms');
+  out.push('the old Rooms list lands on Train → Coach: ' + (/\/member\/book-class\?tab=coach/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
 
   await go('/member/rooms/rm1');
-  t = await text();
-  out.push('three tabs, no Progress: ' + (/Stream/.test(t) && /Classwork/.test(t) && /People/.test(t) && !/Progress/.test(t) ? 'right' : 'MISSING'));
-  out.push('no post box for a member: ' + ((await page.getByLabel('New post').count()) === 0 ? 'none' : 'MISSING (a member can post)'));
-  await page.getByLabel('Add a comment').first().fill('See you there!');
-  await page.getByRole('button', { name: 'Send' }).first().click();
-  await page.waitForTimeout(1200);
-  out.push('commenting: ' + ((DB.room_comments || []).some((c) => c.body === 'See you there!' && c.post_id === 'po1') ? 'sent' : 'MISSING'));
+  const roomTabs = (await page.getByRole('tab').allInnerTexts()).map((x) => x.trim());
+  out.push('the package room: Chat · Classwork, no Progress: ' + (roomTabs.includes('Chat') && roomTabs.includes('Classwork') && !roomTabs.includes('Progress') ? 'right' : 'MISSING ' + JSON.stringify(roomTabs)));
+  await page.screenshot({ path: 'shots/member-rooms.png' });
 
   await go('/member/rooms/rm1?tab=classwork');
   t = await text();
@@ -332,8 +320,6 @@ async (page) => {
   await go('/member/rooms/rm1?tab=classwork');
   t = await text();
   out.push('free plan: classwork locks and explains: ' + (/Classwork is part of a paid plan/.test(t) ? 'locked' : 'MISSING'));
-  await go('/member/rooms/rm1');
-  out.push('free plan: no comment box: ' + ((await page.getByLabel('Add a comment').count()) === 0 ? 'none' : 'MISSING'));
 
   return out.join('\n');
 }

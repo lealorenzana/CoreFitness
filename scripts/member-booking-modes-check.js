@@ -270,9 +270,10 @@ async (page) => {
   let t = await text();
   out.push('classes switched off: no class booking, only events: ' + (!/classes? booked this week|of \d+ classes this week/.test(t)
     && (await page.locator('[data-train-events]').count()) === 1 ? 'yes' : 'STILL SHOWN'));
-  await go('/member/book-class?tab=coach');
+  // Since the simplify (2026-10-28) booking a 1-on-1 is Coach's Book a session, its own page.
+  await go('/member/book-session');
   t = await text();
-  out.push('…and 1-on-1 is on Coach: ' + (/Pick a coach|1-on-1/.test(t) ? 'yes' : 'MISSING'));
+  out.push('…and 1-on-1 is Book a session: ' + (/Pick a coach|1-on-1/.test(t) ? 'yes' : 'MISSING'));
   await shot('booking-modes-off');
 
   RPC.my_booking_modes = [{ class_mode: 'instant', pt_mode: 'coach' }];

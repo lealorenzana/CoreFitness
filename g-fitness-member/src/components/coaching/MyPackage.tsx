@@ -1,37 +1,38 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Avatar from '../components/ui/Avatar';
-import { SkeletonList } from '../components/ui/Skeleton';
-import { toast } from '../components/ui/Toast';
-import { Field, TextInput } from '../components/ui/Field';
-import DateField from '../components/ui/DateField';
-import GlassSheet from '../components/ui/GlassSheet';
-import { Page, PageTitle } from '../components/ui/page';
-import { LineRow, NocButton, Panel, SectionHead, StatusPill } from '../components/ui/noc';
-import PayChooser from '../components/payments/PayChooser';
-import { listGymPayMethods, type GymPayMethod } from '../lib/api/renewalRequests';
-import { useGymApp } from '../hooks/useGymApp';
-import { moduleOn } from '../lib/gymApp';
-import { gymOnlinePay, reconcilePending, waitForPayment } from '../lib/api/paymongo';
-import { errorMessage } from '../utils/errorMessage';
-import { addDays, todayKey } from '../utils/dates';
-import { listPublicTrainers, trainerName, type PublicTrainer } from '../lib/api/directory';
+import Avatar from '../ui/Avatar';
+import { SkeletonList } from '../ui/Skeleton';
+import { toast } from '../ui/Toast';
+import { Field, TextInput } from '../ui/Field';
+import DateField from '../ui/DateField';
+import GlassSheet from '../ui/GlassSheet';
+import { LineRow, NocButton, Panel, ProgressBar, SectionHead, StatusPill } from '../ui/noc';
+import { myConversations } from '../../lib/api/chat';
+import PayChooser from '../payments/PayChooser';
+import { listGymPayMethods, type GymPayMethod } from '../../lib/api/renewalRequests';
+import { useGymApp } from '../../hooks/useGymApp';
+import { moduleOn } from '../../lib/gymApp';
+import { gymOnlinePay, reconcilePending, waitForPayment } from '../../lib/api/paymongo';
+import { errorMessage } from '../../utils/errorMessage';
+import { addDays, todayKey } from '../../utils/dates';
+import { listPublicTrainers, trainerName, type PublicTrainer } from '../../lib/api/directory';
 import {
-  coachingSweep, endCoaching, getCoachingSettings, monthsLabel, myCoachings, OPEN_STATUSES, peso, requestCoaching,
+  coachingSweep, endCoaching, getCoachingSettings, monthsLabel, myCoachings, OPEN_STATUSES, peso,
   respondCoaching, setCoachingStandin, STATUS_WORDS, submitCoachingPayment, trainerPaymentMethods,
   type Coaching, type CoachingSettings, type TrainerPaymentMethod,
-} from '../lib/api/coaching';
+} from '../../lib/api/coaching';
 
 const fmt = (ymd: string | null) => (ymd ? new Date(`${ymd}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : '');
 
 /**
- * Your coach (0181): the one coaching you have, in whatever state it is —
+ * Your package (0181; on Train → Coach since the simplify, 2026-10-28 — it was
+ * the Your coach page): the one package you have, in whatever state it is —
  * offered to you, waiting for the coach, waiting for your payment, running
- * until a date — and what you can do next. No coach yet: where to find one,
- * and a group code if the gym runs coaching groups. A coach away: pick a
- * stand-in with the same specialty; your coach stays yours.
+ * until a date — and what you can do next. Running: its chat (the package's
+ * room), how far through it you are, a stand-in when your coach is away,
+ * switch or end. No package: where to find a coach.
  */
-export default function MyCoach() {
+export default function MyPackage() {
   const navigate = useNavigate();
   const [settings, setSettings] = useState<CoachingSettings | null | undefined>(undefined);
   const [list, setList] = useState<Coaching[] | null | undefined>(undefined);
@@ -50,8 +51,8 @@ export default function MyCoach() {
   const [standinOpen, setStandinOpen] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
   const [endReason, setEndReason] = useState('');
-  const [code, setCode] = useState('');
-  const [codeMonths, setCodeMonths] = useState<number | null>(null);
+  /** Unread messages from the package's coach, for the chat row. */
+  const [unread, setUnread] = useState(0);
 
   const load = useCallback(async () => {
     await coachingSweep();
@@ -59,6 +60,9 @@ export default function MyCoach() {
     setSettings(s);
     setList(l);
     setCoaches(c);
+    const open = (l ?? []).find((x) => x.iAm === 'member' && x.status === 'active');
+    const conv = open ? (await myConversations().catch(() => null))?.find((x) => x.otherId === open.trainerId) : undefined;
+    setUnread(conv?.unread ?? 0);
   }, []);
   // Back from PayMongo (?paid=…): the coaching starts here the moment it is confirmed (0192).
   useEffect(() => {
@@ -88,15 +92,13 @@ export default function MyCoach() {
     try { await fn(); toast.success(done); await load(); } catch (e) { toast.error(errorMessage(e)); } finally { setBusy(false); }
   };
 
-  if (settings === undefined || list === undefined) return <Page><PageTitle title="Your coach" back fallback="/member/trainers" /><SkeletonList count={3} /></Page>;
+  if (settings === undefined || list === undefined) return <SkeletonList count={2} />;
 
   if (settings === null) {
     return (
-      <Page>
-        <PageTitle title="Your coach" back fallback="/member/trainers" />
-        <Panel><p style={{ fontSize: 13.5, color: 'var(--color-text-secondary)' }}>Your gym has not set up coaching terms yet. You can still book 1-on-1 sessions with any coach.</p></Panel>
-        <NocButton onClick={() => navigate('/member/trainers')}>See the coaches</NocButton>
-      </Page>
+      <section aria-label="Your package" data-my-package>
+        <p style={{ fontSize: 13.5, color: 'var(--color-text-secondary)' }}>Your gym has not set up packages yet. You can still book single sessions with any coach.</p>
+      </section>
     );
   }
 
@@ -105,18 +107,20 @@ export default function MyCoach() {
   const others = sameSpecialty.length > 0 ? sameSpecialty : coaches.filter((t) => current && t.id !== current.trainerId);
 
   return (
-    <Page>
-      <PageTitle title="Your coach" back fallback="/member/trainers" />
+    <section aria-label="Your package" className="flex flex-col" style={{ gap: 12 }} data-my-package>
       {list === null && <Panel><p style={{ fontSize: 13.5, color: 'var(--color-secondary)' }}>Your coaching could not be loaded. Pull to try again.</p></Panel>}
 
       {current && (
-        <div data-coaching={current.status}>
+        <div data-coaching={current.status} className="flex flex-col" style={{ gap: 10 }}>
           <LineRow
             gutter={<Avatar name={current.trainerName} photoUrl={current.trainerPhoto} size={44} />}
             gutterWidth={58}
             title={current.trainerName}
-            meta={`${current.kind === 'group' ? 'Coaching group' : '1-on-1'} · ${monthsLabel(current.months)}${current.price ? ` · ${peso(current.price)}` : ''}`}
-            action={<StatusPill label={STATUS_WORDS[current.status]} tone={current.status === 'active' ? 'structure' : 'action'} />}
+            meta={`Package · ${monthsLabel(current.months)}${current.price ? ` · ${peso(current.price)}` : ''}`}
+            action={current.status === 'active' && unread > 0
+              ? <span data-package-unread className="grid place-items-center" style={{ minWidth: 22, height: 22, padding: '0 6px', borderRadius: 11, fontSize: 12, fontWeight: 700, background: 'var(--color-secondary)', color: 'var(--color-bg)' }}>{unread > 99 ? '99+' : unread}</span>
+              : <StatusPill label={STATUS_WORDS[current.status]} tone={current.status === 'active' ? 'structure' : 'action'} />}
+            onClick={current.status === 'active' && current.roomId ? () => navigate(`/member/rooms/${current.roomId}`) : undefined}
             last
           />
 
@@ -150,11 +154,11 @@ export default function MyCoach() {
                   ? methods.map((m) => ({ id: m.id, kind: m.kind, label: m.label, account_name: m.accountName, account_number: m.accountNumber, qr_image: m.qrUrl, instructions: null }))
                   : gymMethods;
                 if (direct && !onlineOk && accounts.length === 0) {
-                  return <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{first} has not added how to pay them yet. Ask them in your room.</p>;
+                  return <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{first} has not added how to pay them yet. Ask them in your chat.</p>;
                 }
                 return (
                   <PayChooser amount={current.price != null ? peso(current.price) : ''}
-                    online={onlineOk ? { purpose: 'coaching', details: { coaching_id: current.id }, returnPath: '/member/coach', to: direct ? first : 'the gym' } : null}
+                    online={onlineOk ? { purpose: 'coaching', details: { coaching_id: current.id }, returnPath: '/member/book-class?tab=coach', to: direct ? first : 'the gym' } : null}
                     transfer={accounts.length > 0 ? {
                       methods: accounts, whose: direct ? `${first}’s` : 'the gym’s', approver: direct ? first : 'the desk', allowProof: false,
                       send: async (_method, reference) => { await submitCoachingPayment(current.id, reference); toast.success('Sent — they will confirm it'); await load(); },
@@ -178,10 +182,14 @@ export default function MyCoach() {
           {current.status === 'active' && (
             <>
               <Panel>
-                <p style={{ fontSize: 13.5, color: 'var(--color-text-primary)' }}>Until {fmt(current.endsOn)}</p>
-                {current.groupCode && <p style={{ fontSize: 12.5, marginTop: 4, color: 'var(--color-text-secondary)' }}>Friends join your group with the code <strong style={{ letterSpacing: '0.12em' }}>{current.groupCode}</strong></p>}
+                <p style={{ fontSize: 13.5, color: 'var(--color-text-primary)' }}>Until {fmt(current.endsOn)}{current.roomId ? ' · Chat · Classwork' : ''}</p>
+                {/* How far through the package: only with both dates, never a guessed bar. */}
+                {current.startsOn && current.endsOn && (
+                  <ProgressBar style={{ marginTop: 8 }} fraction={(Date.now() - new Date(`${current.startsOn}T00:00:00`).getTime())
+                    / (new Date(`${current.endsOn}T00:00:00`).getTime() - new Date(`${current.startsOn}T00:00:00`).getTime())} />
+                )}
                 {current.roomId && (
-                  <NocButton className="w-full" style={{ marginTop: 10 }} onClick={() => navigate(`/member/rooms/${current.roomId}`)}>Open your room</NocButton>
+                  <NocButton className="w-full" style={{ marginTop: 10 }} onClick={() => navigate(`/member/rooms/${current.roomId}`)}>Open chat</NocButton>
                 )}
               </Panel>
 
@@ -202,7 +210,7 @@ export default function MyCoach() {
 
               <div className="flex" style={{ gap: 8 }}>
                 <NocButton variant="ghost" className="flex-1" onClick={() => navigate('/member/trainers')}>Switch coach</NocButton>
-                <NocButton variant="ghost" className="flex-1" onClick={() => setEndOpen(true)}>End coaching</NocButton>
+                <NocButton variant="ghost" className="flex-1" onClick={() => setEndOpen(true)}>End package</NocButton>
               </div>
             </>
           )}
@@ -214,37 +222,16 @@ export default function MyCoach() {
           <Panel>
             <p style={{ fontSize: 13.5, color: 'var(--color-text-secondary)' }}>
               {settings.modes.includes('pick_pt')
-                ? 'You have no coach yet. Open a coach’s profile and tap Train with them.'
+                ? 'You have no package yet. Open a coach’s profile and tap Train with them.'
                 : 'Your gym assigns coaches at the front desk. Ask there.'}
             </p>
-            {settings.modes.includes('pick_pt') && (
-              <NocButton className="w-full" style={{ marginTop: 10 }} onClick={() => navigate('/member/trainers')}>Find a coach</NocButton>
-            )}
           </Panel>
-          {settings.modes.includes('pick_group') && (
-            <div style={{ marginTop: 14 }}>
-              <SectionHead title="Have a group code?" />
-              <Field label="Group code">
-                <TextInput aria-label="Group code" value={code} maxLength={6} placeholder="ABCDEF"
-                  style={{ letterSpacing: '0.2em' }} onChange={(e) => setCode(e.target.value.toUpperCase())} />
-              </Field>
-              <div className="flex flex-wrap" style={{ gap: 6, marginTop: 8 }}>
-                {settings.lengths.map((m) => (
-                  <NocButton key={m} variant={codeMonths === m ? 'structure' : 'ghost'} onClick={() => setCodeMonths(m)} style={{ height: 36 }}>{monthsLabel(m)}</NocButton>
-                ))}
-              </div>
-              <NocButton className="w-full" style={{ marginTop: 10 }} disabled={busy || code.length !== 6 || codeMonths == null || coaches.length === 0}
-                onClick={() => void run(() => requestCoaching(coaches[0]?.id ?? '', 'group', codeMonths ?? 1, code), 'Asked to join the group')}>
-                Ask to join
-              </NocButton>
-            </div>
-          )}
         </div>
       )}
 
       {past.length > 0 && (
         <div>
-          <SectionHead title="Before" />
+          <SectionHead title="Past packages" />
           {past.map((c, i) => (
             <LineRow key={c.id} title={c.trainerName} last={i === past.length - 1}
               meta={`${STATUS_WORDS[c.status]}${c.startsOn ? ` · ${fmt(c.startsOn)} – ${fmt(c.endsOn)}` : ''}`} />
@@ -257,15 +244,15 @@ export default function MyCoach() {
           onPick={(t, from, to) => void run(async () => { await setCoachingStandin(current.id, t, from, to); setStandinOpen(false); }, 'Your stand-in is set')} />
       )}
 
-      <GlassSheet open={endOpen} onClose={() => setEndOpen(false)} title="End your coaching"
-        subtitle={current ? `With ${current.trainerName}. Your room and its history stay.` : undefined}
+      <GlassSheet open={endOpen} onClose={() => setEndOpen(false)} title="End your package"
+        subtitle={current ? `With ${current.trainerName}. Your chat and its history stay.` : undefined}
         footer={<NocButton className="w-full" disabled={busy || !current}
-          onClick={() => current && void run(async () => { await endCoaching(current.id, endReason); setEndOpen(false); setEndReason(''); }, 'Coaching ended')}>End coaching</NocButton>}>
+          onClick={() => current && void run(async () => { await endCoaching(current.id, endReason); setEndOpen(false); setEndReason(''); }, 'Package ended')}>End package</NocButton>}>
         <Field label="Why (optional)">
           <TextInput value={endReason} maxLength={200} onChange={(e) => setEndReason(e.target.value)} placeholder="Moving away, a different goal…" />
         </Field>
       </GlassSheet>
-    </Page>
+    </section>
   );
 }
 
