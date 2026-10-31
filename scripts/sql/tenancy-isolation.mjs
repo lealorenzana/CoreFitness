@@ -167,6 +167,8 @@ const GLOBAL = [
   'application_documents',
   // 0224: an applicant's payment for their plan, before any gym exists — definer functions only, no policy.
   'application_payments',
+  // 0225: a person asking to delete their account, and the Storage files queued for erasing — a person's, not a gym's; definer functions only.
+  'account_deletions', 'erasure_files',
   // 0188: what a gym tells the platform — like support tickets, definer functions only, no policy.
   'platform_ratings', 'feature_requests', 'testimonials',
   // 0189: what a gym bought from the platform (AI coach top-ups) — definer functions only, no policy.

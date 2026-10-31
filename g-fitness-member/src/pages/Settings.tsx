@@ -25,6 +25,7 @@ import { loadCoachDirectory, type CoachCard } from '../services/coachDirectorySe
 import { logout } from '../utils/auth';
 import { getCoachStatus, setCoachConsent } from '../lib/api/aiCoach';
 import { saveLanguagePreference, useLanguage, useT, type Lang } from '../lib/i18n';
+import DeleteAccount from '../components/account/DeleteAccount';
 import SignInMethods from '../components/account/SignInMethods';
 
 /** Enforced in the database by `trainer_may_see()` (0032), not by this screen. */
@@ -557,6 +558,7 @@ export default function Settings() {
                 Something wrong? Most details you can fix yourself in Edit profile; for the rest, ask at the desk.
               </Footnote>
             </section>
+            <DeleteAccount who="member" />
           </>
         )}
         {section === 'language' && (

@@ -3,6 +3,7 @@ import { supabase } from './supabase';
 import Documents, { type AppDocument } from './Documents';
 import SignInMethods from './SignInMethods';
 import PayPlan from './PayPlan';
+import DeleteAccount from './DeleteAccount';
 
 const ADMIN_APP = 'https://corefitness-admin.vercel.app';
 const peso = (n: number) => '₱' + n.toLocaleString('en-PH');
@@ -80,9 +81,11 @@ function PayCard({ m }: { m: Pay }) {
  * The link is the only key, like a gym's invitation: nothing here is readable
  * without it, and it shows nothing about anybody else.
  */
-export default function StatusPage({ token, accountId, onSignOut }: {
+export default function StatusPage({ token, accountId, onSignOut, onDeleted }: {
   /** The private link (0148) — or, signed in (0187), the application's id. */
   token?: string; accountId?: string; onSignOut?: () => void;
+  /** Signed in: the account was just asked to be deleted (0225). */
+  onDeleted?: () => void;
 }) {
   const [s, setS] = useState<Status | null | undefined>(undefined);
   const [body, setBody] = useState('');
@@ -231,6 +234,7 @@ export default function StatusPage({ token, accountId, onSignOut }: {
           )}
           {accountId && s.id && s.status === 'pending' && <PayPlan applicationId={s.id} onChanged={load} />}
           {accountId && <SignInMethods />}
+          {accountId && onDeleted && <DeleteAccount onDeleted={onDeleted} />}
           {!accountId && s.status === 'pending' && (
             <div className="status-callout">
               <p>Before we can let {s.gym_name} in, we check six business documents — your permit, DTI or SEC registration, BIR 2303,

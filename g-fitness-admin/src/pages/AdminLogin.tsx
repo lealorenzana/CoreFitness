@@ -307,6 +307,12 @@ export default function AdminLogin() {
                   className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Sign in to Core Fitness Admin</motion.p>
               </div>
 
+              {/* 0225: just asked to delete the account — what happens next. */}
+              {new URLSearchParams(window.location.search).get('deleted') === '1' && (
+                <p role="status" data-deleted-note className="text-xs text-center mb-3" style={{ color: 'rgba(255,255,255,0.75)' }}>
+                  Your account is locked and will be erased in 7 days. Sign in before then if you want to keep it.
+                </p>
+              )}
               {/* Form — staggered field reveals */}
               <form onSubmit={handleLogin} className="space-y-3 relative">
                 <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1.0 }}

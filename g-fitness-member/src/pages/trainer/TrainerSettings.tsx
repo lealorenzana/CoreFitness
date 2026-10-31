@@ -10,6 +10,7 @@ import { getGymSettings, type GymSettingsRow } from '../../lib/api/settings';
 import { Page, PageTitle } from '../../components/ui/page';
 import { LineRow, NocButton, SectionHead } from '../../components/ui/noc';
 import SignInMethods from '../../components/account/SignInMethods';
+import DeleteAccount from '../../components/account/DeleteAccount';
 
 const APP_VERSION = '1.0.0';
 
@@ -191,6 +192,8 @@ export default function TrainerSettings() {
       <NocButton variant="ghost" className="w-full" onClick={() => setConfirmLogout(true)}>
         Log out
       </NocButton>
+
+      <DeleteAccount who="coach" />
 
       <Modal
         isOpen={confirmLogout}

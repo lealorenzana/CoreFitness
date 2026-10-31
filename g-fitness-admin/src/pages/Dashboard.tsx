@@ -13,6 +13,7 @@ import {
 import DetailSheet from '../components/ui/DetailSheet';
 import { winbackSweep, type AtRisk } from '../lib/api/retention';
 import { streakNudgeSweep } from '../lib/api/streak';
+import { supabase } from '../lib/supabaseClient';
 import { runPermitReminders } from '../lib/api/applications';
 import { getMyProfile } from '../lib/api/profiles';
 import { getGymSettings } from '../lib/api/settings';
@@ -271,6 +272,8 @@ export default function Dashboard() {
     void streakNudgeSweep();
     // Renew the permit / clearance / ID (0187): each January and before one runs out. Owner only; never throws.
     void runPermitReminders();
+    // Accounts whose 7 days are up (0225): erased, and their Storage files removed. Only those; never throws.
+    void supabase.functions.invoke('erase-accounts').then(() => undefined, () => undefined);
   }, []);
 
   useEffect(() => { dashboardService.getRevenueByYear(revenueYear).then(setRevenueData); }, [revenueYear]);

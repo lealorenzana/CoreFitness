@@ -74,13 +74,13 @@ const sections: LegalSection[] = [
       'See what is held about you: Settings → Your data downloads a copy of all of it as one file, and the front desk can give you the same file. Have anything wrong corrected — most details you can change yourself in Edit profile; ask at the desk for the rest and it is fixed the same day.',
       'Object to receiving announcements: notification preferences are yours, in Settings.',
       'Complain to the National Privacy Commission if the gym gets this wrong.',
-      'Deletion has a limit worth stating plainly: an account is archived rather than erased, because attendance and payment history are the gym\'s own accounting records. Archiving ends access and hides you from the roster; the records behind it stay.',
+      'Delete your account: Settings → Your data → Delete my account. It is locked at once and erased after 7 days — sign back in within them to keep it. Erasing removes your name, email, phone, photo, address, birthday, emergency contact, workouts, routines, programs, plans, measurements, targets, records, progress photos, chats, assistant conversations, health (PAR-Q) answers, badges and notifications, and closes your sign-in. One limit, stated plainly: your payments, receipts, memberships and visits are the gym\'s own accounting records, so they stay — under the name "Deleted member", with nothing left that says who you were. When the gym itself closes your account, it is archived instead: access ends, you leave the roster, and the records behind it stay.',
     ],
   },
   {
     id: 'kept',
     title: '7. How long it is kept',
-    body: 'For as long as you are a member, and afterwards for as long as the gym needs its own financial and attendance records. What you logged for yourself — workouts, measurements, goals — is kept with your account so your history is still there if you come back.',
+    body: 'For as long as you are a member, and afterwards for as long as the gym needs its own financial and attendance records. What you logged for yourself — workouts, measurements, goals — is kept with your account so your history is still there if you come back — until you delete your account, when it is erased 7 days later (section 6).',
   },
   {
     id: 'minors',

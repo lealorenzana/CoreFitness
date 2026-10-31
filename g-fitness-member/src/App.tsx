@@ -77,6 +77,7 @@ const TrainerProfilePage = lazyPage(() => import('./pages/TrainerProfile'));
 const Trainers = lazyPage(() => import('./pages/Trainers'));
 import TrainerHome from './pages/trainer/TrainerHome';
 import { TourHost } from './components/tour/Tour';
+import { DeletionPending } from './components/account/DeleteAccount';
 const TraineePlace = lazyPage(() => import('./pages/trainer/TraineePlace'));
 const TrainerOldLink = lazyPage(() => import('./pages/trainer/TrainerOldLink'));
 const TrainerSchedule = lazyPage(() => import('./pages/trainer/TrainerSchedule'));
@@ -94,7 +95,7 @@ const JoinGym = lazyPage(() => import('./pages/JoinGym'));
 const AcceptInvite = lazyPage(() => import('./pages/AcceptInvite'));
 
 
-type RoleCheck = 'checking' | 'authorized' | 'unauthorized' | 'invite';
+type RoleCheck = 'checking' | 'authorized' | 'unauthorized' | 'invite' | 'deleting';
 
 /** An invited account that has not finished its first-sign-in form (0202). */
 function pendingInvite(meta: Record<string, unknown> | undefined): string | null {
@@ -124,6 +125,9 @@ function RoleProtectedRoute({
   children: React.ReactNode;
 }) {
   const [status, setStatus] = useState<RoleCheck>('checking');
+  /** 0225: the account asked to be deleted — when it is erased; keeping it re-runs the check. */
+  const [eraseAfter, setEraseAfter] = useState<string | null>(null);
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -139,6 +143,13 @@ function RoleProtectedRoute({
       const invite = pendingInvite(session.user.user_metadata);
       if (invite) {
         if (active) setStatus('invite');
+        return;
+      }
+      // Asked to delete the account (0225): nothing opens until they keep it or leave.
+      const { data: del } = await supabase.rpc('my_account_deletion');
+      const pending = (del as { pending: { erase_after: string } | null } | null)?.pending ?? null;
+      if (pending) {
+        if (active) { setEraseAfter(pending.erase_after); setStatus('deleting'); }
         return;
       }
       // The role is the one in *this gym* (lib/gymContext, 0104) — the same
@@ -161,10 +172,11 @@ function RoleProtectedRoute({
       active = false;
       subscription.unsubscribe();
     };
-  }, [role]);
+  }, [role, tick]);
 
   if (status === 'checking') return null;
   if (status === 'invite') return <InviteRedirect />;
+  if (status === 'deleting' && eraseAfter) return <DeletionPending eraseAfter={eraseAfter} onKept={() => setTick((n) => n + 1)} />;
   if (status === 'unauthorized') return <Navigate to={redirectTo} replace />;
   return <>{children}</>;
 }

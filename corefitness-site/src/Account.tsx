@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import StatusPage from './Status';
 import { GoogleButton } from './google';
+import { DeletionPending } from './DeleteAccount';
 
 interface Mine { id: string; gym_name: string; status: string; created_at: string }
 const day = (iso: string) => new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -18,6 +19,9 @@ export default function Account() {
   const [apps, setApps] = useState<Mine[] | null>(null);
   const [pick, setPick] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** 0225: asked to delete the account — when it is erased (null: not asked); undefined while unknown. */
+  const [eraseAfter, setEraseAfter] = useState<string | null | undefined>(undefined);
+  const [deleted, setDeleted] = useState(false);
 
   useEffect(() => {
     if (!supabase) { setSession(null); return; }
@@ -28,6 +32,8 @@ export default function Account() {
 
   const load = useCallback(async () => {
     if (!supabase) return;
+    const { data: del } = await supabase.rpc('my_account_deletion');
+    setEraseAfter((del as { pending: { erase_after: string } | null } | null)?.pending?.erase_after ?? null);
     const { data, error: e } = await supabase.rpc('my_applications');
     if (e) { setError(e.message); setApps([]); return; }
     setApps((data ?? []) as Mine[]);
@@ -37,11 +43,12 @@ export default function Account() {
   const signOut = async () => { await supabase?.auth.signOut(); setApps(null); setPick(null); };
 
   if (session === undefined) return <div className="status-page"><p className="status-loading">Opening…</p></div>;
-  if (!session) return <SignIn />;
-  if (apps === null) return <div className="status-page"><p className="status-loading">Finding your application…</p></div>;
+  if (!session) return <SignIn deleted={deleted} />;
+  if (apps === null || eraseAfter === undefined) return <div className="status-page"><p className="status-loading">Finding your application…</p></div>;
+  if (eraseAfter) return <DeletionPending eraseAfter={eraseAfter} onKept={() => void load()} onSignOut={() => void signOut()} />;
 
   const chosen = pick ?? (apps.length === 1 ? apps[0]!.id : null);
-  if (chosen) return <StatusPage key={chosen} accountId={chosen} onSignOut={() => void signOut()} />;
+  if (chosen) return <StatusPage key={chosen} accountId={chosen} onSignOut={() => void signOut()} onDeleted={() => { setDeleted(true); setApps(null); setPick(null); }} />;
 
   return (
     <div className="status-page">
@@ -77,7 +84,7 @@ export default function Account() {
   );
 }
 
-function SignIn() {
+function SignIn({ deleted = false }: { deleted?: boolean }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
@@ -127,6 +134,7 @@ function SignIn() {
       <a className="status-back" href="#top">← Core Fitness</a>
       <span className="eyebrow">Your application</span>
       <h1 className="status-title">{making ? 'Make an account' : 'Sign in'}</h1>
+      {deleted && <p className="note" role="status" data-deleted-note>Your account is locked and will be erased in 7 days. Sign in before then if you want to keep it.</p>}
       <p className="status-lede">{making
         ? 'Use the email you applied with. Once you confirm it, your application appears here.'
         : 'With the email and password you chose when you registered your gym.'}</p>

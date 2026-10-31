@@ -168,7 +168,7 @@ const buildSections = (state: RefundTermsState): LegalSection[] => [
   {
     id: 'account',
     title: '9. Your account',
-    body: 'Accounts are archived, never deleted: your attendance and payment history are the gym\'s own records and it has to keep them. If your account is suspended, the reason is recorded, and you are told what it is rather than being met with a locked door and no explanation.',
+    body: 'When the gym closes your account it is archived, not deleted: your attendance and payment history are the gym\'s own records and it has to keep them. You can delete your own account yourself, in Settings → Your data: it is locked at once and erased after 7 days, unless you sign back in and keep it. Erased means your name, contact details, photo, workouts, measurements, photos, chats, assistant conversations and health answers are gone; your payments and visits stay in the gym\'s records under "Deleted member". Your future bookings are cancelled when you ask. If your account is suspended, the reason is recorded, and you are told what it is rather than being met with a locked door and no explanation.',
   },
   {
     id: 'changes',
@@ -181,7 +181,7 @@ const glance: GlanceItem[] = [
   { icon: Snowflake, label: 'Freeze twice a month', detail: 'Frozen days are added back to your expiry.', to: 'freezing' },
   { icon: Banknote, label: 'Refunds have a floor', detail: 'The tiers are a minimum — pro-rata wins when higher.', to: 'refunds' },
   { icon: CalendarX, label: 'Cancel bookings freely', detail: 'No cut-off, and nothing is forfeited.', to: 'classes' },
-  { icon: Archive, label: 'Archived, never deleted', detail: 'A suspension always comes with its reason.', to: 'account' },
+  { icon: Archive, label: 'Delete it yourself', detail: 'Erased after 7 days; payments and visits stay as "Deleted member".', to: 'account' },
 ];
 
 export default function Terms() {

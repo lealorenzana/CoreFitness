@@ -100,7 +100,7 @@ export function buildDocs(f: Facts): Record<DocKey, LegalDoc> {
           'You apply on this website and make an account with your email and a password. You also get a private link to your application. We read every application ourselves and answer there, and by email when we can.',
           'Before we approve a gym we check six documents you upload: your Mayor\'s or business permit, DTI or SEC registration, BIR Certificate of Registration (2303), barangay business clearance, the owner\'s valid government ID, and a photo of the gym\'s front. You send all six together. We tell you which we verified, and why we could not accept one; we may also ask again for one we had verified (if it has expired or cannot be read). You then send only those, again together.',
           'If you chose a paid plan, you pay for it once all six are verified and before we approve the gym: online through PayMongo, or by GCash, Maya or bank with the reference number, which we check. Your plan starts the day we approve the gym, for the month or year you paid. A free trial pays nothing first. If we decline the application after you have paid, we refund the payment in full.',
-          'We may decline an application, and you may call yours off. Either way it is shown to you, and you may ask us to delete the account you made: we then delete it and your documents.',
+          'We may decline an application, and you may call yours off. Either way it is shown to you. You can delete the account you made yourself, on your application page: it is locked at once and erased after 7 days unless you sign back in, an application still waiting is called off, and your documents are erased.',
           'When we approve it, the account you made becomes the gym\'s owner account. You then set the gym up in the gym app, and send a renewed permit each January and any document before it runs out.',
         ] },
         { id: 'payment', title: '4. Plans, trials and paying', body: [
@@ -247,9 +247,9 @@ export function buildDocs(f: Facts): Record<DocKey, LegalDoc> {
         ] },
         { id: 'kept', title: '6. How long it is kept', body: [
           'Applications, approved or not, are kept as the record of what was asked and answered.',
-          'If we decline an application or you call it off, we delete your account and your documents when you ask; the application itself stays as the record. Documents of an approved gym are kept while it uses the service.',
+          'If we decline an application or you call it off, you can delete your account yourself (erased after 7 days) and your documents go with it; the application itself stays as the record. Documents of an approved gym are kept while it uses the service.',
           'Billing records are kept as long as the law requires financial records to be kept.',
-          'Owner and staff accounts are kept while the gym uses the service, and archived — not erased — after, so the gym\'s history still makes sense.',
+          'Owner and staff accounts are kept while the gym uses the service, and archived — not erased — after, so the gym\'s history still makes sense. Any of them can delete their own account (erased after 7 days; what they recorded for the gym stays, under "Deleted member") — except the only owner of an open gym, who first asks us to close the gym or hand it to another owner.',
         ] },
         { id: 'rights', title: '7. Your rights under RA 10173', body: [
           'Ask what we hold about you, have it corrected, object to how it is used, and ask for it to be deleted where the law allows.',

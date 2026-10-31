@@ -217,6 +217,12 @@ export default function Login() {
         />
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 relative z-10">
+          {/* 0225: just asked to delete the account — what happens next, in one line. */}
+          {new URLSearchParams(window.location.search).get('deleted') === '1' && (
+            <p role="status" data-deleted-note className="text-center" style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--color-text-secondary)' }}>
+              Your account is locked and will be erased in 7 days. Sign in before then if you want to keep it.
+            </p>
+          )}
           {/* Logo + wordmark. The separate "Welcome to Core Fitness" badge that
               used to sit above this said the same thing twice, directly above a
               logo and the word CORE FITNESS. */}

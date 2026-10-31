@@ -1,4 +1,5 @@
 import StaffAccounts from '../components/staff/StaffAccounts';
+import DeleteAccount from '../components/DeleteAccount';
 import { setAccountStatus } from '../lib/api/accountEvents';
 import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import './attendance/att.css';
@@ -561,6 +562,7 @@ export default function Settings() {
                   <button type="button" className="a-btn violet" style={{ marginTop: 14, alignSelf: 'flex-end' }} onClick={handleSaveProfile} disabled={saving}>
                     {saving ? 'Saving…' : 'Save Profile'}
                   </button>
+                  <DeleteAccount />
                 </>
               )}
 
