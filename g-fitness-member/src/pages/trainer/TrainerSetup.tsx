@@ -11,18 +11,18 @@ interface Setup { onboarded: boolean; photo: boolean; bio: boolean; hours: numbe
 
 /** How this gym's 1-on-1 bookings reach a coach, in the coach's words (0204's modes). */
 const PT_WORDS: Record<string, string> = {
-  instant: 'Members book your open hours and it is confirmed straight away — you see it on Bookings.',
-  coach: 'A member asks for a time and you accept or decline it on Bookings. You decide your own bookings.',
-  desk: 'A member asks for a time and the front desk confirms it. You see it on Bookings once it is.',
+  instant: 'Members book your open hours and it is confirmed straight away — you see it on your Schedule.',
+  coach: 'A member asks for a time and you accept or decline it on Today or your Schedule. You decide your own sessions.',
+  desk: 'A member asks for a time and the front desk confirms it. You see it on your Schedule once it is.',
   coach_desk: 'You accept a member’s request first, then the front desk confirms it.',
-  off: 'Your gym books 1-on-1 sessions at the front desk, not in the app. They still show on Bookings.',
+  off: 'Your gym books 1-on-1 sessions at the front desk, not in the app. They still show on your Schedule.',
 };
 
 /**
  * A coach's first sign-in (0212): five steps, each ticked from what is really
  * set — a photo and a bio members read, weekly hours members can book, how this
  * gym's 1-on-1s reach you, your check-in code (when the owner has coach
- * check-in on), and where messages and rooms are. "I'm set" marks it done in
+ * check-in on), and where the people you train are (simplify, 2026-10-28). "I'm set" marks it done in
  * the database, so another phone does not ask again; "Later" comes back next time.
  */
 export default function TrainerSetup() {
@@ -64,13 +64,13 @@ export default function TrainerSetup() {
       go: ['/trainer/profile/edit', t('Edit my profile')] },
     { icon: CalendarClock, title: t('Your weekly hours'), done: s.hours > 0,
       body: s.hours > 0 ? t('Members can book you in these hours. Change them any time.') : t('Set the hours you coach each week — members book 1-on-1s only inside them.'),
-      go: ['/trainer/availability', s.hours > 0 ? t('See my hours') : t('Set my hours')] },
+      go: ['/trainer/schedule?tab=hours', s.hours > 0 ? t('See my hours') : t('Set my hours')] },
     { icon: Inbox, title: t('How 1-on-1s reach you'), done: null,
-      body: t(PT_WORDS[s.pt_approval ?? 'coach'] ?? PT_WORDS.coach), go: ['/trainer/bookings', t('Open Bookings')] },
+      body: t(PT_WORDS[s.pt_approval ?? 'coach'] ?? PT_WORDS.coach), go: ['/trainer/schedule', t('Open your schedule')] },
     ...(s.coach_checkin ? [{ icon: QrCode, title: t('Check in when you arrive'), done: null,
       body: t('Your gym checks coaches in too. On your hub, tap the violet QR button in the bar at the bottom and hold your code up at the desk or the kiosk.') }] : []),
-    { icon: MessageCircle, title: t('Messages and rooms'), done: null,
-      body: t('Your hub is like a chat app: Messages has each 1-on-1 member, and the rail on the left has your class and group rooms — posts, classwork and members.') },
+    { icon: MessageCircle, title: t('Everyone you train'), done: null,
+      body: t('Your hub is like a chat app: Personal training lists everyone you train, and each member on a package has a photo on the rail — their chat, classwork and progress in one place.') },
   ];
   const todo = steps.filter((x) => x.done !== null);
   const done = todo.filter((x) => x.done).length;

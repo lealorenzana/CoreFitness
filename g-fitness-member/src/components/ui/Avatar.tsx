@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { cn } from '../../lib/utils';
+import { openPhoto } from './PhotoViewer';
 
 /**
  * Profile photo with an initials fallback.
@@ -14,6 +15,10 @@ import { cn } from '../../lib/utils';
  *
  * A photo that 404s (deleted from storage, or a stale URL on the profile row)
  * falls back to initials rather than showing a broken image icon.
+ *
+ * A real photo opens big on tap (guides G1, 2026-10-31) — the tap stops there,
+ * so the row around it does not also open. `zoom={false}` where the avatar is
+ * itself the control (the profile picture you tap to change).
  */
 
 interface AvatarProps {
@@ -24,6 +29,8 @@ interface AvatarProps {
   className?: string;
   /** Violet by default; amber marks the signed-in user's own avatar. */
   tone?: 'primary' | 'secondary';
+  /** Tap to see the photo full screen. On by default; nothing happens without a photo. */
+  zoom?: boolean;
 }
 
 export function initialsOf(name: string | null | undefined): string {
@@ -43,6 +50,7 @@ export default function Avatar({
   size = 40,
   className,
   tone = 'primary',
+  zoom = true,
 }: AvatarProps) {
   const [failed, setFailed] = useState(false);
   const initials = initialsOf(name);
@@ -53,10 +61,15 @@ export default function Avatar({
   // button; this reads as a person.
   const edge = tone === 'secondary' ? 'var(--color-secondary)' : 'var(--color-primary)';
   const fg = tone === 'secondary' ? 'var(--color-secondary)' : 'var(--color-primary-300)';
+  const viewable = zoom && showPhoto;
+  const view = (e: { stopPropagation: () => void; preventDefault: () => void }) => {
+    e.stopPropagation(); e.preventDefault();
+    openPhoto(photoUrl as string, name ? `${name}'s photo` : 'Photo');
+  };
 
   return (
     <div
-      className={cn('rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center', className)}
+      className={cn('rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center', viewable && 'cursor-zoom-in', className)}
       style={{
         width: size,
         height: size,
@@ -66,8 +79,13 @@ export default function Avatar({
       }}
       // Empty alt/label when there is no name — an avatar reading "unknown
       // member" aloud is worse than one the screen reader skips.
-      aria-label={name ? `${name}'s photo` : undefined}
-      role={name ? 'img' : undefined}
+      aria-label={name ? `${name}'s photo${viewable ? ' — tap to see it big' : ''}` : undefined}
+      role={viewable ? 'button' : name ? 'img' : undefined}
+      tabIndex={viewable ? 0 : undefined}
+      data-avatar-zoom={viewable ? '' : undefined}
+      onClick={viewable ? view : undefined}
+      onKeyDown={viewable ? (e) => { if (e.key === 'Enter' || e.key === ' ') view(e); } : undefined}
+      onPointerDown={viewable ? (e) => e.stopPropagation() : undefined}
     >
       {showPhoto ? (
         <img

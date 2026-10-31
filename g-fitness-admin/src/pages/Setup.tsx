@@ -9,6 +9,7 @@ import { showToast } from '../utils/toast';
 import ColourRolePicker from '../components/ColourRolePicker';
 import ThemePreview from '../components/ThemePreview';
 import ModuleSwitches from '../components/ModuleSwitches';
+import RunQuestions from '../components/RunQuestions';
 import AiCoachCard from '../components/AiCoachCard';
 import BookingApproval from '../components/BookingApproval';
 import CoachingSettings from '../components/CoachingSettings';
@@ -30,6 +31,7 @@ import { refreshGymModules } from '../hooks/useGymModules';
 import { uploadMedia } from '../lib/api/media';
 import type { MembershipPlanRow } from '../types/db';
 import { myGymApplication } from '../lib/api/applications';
+import { cropPhoto } from '../components/ui/PhotoCropper';
 
 
 /**
@@ -58,7 +60,7 @@ const STEPS: { key: Step; title: string; blurb: string; icon: typeof Check }[] =
   { key: 'hours', title: 'When you are open', blurb: 'Your hours, and the days you close.', icon: Clock },
   { key: 'look', title: 'How your app looks', blurb: 'Two colours — and a live preview of your members’ app.', icon: Palette },
   { key: 'words', title: 'Your words', blurb: 'What you call your points, your coaches, your members and your classes.', icon: Type },
-  { key: 'runs', title: 'What you run', blurb: 'Switch off what your gym does not do. Nothing is deleted.', icon: LayoutGrid },
+  { key: 'runs', title: 'What you run', blurb: 'A few questions about your gym. Each answer switches that part of the app on or off — nothing is deleted.', icon: LayoutGrid },
   { key: 'bookings', title: 'Who approves bookings', blurb: 'Instant, your coaches, your desk — or not in the app at all. Classes and 1-on-1 apart.', icon: CalendarDays },
   { key: 'coaching', title: 'How coaching works', blurb: 'How members get a coach, for how long, and who is paid.', icon: Dumbbell },
   { key: 'walkins', title: 'Day passes and walk-ins', blurb: 'Whether guests can pay for a day, and what packs you sell.', icon: Banknote },
@@ -202,6 +204,12 @@ export default function Setup() {
     if (vocab) await saveGymVocabulary(vocab);
   };
 
+  /** Sets a switch to an answer (guides G2) — the same call the switch list makes. */
+  const setModule = async (key: string, enabled: boolean) => {
+    await setGymModule(key, enabled);
+    setModules(await getGymModules());
+    refreshGymModules();
+  };
   const toggleModule = async (m: GymModule) => {
     if (m.state === 'not_sold' || m.state === 'parent_off') return;
     try {
@@ -475,13 +483,17 @@ export default function Setup() {
                       {uploading ? 'Uploading…' : logoUrl ? 'Choose another' : 'Choose a picture'}
                       <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden"
                         onChange={(e) => {
-                          const file = e.target.files?.[0];
+                          const raw = e.target.files?.[0];
+                          if (!raw) return;
+                          void (async () => {
+                          const file = await cropPhoto(raw, { aspect: 1, title: 'Frame your logo' });
                           if (!file) return;
                           setUploading(true);
                           void uploadMedia(file, 'logos')
                             .then((url) => setLogoUrl(url))
                             .catch((err) => showToast(err instanceof Error ? err.message : 'That could not be uploaded', 'error'))
                             .finally(() => setUploading(false));
+                          })();
                         }} />
                     </label>
                     {logoUrl && <Button variant="ghost" onClick={() => setLogoUrl(null)}>Remove</Button>}
@@ -624,9 +636,15 @@ export default function Setup() {
               <div className="mt-5">
                 {modules.length === 0
                   ? <p className="text-sm" style={labelStyle}>Every part is on. You can switch parts off later on Your app → What you run.</p>
-                  : <ModuleSwitches modules={modules} onToggle={(m) => void toggleModule(m)} hideUnsold />}
+                  : <>
+                    <RunQuestions modules={modules} onSet={setModule} />
+                    <details className="mt-3" data-every-switch>
+                      <summary className="text-sm font-semibold cursor-pointer" style={{ color: 'var(--color-text-secondary)' }}>Show every switch</summary>
+                      <div className="mt-2"><ModuleSwitches modules={modules} onToggle={(m) => void toggleModule(m)} hideUnsold /></div>
+                    </details>
+                  </>}
                 <p className={`mt-3 ${hint}`} style={labelStyle}>
-                  Each switch saves at once. Only the parts your Core Fitness plan includes are listed.
+                  Each answer saves at once. You can change any of them later on Your app → What you run.
                 </p>
               </div>
             )}

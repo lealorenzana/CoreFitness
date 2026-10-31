@@ -26,6 +26,9 @@ import { useSetTabHeader } from '../components/layout/tabHeaderStore';
 import { readCache, writeCache } from '../lib/pageCache';
 import { logout } from '../utils/auth';
 import { myWaiverStatus, type WaiverStatus } from '../lib/api/waiver';
+import { useTour } from '../components/tour/Tour';
+import { tourFor } from '../lib/tours';
+import { useT } from '../lib/i18n';
 
 const CACHE_KEY = 'member:membership';
 
@@ -76,6 +79,7 @@ export default function MembershipHub() {
   ];
   const asked = params.get('tab') as YouTab | null;
   const tab: YouTab = asked && offered.includes(asked) ? asked : offered[0];
+  useTour(tourFor('member', 'you'), useT());
   const cached = readCache<Hub>(CACHE_KEY);
   const [hub, setHub] = useState<Hub | null>(cached ?? null);
   const [loading, setLoading] = useState(cached === undefined);

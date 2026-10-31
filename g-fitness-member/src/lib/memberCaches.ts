@@ -11,6 +11,7 @@ import { clearOfflineReads } from './offlineReads';
 import { clearMomentCache } from './moments';
 import { clearLivelyCache } from './livelyCache';
 import { clearCoachOpening } from './api/coachMoments';
+import { clearTourCache } from '../components/tour/Tour';
 
 /**
  * Every in-memory cache that belongs to *this member in this gym*, emptied.
@@ -54,6 +55,7 @@ export function clearMemberCaches(): void {
   clearPageCache();
   clearScrollMemory();
   clearHubMemory();
+  clearTourCache();
   // Entitlements are per-member *and* per-gym: the same person can be on
   // Premium at one gym and the free tier at another.
   clearFeatureCache();

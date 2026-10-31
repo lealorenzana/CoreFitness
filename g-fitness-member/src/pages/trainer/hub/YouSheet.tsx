@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Barbell, Books, Buildings, CalendarBlank, CaretRight, Clock, GearSix, Handshake, Trophy, UserCircle, type Icon } from '@phosphor-icons/react';
+import { Barbell, Books, Buildings, CalendarBlank, CaretRight, Clock, GearSix, Question, Handshake, Trophy, UserCircle, type Icon } from '@phosphor-icons/react';
 import GlassSheet from '../../../components/ui/GlassSheet';
 import Avatar from '../../../components/ui/Avatar';
 import { LineRow } from '../../../components/ui/noc';
@@ -26,6 +26,7 @@ const REST: Dest[] = [
   // Coaches work at more than one gym; this is how they switch.
   { label: 'Gyms', blurb: 'Switch to another gym you coach at', path: '/choose-gym', icon: Buildings },
   { label: 'Settings', blurb: 'Alerts, sign-in, language', path: '/trainer/settings', icon: GearSix },
+  { label: 'Help', blurb: 'Tours of each screen, your gym, terms', path: '/trainer/help', icon: Question },
 ];
 
 /**

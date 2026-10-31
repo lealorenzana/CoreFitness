@@ -13,6 +13,7 @@ import { getCurrentTrainerId } from '../../services/trainerService';
 import { Page, PageTitle } from '../../components/ui/page';
 import { LineRow, NocButton, SectionHead } from '../../components/ui/noc';
 import { goalsFor } from '../../lib/coachGoals';
+import { cropPhoto } from '../../components/ui/PhotoCropper';
 
 /**
  * Trainer self-service profile editing.
@@ -101,10 +102,11 @@ export default function TrainerEditProfile() {
   const handlePhotoPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
-    if (!file) return;
+    const picked = file ? await cropPhoto(file, { aspect: 1, shape: 'round', title: 'Your profile photo' }) : null;
+    if (!picked) return;
     setPhotoBusy(true);
     try {
-      const { publicUrl } = await uploadMyAvatar(file);
+      const { publicUrl } = await uploadMyAvatar(picked);
       setPhotoUrl(publicUrl);
       toast.success('Photo updated');
     } catch (err) {
@@ -181,7 +183,7 @@ export default function TrainerEditProfile() {
       <section className="flex items-center" style={{ gap: 16 }}>
         <label htmlFor="trainer-photo" className="flex-none cursor-pointer" style={{ opacity: photoBusy ? 0.5 : 1 }}
           aria-label="Choose a profile photo">
-          <Avatar name={fullName} photoUrl={photoUrl} size={76} />
+          <Avatar name={fullName} photoUrl={photoUrl} size={76} zoom={false} />
         </label>
         <input id="trainer-photo" type="file" accept="image/jpeg,image/png,image/webp"
           onChange={handlePhotoPick} disabled={photoBusy} className="hidden" />

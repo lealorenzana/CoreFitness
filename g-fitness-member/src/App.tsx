@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { supabase } from './lib/supabaseClient';
 import { syncUserCache } from './utils/auth';
 import { getGymContext, homeFor, myGyms, usableGyms } from './lib/gymContext';
+import { PhotoViewerHost } from './components/ui/PhotoViewer';
+import { PhotoCropperHost } from './components/ui/PhotoCropper';
 import { lazyPage } from './lib/lazyPage';
 import { Suspense } from 'react';
 import Layout from './components/layout/Layout';
@@ -67,12 +69,14 @@ const TrainPage = lazyPage(() => import('./pages/train/TrainPage'));
 const ToCoachTab = lazyPage(() => import('./pages/train/ToCoachTab'));
 const CoachChat = lazyPage(() => import('./pages/CoachChat'));
 const BookSession = lazyPage(() => import('./pages/BookSession'));
+const Help = lazyPage(() => import('./pages/Help'));
 const GymMap = lazyPage(() => import('./pages/GymMap'));
 const Equipment = lazyPage(() => import('./pages/Equipment'));
 const BookingHistory = lazyPage(() => import('./pages/BookingHistory'));
 const TrainerProfilePage = lazyPage(() => import('./pages/TrainerProfile'));
 const Trainers = lazyPage(() => import('./pages/Trainers'));
 import TrainerHome from './pages/trainer/TrainerHome';
+import { TourHost } from './components/tour/Tour';
 const TraineePlace = lazyPage(() => import('./pages/trainer/TraineePlace'));
 const TrainerOldLink = lazyPage(() => import('./pages/trainer/TrainerOldLink'));
 const TrainerSchedule = lazyPage(() => import('./pages/trainer/TrainerSchedule'));
@@ -210,6 +214,11 @@ function LoginRoute() {
 function App() {
   return (
     <BrowserRouter>
+      {/* Tap a photo to see it big; frame a photo before it uploads (guides G1). */}
+      <PhotoViewerHost />
+      <PhotoCropperHost />
+      {/* The first-visit tours (guides G4). */}
+      <TourHost />
       {/* Screens load when opened (lib/lazyPage.ts). The shells have their own
           boundary around <Outlet/>, so the tab bar stays put; this one covers
           the few screens outside a shell (sign-up, terms). */}
@@ -285,6 +294,7 @@ function App() {
           <Route path="profile" element={<TrainerProfile />} />
           <Route path="profile/edit" element={<TrainerEditProfile />} />
           <Route path="settings" element={<TrainerSettings />} />
+          <Route path="help" element={<Help />} />
           <Route path="exercises" element={<TrainerExercises />} />
           {/* Same component as the member route below — it reads the path to
               pick which catalogue to draw and which shell to return to. */}
@@ -373,6 +383,7 @@ function App() {
           <Route path="profile" element={<Profile />} />
           <Route path="profile/edit" element={<EditProfile />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="help" element={<Help />} />
           <Route path="change-password" element={<ChangePassword />} />
           <Route path="change-email" element={<ChangeEmail />} />
           <Route path="payments" element={<PaymentHistory />} />

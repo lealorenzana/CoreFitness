@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { BookOpen, Bug, CheckCircle2, Lightbulb, MessageCircle, MessageSquareQuote, Paperclip, Plus, Search, Send, ShieldCheck, Star } from 'lucide-react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { BookOpen, Bug, CheckCircle2, Lightbulb, MessageCircle, MessageSquareQuote, Paperclip, PlayCircle, Plus, Search, Send, ShieldCheck, Star } from 'lucide-react';
 import './attendance/att.css';
 import { showToast } from '../utils/toast';
 import {
@@ -13,6 +13,8 @@ import {
   myIdeas, myRating, myTestimonials, rateCoreFitness, reportBug, screenshotLink, sendIdea, sendTestimonial, ticketExtras, withdrawTestimonial,
   type Idea, type MyRating, type Testimonial,
 } from '../lib/api/feedback';
+import { replayTour } from '../components/tour/Tour';
+import { TOURS } from '../lib/tours';
 
 const when = (iso: string) => new Date(iso).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 const day = (iso: string) => new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -28,7 +30,7 @@ const QUICK: { title: string; where: string; to: string }[] = [
   { title: 'Your join link and poster', where: 'Your app → Joining', to: '/gym-app?tab=join' },
   { title: 'Paying Core Fitness', where: 'Your plan', to: '/subscription' },
 ];
-type Tab = 'questions' | 'ideas' | 'rate';
+type Tab = 'questions' | 'ideas' | 'rate' | 'tours';
 
 /**
  * Help (2026-10-25): Support (0137, 0162) and Feedback (0188) on one page, to
@@ -46,7 +48,8 @@ type Tab = 'questions' | 'ideas' | 'rate';
  */
 export default function Help() {
   const [params, setParams] = useSearchParams();
-  const tab: Tab = params.get('tab') === 'ideas' ? 'ideas' : params.get('tab') === 'rate' ? 'rate' : 'questions';
+  const tab: Tab = params.get('tab') === 'ideas' ? 'ideas' : params.get('tab') === 'rate' ? 'rate' : params.get('tab') === 'tours' ? 'tours' : 'questions';
+  const navigate = useNavigate();
   const setTab = (t: Tab) => setParams((prev) => { const n = new URLSearchParams(prev); n.set('tab', t); return n; }, { replace: true });
 
   const [owner, setOwner] = useState(false);
@@ -95,9 +98,24 @@ export default function Help() {
             <Lightbulb size={14} />Ideas{ideas.length > 0 && <em>{ideas.length}</em>}</button>
           <button type="button" role="tab" aria-selected={tab === 'rate'} className={tab === 'rate' ? 'on' : ''} onClick={() => setTab('rate')}>
             <Star size={14} />Rate us</button>
+          <button type="button" role="tab" aria-selected={tab === 'tours'} className={tab === 'tours' ? 'on' : ''} onClick={() => setTab('tours')}>
+            <PlayCircle size={14} />Tours</button>
         </div>
         <button type="button" className="a-btn violet" onClick={() => { setTab('questions'); setComposing(true); }}><Plus size={15} />Ask a question</button>
       </div>
+
+      {/* The tours (guides G4): each main page's, with Replay. */}
+      {tab === 'tours' && (
+        <div className="a-card" data-help-tours style={{ flex: 1 }}>
+          <div className="a-ct"><h3><PlayCircle size={16} />Tours</h3><small>a short walk through each page — replay any of them</small></div>
+          {TOURS.map((x) => (
+            <div key={x.id} className="a-row">
+              <div className="t"><b>{x.name}</b><small>{x.steps.length} steps · {x.steps.map((s) => s.title).join(', ')}</small></div>
+              <button type="button" className="a-btn violet sm" onClick={() => { replayTour(x.id); navigate(x.path); }}>Replay</button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {tab === 'questions' && (
         <Questions tickets={tickets} extras={extras} owner={owner} gymId={gymId} composing={composing} setComposing={setComposing}

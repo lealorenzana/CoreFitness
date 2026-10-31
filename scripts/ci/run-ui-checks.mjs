@@ -67,6 +67,9 @@ for (const check of checks) {
   // The gym's clock, whatever the machine's: the app and the fixtures both
   // reason in Manila days, and a UTC runner put "today" on the wrong date.
   const context = await browser.newContext({ timezoneId: 'Asia/Manila', locale: 'en-US' });
+  // The first-visit tours (0221) would cover every screen in a fixture that answers
+  // my_tours_seen with an empty list; only the tour checks turn them back on.
+  await context.addInitScript(() => { window.__CF_NO_TOURS = true; });
   const page = await context.newPage();
   page.setDefaultTimeout(20_000);
   let verdict = 'pass';

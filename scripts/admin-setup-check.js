@@ -110,6 +110,10 @@ async (page) => {
   out.push('the look is saved: ' + (CALLS.some(([f]) => f === 'save_gym_look') ? 'yes' : 'MISSING'));
   await next();                                    // words → runs
   t = await text();
+  // The switches sit under "Show every switch" since the questions came first (guides G2).
+  await page.locator('[data-every-switch] summary').click();
+  await page.waitForTimeout(300);
+  t = await text();
   out.push('only what the plan sells: ' + (/The front desk/.test(t) && /The shop/.test(t) && !/Squads/.test(t) ? 'yes (squads hidden)' : 'MISSING'));
   await page.getByRole('button', { name: /The shop/ }).click();
   await page.waitForTimeout(500);

@@ -4,6 +4,7 @@ import { Page, PageTitle } from '../components/ui/page';
 import { LineRow, Panel, SectionHead, StatusPill } from '../components/ui/noc';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { supabase } from '../lib/supabaseClient';
+import { ZoomImg } from '../components/ui/PhotoViewer';
 
 interface Item { id: string; name: string; category: string; description: string | null; price: number; photoUrl: string | null; availability: 'in_stock' | 'low' | 'sold_out' }
 const AVAIL = {
@@ -63,8 +64,8 @@ export default function ShopMenu() {
                   // and never shown here); a quiet tile when there is none.
                   gutterWidth={64}
                   gutter={i.photoUrl
-                    ? <img src={i.photoUrl} alt="" loading="lazy" data-product-photo
-                        style={{ width: 56, height: 56, borderRadius: 12, objectFit: 'cover', display: 'block' }} />
+                    ? <span data-product-photo><ZoomImg src={i.photoUrl} alt="" label={i.name} loading="lazy"
+                        style={{ width: 56, height: 56, borderRadius: 12, objectFit: 'cover', display: 'block' }} /></span>
                     : <span aria-hidden className="grid place-items-center"
                         style={{ width: 56, height: 56, borderRadius: 12, background: 'rgba(233,233,237,0.05)', color: 'var(--color-text-muted)' }}>
                         <Storefront size={20} />

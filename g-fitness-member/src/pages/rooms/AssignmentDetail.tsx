@@ -12,6 +12,7 @@ import {
   type Classwork, type HandIn,
 } from '../../lib/api/rooms';
 import { submissionPhotos } from '../../lib/api/photos';
+import { ZoomImg } from '../../components/ui/PhotoViewer';
 
 /**
  * One piece of classwork, member by member (0129): who turned it in, late or
@@ -88,7 +89,7 @@ export default function AssignmentDetail() {
           <StatusPill label={st.label} tone={st.tone} />
         </div>
         {h.submissionId && photos.get(h.submissionId) && (
-          <img src={photos.get(h.submissionId)} alt={`Photo from ${h.name}`} loading="lazy"
+          <ZoomImg src={photos.get(h.submissionId) as string} alt={`Photo from ${h.name}`} loading="lazy"
             style={{ marginTop: 8, width: '100%', maxHeight: 360, objectFit: 'contain', borderRadius: 10 }} />
         )}
         {h.answerNumber != null && <p style={{ fontSize: 14, marginTop: 8, color: 'var(--color-text-primary)' }}>{h.answerNumber} kg</p>}

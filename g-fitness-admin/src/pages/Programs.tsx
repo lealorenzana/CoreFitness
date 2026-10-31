@@ -12,6 +12,7 @@ import {
   copyStarterProgram, listPrograms, listWorkouts, saveProgram, saveWorkout, setProgramDay, setProgramPublished,
   type GymProgram, type GymWorkout, type Level, type ProgressKind, type StarterKey, type WorkoutItem,
 } from '../lib/api/programs';
+import { cropPhoto } from '../components/ui/PhotoCropper';
 
 /**
  * Training → Programs (0122/0173, redrawn 2026-10-20 to the approved mock-up):
@@ -225,7 +226,8 @@ function ProgramEditor({ program, workouts, exercises, onSaved, onClose, onEditW
     await setProgramDay(program.id, week, day, workoutId || null);
     await onSaved(program.id);
   });
-  const pickCover = (file: File | undefined) => run(async () => {
+  const pickCover = (raw: File | undefined) => run(async () => {
+    const file = raw ? await cropPhoto(raw, { aspect: 16 / 9, title: 'Frame the cover' }) : null;
     if (!file) return;
     setCover(await uploadContentPhoto(file));
   });

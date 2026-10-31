@@ -7,6 +7,7 @@ import { ALLOWED_VIDEO_HINT, embedUrl } from '../lib/videoEmbed';
 import {
   removeContentPhoto, saveExerciseMedia, uploadContentPhoto, type ExerciseMedia,
 } from '../lib/api/exerciseMedia';
+import { cropPhoto } from './ui/PhotoCropper';
 
 const MUTED = 'var(--color-text-muted)';
 const FIELD = { background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' };
@@ -50,7 +51,8 @@ export default function ExerciseGuideEditor({
   const preview = embedUrl(video);
   const badLink = video.trim() !== '' && !preview;
 
-  const pick = async (file: File | undefined) => {
+  const pick = async (raw: File | undefined) => {
+    const file = raw ? await cropPhoto(raw, { aspect: 4 / 3, title: 'Frame the exercise photo' }) : null;
     if (!file) return;
     setBusy(true);
     try {

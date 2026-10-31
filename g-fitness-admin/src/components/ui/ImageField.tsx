@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { ImagePlus, Trash2, Loader2, Link2, AlertTriangle } from 'lucide-react';
 import { uploadMedia, removeMedia, mediaPathFromUrl, type MediaKind } from '../../lib/api/media';
+import { cropPhoto } from './PhotoCropper';
 
 /**
  * Pick a picture for an event, challenge, announcement or resource.
@@ -43,7 +44,8 @@ export default function ImageField({
   /** Set when the <img> fails, so a dead link says so instead of showing a gap. */
   const [broken, setBroken] = useState(false);
 
-  const pick = async (file: File | undefined) => {
+  const pick = async (raw: File | undefined) => {
+    const file = raw ? await cropPhoto(raw, { aspect, title: `Frame the ${label.toLowerCase()}` }) : null;
     if (!file) return;
     setBusy(true);
     setError(null);

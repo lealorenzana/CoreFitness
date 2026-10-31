@@ -14,6 +14,7 @@ import { getMyProfile } from '../lib/api/profiles';
 import { uploadMyAvatar } from '../lib/api/avatars';
 import { errorMessage } from '../utils/errorMessage';
 import { logout } from '../utils/auth';
+import { cropPhoto } from '../components/ui/PhotoCropper';
 
 /**
  * The photo step lives here rather than in Register on purpose.
@@ -93,11 +94,12 @@ export default function Onboarding() {
   const handlePhotoPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
-    if (!file) return;
+    const picked = file ? await cropPhoto(file, { aspect: 1, shape: 'round', title: 'Your profile photo' }) : null;
+    if (!picked) return;
     setPhotoBusy(true);
     setPhotoError('');
     try {
-      const { publicUrl } = await uploadMyAvatar(file);
+      const { publicUrl } = await uploadMyAvatar(picked);
       setPhotoUrl(publicUrl);
     } catch (err) {
       setPhotoError(errorMessage(err, 'Could not upload that photo'));
@@ -369,7 +371,7 @@ export default function Onboarding() {
 
                 <div className="flex flex-col items-center gap-4 py-4">
                   <div style={{ opacity: photoBusy ? 0.5 : 1 }}>
-                    <Avatar name={myName} photoUrl={photoUrl} size={112} />
+                    <Avatar name={myName} photoUrl={photoUrl} size={112} zoom={false} />
                   </div>
 
                   <label htmlFor="onboarding-photo"

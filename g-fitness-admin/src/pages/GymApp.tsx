@@ -26,6 +26,7 @@ import PayTab from '../components/yourapp/PayTab';
 import TvTab from '../components/yourapp/TvTab';
 import CelebrationsTab from '../components/yourapp/CelebrationsTab';
 import SavedThemes from '../components/yourapp/SavedThemes';
+import { cropPhoto } from '../components/ui/PhotoCropper';
 
 const MEMBER_APP = 'https://corefitness-gym.vercel.app';
 
@@ -263,14 +264,18 @@ export default function GymApp() {
               {uploading ? 'Uploading…' : look.logo_url ? 'Change logo' : 'Choose a logo'}
               <input type="file" accept="image/*" className="hidden" disabled={uploading}
                 onChange={(e) => {
-                  const file = e.target.files?.[0];
+                  const raw = e.target.files?.[0];
                   e.target.value = '';
+                  if (!raw) return;
+                  void (async () => {
+                  const file = await cropPhoto(raw, { aspect: 1, title: 'Frame your logo' });
                   if (!file) return;
                   setUploading(true);
                   void uploadMedia(file, 'logos')
                     .then((url) => setLook((l) => ({ ...l, logo_url: url })))
                     .catch((err) => showToast(err instanceof Error ? err.message : 'That picture would not upload', 'error'))
                     .finally(() => setUploading(false));
+                  })();
                 }} />
             </label>
             {look.logo_url && <button type="button" className="a-btn ghost" onClick={() => setLook({ ...look, logo_url: '' })}>Remove</button>}

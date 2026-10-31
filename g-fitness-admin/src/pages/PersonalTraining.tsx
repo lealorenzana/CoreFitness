@@ -15,6 +15,8 @@ import { coachingSweep, confirmCoachingPayment, listCoachings, type CoachingRow 
 import { listMembers } from '../lib/api/members';
 import { listTrainers } from '../lib/api/trainers';
 import { useGymModules, moduleOn } from '../hooks/useGymModules';
+import { useTour } from '../components/tour/Tour';
+import { tourFor } from '../lib/tours';
 
 type Tab = 'decide' | 'sessions' | 'packages';
 type Mode = 'instant' | 'coach' | 'desk' | 'coach_desk' | 'off';
@@ -53,6 +55,7 @@ export default function PersonalTraining() {
   const asked = params.get('tab') as Tab | null;
   const tab: Tab = asked === 'sessions' || (asked === 'packages' && packagesOn) ? asked : 'decide';
   const setTab = (t: Tab) => setParams(t === 'decide' ? {} : { tab: t }, { replace: true });
+  useTour(tourFor(tab === 'decide' ? 'personal-training' : ''));
 
   const [data, setData] = useState<Decide | null | undefined>(undefined);
   const [names, setNames] = useState<Record<string, { name: string; photo: string | null }>>({});

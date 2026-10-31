@@ -6,6 +6,7 @@ import { showToast } from '../../utils/toast';
 import { uploadMedia } from '../../lib/api/media';
 import { rampFor } from '../../lib/gymTheme';
 import { TV_PANELS, loadTv, loadTvDesign, saveTvDesign, withDefaults, type TvData, type TvDesign, type TvPanel, type TvTheme } from '../../lib/api/tv';
+import { cropPhoto } from '../ui/PhotoCropper';
 
 const THEMES: { key: TvTheme; label: string }[] = [
   { key: 'dark', label: 'Dark' }, { key: 'brand', label: 'Your colour' }, { key: 'light', label: 'Light' },
@@ -97,12 +98,16 @@ export default function TvTab() {
             <ImagePlus size={13} />{uploading ? 'Uploading…' : d.background_url ? 'Change' : 'Choose a photo'}
             <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" disabled={uploading}
               onChange={(e) => {
-                const f = e.target.files?.[0]; e.target.value = '';
+                const raw = e.target.files?.[0]; e.target.value = '';
+                if (!raw) return;
+                void (async () => {
+                const f = await cropPhoto(raw, { aspect: 16 / 9, title: 'Frame the TV background' });
                 if (!f) return;
                 setUploading(true);
                 void uploadMedia(f, 'tv').then((url) => setD((x) => ({ ...x, background_url: url })))
                   .catch((err) => showToast(err instanceof Error ? err.message : 'That photo would not upload', 'error'))
                   .finally(() => setUploading(false));
+                })();
               }} />
           </label>
           {d.background_url && <button type="button" className="a-btn ghost sm" onClick={() => setD({ ...d, background_url: null })}>Remove</button>}

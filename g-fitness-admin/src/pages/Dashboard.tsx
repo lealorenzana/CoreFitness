@@ -27,6 +27,8 @@ import {
   loadNeedsYou, loadToday, loadMonthNumbers, loadMembersToWatch,
   type NeedsYou, type Today, type MonthNumbers, type Compared,
 } from '../services/todayService';
+import { useTour } from '../components/tour/Tour';
+import { tourFor } from '../lib/tours';
 
 const VIOLET     = '#7C3AED';
 const VIOLET_300 = '#C4B5FD';
@@ -229,6 +231,7 @@ function TaskRow({ icon: Icon, title, detail, action, onClick, testId }: {
  */
 export default function Dashboard() {
   const navigate = useNavigate();
+  useTour(tourFor('dashboard'));
 
   const years = dashboardService.getYears();
   const [revenueYear, setRevenueYear] = useState(years[0]);

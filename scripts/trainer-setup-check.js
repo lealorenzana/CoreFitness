@@ -82,7 +82,7 @@ async (page) => {
   let body = (await page.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ');
   say('a coach who has not finished setup is taken to it', page.url().endsWith('/trainer/welcome'));
   say('…each step ticks from real data (bio set, photo and hours not: 0 of 2)', /0 of 2 set/.test(body));
-  say('…1-on-1s are explained by this gym\'s rule (coach approves)', /you accept or decline it on Bookings/.test(body));
+  say('…1-on-1s are explained by this gym\'s rule (coach approves)', /you accept or decline it on Today or your Schedule/.test(body));
   say('…and the check-in code step shows, as coach check-in is on', /violet QR button/.test(body));
   await page.screenshot({ path: 'shots/trainer-setup.png' });
   await page.getByRole('button', { name: /I’m set/ }).click();

@@ -13,6 +13,7 @@ import { ageFrom, birthDateProblem, GENDER_OPTIONS, PHONE_RE } from '../utils/pr
 import { Page, PageTitle } from '../components/ui/page';
 import { Chip, NocButton, Panel, ProgressBar, SectionHead } from '../components/ui/noc';
 import { SkeletonList } from '../components/ui/Skeleton';
+import { cropPhoto } from '../components/ui/PhotoCropper';
 
 /**
  * Edit profile (reworked 2026-09-19).
@@ -107,11 +108,12 @@ export default function EditProfile() {
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
-    if (!file) return;
+    const picked = file ? await cropPhoto(file, { aspect: 1, shape: 'round', title: 'Your profile photo' }) : null;
+    if (!picked) return;
     setPhotoBusy(true);
     try {
       // Uploads on pick — the member sees the stored image, not a preview.
-      const { publicUrl } = await uploadMyAvatar(file);
+      const { publicUrl } = await uploadMyAvatar(picked);
       setPhoto(publicUrl);
       toast.success('Photo updated');
     } catch (err) {
@@ -209,7 +211,7 @@ export default function EditProfile() {
         <div className="flex items-center" style={{ gap: 16 }}>
           <label htmlFor="photo-upload" className="relative flex-none cursor-pointer noc-press" aria-label="Choose a profile photo"
             style={{ opacity: photoBusy ? 0.5 : 1 }}>
-            <Avatar name={`${form.firstName} ${form.lastName}`.trim()} photoUrl={photo} size={76} />
+            <Avatar name={`${form.firstName} ${form.lastName}`.trim()} photoUrl={photo} size={76} zoom={false} />
             <span className="absolute grid place-items-center" aria-hidden style={{
               right: -2, bottom: -2, width: 28, height: 28, borderRadius: 14,
               background: 'var(--color-secondary)', color: 'var(--color-bg)', border: '2px solid var(--color-bg)',

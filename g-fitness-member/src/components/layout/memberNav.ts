@@ -85,7 +85,7 @@ const TAB_PATHS: string[][] = [
    '/member/achievements', '/member/challenges', '/member/season', '/member/squad',
    '/member/payments', '/member/attendance-history', '/member/rewards', '/member/shop',
    '/member/profile', '/member/settings', '/member/change-password',
-   '/member/change-email', '/member/activity', '/member/visits'],
+   '/member/change-email', '/member/activity', '/member/visits', '/member/help'],
 ];
 
 /** The tab a path belongs to, or null for a path that belongs to none. */
@@ -240,7 +240,7 @@ export const EVERYTHING: { group: string; items: Destination[] }[] = [
       { label: 'Gyms', path: '/choose-gym', icon: Buildings, blurb: 'Switch gym, or join another' },
       { label: 'Profile', path: '/member/profile', icon: UserCircle, blurb: 'Your name, photo and details' },
       { label: 'Settings', path: '/member/settings', icon: GearSix, blurb: 'Alerts, privacy, sign-in, password, email' },
-      { label: 'Help', path: '/member/settings?section=gym', icon: Question, blurb: 'Contact your gym, terms and privacy' },
+      { label: 'Help', path: '/member/help', icon: Question, blurb: 'Tours of each screen, your gym, terms and privacy' },
     ],
   },
 ];

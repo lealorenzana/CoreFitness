@@ -241,7 +241,7 @@ async (page) => {
   await go('/member/settings');
   await page.waitForTimeout(900);
   const main = (await page.locator('main').innerText()).replace(/\s+/g, ' ');
-  out.push('settings: ' + (/Mga notification/.test(main) ? 'Filipino headings' : 'ENGLISH') + ' · ' + (/Wika/.test(main) ? 'Wika section' : 'NO LANGUAGE SECTION'));
+  out.push('settings: ' + (/Ano ang nakikita ng coach mo/.test(main) ? 'Filipino headings' : 'ENGLISH') + ' · ' + (/Wika/.test(main) ? 'Wika section' : 'NO LANGUAGE SECTION'));
   // Language is its own section since the Settings redesign (2026-10-26).
   await go('/member/settings?section=language');
   await page.waitForTimeout(600);

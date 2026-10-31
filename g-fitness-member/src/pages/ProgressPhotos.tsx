@@ -13,6 +13,8 @@ import { todayKey } from '../utils/dates';
 import {
   addPhoto, deletePhoto, getSharePhotos, myPhotos, setSharePhotos, type Pose, type ProgressPhoto,
 } from '../lib/api/photos';
+import { cropPhoto } from '../components/ui/PhotoCropper';
+import { ZoomImg } from '../components/ui/PhotoViewer';
 
 const POSES: { id: Pose; label: string }[] = [
   { id: 'front', label: 'Front' }, { id: 'side', label: 'Side' }, { id: 'back', label: 'Back' }, { id: 'other', label: 'Other' },
@@ -40,7 +42,9 @@ export default function ProgressPhotos() {
   }, []);
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
-  const add = async (file: File | undefined) => {
+  const add = async (raw: File | undefined) => {
+    // A progress photo is portrait, framed the same way each time.
+    const file = raw ? await cropPhoto(raw, { aspect: 3 / 4, title: 'Frame your progress photo' }) : null;
     if (!file) return;
     setBusy(true);
     try { await addPhoto(file, pose, taken, note.trim()); setNote(''); toast.success('Added to your album.'); await load(); }
@@ -125,7 +129,7 @@ export default function ProgressPhotos() {
           <div className="grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 8 }}>
             {[...pair].sort((a, b) => a.takenOn.localeCompare(b.takenOn)).map((p) => (
               <figure key={p.id}>
-                {p.url && <img src={p.url} alt={`${p.pose} photo from ${dateLabel(p.takenOn)}`} style={{ width: '100%', aspectRatio: '3 / 4', objectFit: 'cover', borderRadius: 12 }} />}
+                {p.url && <ZoomImg src={p.url} alt={`${p.pose} photo from ${dateLabel(p.takenOn)}`} style={{ width: '100%', aspectRatio: '3 / 4', objectFit: 'cover', borderRadius: 12 }} />}
                 <figcaption style={{ fontSize: 12, marginTop: 4, color: 'var(--color-text-muted)' }}>{dateLabel(p.takenOn)}{p.note ? ` · ${p.note}` : ''}</figcaption>
               </figure>
             ))}

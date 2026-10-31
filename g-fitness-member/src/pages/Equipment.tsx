@@ -10,6 +10,7 @@ import { errorMessage } from '../utils/errorMessage';
 import {
   CATEGORY_WORDS, listEquipment, myOpenReports, reportEquipment, STATUS_WORDS, type EquipmentItem,
 } from '../lib/api/equipment';
+import { ZoomImg } from '../components/ui/PhotoViewer';
 
 /**
  * The gym's equipment (0184): what there is, how many, where in the gym, and
@@ -80,7 +81,7 @@ export default function Equipment() {
         ) : undefined}>
         {open && (
           <div className="flex flex-col" style={{ gap: 12 }}>
-            {open.photoUrl && <img src={open.photoUrl} alt="" style={{ width: '100%', maxHeight: 220, objectFit: 'cover', borderRadius: 16 }} />}
+            {open.photoUrl && <ZoomImg src={open.photoUrl} alt="" label={open.name} style={{ width: '100%', maxHeight: 220, objectFit: 'cover', borderRadius: 16 }} />}
             {open.notes && <p style={{ fontSize: 13.5, color: 'var(--color-text-secondary)' }}>{open.notes}</p>}
             {open.exercises.length > 0 && (
               <div>

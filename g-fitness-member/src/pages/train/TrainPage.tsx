@@ -9,6 +9,8 @@ import CoachHome from './CoachHome';
 import { useGymApp } from '../../hooks/useGymApp';
 import { moduleOn } from '../../lib/gymApp';
 import { useT } from '../../lib/i18n';
+import { useTour } from '../../components/tour/Tour';
+import { tourFor } from '../../lib/tours';
 
 type TrainTab = 'workout' | 'classes' | 'coach';
 
@@ -52,6 +54,9 @@ export default function TrainPage() {
       return p;
     }, { replace: true });
   }, [legacy, fallback, setParams]);
+
+  // The first-visit tour of the tab you are on (guides G4).
+  useTour(tourFor('member', active === 'coach' ? 'coach' : active === 'workout' ? 'train' : ''), t);
 
   if (deepLinkTrainer) return <Navigate to="/member/book-session" replace state={{ trainerId: deepLinkTrainer }} />;
 

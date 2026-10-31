@@ -31,6 +31,9 @@ import DueStrip from '../components/rooms/DueStrip';
 import TermsUpdateStrip from '../components/legal/TermsUpdateStrip';
 import FinishPlanCard from '../components/home/FinishPlanCard';
 import { rampFor } from '../lib/gymTheme';
+import { useTour } from '../components/tour/Tour';
+import { tourFor } from '../lib/tours';
+import { useT } from '../lib/i18n';
 
 /** Cache slots for this screen — see lib/pageCache.ts. */
 const CACHE_KEY = 'member:home';
@@ -103,6 +106,7 @@ interface Entry {
  */
 export default function Home() {
   const navigate = useNavigate();
+  useTour(tourFor('member', 'today'), useT());
   // A button to a feature this plan lacks still shows — gates lock and explain,
   // never hide — but carries a lock, so it is a door marked locked rather than
   // bait (the objection 0059 raised against the old chat head). Unknown while

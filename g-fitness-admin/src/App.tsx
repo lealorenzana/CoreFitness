@@ -42,11 +42,19 @@ import Kiosk from './pages/Kiosk';
 import FinishInvite from './pages/FinishInvite';
 import LobbyTv from './pages/LobbyTv';
 import { Toaster } from './components/ui/sonner';
+import { PhotoViewerHost } from './components/ui/PhotoViewer';
+import { PhotoCropperHost } from './components/ui/PhotoCropper';
+import { TourHost } from './components/tour/Tour';
 
 function App() {
   return (
       <BrowserRouter>
         <Toaster />
+        {/* Click a photo to see it big; frame a photo before it uploads (guides G1). */}
+        <PhotoViewerHost />
+        <PhotoCropperHost />
+        {/* The first-visit tours (guides G4). */}
+        <TourHost />
         <Routes>
           <Route path="/admin/login" element={<AdminLogin />} />
           {/* 0202: an invited front-desk login's first sign-in. Outside the shell: no gym yet. */}

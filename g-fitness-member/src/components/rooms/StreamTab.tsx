@@ -10,6 +10,8 @@ import { uploadContentPhoto } from '../../lib/api/exerciseMedia';
 import {
   addComment, addPost, deleteComment, deletePost, roomStream, type Room, type RoomPost,
 } from '../../lib/api/rooms';
+import { cropPhoto } from '../ui/PhotoCropper';
+import { ZoomImg } from '../ui/PhotoViewer';
 
 /**
  * A room's Stream (0128): the trainer's posts, newest first, with members'
@@ -51,7 +53,8 @@ export default function StreamTab({ room, canPost, canComment }: { room: Room; c
     return how;
   }, 'Posted to the room.');
 
-  const pickPhoto = async (file: File | undefined) => {
+  const pickPhoto = async (raw: File | undefined) => {
+    const file = raw ? await cropPhoto(raw, { aspect: 4 / 3, title: 'Frame the photo' }) : null;
     if (!file) return;
     setBusy(true);
     try { setPhoto(await uploadContentPhoto(file)); }
@@ -104,7 +107,7 @@ export default function StreamTab({ room, canPost, canComment }: { room: Room; c
               )}
             </div>
             <p style={{ fontSize: 14, marginTop: 8, whiteSpace: 'pre-wrap', color: 'var(--color-text-primary)' }}>{p.body}</p>
-            {p.photoUrl && <img src={p.photoUrl} alt="" loading="lazy" style={{ marginTop: 10, width: '100%', borderRadius: 12, maxHeight: 280, objectFit: 'cover' }} />}
+            {p.photoUrl && <ZoomImg src={p.photoUrl} alt="" label="Photo in the post" loading="lazy" style={{ marginTop: 10, width: '100%', borderRadius: 12, maxHeight: 280, objectFit: 'cover' }} />}
             {vid && (
               <div style={{ position: 'relative', paddingTop: '56.25%', marginTop: 10, borderRadius: 12, overflow: 'hidden' }}>
                 <iframe src={vid} title="Video from your coach" loading="lazy"

@@ -12,6 +12,7 @@ import { addPhoto, submitPhotoCheckin } from '../../lib/api/photos';
 import {
   WORK_STATUS as STATUS, dueLabel, roomClasswork, startAssignment, submitCheckin, type Classwork, type Room,
 } from '../../lib/api/rooms';
+import { cropPhoto } from '../ui/PhotoCropper';
 
 /**
  * A room's Classwork (0129). The trainer sees each piece with its hand-in
@@ -54,7 +55,8 @@ export default function ClassworkTab({ room, mode }: { room: Room; mode: 'traine
 
   // A photo check-in (0132): the photo joins their private album and is
   // handed in, which shows that one photo to this room's coach only.
-  const handInPhoto = async (w: Classwork, file: File | undefined) => {
+  const handInPhoto = async (w: Classwork, raw: File | undefined) => {
+    const file = raw ? await cropPhoto(raw, { aspect: 3 / 4, title: 'Frame your check-in photo' }) : null;
     if (!file) return;
     setBusy(true);
     try {

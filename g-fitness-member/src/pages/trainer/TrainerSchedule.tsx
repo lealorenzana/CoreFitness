@@ -23,6 +23,8 @@ import TrainerAvailability from './TrainerAvailability';
 import { useGymApp } from '../../hooks/useGymApp';
 import { moduleOn, word } from '../../lib/gymApp';
 import { Chip, Eyebrow, NocButton, Panel, ProgressBar, StatusPill, TextTabs } from '../../components/ui/noc';
+import { useTour } from '../../components/tour/Tour';
+import { tourFor } from '../../lib/tours';
 
 /**
  * The trainer's real class schedule, from `classes.trainer_id`.
@@ -697,6 +699,7 @@ export default function TrainerSchedule() {
   ];
   const asked = params.get('tab') as ScheduleTab | null;
   const tab: ScheduleTab = tabs.some((t) => t.id === asked) ? (asked as ScheduleTab) : 'week';
+  useTour(tourFor('coach', tab === 'week' ? 'schedule' : ''));
   return (
     <Page>
       <TextTabs<ScheduleTab> label="Schedule" tabs={tabs} active={tab} onChange={(t) => setParams(t === 'week' ? {} : { tab: t }, { replace: true })} />

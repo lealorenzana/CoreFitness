@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { Sun, Footprints, History, Tablet, QrCode, Keyboard, ChevronLeft, ChevronRight, type LucideIcon } from 'lucide-react';
 import type { AttendanceRow } from '../../types/db';
+import { openPhoto } from '../../components/ui/PhotoViewer';
 
 /** Parts the three Attendance pages share, drawn in the mock-up's style (att.css). */
 
@@ -10,7 +11,10 @@ export function Av({ name, photo, small }: { name: string; photo?: string | null
   const init = name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase() || '?';
   let h = 0; for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   return (
-    <span className={`a-av ${small ? 's' : ''} ${TONES[h % 4]}`}>
+    <span className={`a-av ${small ? 's' : ''} ${TONES[h % 4]}`}
+      // A real photo opens big on click (guides G1); the click stops here so the row does not open too.
+      {...(photo ? { role: 'button', tabIndex: 0, 'aria-label': `${name}'s photo — click to see it big`, 'data-avatar-zoom': '', style: { cursor: 'zoom-in' },
+        onClick: (e: { stopPropagation: () => void }) => { e.stopPropagation(); openPhoto(photo, `${name}'s photo`); } } : {})}>
       {photo ? <img src={photo} alt="" /> : init}
     </span>
   );

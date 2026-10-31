@@ -26,6 +26,14 @@
       "app": "member"
     },
     {
+      "file": "member-filipino-check.js",
+      "app": "member"
+    },
+    {
+      "file": "member-tour-check.js",
+      "app": "member"
+    },
+    {
       "file": "gym-picker-check.js",
       "app": "member"
     },
@@ -63,6 +71,10 @@
     },
     {
       "file": "trainer-place-check.js",
+      "app": "member"
+    },
+    {
+      "file": "trainer-tour-check.js",
       "app": "member"
     },
     {
@@ -222,6 +234,10 @@
       "app": "member"
     },
     {
+      "file": "member-photo-viewer-check.js",
+      "app": "member"
+    },
+    {
       "file": "member-nav-check.js",
       "app": "member"
     },
@@ -310,6 +326,10 @@
       "app": "admin"
     },
     {
+      "file": "admin-photo-crop-check.js",
+      "app": "admin"
+    },
+    {
       "file": "admin-volume-check.js",
       "app": "admin"
     },
@@ -395,6 +415,10 @@
     },
     {
       "file": "admin-onboarding-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-tour-check.js",
       "app": "admin"
     },
     {

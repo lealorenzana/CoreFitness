@@ -1,10 +1,12 @@
 /**
- * The gym's side of 2026-10-03's fixes: Your plan pays through PayMongo only
- * (the manual GCash form went 2026-10-28), Members →
- * Invite link (link, code, QR and the app page in one place), and Your app's
- * colour pairs with a preview of the members' app gradient.
+ * Guides G2 (2026-10-31): the owner's setup asks what the gym runs as plain
+ * Yes/No questions — group classes, points, teams, a season, events, online
+ * payments, a lobby TV, celebrations — only for parts its Core Fitness plan
+ * includes; each answer writes that switch at once (celebrations: the gym's
+ * moments and sounds), an unanswered question writes nothing, and the full
+ * switch list stays under "Show every switch".
  *
- * Playwright runner's `filename` argument, admin dev server on :5174.
+ * Fixture from admin-setup-check.js. Admin dev server on :5174.
  */
 async (page) => {
   await page.unrouteAll({ behavior: 'ignoreErrors' });
@@ -22,14 +24,33 @@ async (page) => {
   const session = {
     access_token: `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: 'u2', role: 'authenticated', exp })}.sig`,
     refresh_token: 'r', token_type: 'bearer', expires_in: 3600, expires_at: exp,
-    user: { id: 'u2', aud: 'authenticated', role: 'authenticated', email: 'gabby@x.test', app_metadata: {}, user_metadata: {} },
+    user: { id: 'u2', aud: 'authenticated', role: 'authenticated', email: 'ana@anafitness.test', app_metadata: {}, user_metadata: {} },
   };
   await page.addInitScript(([k, s]) => localStorage.setItem(k, JSON.stringify(s)), [KEY, session]);
-  const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-  const g = { gym_id: 'gym-a', gym_name: 'gabby pogi 123', slug: 'gabby-pogi-123', short_name: 'gabby', accent: 'violet' };
-  const ymd = (d) => new Date(Date.now() + 8 * 3600000 - d * 86400000).toISOString().slice(0, 10);
+
+  const SETTINGS = { celebrations: true, celebration_sounds: true, id: true, gym_id: 'gym-a', gym_name: 'Ana Fitness', short_name: null, tagline: null, address: 'Brgy Bunot',
+    phone: null, email: null, opening_time: '06:00', closing_time: '21:00', accent: 'violet', logo_url: null, closed_days: [] };
+  let PLANS = [
+    { id: 'p-free', name: 'Free Plan', tier: 'free', price: 0, duration_days: null, is_active: true },
+    { id: 'p-prem', name: 'Premium', tier: 'premium', price: 999, duration_days: 30, is_active: true },
+    { id: 'p-trial', name: 'Free Trial', tier: 'premium', price: 0, duration_days: 30, is_active: true },
+  ];
+  // The defaults since 0220: classes, seasons and events off; the lobby TV and teams not on this gym's plan.
+  const mod = (feature_key, label, state, enabled, sort_order, parent_key = null) => ({ feature_key, label, description: label, state, enabled, sort_order, parent_key });
+  const MODULES = [
+    mod('classes', 'Classes', 'off', false, 1),
+    mod('engagement', 'Engagement', 'on', true, 2),
+    mod('points', 'Points', 'on', true, 3, 'engagement'),
+    mod('squads', 'Squads', 'not_sold', false, 4, 'engagement'),
+    mod('seasons', 'Seasons', 'off', false, 5, 'points'),
+    mod('push', 'Announcements', 'on', true, 6),
+    mod('events', 'Events', 'off', false, 7, 'push'),
+    mod('online_pay', 'Online payments', 'off', false, 8),
+    mod('lobby_tv', 'Lobby TV', 'not_sold', false, 9),
+  ];
   const CALLS = [];
-  const CLAIMS = [];
+  let FINISHED = false;
+  const PATCHES = [];
 
   await page.route(`**://${REF}.supabase.co/**`, async (route) => {
     const req = route.request();
@@ -41,79 +62,77 @@ async (page) => {
     if (path.startsWith('/auth/v1/')) return json(path.includes('/user') ? session.user : session);
     if (path.startsWith('/rest/v1/rpc/')) {
       const fn = path.split('/rest/v1/rpc/')[1];
-      const body = JSON.parse(req.postData() || '{}');
-      if (fn === 'my_gym_context') return json([{ gym_id: g.gym_id, gym_name: g.gym_name, slug: g.slug, role: 'admin',
-        status: 'active', lock_reason: null, short_name: g.short_name, logo_url: null, accent: g.accent, gym_count: 1,
-        onboarded: true, onboarding_step: null, gym_state: 'live' }]);
-      if (fn === 'my_gym_app') return json([{ gym_id: g.gym_id, gym_name: g.gym_name, slug: g.slug, short_name: g.short_name,
-        logo_url: null, accent: 'emerald', accent_action: 'lime', tagline: null, points_name: 'Points',
-        points_name_short: 'points', welcome_message: null, join_policy: 'code',
-        vocabulary: { member: 'member', members: 'members', trainer: 'coach', trainers: 'coaches', class: 'class', classes: 'classes' }, join_code: 'PPDSSJ', modules: {} }]);
-      if (fn === 'my_gym_subscription') return json([{ plan_name: 'Standard', price_monthly: '999', paid_until: ymd(-3), days_left: 3, grace_days: 7,
-        read_only_on: ymd(-11), lock_reason: null, max_members: 150, members: 38, max_staff: 3, staff: 2, on_trial: false }]);
-      if (fn === 'my_gym_payments') return json([]);
-      if (fn === 'platform_payment_options') return json([{ id: 'pm1', kind: 'gcash', label: 'GCash', account_name: 'J. Dela Cruz',
-        account_number: '0917 555 0101', qr_image: PNG, instructions: 'Send the exact amount.' }]);
-      if (fn === 'my_gym_payment_claims') return json(CLAIMS);
-      if (fn === 'submit_gym_payment') { CALLS.push(body); CLAIMS.push({ id: 'c1', amount: String(body.p_amount), paid_on: body.p_paid_on,
-        method_label: 'GCash', reference: body.p_reference, months: body.p_months, status: 'pending', reason: null, created_at: new Date().toISOString(), decided_at: null }); return json('c1'); }
-      return json(['my_gym_modules', 'my_support_grant', 'my_gyms', 'my_announcements', 'my_gym_features'].includes(fn) ? [] : null);
+      const b = JSON.parse(req.postData() || '{}');
+      CALLS.push([fn, b]);
+      if (fn === 'my_gym_context') return json([{ gym_id: 'gym-a', gym_name: 'Ana Fitness', slug: 'ana-fitness', role: 'admin',
+        status: 'active', lock_reason: null, short_name: null, logo_url: null, accent: 'violet', gym_count: 1,
+        onboarded: FINISHED, onboarding_step: null, gym_state: FINISHED ? 'open' : 'setting_up' }]);
+      if (fn === 'my_gym_app') return json([{ gym_id: 'gym-a', gym_name: 'Ana Fitness', slug: 'ana-fitness', short_name: null,
+        logo_url: null, accent: 'violet', accent_action: null, tagline: null, points_name: 'Points', points_name_short: 'points',
+        welcome_message: null, vocabulary: { members: 'members', member: 'member', trainers: 'coaches', trainer: 'coach', classes: 'classes', class: 'class' },
+        join_policy: 'open', join_code: null, modules: {} }]);
+      if (fn === 'my_gym_modules') return json(MODULES);
+      if (fn === 'coaching_settings') return json([{ modes: ['classes', 'pick_pt', 'desk_assigns', 'coach_invites'], lengths: [1, 3, 6], fee_mode: 'included' }]);
+      if (fn === 'set_gym_module') { const m = MODULES.find((x) => x.feature_key === b.p_feature); if (m) m.enabled = b.p_enabled; return json(null); }
+      if (fn === 'retire_plan') { PLANS = PLANS.filter((p) => p.id !== b.p_plan_id); return json([{ moved: 0, plan_name: 'Free Trial', moved_to: 'Free Plan' }]); }
+      if (fn === 'set_join_policy') return json(null);
+      if (fn === 'finish_gym_setup') { FINISHED = true; return json(new Date().toISOString()); }
+      return json(null);
     }
     if (!path.startsWith('/rest/v1/')) return json([]);
     const t = path.split('/rest/v1/')[1];
+    const method = req.method();
     if (t === 'gym_settings') {
-      const row = { id: true, gym_id: g.gym_id, gym_name: g.gym_name, short_name: g.short_name, logo_url: null, address: 'Mamburao' };
-      return json(one ? row : [row]);
+      if (method === 'PATCH') { const body = JSON.parse(req.postData() || '{}'); PATCHES.push(body); Object.assign(SETTINGS, body); }
+      return json(one ? SETTINGS : [SETTINGS]);
+    }
+    if (t === 'membership_plans') {
+      if (method === 'PATCH') { const body = JSON.parse(req.postData() || '{}'); PATCHES.push(body); return json([{ id: 'x' }]); }
+      if (method === 'POST') { const body = JSON.parse(req.postData() || '{}'); PLANS.push({ id: 'p-new', ...body }); return json(one ? PLANS.at(-1) : [PLANS.at(-1)]); }
+      return json(PLANS);
     }
     if (t === 'profiles' || t === 'gym_people') {
-      const p = { id: 'u2', role: 'admin', status: 'active', first_name: 'Gabby', last_name: 'Owner',
-        email: 'gabby@x.test', phone: null, photo_url: null, created_at: new Date().toISOString() };
+      const p = { id: 'u2', role: 'admin', status: 'active', first_name: 'Ana', last_name: 'Lisa', email: 'ana@anafitness.test' };
       return json(one ? p : [p]);
     }
     return json(one ? null : []);
   });
 
   const out = [];
+  const say = (label, ok, extra = '') => out.push(`${label}: ${ok ? 'yes' : 'MISSING ' + extra}`);
   const text = () => page.evaluate(() => document.body.innerText.replace(/\s+/g, ' '));
+  const next = async () => { await page.getByRole('button', { name: /Save and continue|^Continue$/ }).click(); await page.waitForTimeout(700); };
   await page.setViewportSize({ width: 1400, height: 950 });
-
-  // ---- Your plan pays Core Fitness one way: PayMongo (2026-10-28) ------------------------------
-  // The manual GCash/QR form is gone from here; the gym's and coaches' own QR codes stay elsewhere.
-  await page.goto('http://localhost:5174/subscription', { waitUntil: 'domcontentloaded' });
-  await page.locator('[data-pay-online], [data-pay-online-off]').first().waitFor({ timeout: 15000 });
+  await page.goto('http://localhost:5174/admin/setup', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /Save and continue/ }).waitFor({ timeout: 15000 });
+  for (let i = 0; i < 4; i++) await next();          // gym → hours → look → words → runs
+  const asked = await page.locator('[data-run-question]').evaluateAll((els) => els.map((e) => e.getAttribute('data-run-question')));
+  say('What you run asks questions, only for what the plan includes', JSON.stringify(asked) === JSON.stringify(['classes', 'points', 'seasons', 'events', 'online_pay', 'moments']), JSON.stringify(asked));
   let t = await text();
-  out.push('Your plan pays through PayMongo only, no manual QR form: ' + ((await page.locator('img[alt="GCash QR code"]').count()) === 0
-    && !/Tell Core Fitness I paid/.test(t) && !/From your GCash or bank receipt/.test(t) ? 'yes' : 'MISSING'));
-  await page.screenshot({ path: 'shots/admin-pay-core-fitness.png' });
+  say('…each with one line on what it does, and where to change it later', /Do you run group classes\?/.test(t) && /personal training only/.test(t) && /Your app → What you run/.test(t));
+  const pressed = async (key) => page.locator(`[data-run-question="${key}"] [aria-checked="true"]`).innerText();
+  say("…showing today's answers (classes, seasons and events off)", (await pressed('classes')) === 'No' && (await pressed('points')) === 'Yes' && (await pressed('events')) === 'No');
+  say('…a part whose section is on can be answered (seasons, inside points)', (await page.locator('[data-run-question="seasons"] [data-answer="yes"]').isEnabled()));
+  await page.screenshot({ path: 'shots/admin-onboarding-questions.png' });
 
-  // ---- Members → Invite link ------------------------------------------------------------------------
-  await page.goto('http://localhost:5174/members', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /Invite link/ }).waitFor({ timeout: 15000 });
-  await page.getByRole('button', { name: /Invite link/ }).click();
-  await page.getByRole('dialog', { name: 'Invite members' }).waitFor({ timeout: 5000 });
-  // The link and code arrive after the dialog opens (my_gym_app); wait for them, not a fixed time.
-  await page.getByText('PPDSSJ').first().waitFor({ timeout: 8000 }).catch(() => {});
-  t = await text();
-  out.push('Members has the join link, the code and the app page: ' + (/corefitness-gym\.vercel\.app\/join\/gabby-pogi-123/.test(t) && /PPDSSJ/.test(t) && /\/get-app/.test(t) ? 'yes' : 'MISSING'));
-  out.push('a QR code to scan at the desk: ' + ((await page.locator('[role="dialog"] svg').count()) >= 1 ? 'yes' : 'MISSING'));
-  out.push('it says the gym is not listed: ' + (/people join only with this link or code/.test(t) ? 'yes' : 'MISSING'));
-  await page.screenshot({ path: 'shots/admin-invite-members.png' });
-  await page.keyboard.press('Escape');
-
-  // ---- Your app: colour pairs and the gradient preview ---------------------------------------------------
-  await page.goto('http://localhost:5174/gym-app', { waitUntil: 'domcontentloaded' });
-  await page.getByText('Ready-made pairs').waitFor({ timeout: 15000 });
-  const grad = await page.locator('button', { hasText: 'Forest' }).locator('i').first().evaluate((e) => getComputedStyle(e).backgroundImage);
-  out.push('a pair is drawn as its gradient: ' + (/linear-gradient/.test(grad) && /rgb\(5, 150, 105\)/.test(grad) && /rgb\(101, 163, 13\)/.test(grad) ? 'yes (emerald → lime)' : 'MISSING ' + grad));
-  out.push('the saved pair is marked: ' + ((await page.locator('button[aria-pressed="true"]', { hasText: 'Forest' }).count()) === 1 ? 'yes' : 'MISSING'));
-  await page.locator('button', { hasText: 'Sunset' }).click();
-  await page.waitForTimeout(200);
-  const book = await page.getByText('Book', { exact: true }).evaluate((e) => getComputedStyle(e).backgroundColor);
-  out.push('one tap changes the preview: ' + (book === 'rgb(234, 88, 12)' ? 'yes (orange button)' : 'MISSING ' + book));
-  await page.goto('http://localhost:5174/gym-app?tab=join', { waitUntil: 'domcontentloaded' });
-  await page.waitForTimeout(1500);
-  t = await text();
-  out.push('the copy buttons are separate: ' + (/Copy link/.test(t) && /Copy code/.test(t) && /Copy a message/.test(t) ? 'yes' : 'MISSING'));
-  await page.screenshot({ path: 'shots/admin-theme-preview.png', fullPage: true });
+  const before = CALLS.length;
+  await page.locator('[data-run-question="classes"] [data-answer="yes"]').click();
+  await page.waitForTimeout(500);
+  await page.locator('[data-run-question="points"] [data-answer="no"]').click();
+  await page.waitForTimeout(500);
+  await page.locator('[data-run-question="events"] [data-answer="yes"]').click();
+  await page.waitForTimeout(500);
+  await page.locator('[data-run-question="moments"] [data-answer="no"]').click();
+  await page.waitForTimeout(600);
+  const sets = CALLS.slice(before).filter(([f]) => f === 'set_gym_module').map(([, b]) => `${b.p_feature}=${b.p_enabled}`);
+  say('Yes to classes, No to points, Yes to events each write that switch', JSON.stringify(sets) === JSON.stringify(['classes=true', 'points=false', 'events=true']), JSON.stringify(sets));
+  say('No to celebrations turns the moments and their sounds off', PATCHES.some((p) => p.celebrations === false && p.celebration_sounds === false), JSON.stringify(PATCHES));
+  say('…and the answer shows at once', (await pressed('classes')) === 'Yes' && (await pressed('moments')) === 'No');
+  say('a question not answered writes nothing (seasons, online payments)', !CALLS.some(([f, b]) => f === 'set_gym_module' && (b.p_feature === 'seasons' || b.p_feature === 'online_pay')));
+  await page.locator('[data-every-switch] summary').click();
+  await page.waitForTimeout(300);
+  say('every switch is still there, under Show every switch', /Online payments/.test(await page.locator('[data-every-switch]').innerText()));
+  await next();
+  say('Continue moves on to who approves bookings', /Who approves bookings/.test(await text()));
   return out.join('\n');
 }

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { ImagePlus, RefreshCw, Trash2 } from 'lucide-react';
 import { uploadContentPhoto } from '../../lib/api/exerciseMedia';
+import { cropPhoto } from './PhotoCropper';
 
 /**
  * A photo for something the gym offers (a reward, a shop product): drop or pick
@@ -17,8 +18,11 @@ export default function PhotoPicker({ value, onChange, label = 'Photo', aspect =
   const [error, setError] = useState<string | null>(null);
   const [over, setOver] = useState(false);
 
-  const take = async (f: File | undefined) => {
-    if (!f) return;
+  const take = async (raw: File | undefined) => {
+    // Framed to the tile's own shape before it uploads (guides G1).
+    const [aw, ah] = aspect.split('/').map((x) => Number(x.trim()));
+    const f = raw ? await cropPhoto(raw, { aspect: aw && ah ? aw / ah : 4 / 3, title: `Frame the ${label.toLowerCase()}` }) : null;
+    if (!f) { if (file.current) file.current.value = ''; return; }
     setBusy(true); onBusy?.(true); setError(null);
     try { onChange(await uploadContentPhoto(f)); }
     catch (e) { setError(e instanceof Error ? e.message : 'The photo could not be added.'); }

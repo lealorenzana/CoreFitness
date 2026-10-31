@@ -33,6 +33,7 @@ import {
   getGymSettings, updateGymSettings, changePassword, listStaffAccounts,
 } from '../lib/api/settings';
 import type { ProfileRow, ProfileStatus } from '../types/db';
+import { cropPhoto } from '../components/ui/PhotoCropper';
 
 /**
  * Admin settings — every tab here writes to the database.
@@ -286,7 +287,8 @@ export default function Settings() {
    * admin was the only role that could not set one, so the header and every
    * "recorded by" surface fell back to initials forever.
    */
-  const handlePhoto = async (file: File | undefined) => {
+  const handlePhoto = async (raw: File | undefined) => {
+    const file = raw ? await cropPhoto(raw, { aspect: 1, shape: 'round', title: 'Your profile photo' }) : null;
     if (!file) return;
     setUploadingPhoto(true);
     try {

@@ -30,6 +30,8 @@ import { listTrainerClasses } from '../../lib/api/classes';
 import { useGymApp } from '../../hooks/useGymApp';
 import { moduleOn } from '../../lib/gymApp';
 import type { ClassRow } from '../../types/db';
+import { useTour } from '../../components/tour/Tour';
+import { tourFor } from '../../lib/tours';
 
 /**
  * The coach app, Discord style (2026-10-11; kept by the owner through the
@@ -186,6 +188,7 @@ export default function TrainerHub() {
 
   // Today is the first stop; Personal training is the next button (`?view=messages` from before still opens it).
   const view: 'today' | 'pt' = params.get('view') === 'pt' || params.get('view') === 'messages' ? 'pt' : 'today';
+  useTour(tourFor('coach', view === 'pt' ? 'pt' : 'today'));
   const showToday = () => setParams({}, { replace: true });
   const showPt = () => setParams({ view: 'pt' }, { replace: true });
   const unreadAll = people.reduce((n, x) => n + unreadOf(x), 0);

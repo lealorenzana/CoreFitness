@@ -298,6 +298,8 @@ async (page) => {
 
   await page.getByLabel('Pose').selectOption('side');
   await page.getByLabel('Add a progress photo').setInputFiles({ name: 'me.png', mimeType: 'image/png', buffer: PNG });
+  // Framed first (guides G1, 2026-10-31).
+  await page.locator('[data-crop-use]').click({ timeout: 5000 });
   await page.waitForTimeout(1500);
   out.push('adding a photo: ' + (CALLS.reserve_progress_photo?.p_pose === 'side' && UPLOADED.some((u) => /new1\.jpg$/.test(u)) ? 'reserved, then uploaded' : 'MISSING ' + JSON.stringify([CALLS.reserve_progress_photo, UPLOADED])));
 
@@ -305,6 +307,8 @@ async (page) => {
   await page.getByText('Front photo, week 4', { exact: true }).click();
   await page.waitForTimeout(400);
   await page.getByLabel('Photo for Front photo, week 4').setInputFiles({ name: 'w4.png', mimeType: 'image/png', buffer: PNG });
+  // Framed first (guides G1, 2026-10-31).
+  await page.locator('[data-crop-use]').click({ timeout: 5000 });
   await page.waitForTimeout(1500);
   out.push('a photo check-in: ' + (CALLS.submit_checkin_photo?.p_assignment === 'wp' && /^new/.test(CALLS.submit_checkin_photo?.p_photo || '') ? 'handed in' : 'MISSING ' + JSON.stringify(CALLS.submit_checkin_photo)));
 

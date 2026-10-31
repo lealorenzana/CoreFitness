@@ -178,7 +178,9 @@ const GLOBAL = [
   // 0194: a day pass bought in the app — read through definer functions only.
   'day_passes',
   // 0212: the platform's What's new notes, one set for every gym, and who has read them.
-  'app_releases', 'app_release_reads'];
+  'app_releases', 'app_release_reads',
+  // 0221: which tours a person has seen — per account, not per gym; own row only, written by a definer.
+  'tours_seen'];
 const unclassified = await db.query(`select tablename from pg_tables where schemaname = 'public'
   and tablename <> all(tenancy_gym_tables()) and tablename <> all(array['${GLOBAL.join("','")}'])`);
 check('every table is either one gym\'s or deliberately global', unclassified.rows.length === 0,

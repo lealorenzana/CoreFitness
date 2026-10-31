@@ -14,6 +14,7 @@ import { ALLOWED_VIDEO_HINT, embedUrl } from '../../lib/videoEmbed';
 import {
   listExerciseMedia, removeContentPhoto, saveExerciseMedia, uploadContentPhoto, type ExerciseMedia,
 } from '../../lib/api/exerciseMedia';
+import { cropPhoto } from '../../components/ui/PhotoCropper';
 
 interface Row {
   id: string; name: string; muscle_group: string; equipment: string; is_timed: boolean;
@@ -154,7 +155,8 @@ function GuideSheet({ row, media, me, onSaved }: {
   const preview = embedUrl(video);
   const badLink = video.trim() !== '' && !preview;
 
-  const pick = async (file: File | undefined) => {
+  const pick = async (raw: File | undefined) => {
+    const file = raw ? await cropPhoto(raw, { aspect: 4 / 3, title: 'Frame the exercise photo' }) : null;
     if (!file) return;
     setBusy(true);
     try {
