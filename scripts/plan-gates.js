@@ -262,7 +262,8 @@ async (page) => {
       ['plan_builder',    '/member/plan'],
       ['ai_model',        '/member/chatbot'],
       ['points_earn',     '/member/rewards'],
-      ['challenges',      '/member/challenges'],
+      // Challenges are a tab of Rewards since the simplify (2026-10-28).
+      ['challenges',      '/member/rewards?tab=challenges'],
     ];
 
     for (const [key, path] of CHECKS) {

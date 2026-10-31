@@ -52,7 +52,7 @@ export default function WorkoutHistory() {
 
   return (
     <Page>
-      <PageTitle back fallback="/member/progress" title="Workout history"
+      <PageTitle back fallback="/member/membership?tab=progress" title="Workout history"
         subtitle={logs ? `${logs.length} ${logs.length === 1 ? 'workout' : 'workouts'} logged` : 'Everything you have logged'} />
       {error ? (
         <p style={{ fontSize: 13, color: 'var(--color-secondary)' }}>{error}</p>

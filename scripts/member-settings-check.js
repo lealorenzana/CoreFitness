@@ -154,7 +154,7 @@ async (page) => {
   await page.goBack();
   await page.waitForTimeout(800);
   say('Back returns to the list', !/section=/.test(page.url()) && (await page.locator('[data-settings-list]').count()) === 1, page.url());
-  for (const [row, words] of [['What your trainer sees', /always visible to gym staff/], ['Your data', /Download my data/], ['Language', /Filipino/], ['Account & app', /Interests & experience/], ['Core Fitness Lab', /Mamburao/]]) {
+  for (const [row, words] of [['What your trainer sees', /always visible to gym staff/], ['Your data', /Download my data/], ['Language', /Filipino/], ['Account & app', /Interests & how much you train/], ['Core Fitness Lab', /Mamburao/]]) {
     await page.getByRole('button', { name: new RegExp('^' + row.replace(/[&]/g, '.')) }).first().click();
     await page.waitForTimeout(700);
     say(`${row} opens with what it had`, words.test(await main()), (await main()).slice(0, 160));

@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useGymApp } from '../hooks/useGymApp';
-import { pointsWord } from '../lib/gymApp';
-import { useNavigate } from 'react-router-dom';
-import { CaretRight, Coins, Gift, Package, PushPin, Star, Storefront, WarningCircle } from '@phosphor-icons/react';
+import { moduleOn, pointsWord } from '../lib/gymApp';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { CaretRight, Coins, Gift, Package, PushPin, Ranking, Star, Storefront, UsersThree, WarningCircle } from '@phosphor-icons/react';
+import Challenges from './Challenges';
 import { CountNumber } from '../components/ui/lively';
 import FeatureLock from '../components/ui/FeatureLock';
 import GlassSheet from '../components/ui/GlassSheet';
@@ -15,7 +16,7 @@ import { requestReward, cancelRedemption, setSavingFor, type Reward } from '../l
 import { loadRewards, etaLabel, type RewardsView } from '../services/rewardsService';
 import { errorMessage } from '../utils/errorMessage';
 import { Page, PageTitle } from '../components/ui/page';
-import { Eyebrow, LineRow, NocButton, Panel, ProgressBar, SectionHead, SeeAll } from '../components/ui/noc';
+import { Eyebrow, LineRow, NocButton, Panel, ProgressBar, SectionHead, SeeAll, TextTabs } from '../components/ui/noc';
 import { SkeletonList } from '../components/ui/Skeleton';
 
 /**
@@ -38,9 +39,28 @@ import { SkeletonList } from '../components/ui/Skeleton';
 /** A last day in words — "Oct 31". */
 const untilWords = (ymd: string) => new Date(`${ymd}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
 
+type RewardsTab = 'rewards' | 'challenges';
+
+/**
+ * Rewards (simplify, 2026-10-28): points, challenges and spending them, one
+ * place — **Rewards** (the balance, what you are saving for, the rewards, your
+ * requests, how you earn) and **Challenges** (with this week's quests where the
+ * gym runs them). Season and Team are rows here only where the gym runs them.
+ */
 export default function Rewards() {
   const gymApp = useGymApp();
   const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const offeredTabs: RewardsTab[] = [
+    ...(moduleOn(gymApp, 'points') ? ['rewards' as const] : []),
+    ...(moduleOn(gymApp, 'engagement') ? ['challenges' as const] : []),
+  ];
+  const askedTab = params.get('tab') as RewardsTab | null;
+  const rtab: RewardsTab = askedTab && offeredTabs.includes(askedTab) ? askedTab : offeredTabs[0] ?? 'rewards';
+  const extras = [
+    { label: 'Season', path: '/member/season', on: moduleOn(gymApp, 'seasons'), icon: Ranking, meta: 'This month’s standings' },
+    { label: 'Team', path: '/member/squad', on: moduleOn(gymApp, 'squads'), icon: UsersThree, meta: 'Your squad’s weekly target' },
+  ].filter((x) => x.on);
   const { features } = useFeatures();
   const mayRedeem = isEnabled(features, 'points_redeem');
 
@@ -131,9 +151,26 @@ export default function Rewards() {
   };
 
   const title = (
-    <PageTitle back fallback="/member/membership" title="Rewards"
-      subtitle="Earn by training · spend at the desk" />
+    <>
+      <PageTitle back fallback="/member/home" title="Rewards"
+        subtitle="Points, challenges, and what you can get" />
+      {offeredTabs.length > 1 && (
+        <TextTabs<RewardsTab> label="Rewards"
+          tabs={[{ id: 'rewards' as const, label: 'Rewards' }, { id: 'challenges' as const, label: 'Challenges' }].filter((x) => offeredTabs.includes(x.id))}
+          active={rtab}
+          onChange={(next) => setParams((old) => { const q = new URLSearchParams(old); q.set('tab', next); return q; }, { replace: true })} />
+      )}
+      {extras.length > 0 && (
+        <section aria-label="More ways to play" data-rewards-extras>
+          {extras.map((x, i) => (
+            <LineRow key={x.path} icon={x.icon} title={x.label} meta={x.meta} onClick={() => navigate(x.path)} last={i === extras.length - 1} />
+          ))}
+        </section>
+      )}
+    </>
   );
+
+  if (rtab === 'challenges') return <Page>{title}<Challenges embedded /></Page>;
 
   if (loading) return <Page>{title}<SkeletonList count={3} /></Page>;
 

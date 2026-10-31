@@ -281,7 +281,7 @@ export default function Onboarding() {
               <motion.div key="experience" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 className="space-y-4">
                 <div>
-                  <h1 className="text-2xl font-bold text-white">Your experience level?</h1>
+                  <h1 className="text-2xl font-bold text-white">How much do you train?</h1>
                   <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
                     This helps us personalize your recommendations
                   </p>

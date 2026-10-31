@@ -1,11 +1,12 @@
 /**
- * The door (0200) on the phone: a member picks what they are doing today on
- * their QR sheet, from the gym's own activities, and may make it their usual
- * (a different pick for today leaves the usual alone); a coach, when the owner
- * has coach check-in on, has a QR button on the hub that opens their own
- * rotating code (CFC1.…) and their week; with it off there is no button.
+ * You since the simplify (2026-10-28): the earned level, then Progress (body,
+ * targets, photos and how training is going — the old Progress section) ·
+ * Badges & records · Membership (the plan card, this term, described rows, the
+ * folded plan and account). Points moved to Rewards; Shop and Invite moved to
+ * More. Old Progress links land on the new homes; a gym without progress
+ * tracking has no Progress tab.
  *
- * Member dev server on :5173. Screenshots to shots/door-member-*.png.
+ * Member dev server on :5173.
  */
 async (page) => {
   await page.unrouteAll({ behavior: 'ignoreErrors' });
@@ -124,34 +125,56 @@ async (page) => {
     body: JSON.stringify([{ gym_id: 'gym-1', gym_name: 'Core Fitness Lab', slug: 'lab', short_name: null, logo_url: null, accent: 'violet',
       points_name: 'G Points', points_name_short: 'G points', welcome_message: null, tagline: null, vocabulary: null, modules }]) }));
   const main = async () => (await page.locator('main').innerText()).replace(/\s+/g, ' ');
+  const tabsNow = async () => page.getByRole('tablist').first().getByRole('tab').evaluateAll((els) => els.map((e) => [e.innerText.trim(), e.getAttribute('aria-selected')]));
 
   await go('/member/membership', ME);
   await page.waitForTimeout(1500);
+  let tabs = await tabsNow();
+  say('You: Progress · Badges & records · Membership, opening on Progress', JSON.stringify(tabs.map(([n]) => n)) === JSON.stringify(['Progress', 'Badges & records', 'Membership'])
+    && (tabs.find(([, s]) => s === 'true') ?? [''])[0] === 'Progress', JSON.stringify(tabs));
   let m = await main();
-  say('the profile row', /Lea Lorenzana/.test(m) && /Member since/.test(m), m.slice(0, 100));
-  say('the membership card: plan, days left, end date, renew', /Premium/.test(m) && /days left/.test(m) && /ends /.test(m) && /Renew or change plan/.test(m));
-  say('this term\'s numbers', /visit days?/.test(m) && /1-on-1/.test(m) && /workouts?/.test(m));
-  say('points named the gym\'s way', /G Points/i.test(m) && !/CORE Points/i.test(m), m.match(/[A-Z ]*Points?/g)?.slice(0, 3).join(' | '));
-  const rows = ['Activity', 'Payments', 'Attendance', 'How you earn G points', 'Waiver', 'Pause or cancel', 'Shop', 'Invite a friend'];
+  say('the profile row above the tabs', /Lea Lorenzana/.test(m) && /Member since/.test(m), m.slice(0, 100));
+  const prog = (await page.locator('[data-you-progress]').innerText().catch(() => '')).replace(/\s+/g, ' ');
+  say('Progress: body, targets and photos as rows', /Body|kg/.test(prog) && /Targets/.test(prog) && /Progress photos/.test(prog), prog.slice(0, 200));
+  await page.screenshot({ path: 'shots/member-you.png' });
+  await page.locator('[data-you-progress]').getByRole('button', { name: /Targets/ }).first().click();
+  await page.waitForTimeout(1200);
+  say('…a row opens its own screen (Targets)', /\/member\/targets$/.test(page.url()), page.url());
+
+  await go('/member/membership?tab=badges', ME);
+  m = await main();
+  say('Badges & records: the shelf, or what earns one', (await page.locator('[data-trophy-badges], [data-trophy-records], [data-trophy-empty]').count()) > 0, m.slice(0, 200));
+
+  await go('/member/membership?tab=membership', ME);
+  await page.waitForTimeout(1200);
+  m = await main();
+  say('Membership: plan, days left, end date, renew', /Premium/.test(m) && /days left/.test(m) && /ends /.test(m) && /Renew or change plan/.test(m));
+  say("…this term's numbers", /visit days?/.test(m) && /1-on-1/.test(m) && /workouts?/.test(m));
+  say('…no points card (points are in Rewards)', !/G Points/.test(m), (m.match(/.{0,40}G Points.{0,40}/) || [''])[0]);
+  const rows = ['Activity', 'Payments', 'Attendance', 'Waiver', 'Pause or cancel'];
   const rowText = (await page.locator('[data-you-rows]').innerText().catch(() => '')).replace(/\s+/g, ' ');
-  say('everything else as described rows', rows.every((r) => rowText.includes(r)), rowText.slice(0, 300));
+  say('…everything else as described rows', rows.every((r) => rowText.includes(r)) && !/Shop|Invite a friend/.test(rowText), rowText.slice(0, 300));
   say('…each with its icon tile', (await page.locator('[data-you-rows] [data-row-icon]').count()) === rows.length);
-  say('no chip row and no in-place activity list', (await page.getByRole('button', { name: /^(All|Points|Payments)$/ }).count()) === 0);
-  say('the plan, its history and the account still fold out', /What Premium includes/.test(m) && /Account/.test(m));
+  say('…the plan and the account still fold out', /What Premium includes/.test(m) && /Account/.test(m));
   say('nothing scrolls sideways', await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
-  await page.screenshot({ path: 'shots/member-you.png', fullPage: false });
   await page.locator('[data-you-rows]').scrollIntoViewIfNeeded();
   await page.screenshot({ path: 'shots/member-you-rows.png' });
-
   await page.getByRole('button', { name: /^Activity/ }).click();
   await page.waitForTimeout(1200);
   say('Activity opens its own page, with its filters', /\/member\/activity/.test(page.url())
     && (await page.getByRole('button', { name: /^Points$/ }).count()) + (await page.getByRole('tab', { name: /^Points$/ }).count()) > 0, page.url());
 
-  modules = { shop: false, referrals: false };
+  for (const [from, want] of [['/member/progress', /\/member\/membership\?tab=progress$/], ['/member/progress?tab=body', /\/member\/body$/],
+    ['/member/progress?tab=goals', /\/member\/targets$/], ['/member/progress?tab=badges', /\/member\/membership\?tab=badges$/]]) {
+    await go(from, ME);
+    say(`an old link ${from} lands on its new home`, want.test(page.url()), page.url());
+  }
+
+  modules = { progress: false };
   await go('/member/membership', ME);
-  await page.waitForTimeout(1500);
-  const off = (await page.locator('[data-you-rows]').innerText().catch(() => '')).replace(/\s+/g, ' ');
-  say('a gym without the shop or referrals: those rows are not offered', !/Shop/.test(off) && !/Invite a friend/.test(off) && /Payments/.test(off), off.slice(0, 200));
+  await page.waitForTimeout(1200);
+  tabs = await tabsNow().catch(() => []);
+  m = await main();
+  say('a gym without progress tracking: no Progress tab, Badges first', !tabs.some(([n]) => n === 'Progress') && (tabs[0] || [])[1] === 'true', JSON.stringify(tabs));
   return out.join('\n');
 }

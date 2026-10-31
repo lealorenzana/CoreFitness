@@ -8,9 +8,9 @@ import { NocButton } from './ui/noc';
  */
 export default function CoachConsent({ open, onChoose }: { open: boolean; onChoose: (yes: boolean) => void }) {
   return (
-    <GlassSheet open={open} onClose={() => onChoose(false)} title="Before the coach answers">
+    <GlassSheet open={open} onClose={() => onChoose(false)} title="Before the assistant answers">
       <div style={{ fontSize: 13.5, lineHeight: 1.6, color: 'var(--color-text-secondary)' }}>
-        <p>The coach is an AI. What you type is sent to Anthropic, the company that runs it, to be answered.</p>
+        <p>The assistant is an AI. What you type is sent to Anthropic, the company that runs it, to be answered.</p>
         <p style={{ marginTop: 10 }}>It gives better advice if it can see your training: your goals, your routines,
           your weekly plan, how often you have worked out lately, and your first name.</p>
         <p style={{ marginTop: 10 }}>It never sees your health questionnaire (PAR-Q) or waiver answers, your payments, your contact

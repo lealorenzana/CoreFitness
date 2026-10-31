@@ -357,7 +357,7 @@ export default function TraineeAbout({ member, onChat, initialTab = 'progress' }
                     {r.name}<span style={muted}> — {r.exerciseCount} {r.exerciseCount === 1 ? 'exercise' : 'exercises'}</span>
                   </p>
                   {/* Whose plan this is before changing it: the AI coach's (0145), yours, or theirs. */}
-                  {r.source === 'coach' && <span className="flex-none"><StatusPill tone="muted" label="AI coach" /></span>}
+                  {r.source === 'coach' && <span className="flex-none"><StatusPill tone="muted" label="Assistant" /></span>}
                   {r.source === 'trainer' && <span className="flex-none"><StatusPill tone="muted" label="Yours" /></span>}
                   <button type="button" className="flex-none" data-coach-edit={r.id}
                     onClick={() => navigate(`/trainer/members/${member.id}/routine/${r.id}`)}

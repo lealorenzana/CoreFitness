@@ -36,7 +36,9 @@ export type FeatureKey =
   // 0184: the gym's equipment list.
   | 'equipment'
   // 0186: points (earning and the rewards shop), a child of Engagement; Seasons live under it.
-  | 'points';
+  | 'points'
+  // 0220: one-off gym events members sign up for, a child of Push; off unless the gym turns it on.
+  | 'events';
 
 /**
  * What this gym calls its people and its sessions (0114).
@@ -160,7 +162,7 @@ export function moduleOn(app: GymApp | null, key: FeatureKey | undefined): boole
 export const PARENT: Partial<Record<FeatureKey, FeatureKey>> = {
   shop: 'front_desk', requests: 'front_desk', chat: 'coaching', rooms: 'coaching',
   programs: 'progress', photos: 'progress', squads: 'engagement', points: 'engagement', seasons: 'points',
-  quests: 'engagement', referrals: 'engagement',
+  quests: 'engagement', referrals: 'engagement', events: 'push',
 };
 
 /** The gym's word for its points, ready to drop into a sentence. */

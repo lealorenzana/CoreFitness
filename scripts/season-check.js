@@ -275,7 +275,8 @@ async (page) => {
   out.push('template hidden: ' + (/\(template\)/.test(t) ? 'MISSING (template shown)' : 'hidden'));
   out.push('no Leave on a quest: ' + ((await page.getByRole('button', { name: 'Leave' }).count()) === 0 ? 'none' : 'MISSING (Leave shown)'));
   out.push('quests rolled on load: ' + ('roll_weekly_quests' in CALLS ? 'yes' : 'MISSING'));
-  out.push('season linked: ' + ((await page.getByRole('button', { name: "This month's season" }).count()) === 1 ? 'yes' : 'MISSING'));
+  // Since the simplify (2026-10-28) the season is a row on Rewards, above its Challenges tab.
+  out.push('season linked: ' + ((await page.locator('[data-rewards-extras]').getByRole('button', { name: /Season/ }).count()) === 1 ? 'yes' : 'MISSING'));
 
   // 3 - a record, celebrated in the player.
   await go('/member/track/session/L1');

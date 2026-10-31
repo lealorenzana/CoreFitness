@@ -257,43 +257,33 @@ async (page) => {
   const text = async () => (await page.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ');
 
 
-  const strip = async (hub) => page.evaluate((h) => [...document.querySelectorAll(`[data-hub="${h}"] [role="tab"]`)]
-    .map((b) => b.innerText.trim()), hub);
 
-  // Train is Workout · Classes · Coach since the redesign (2026-10-26); the sections the rail of pills
-  // led to are Workout's rows (Progress, Challenges, Routines…) and Coach's (My bookings, Coaches, Rooms).
+  // Train since the simplify (2026-10-28): Workout first, Coach last (Classes between only when on);
+  // the old section strips (Workouts, Coaching, Progress, Challenges) are gone — their screens open from tabs.
   await go('/member/book-class');
   let t = await text();
-  const trainTabs = await page.getByRole('tablist').first().getByRole('tab').allInnerTexts();
-  out.push('Train has Workout, Classes and Coach: ' + (JSON.stringify(trainTabs.map((x) => x.trim())) === JSON.stringify(['Workout', 'Classes', 'Coach'])
-    && ['Routines', 'Progress', 'Challenges'].every((x) => t.includes(x)) && !/Coach notes|Goals|Squad/.test(t) ? 'yes' : 'MISSING ' + JSON.stringify(trainTabs)));
+  const trainTabs = (await page.getByRole('tablist').first().getByRole('tab').allInnerTexts()).map((x) => x.trim());
+  out.push('Train opens on Workout, Coach last: ' + (trainTabs[0] === 'Workout' && trainTabs[trainTabs.length - 1] === 'Coach'
+    && /Your plan/.test(t) && /Library/.test(t) && !/Coach notes|Goals|Squad/.test(t) ? trainTabs.join(' · ') : 'MISSING ' + JSON.stringify(trainTabs)));
   await shot('nav-train');
-  const row = async (name) => { await page.getByRole('button', { name: new RegExp('^' + name) }).first().click(); await page.waitForTimeout(1200); };
 
-  await row('Progress');
-  let tabs = await strip('progress');
-  out.push('Progress tabs: ' + (JSON.stringify(tabs) === JSON.stringify(['Overview', 'Body', 'Targets', 'Photos', 'Achievements']) ? tabs.join(' · ') : 'MISSING ' + JSON.stringify(tabs)));
+  await go('/member/track');
+  out.push('a workout screen has no section strip: ' + ((await page.locator('[data-hub]').count()) === 0 ? 'yes' : 'STILL SHOWN'));
+  await go('/member/achievements');
+  out.push('Every badge has no section strip, and Back goes to You: ' + ((await page.locator('[data-hub]').count()) === 0 ? 'yes' : 'STILL SHOWN'));
+
+  await go('/member/membership');
+  let tabs = (await page.getByRole('tablist').first().getByRole('tab').allInnerTexts()).map((x) => x.trim());
+  out.push('You: Progress · Badges & records · Membership: ' + (JSON.stringify(tabs) === JSON.stringify(['Progress', 'Badges & records', 'Membership']) ? 'yes' : 'MISSING ' + JSON.stringify(tabs)));
   t = await text();
-  out.push('no Meals, no Coach tab on Progress: ' + (!/\bMeals\b/.test(t) && !tabs.includes('Coach') ? 'yes' : 'STILL SHOWN'));
-
-  await page.locator('[data-hub="progress"] [role="tab"]', { hasText: 'Targets' }).click();
-  await page.waitForTimeout(1000);
-  out.push('a section tab is in the address: ' + (/\/member\/progress\?tab=goals$/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
-  await page.locator('[data-hub="progress"] [role="tab"]', { hasText: 'Achievements' }).click();
-  await page.waitForTimeout(1200);
-  out.push('Achievements carries the same strip: ' + ((await strip('progress')).length === 5 && /\/member\/achievements$/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
-  await page.getByRole('button', { name: 'Train' }).last().click();
-  await page.waitForTimeout(1200);
-  await row('Progress');
-  out.push('the section reopens on the tab last used: ' + (/\/member\/achievements$/.test(page.url()) ? 'yes (Achievements)' : 'MISSING ' + page.url()));
+  out.push('no Meals anywhere on Progress: ' + (!/\bMeals\b/.test(t) ? 'yes' : 'STILL SHOWN'));
 
   await go('/member/progress?tab=feedback');
-  tabs = await strip('coaching');
-  // Coach notes are the 1-on-1 room's Together tab now (0174): the old link lands in the room (or Rooms).
-  out.push('an old Coach notes link lands in the coach room: ' + (/\/member\/rooms(\/|$)/.test(page.url()) ? page.url().replace(/^.*\/member/, '/member') : 'MISSING ' + page.url()));
+  // Coach notes are the package room's chat (0174): the old link lands in the room, or on Train → Coach.
+  out.push('an old Coach notes link lands with your coach: ' + (/\/member\/(rooms\/|book-class\?tab=coach)/.test(page.url()) ? page.url().replace(/^.*\/member/, '/member') : 'MISSING ' + page.url()));
   await shot('nav-coaching');
 
-  await go('/member/booking-history');
+  await go('/member/sessions');
   await page.getByRole('tab', { name: /^Past/ }).first().click();
   await page.waitForTimeout(600);
   const pastUrl = page.url();
@@ -302,13 +292,7 @@ async (page) => {
   await page.goBack();
   await page.waitForTimeout(1800);
   const pastOn = await page.getByRole('tab', { name: /^Past/ }).first().getAttribute('aria-selected').catch(() => null);
-  out.push('My bookings keeps Past after Back: ' + (/show=past/.test(pastUrl) && pastOn === 'true' ? 'yes' : 'MISSING ' + pastUrl + ' ' + pastOn));
-
-  // One Workouts section (2026-10-10): the week planner opens from Today, not as a tab.
-  await go('/member/track');
-  tabs = await strip('plan');
-  out.push('Workouts tabs: ' + (['Today', 'Routines', 'Programs', 'Free workouts'].every((x) => tabs.includes(x)) ? tabs.join(' · ') : 'MISSING ' + JSON.stringify(tabs)));
-  await shot('nav-plan');
+  out.push('Your sessions keeps Past after Back: ' + (/show=past/.test(pastUrl) && pastOn === 'true' ? 'yes' : 'MISSING ' + pastUrl + ' ' + pastOn));
 
   // One Inbox (2026-10-10): what is for you, and what the gym posts, side by side.
   await go('/member/notifications');

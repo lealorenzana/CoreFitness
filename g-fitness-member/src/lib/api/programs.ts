@@ -35,7 +35,7 @@ export interface ProgramSummary {
 
 /** Where a program came from, as the member reads it. */
 export function programSourceLabel(p: Pick<ProgramSummary, 'source' | 'authorName'>, coachWord = 'Coach'): string {
-  if (p.source === 'ai') return 'AI coach';
+  if (p.source === 'ai') return 'Assistant';
   if (p.source === 'trainer') return p.authorName ? `${coachWord} ${p.authorName}` : coachWord;
   return 'Gym';
 }

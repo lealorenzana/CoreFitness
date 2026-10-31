@@ -161,8 +161,8 @@ export default function Achievements() {
     <Page>
       {/* Back undoes the last step. It navigated to Progress (or the trainer
           profile) whatever the member had come from. */}
-      <PageTitle back fallback={isTrainer ? '/trainer/profile' : '/member/progress'}
-        title="Achievements"
+      <PageTitle back fallback={isTrainer ? '/trainer/profile' : '/member/membership?tab=badges'}
+        title={isTrainer ? 'Achievements' : 'Every badge'}
         subtitle={loading ? 'Checking what you have earned…' : `${earnedCount} of ${catalog.length} unlocked`} />
 
       {loading ? (

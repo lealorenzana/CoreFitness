@@ -47,7 +47,7 @@ export default function CoachChanges({
         const list = await listProposals();
         if (alive) { setRows(list); onLoaded(list); }
       } catch (err) {
-        if (alive) { setRows(null); setError(errorMessage(err, t('The coach\'s changes could not be loaded.'))); }
+        if (alive) { setRows(null); setError(errorMessage(err, t('The assistant\'s changes could not be loaded.'))); }
       }
     })();
     return () => { alive = false; };
@@ -56,7 +56,7 @@ export default function CoachChanges({
   const statusOf = (p: Proposal): ProposalStatus => decided[p.id] ?? p.status;
 
   return (
-    <GlassSheet open={open} onClose={onClose} title={t('Changes from the coach')}
+    <GlassSheet open={open} onClose={onClose} title={t('Changes from the assistant')}
       subtitle={t('Nothing changes until you tap Apply')}>
       {error ? (
         <p role="alert" style={{ fontSize: 13, color: 'var(--color-secondary)' }}>{error}</p>
@@ -64,7 +64,7 @@ export default function CoachChanges({
         <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{t('Loading…')}</p>
       ) : rows.length === 0 ? (
         <p style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--color-text-muted)' }}>
-          {t('Nothing from the coach yet. Ask it to build you a routine or plan your week, and its suggestion shows up here.')}
+          {t('Nothing from the assistant yet. Ask it to build you a routine or plan your week, and its suggestion shows up here.')}
         </p>
       ) : (
         <div className="flex flex-col" style={{ gap: 18 }}>

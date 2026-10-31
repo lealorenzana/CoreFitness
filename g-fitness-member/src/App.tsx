@@ -27,9 +27,6 @@ const Squad = lazyPage(() => import('./pages/Squad'));
 const Refer = lazyPage(() => import('./pages/Refer'));
 const ReferInvited = lazyPage(() => import('./pages/ReferInvited'));
 const SeasonRecords = lazyPage(() => import('./pages/SeasonRecords'));
-const Friends = lazyPage(() => import('./pages/friends/Friends'));
-const AddFriend = lazyPage(() => import('./pages/friends/AddFriend'));
-const FriendCode = lazyPage(() => import('./pages/friends/FriendCode'));
 const ReachedTargets = lazyPage(() => import('./pages/progress/ReachedTargets'));
 const BodyReadings = lazyPage(() => import('./pages/progress/BodyReadings'));
 const Room = lazyPage(() => import('./pages/rooms/Room'));
@@ -52,6 +49,8 @@ const WorkoutHistory = lazyPage(() => import('./pages/WorkoutHistory'));
 const VisitHistory = lazyPage(() => import('./pages/VisitHistory'));
 const RewardRequests = lazyPage(() => import('./pages/RewardRequests'));
 const ProgressHub = lazyPage(() => import('./pages/progress/ProgressHub'));
+const BodyPage = lazyPage(() => import('./pages/progress/BodyPage'));
+const TargetsPage = lazyPage(() => import('./pages/progress/TargetsPage'));
 const Profile = lazyPage(() => import('./pages/Profile'));
 const Settings = lazyPage(() => import('./pages/Settings'));
 const ChangePassword = lazyPage(() => import('./pages/ChangePassword'));
@@ -351,13 +350,12 @@ function App() {
           <Route path="track/session/:logId" element={<GuidedWorkout />} />
           <Route path="rewards" element={<Rewards />} />
           <Route path="rewards/requests" element={<RewardRequests />} />
-          <Route path="challenges" element={<Challenges />} />
+          {/* Challenges are a tab of Rewards (simplify, 2026-10-28). */}
+          <Route path="challenges" element={<Navigate to="/member/rewards?tab=challenges" replace />} />
           <Route path="season" element={<Season />} />
           <Route path="season/records" element={<SeasonRecords />} />
-          {/* Friends, wins and cheers (0217) — each page says so when the gym has them off. */}
-          <Route path="friends" element={<Friends />} />
-          <Route path="friends/add" element={<AddFriend />} />
-          <Route path="friends/code" element={<FriendCode />} />
+          {/* Friends (0217) were removed by 0220: an old link lands on Today. */}
+          <Route path="friends/*" element={<Navigate to="/member/home" replace />} />
           <Route path="squad" element={<Squad />} />
           <Route path="refer" element={<Refer />} />
           <Route path="refer/invited" element={<ReferInvited />} />
@@ -365,6 +363,8 @@ function App() {
           <Route path="activity" element={<AccountActivity />} />
           <Route path="workout-history" element={<WorkoutHistory />} />
           <Route path="progress" element={<ProgressHub />} />
+          <Route path="body" element={<BodyPage />} />
+          <Route path="targets" element={<TargetsPage />} />
           <Route path="progress/reached" element={<ReachedTargets />} />
           <Route path="progress/readings" element={<BodyReadings />} />
           <Route path="achievements" element={<Achievements />} />

@@ -51,7 +51,7 @@ export interface Routine {
 
 /** Where a routine came from, as the member reads it (2026-10-10). */
 export function routineSourceLabel(r: Pick<Routine, 'source' | 'authorName'>, coachWord = 'Coach'): string {
-  if (r.source === 'coach') return 'AI coach';
+  if (r.source === 'coach') return 'Assistant';
   if (r.source === 'trainer') return r.authorName ? `${coachWord} ${r.authorName}` : coachWord;
   return 'Yours';
 }

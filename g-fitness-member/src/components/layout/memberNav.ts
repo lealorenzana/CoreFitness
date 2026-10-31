@@ -1,10 +1,7 @@
 import { hasOwnWords, moduleOn, word, type FeatureKey, type GymApp, type GymVocabulary } from '../../lib/gymApp';
 import type { Icon } from '@phosphor-icons/react';
 import {
-  ArrowsClockwise, Barbell, Bell, Books, Buildings, CalendarCheck, CalendarDots, CalendarPlus, CalendarStar, Camera,
-  ChalkboardTeacher, ChartLineUp, ChatsCircle, EnvelopeSimple, FileText, GearSix, Gift, House, IdentificationCard, Key,
-  ListChecks, Medal, PauseCircle, Ranking, Receipt, Scales, Sparkle, Storefront, Target, Trophy, User, UserCircle,
-  UserPlus, UsersThree, Wrench, HandsClapping,
+  Barbell, Bell, Buildings, GearSix, Gift, House, Question, Sparkle, Storefront, User, UserCircle, UserPlus, Wrench,
 } from '@phosphor-icons/react';
 
 /**
@@ -58,7 +55,7 @@ export interface Tab {
 export const TABS: Tab[] = [
   { id: 'today', label: 'Today', path: '/member/home', icon: House, eyebrow: 'Your day' },
   { id: 'train', label: 'Train', path: '/member/book-class', icon: Barbell, eyebrow: 'Train' },
-  { id: 'you', label: 'You', path: '/member/membership', icon: User, eyebrow: 'Membership and points' },
+  { id: 'you', label: 'You', path: '/member/membership', icon: User, eyebrow: 'Your level, progress and membership' },
 ];
 
 /**
@@ -75,17 +72,17 @@ const TAB_PATHS: string[][] = [
   // Today is only "right now": the day, what arrived, what the gym announced,
   // and the assistant you ask about it.
   ['/member/home', '/member/notifications', '/member/chatbot'],
-  // Train: the tab that offers a session, and everything that follows from
-  // having taken one — including the aliases old notification rows still point
-  // at (/member/book, /member/bookings).
+  // Train: Workout, Coach (and Classes when on), and every screen they open —
+  // including the aliases old notification rows still point at.
   ['/member/book-class', '/member/training', '/member/book', '/member/bookings',
-   '/member/booking-history', '/member/sessions', '/member/book-session', '/member/chat', '/member/coach', '/member/progress', '/member/achievements',
+   '/member/booking-history', '/member/sessions', '/member/book-session', '/member/chat', '/member/coach',
    '/member/track', '/member/plan', '/member/gym-plan', '/member/workouts', '/member/programs', '/member/program/',
-   '/member/trainers', '/member/trainer/', '/member/events', '/member/challenges', '/member/season', '/member/squad', '/member/rooms', '/member/messages', '/member/progress-photos',
-   '/member/workout-history', '/member/coach-notes'],
-  // You: the money-and-access half, and the account itself. Profile lost its
-  // tab in this redesign; its screens live here now.
+   '/member/trainers', '/member/trainer/', '/member/events', '/member/rooms', '/member/messages', '/member/coach-notes'],
+  // You: the earned level, progress, badges and records, the membership and the
+  // account (simplify, 2026-10-28) — and Rewards, which More opens.
   ['/member/membership', '/member/renew', '/member/renew-membership',
+   '/member/progress', '/member/body', '/member/targets', '/member/progress-photos', '/member/workout-history',
+   '/member/achievements', '/member/challenges', '/member/season', '/member/squad',
    '/member/payments', '/member/attendance-history', '/member/rewards', '/member/shop',
    '/member/profile', '/member/settings', '/member/change-password',
    '/member/change-email', '/member/activity', '/member/visits'],
@@ -155,7 +152,7 @@ export interface Destination {
 }
 
 
-export type HubId = 'progress' | 'compete' | 'inbox';
+export type HubId = 'inbox';
 
 /**
  * Sections: screens that belong together, behind one tab strip.
@@ -169,24 +166,13 @@ export type HubId = 'progress' | 'compete' | 'inbox';
  * leaves the section rather than walking back through its tabs.
  */
 export const HUBS: { id: HubId; label: string; tabs: Destination[] }[] = [
-  // Workouts and Coaching were sections here; since the simplify (2026-10-28)
-  // they are Train's Workout and Coach tabs, and their screens open from there.
-  { id: 'progress', label: 'Progress', tabs: [
-    { label: 'Overview', path: '/member/progress', module: 'progress' },
-    { label: 'Body', path: '/member/progress?tab=body', module: 'progress' },
-    { label: 'Targets', path: '/member/progress?tab=goals', module: 'targets' },
-    { label: 'Photos', path: '/member/progress-photos', module: 'photos' },
-    { label: 'Achievements', path: '/member/achievements', module: 'engagement' },
-  ] },
+  // Workouts, Coaching, Progress and Challenges were sections here. Since the
+  // simplify (2026-10-28) they are Train's Workout and Coach tabs, You's
+  // Progress and Badges tabs, and Rewards' Challenges tab.
   // Updates and Announcements were two screens for "what's new" (2026-10-10).
   { id: 'inbox', label: 'Inbox', tabs: [
     { label: 'For you', path: '/member/notifications' },
-    { label: 'From the gym', path: '/member/events', module: 'push' },
-  ] },
-  { id: 'compete', label: 'Challenges', tabs: [
-    { label: 'Challenges', path: '/member/challenges', module: 'engagement' },
-    { label: 'Season', path: '/member/season', module: 'seasons' },
-    { label: 'Team', path: '/member/squad', module: 'squads' },
+    { label: 'From the gym', path: '/member/events', module: 'events' },
   ] },
 ];
 
@@ -234,92 +220,30 @@ export function hubEntry(id: HubId, app: GymApp | null): string {
 
 
 /**
- * Everything: the discoverability surface for the whole member app.
- *
- * Grouped the way a member thinks about it rather than by tab — Progress is its
- * own group although it lives under Train, because "where are my charts" is a
- * question about progress and not about booking.
+ * More: ten entries (simplify, 2026-10-28; it was about thirty-five, grouped).
+ * Everything else lives on a tab now — workouts and coaching on Train,
+ * progress, badges and the membership on You — and Change password and email
+ * are inside Settings. Rewards is points, challenges and spending them.
  */
 export const EVERYTHING: { group: string; items: Destination[] }[] = [
   {
-    group: 'Today',
+    group: 'More',
     items: [
-      { label: 'Today', path: '/member/home', icon: House, blurb: 'Your day: check-in, workout, bookings' },
-      // One Inbox (redesign, 2026-10-26): it used to be listed twice, once per tab.
       { label: 'Inbox', path: '/member/notifications', icon: Bell, blurb: 'Everything sent to you' },
-      { label: 'Gym events', path: '/member/events' , module: 'push', icon: CalendarStar, blurb: 'What the gym has coming up' },
-      { label: 'Ask the assistant', path: '/member/chatbot' , module: 'assistant', icon: Sparkle, blurb: 'Questions about training and the gym' },
-    ],
-  },
-  {
-    group: 'Workouts',
-    items: [
-      { label: 'Book a session', path: '/member/book-session' , module: 'coaching', icon: CalendarPlus, blurb: 'A 1-on-1 with a coach' },
-      { label: 'Classes', path: '/member/book-class?tab=classes' , module: 'classes', icon: UsersThree, blurb: 'Group classes and gym events' },
-      { label: "Today's workout", path: '/member/workouts/today', icon: Barbell, blurb: 'Everything planned for today' },
-      { label: 'Plan your week', path: '/member/gym-plan' , module: 'progress', icon: CalendarCheck, blurb: 'Training days and reminders' },
-      { label: 'Routines', path: '/member/track' , module: 'progress', icon: ListChecks, blurb: 'Your saved workouts' },
-      { label: 'Programs', path: '/member/programs' , module: 'programs', icon: CalendarDots, blurb: 'Multi-week plans' },
-      { label: 'Browse free workouts', path: '/member/workouts', icon: Books, blurb: 'No plan needed' },
-      { label: 'Equipment', path: '/member/equipment', module: 'equipment', icon: Wrench, blurb: 'What the gym has, how to use it' },
-    ],
-  },
-  {
-    group: 'Progress',
-    items: [
-      { label: 'Overview', path: '/member/progress' , module: 'progress', icon: ChartLineUp, blurb: 'How you are doing' },
-      { label: 'Body', path: '/member/progress?tab=body' , module: 'progress', icon: Scales, blurb: 'Weight and measurements' },
-      { label: 'Targets', path: '/member/progress?tab=goals' , module: 'targets', icon: Target, blurb: 'What you are working towards' },
-      { label: 'Progress photos', path: '/member/progress-photos' , module: 'photos', icon: Camera, blurb: 'Private, yours to compare' },
-      { label: 'Achievements and level', path: '/member/achievements' , module: 'engagement', icon: Medal, blurb: 'Badges and your earned level' },
-    ],
-  },
-  {
-    group: 'Coaching',
-    items: [
-      { label: 'Your coach', path: '/member/book-class?tab=coach' , module: 'coaching', icon: ChatsCircle, blurb: 'Your package, your sessions, chat' },
-      { label: 'Your sessions', path: '/member/sessions', icon: CalendarCheck, blurb: 'Coming and past' },
-      { label: 'Coaches', path: '/member/trainers' , module: 'coaching',
-        words: (w) => w('trainers', true), icon: ChalkboardTeacher, blurb: 'Who coaches here' },
-    ],
-  },
-  {
-    group: 'Challenges',
-    items: [
-      { label: 'Challenges', path: '/member/challenges' , module: 'engagement', icon: Trophy, blurb: 'Targets with dates, for points' },
-      { label: 'Season', path: '/member/season' , module: 'seasons', icon: Ranking, blurb: 'This month’s standings' },
-      { label: 'Team', path: '/member/squad' , module: 'squads', icon: UsersThree, blurb: 'Your squad’s weekly target' },
-      // 0217: shown only where the gym switched Friends on (EverythingSheet asks).
-      { label: 'Friends', path: '/member/friends', icon: HandsClapping, blurb: 'Your friends, their wins, cheers' },
-    ],
-  },
-  {
-    group: 'Account',
-    items: [
-      { label: 'Membership', path: '/member/membership', icon: IdentificationCard, blurb: 'Your plan, days left, points' },
-      { label: 'Renew', path: '/member/renew', icon: ArrowsClockwise, blurb: 'Renew or change your plan' },
-      { label: 'Pause or cancel', path: '/member/pause-or-cancel', module: 'requests', icon: PauseCircle, blurb: 'Ask the desk to freeze or end it' },
-      { label: 'Waiver', path: '/member/waiver', icon: FileText, blurb: 'The gym’s waiver' },
-      { label: 'Payments', path: '/member/payments', icon: Receipt, blurb: 'Every payment and receipt' },
-      { label: 'Attendance', path: '/member/attendance-history', icon: CalendarDots, blurb: 'Every visit' },
-      { label: 'Spend points', path: '/member/rewards' , module: 'points', icon: Gift, blurb: 'Rewards at the desk' },
+      { label: 'Rewards', path: '/member/rewards', module: 'engagement', icon: Gift, blurb: 'Points, challenges, what you can get' },
+      { label: 'Assistant', path: '/member/chatbot', module: 'assistant', icon: Sparkle, blurb: 'Questions about training and the gym' },
       { label: 'Shop', path: '/member/shop', module: 'shop', icon: Storefront, blurb: 'What the gym sells' },
-      { label: 'Invite a friend', path: '/member/refer' , module: 'referrals', icon: UserPlus, blurb: 'Share your gym' },
-      { label: 'Profile', path: '/member/profile', icon: UserCircle, blurb: 'Your name, photo and details' },
-      { label: 'Settings', path: '/member/settings', icon: GearSix, blurb: 'Alerts, privacy, sign-in, language' },
+      { label: 'Equipment', path: '/member/equipment', module: 'equipment', icon: Wrench, blurb: 'What the gym has, how to use it' },
+      { label: 'Invite a friend', path: '/member/refer', module: 'referrals', icon: UserPlus, blurb: 'Share your gym' },
       // Which gym this app is showing. One gym: the screen is where you join
       // another. Several: it is how you switch (docs/TENANCY.md).
       { label: 'Gyms', path: '/choose-gym', icon: Buildings, blurb: 'Switch gym, or join another' },
-      { label: 'Change password', path: '/member/change-password', icon: Key, blurb: 'Your sign-in password' },
-      { label: 'Change email', path: '/member/change-email', icon: EnvelopeSimple, blurb: 'The address you sign in with' },
+      { label: 'Profile', path: '/member/profile', icon: UserCircle, blurb: 'Your name, photo and details' },
+      { label: 'Settings', path: '/member/settings', icon: GearSix, blurb: 'Alerts, privacy, sign-in, password, email' },
+      { label: 'Help', path: '/member/settings?section=gym', icon: Question, blurb: 'Contact your gym, terms and privacy' },
     ],
   },
 ];
 
-/** The four tiles at the top of More: the places members open most (redesign, 2026-10-26). */
-export const MORE_TILES: Destination[] = [
-  { label: 'Book', path: '/member/book-session', module: 'coaching', icon: CalendarPlus },
-  { label: 'Progress', path: '/member/progress', module: 'progress', icon: ChartLineUp },
-  { label: 'Rewards', path: '/member/rewards', module: 'points', icon: Gift },
-  { label: 'Payments', path: '/member/payments', icon: Receipt },
-];
+/** More has no tiles since the simplify: its ten rows are the whole list. */
+export const MORE_TILES: Destination[] = [];

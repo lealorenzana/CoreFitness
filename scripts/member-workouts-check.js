@@ -90,8 +90,9 @@ async (page) => {
   // ---- Today ----
   t = await text();
   out.push("today's workout is the program's next day: " + (/Pull day · Week 1, Day 2/.test(t) && (await page.getByRole('button', { name: 'Start workout' }).count()) === 1 ? 'yes' : 'MISSING'));
-  out.push('the section reads Today · Routines · Programs · Free workouts: ' + (/Today/.test(t) && /Routines/.test(t) && /Programs/.test(t) && /Free workouts/.test(t) ? 'yes' : 'MISSING'));
-  out.push('routines say where they came from: ' + (/Yours/.test(t) && /AI coach/.test(t) && /Coach Ben/.test(t) ? 'yes' : 'MISSING'));
+  // The section strip went with the simplify (2026-10-28): these screens open from Train → Workout.
+  out.push('no section strip on the workout screens: ' + ((await page.locator('[data-hub]').count()) === 0 ? 'yes' : 'STILL SHOWN'));
+  out.push('routines say where they came from: ' + (/Yours/.test(t) && /Assistant/.test(t) && /Coach Ben/.test(t) ? 'yes' : 'MISSING'));
   await go('/member/workouts/today');
   out.push('the introduction does not come back: ' + ((await page.locator('[data-intro-step]').count()) === 0 ? 'yes' : 'STILL SHOWN'));
   await page.locator('[data-how-it-works]').click();

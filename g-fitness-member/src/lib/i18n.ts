@@ -30,6 +30,7 @@ const FIL: Record<string, string> = {
   'Your day': 'Ang araw mo',
   'Classes and 1-on-1': 'Mga klase at 1-on-1',
   'Membership and points': 'Membership at puntos',
+  'Your level, progress and membership': 'Ang level, progress at membership mo',
   'Good morning': 'Magandang umaga',
   'Good afternoon': 'Magandang hapon',
   'Good evening': 'Magandang gabi',

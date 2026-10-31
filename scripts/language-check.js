@@ -242,6 +242,9 @@ async (page) => {
   await page.waitForTimeout(900);
   const main = (await page.locator('main').innerText()).replace(/\s+/g, ' ');
   out.push('settings: ' + (/Mga notification/.test(main) ? 'Filipino headings' : 'ENGLISH') + ' · ' + (/Wika/.test(main) ? 'Wika section' : 'NO LANGUAGE SECTION'));
+  // Language is its own section since the Settings redesign (2026-10-26).
+  await go('/member/settings?section=language');
+  await page.waitForTimeout(600);
   await page.getByRole('button', { name: 'English' }).click();
   await page.waitForTimeout(900);
   out.push('saved: ' + DB.member_profiles[0].preferred_language + ' · bar now: ' + await bar());

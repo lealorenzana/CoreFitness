@@ -1,11 +1,10 @@
 /**
- * The door (0200) on the phone: a member picks what they are doing today on
- * their QR sheet, from the gym's own activities, and may make it their usual
- * (a different pick for today leaves the usual alone); a coach, when the owner
- * has coach check-in on, has a QR button on the hub that opens their own
- * rotating code (CFC1.…) and their week; with it off there is no button.
+ * More since the simplify (2026-10-28): ten entries — Inbox, Rewards,
+ * Assistant, Shop, Equipment, Invite a friend, Gyms, Profile, Settings, Help —
+ * each with an icon and what it is for; no search, no tiles, no Friends. A
+ * switched-off part's row is not offered. Back closes it.
  *
- * Member dev server on :5173. Screenshots to shots/door-member-*.png.
+ * Member dev server on :5173.
  */
 async (page) => {
   await page.unrouteAll({ behavior: 'ignoreErrors' });
@@ -116,53 +115,38 @@ async (page) => {
   };
   await page.addInitScript(([k, s]) => { if (!localStorage.getItem(k)) localStorage.setItem(k, JSON.stringify(s)); }, [KEY, sessionFor(MEMBER, ME.email)]);
 
-  // ── Redesign, More: search, four tiles, every screen once with an icon and what it is for ────────────────
+  // More: ten rows, each with an icon and what it is for.
   const say = (label, ok, extra = '') => out.push(`${label}: ${ok ? 'yes' : 'MISSING ' + extra}`);
   const H = { 'Access-Control-Allow-Origin': '*' };
   let modules = {};
   await page.route('**/rest/v1/rpc/my_gym_app', (r) => r.fulfill({ status: 200, contentType: 'application/json', headers: H,
     body: JSON.stringify([{ gym_id: 'gym-1', gym_name: 'Core Fitness Lab', slug: 'lab', short_name: null, logo_url: null, accent: 'violet',
       points_name: null, points_name_short: null, welcome_message: null, tagline: null, vocabulary: null, modules }]) }));
-  const sheet = () => page.getByRole('dialog', { name: 'Everything' });
+  const sheet = () => page.getByRole('dialog', { name: 'More' });
   const openMore = async () => { await page.getByRole('navigation', { name: 'Main' }).getByRole('button', { name: 'More' }).click(); await page.waitForTimeout(600); };
   const rowNames = async () => sheet().locator('[data-more-row]').evaluateAll((els) => els.map((e) => e.querySelector('span span')?.textContent?.trim() ?? ''));
+  const TEN = ['Inbox', 'Rewards', 'Assistant', 'Shop', 'Equipment', 'Invite a friend', 'Gyms', 'Profile', 'Settings', 'Help'];
 
   await go('/member/home', ME);
   await page.waitForTimeout(1200);
   await openMore();
-  say('a search box', (await sheet().getByLabel('Search the app').count()) === 1);
-  const tiles = await sheet().locator('[data-more-tile]').allInnerTexts();
-  say('four tiles: Book, Progress, Rewards, Payments', JSON.stringify(tiles.map((x) => x.trim())) === JSON.stringify(['Book', 'Progress', 'Rewards', 'Payments']), JSON.stringify(tiles));
   let names = await rowNames();
-  say('every screen once, Inbox once', names.length >= 30 && new Set(names).size === names.length && names.filter((x) => /Inbox/.test(x)).length === 1, `${names.length} rows: ${names.join(', ')}`);
+  say('the ten entries, in order', JSON.stringify(names) === JSON.stringify(TEN), names.join(', '));
+  say('no search box and no tiles', (await sheet().getByLabel('Search the app').count()) === 0 && (await sheet().locator('[data-more-tile]').count()) === 0);
+  say('no Friends, no "AI coach"', !/Friends|AI coach/.test(await sheet().innerText()));
   say('each row with an icon and a line on what it is for', (await sheet().locator('[data-more-row]').evaluateAll((els) => els.every((e) => e.querySelector('svg') && e.querySelectorAll('span span').length >= 2))));
   await page.screenshot({ path: 'shots/member-more.png' });
-
-  await sheet().getByLabel('Search the app').fill('pay');
-  await page.waitForTimeout(300);
-  names = await rowNames();
-  say('"pay" finds Payments and not Routines', names.includes('Payments') && !names.includes('Routines'), names.join(', '));
-  await sheet().getByLabel('Search the app').fill('inbox');
-  await page.waitForTimeout(300);
-  say('"inbox" finds the one Inbox', JSON.stringify(await rowNames()) === JSON.stringify(['Inbox']), (await rowNames()).join(', '));
-  await sheet().getByLabel('Search the app').fill('zzqx');
-  await page.waitForTimeout(300);
-  say('nothing found says so', /Nothing called that here/.test(await sheet().innerText()));
-  await page.screenshot({ path: 'shots/member-more-search.png' });
-  await sheet().getByLabel('Search the app').fill('pay');
-  await page.waitForTimeout(300);
-  await sheet().locator('[data-more-row]').filter({ hasText: 'Payments' }).first().click();
+  await sheet().locator('[data-more-row]').filter({ hasText: 'Rewards' }).first().click();
   await page.waitForTimeout(1200);
-  say('a result opens its screen and closes More', /\/member\/payments/.test(page.url()) && (await sheet().count()) === 0, page.url());
+  say('a row opens its screen and closes More', /\/member\/rewards/.test(page.url()) && (await sheet().count()) === 0, page.url());
 
-  modules = { shop: false, points: false };
+  modules = { shop: false, engagement: false };
   await go('/member/home', ME);
   await page.waitForTimeout(1200);
   await openMore();
   names = await rowNames();
-  const off = (await sheet().locator('[data-more-tile]').allInnerTexts()).map((x) => x.trim());
-  say('a gym without the shop or points: no Shop row, no Rewards tile', !names.includes('Shop') && !names.includes('Spend points') && !off.includes('Rewards') && off.length === 3, `${off.join(',')} | ${names.join(', ')}`);
-  await openMore().catch(() => {});
+  // Invite a friend lives inside the same switch (referrals is a child of engagement).
+  say('a gym without the shop or points and challenges: no Shop, Rewards or Invite', !names.includes('Shop') && !names.includes('Rewards') && !names.includes('Invite a friend') && names.length === 7, names.join(', '));
   await page.goBack();
   await page.waitForTimeout(700);
   say('Back closes it', (await sheet().count()) === 0);

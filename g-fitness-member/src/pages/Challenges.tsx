@@ -40,7 +40,8 @@ function daysLeft(endsOn: string): number {
  * the finished ones used to open in place under a "Show N completed" button,
  * stretching the screen; they are a record now, on their own page.
  */
-export default function Challenges({ completedOnly = false }: { completedOnly?: boolean }) {
+/** `embedded`: drawn as Rewards' Challenges tab (simplify, 2026-10-28) — no title of its own. */
+export default function Challenges({ completedOnly = false, embedded = false }: { completedOnly?: boolean; embedded?: boolean }) {
   const gymApp = useGymApp();
   const navigate = useNavigate();
   const [memberId, setMemberId] = useState<string | null>(null);
@@ -113,21 +114,21 @@ export default function Challenges({ completedOnly = false }: { completedOnly?: 
 
   const title = (
     completedOnly
-      ? <PageTitle back fallback="/member/challenges" title="Completed challenges" subtitle="The ones you finished — kept as a record" />
+      ? <PageTitle back fallback="/member/rewards?tab=challenges" title="Completed challenges" subtitle="The ones you finished — kept as a record" />
       : <PageTitle back title="Challenges" subtitle="Counted from your real check-ins — nothing to tick off" />
   );
 
-  if (loading) return <Page>{title}<SkeletonList count={3} /></Page>;
+  if (loading) return <Page dockClear={!embedded}>{!embedded && title}<SkeletonList count={3} /></Page>;
 
   return (
-    <Page>
-      {title}
+    <Page dockClear={!embedded}>
+      {!embedded && title}
       {/* One scroller, the page's own. This used to scroll inside an inner
           `overflow-y-auto` that owed the floating dock its own clearance — one
           of the two screens CLAUDE.md names for exactly that. */}
       <FeatureLock feature="challenges" context={null}>
         <div className="flex flex-col" style={{ gap: 'var(--stack)' }}>
-          {!completedOnly && seasons && (
+          {!completedOnly && !embedded && seasons && (
             <Panel onClick={() => navigate('/member/season')} ariaLabel="This month's season">
               <Eyebrow>This month's season</Eyebrow>
               <p style={{ fontSize: 13, marginTop: 4, color: 'var(--color-text-secondary)' }}>

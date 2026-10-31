@@ -639,7 +639,7 @@ export default function BookClass({ mode }: { mode?: 'classes' | 'pt' } = {}) {
           {filter === 'classes' && level === null && (
             <Panel glow="structure">
               <p className="flex items-center" style={{ gap: 8, fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                <Sparkle size={16} style={{ color: 'var(--color-primary-400)' }} /> What is your experience level?
+                <Sparkle size={16} style={{ color: 'var(--color-primary-400)' }} /> How much do you train?
               </p>
               <p style={{ fontSize: 12.5, marginTop: 4, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
                 Classes pitched at your level are marked. You can still book any class you like.

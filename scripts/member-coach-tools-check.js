@@ -357,7 +357,7 @@ async (page) => {
   APPLY_REFUSAL = null;
 
   // ── The changes sheet, grouped ──
-  await page.getByRole('button', { name: 'Changes from the coach' }).click();
+  await page.getByRole('button', { name: 'Changes from the assistant' }).click();
   await page.waitForTimeout(1200);
   const group = async (name) => ((await page.getByRole('dialog').locator(`section[aria-label="${name}"]`).innerText().catch(() => '')) || '').replace(/\s+/g, ' ');
   const waiting = await group('Waiting');
@@ -377,7 +377,7 @@ async (page) => {
 
   // ── Once the sheet reads the server, the server's status wins over a local tap ──
   PROPOSALS.find((p) => p.id === 'P3').status = 'undone';   // undone on another phone
-  await page.getByRole('button', { name: 'Changes from the coach' }).click();
+  await page.getByRole('button', { name: 'Changes from the assistant' }).click();
   await page.waitForTimeout(1200);
   out.push('the sheet takes the server status over the local tap: ' + (/Squat your bodyweight/.test(await group('Undone or discarded'))
     && !/Squat your bodyweight/.test(await group('Applied')) ? 'yes' : 'NO, the local status stuck'));
@@ -398,8 +398,8 @@ async (page) => {
   // ── The coach's mark on the member's own screens ──
   await go('/member/track');
   let t = await text();
-  out.push('My routines marks the coach routine: ' + ((t.match(/AI coach/g) || []).length >= 1 ? 'yes' : 'MISSING'));
-  out.push('the mark is on Arms day: ' + (await page.locator('button', { hasText: 'Arms day' }).filter({ hasText: 'AI coach' }).count() > 0 ? 'yes' : 'MISSING'));
+  out.push('My routines marks the coach routine: ' + ((t.match(/Assistant/g) || []).length >= 1 ? 'yes' : 'MISSING'));
+  out.push('the mark is on Arms day: ' + (await page.locator('button', { hasText: 'Arms day' }).filter({ hasText: 'Assistant' }).count() > 0 ? 'yes' : 'MISSING'));
   await go('/member/gym-plan');
   t = await text();
   out.push('Training plan marks the day the coach set: ' + ((t.match(/Set by the coach/g) || []).length === 1 ? 'yes' : 'MISSING ' + (t.match(/Set by the coach/g) || []).length));
@@ -408,18 +408,18 @@ async (page) => {
   Object.assign(COACH, { allowed: false, reason: 'daily_limit', used_today: 30 });
   await go('/member/chatbot');
   out.push('at the daily limit the changes button still shows: '
-    + (await page.getByRole('button', { name: 'Changes from the coach' }).count() === 1 ? 'yes' : 'MISSING'));
+    + (await page.getByRole('button', { name: 'Changes from the assistant' }).count() === 1 ? 'yes' : 'MISSING'));
   Object.assign(COACH, { reason: 'switched_off', used_today: 0 });
   await go('/member/chatbot');
   out.push('with the coach switched off there is no changes button: '
-    + (await page.getByRole('button', { name: 'Changes from the coach' }).count() === 0 ? 'yes' : 'STILL SHOWN'));
+    + (await page.getByRole('button', { name: 'Changes from the assistant' }).count() === 0 ? 'yes' : 'STILL SHOWN'));
   Object.assign(COACH, { allowed: true, reason: null, used_today: 3 });
 
   // The Privacy page says what the coach may change.
   await go('/privacy');
   out.push('Privacy says nothing changes until Apply: ' + (/nothing changes until you tap Apply, and you can undo a change afterwards\./.test(await text()) ? 'yes' : 'MISSING'));
-  out.push('Privacy says the coach reads the weekly plan, and staff see only the mark: '
+  out.push('Privacy says the assistant reads the weekly plan, and staff see only the mark: '
     + (/routines, your weekly plan and how often/.test(await text())
-      && /can see which of your routines and plan days were made by the coach \(a small mark on them\), never your conversation\./.test(await text()) ? 'yes' : 'MISSING'));
+      && /can see which of your routines and plan days were made by the assistant \(a small mark on them\), never your conversation\./.test(await text()) ? 'yes' : 'MISSING'));
   return out.join('\n');
 }

@@ -104,7 +104,7 @@ export default function Season() {
 
   return (
     <Page>
-      <PageTitle back fallback="/member/challenges" title={`${monthName(season.start)} season`}
+      <PageTitle back fallback="/member/rewards" title={`${monthName(season.start)} season`}
         subtitle={left === 0 ? 'Ends today — a new one starts tomorrow' : `${left} day${left === 1 ? '' : 's'} left · everyone starts again on the 1st`} />
 
       <Panel>
@@ -161,7 +161,7 @@ export default function Season() {
       </Panel>
       )}
 
-      <Panel onClick={() => navigate('/member/challenges')} ariaLabel="This week's quests">
+      <Panel onClick={() => navigate('/member/rewards?tab=challenges')} ariaLabel="This week's quests">
         <p className="flex items-center" style={{ gap: 8, fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>
           <Trophy size={17} aria-hidden style={{ color: 'var(--color-secondary)' }} /> This week's quests
         </p>

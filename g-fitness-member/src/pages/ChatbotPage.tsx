@@ -481,7 +481,7 @@ function Assistant() {
         {/* Rule-based first, and says so: it answers from a fixed set of topics
             plus your own membership data — calling that "AI" oversells it. */}
         <PageTitle back title="Assistant"
-          subtitle={coach?.allowed ? 'Gym answers from the app · training help from the AI coach' : 'Answers about your account and the gym'} />
+          subtitle={coach?.allowed ? 'Gym answers from the app · training help from the assistant' : 'Answers about your account and the gym'} />
         <div className="flex flex-wrap items-center" style={{ columnGap: 18, rowGap: 0, marginTop: 10, fontSize: 13 }}>
           <button onClick={startNew} style={{ height: 32, color: 'var(--color-secondary)' }}>New chat</button>
           <button onClick={() => { setConfirmDelete(null); setHistoryOpen(true); }}
@@ -497,10 +497,10 @@ function Assistant() {
               non-member or a gym with the coach switched off has nothing here. */}
           {coach && coach.reason !== 'not_member' && coach.reason !== 'switched_off' && (
             <button onClick={() => setChangesOpen(true)}
-              style={{ height: 32, color: 'var(--color-primary-300)' }}>Changes from the coach</button>
+              style={{ height: 32, color: 'var(--color-primary-300)' }}>Changes from the assistant</button>
           )}
           {coach?.allowed && (
-            <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{coach.used_today} of {coach.daily_limit} coach messages today</span>
+            <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{coach.used_today} of {coach.daily_limit} assistant messages today</span>
           )}
         </div>
         <div className="rule" style={{ marginTop: 8 }} />

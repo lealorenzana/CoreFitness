@@ -12,7 +12,7 @@ import type { FeatureKey } from './gymApp';
 const ROUTES: [string, FeatureKey][] = [
   // member
   ['/member/chatbot', 'assistant'],
-  ['/member/events', 'push'],
+  ['/member/events', 'events'],
   ['/member/trainers', 'coaching'],
   ['/member/book-session', 'coaching'],
   ['/member/chat/', 'coaching'],
@@ -30,7 +30,7 @@ const ROUTES: [string, FeatureKey][] = [
   ['/member/track', 'progress'],
   ['/member/workout-history', 'progress'],
   ['/member/progress', 'progress'],
-  ['/member/rewards', 'points'],
+  ['/member/rewards', 'engagement'],
   ['/member/challenges', 'engagement'],
   ['/member/achievements', 'engagement'],
   ['/member/season', 'seasons'],
@@ -60,6 +60,6 @@ export const MODULE_NAMES: Record<FeatureKey, string> = {
   engagement: 'points, rewards and challenges', progress: 'progress tracking', assistant: 'the assistant',
   push: 'announcements', analytics: 'analytics', shop: 'the shop', requests: 'freeze and cancel requests in the app',
   online_pay: 'online payments', chat: 'coach chat', rooms: 'coaching rooms', programs: 'programs', photos: 'progress photos',
-  equipment: 'the equipment list', points: 'points and rewards',
+  equipment: 'the equipment list', points: 'points and rewards', events: 'gym events',
   squads: 'teams', seasons: 'seasons', quests: 'weekly quests', referrals: 'inviting friends', targets: 'targets',
 };

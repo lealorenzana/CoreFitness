@@ -10,7 +10,7 @@ import ClassworkTab from '../../components/rooms/ClassworkTab';
 import PeopleTab from '../../components/rooms/PeopleTab';
 import ProgressTab from '../../components/rooms/ProgressTab';
 import TimelineTab from '../../components/rooms/TimelineTab';
-import { deleteRoom, leaveRoom, myRooms, setArchived, updateRoom, type Room as RoomT } from '../../lib/api/rooms';
+import { leaveRoom, myRooms, setArchived, updateRoom, type Room as RoomT } from '../../lib/api/rooms';
 
 type Tab = 'together' | 'stream' | 'classwork' | 'people' | 'progress';
 const KIND: Record<RoomT['kind'], string> = { class: 'Class', pt: 'Package', group: 'Coaching group' };
@@ -98,22 +98,13 @@ export default function Room() {
       )}
 
       {/* Room options, on every tab (0169): leave any room; a trainer closes any
-          room of theirs and deletes their own coaching group. */}
+          room of theirs (groups, and deleting them, went with 0220). */}
       <div className="flex flex-col" data-room-options style={{ gap: 8, marginTop: 8, paddingTop: 14, borderTop: '1px solid var(--color-separator)' }}>
         {isTrainer && (
           <NocButton variant="ghost" disabled={busy}
             onClick={() => void run(() => setArchived(room.id, !room.archived),
               room.archived ? 'The room is open again.' : 'The room is closed. It stays readable, and nothing new can be posted.')}>
             {room.archived ? 'Reopen this room' : 'Close this room'}
-          </NocButton>
-        )}
-        {isTrainer && room.kind === 'group' && (
-          <NocButton variant="ghost" disabled={busy}
-            onClick={() => {
-              if (!window.confirm(`Delete "${room.name}"? Its posts, comments and classwork are deleted too, for everyone. This cannot be undone — close it instead to keep them.`)) return;
-              void run(() => deleteRoom(room.id), 'The group was deleted.', () => navigate(fallback));
-            }}>
-            Delete this group
           </NocButton>
         )}
         {mode === 'member' && (

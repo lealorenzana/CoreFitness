@@ -54,7 +54,7 @@ export const notificationHelpers = {
       'achievement',
       `${achievementName} 🏆`,
       description,
-      '/member/progress?tab=badges'
+      '/member/membership?tab=badges'
     );
   },
 
@@ -67,7 +67,7 @@ export const notificationHelpers = {
       'goal_milestone',
       'Goal Milestone Reached! 🎯',
       `You've reached ${percentage}% of your ${goalName} goal. Keep it up!`,
-      '/member/progress?tab=goals'
+      '/member/targets'
     );
   },
 
@@ -80,7 +80,7 @@ export const notificationHelpers = {
       'trainer_feedback',
       'New Trainer Feedback',
       `${trainerName} left feedback on your recent workout session.`,
-      '/member/progress?tab=feedback'
+      '/member/coach-notes'
     );
   },
 
@@ -118,7 +118,7 @@ export const notificationHelpers = {
       'achievement',
       `${days}-Day Streak! 🔥`,
       `Congratulations! You've maintained a ${days}-day check-in streak.`,
-      '/member/progress?tab=attend'
+      '/member/attendance-history'
     );
   },
 

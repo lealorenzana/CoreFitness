@@ -1,16 +1,17 @@
 import Avatar from '../components/ui/Avatar';
 import TrophyRoom from '../components/you/TrophyRoom';
+import ProgressTab from '../components/you/ProgressTab';
 import { CountNumber } from '../components/ui/lively';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useGymApp } from '../hooks/useGymApp';
-import { pointsWord } from '../lib/gymApp';
-import { useNavigate } from 'react-router-dom';
+import { moduleOn } from '../lib/gymApp';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  ArrowsClockwise, CaretRight, Check, ClockCounterClockwise, EnvelopeSimple, Gear, Gift, Key,
-  ListChecks, Minus, PaperPlaneTilt, SignOut, UserCircle, Warning, Receipt, CalendarDots, FileText, PauseCircle, UserPlus, Storefront,
+  ArrowsClockwise, CaretRight, Check, ClockCounterClockwise, Gear,
+  ListChecks, Minus, PaperPlaneTilt, SignOut, UserCircle, Warning, Receipt, CalendarDots, FileText, PauseCircle,
 } from '@phosphor-icons/react';
 import { Page } from '../components/ui/page';
-import { Eyebrow, InlineStat, LineRow, NocButton, Panel, ProgressBar, SectionHead, StatusPill } from '../components/ui/noc';
+import { Eyebrow, InlineStat, LineRow, NocButton, Panel, ProgressBar, SectionHead, StatusPill, TextTabs } from '../components/ui/noc';
 import Disclosure from '../components/ui/Disclosure';
 import Modal from '../components/ui/Modal';
 import { SkeletonList } from '../components/ui/Skeleton';
@@ -36,8 +37,17 @@ function localDate(key: string): Date {
 
 const shortDate = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
+type YouTab = 'progress' | 'badges' | 'membership';
+
 /**
- * You — the account, as one statement (Nocturne redesign 2026-09-16; reworked
+ * You (simplify, 2026-10-28): your earned level first, then three tabs —
+ * **Progress** (body, targets, photos and how training is going: the old
+ * Progress section), **Badges & records** (the trophy shelf, each with See all)
+ * and **Membership** (below, as it was: the plan, renew, this term, payments,
+ * attendance, pause or cancel, the waiver, the account). Points moved to
+ * Rewards, in More. The tab is in the address (`?tab=`).
+ *
+ * The Membership tab — the account, as one statement (Nocturne redesign 2026-09-16; reworked
  * 2026-09-19).
  *
  *   Membership     plan, status, the term bar, Renew — amber in the last week
@@ -58,6 +68,14 @@ export default function MembershipHub() {
   // The gym's own word for its points (0110). Null reads as "Points".
   const gymApp = useGymApp();
   const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const offered: YouTab[] = [
+    ...(moduleOn(gymApp, 'progress') ? ['progress' as const] : []),
+    ...(moduleOn(gymApp, 'engagement') ? ['badges' as const] : []),
+    'membership',
+  ];
+  const asked = params.get('tab') as YouTab | null;
+  const tab: YouTab = asked && offered.includes(asked) ? asked : offered[0];
   const cached = readCache<Hub>(CACHE_KEY);
   const [hub, setHub] = useState<Hub | null>(cached ?? null);
   const [loading, setLoading] = useState(cached === undefined);
@@ -124,16 +142,6 @@ export default function MembershipHub() {
     : home.expiringSoon ? { label: 'Ending soon', tone: 'action' }
     : { label: 'Active', tone: 'structure' };
 
-  // ── Points ──
-  const rewards = (hub.rewards ?? []).filter((r) => r.stock !== 0);
-  const balance = hub.points;
-  // The reward they pinned on Rewards (0092) leads; otherwise the cheapest not yet affordable.
-  const pinned = hub.savingFor ? rewards.find((r) => r.id === hub.savingFor) ?? null : null;
-  const nextUp = balance == null ? null
-    : pinned && pinned.costPoints > balance ? pinned
-    : rewards.find((r) => r.costPoints > balance) ?? null;
-  const canGet = balance == null ? 0 : rewards.filter((r) => r.costPoints <= balance).length;
-
   // ── Activity ──
   // A preview: six lines, then the statement's own page (never an in-place
   // "show more" — the user's rule, 2026-09-19).
@@ -152,18 +160,14 @@ export default function MembershipHub() {
       meta: latest ? `Latest: ${latest.title} · ${latest.amount}` : 'Points earned and payments, newest first' },
     { label: 'Payments', path: '/member/payments', icon: Receipt, meta: 'Every payment, with its receipt' },
     { label: 'Attendance', path: '/member/attendance-history', icon: CalendarDots, meta: 'Every visit, month by month' },
-    { label: `How you earn ${pointsWord(gymApp, true)}`, path: '/member/rewards', module: 'points', icon: Gift, meta: 'And what you can spend them on' },
     { label: 'Waiver', path: '/member/waiver', icon: FileText, meta: waiver?.acceptedAt ? 'Signed' : waiver ? 'Not signed yet' : "The gym's waiver" },
     { label: 'Pause or cancel', path: '/member/pause-or-cancel', module: 'requests', icon: PauseCircle, meta: 'Ask the desk to freeze or end it' },
-    { label: 'Shop', path: '/member/shop', module: 'shop', icon: Storefront, meta: 'What the gym sells at the counter' },
-    { label: 'Invite a friend', path: '/member/refer', module: 'referrals', icon: UserPlus, meta: 'Share your gym' },
   ] as YouRow[], gymApp) as YouRow[];
 
   const account: { label: string; icon: typeof Gear; to: string }[] = [
     { label: 'Profile', icon: UserCircle, to: '/member/profile' },
+    // Password and email are inside Settings → Account & app.
     { label: 'Settings', icon: Gear, to: '/member/settings' },
-    { label: 'Change password', icon: Key, to: '/member/change-password' },
-    { label: 'Change email', icon: EnvelopeSimple, to: '/member/change-email' },
   ];
 
   return (
@@ -184,8 +188,24 @@ export default function MembershipHub() {
         <CaretRight size={15} style={{ color: 'var(--color-text-muted)' }} aria-hidden />
       </button>
 
-      {/* ── The trophy room (wave 2): earned level, badges, records ── */}
-      <TrophyRoom />
+      {/* ── Your earned level (wave 2's trophy room hero), above the tabs ── */}
+      <TrophyRoom part="level" />
+
+      {offered.length > 1 && (
+        <TextTabs<YouTab> label="You"
+          tabs={[
+            { id: 'progress' as const, label: 'Progress' },
+            { id: 'badges' as const, label: 'Badges & records' },
+            { id: 'membership' as const, label: 'Membership' },
+          ].filter((x) => offered.includes(x.id))}
+          active={tab}
+          onChange={(next) => setParams((old) => { const q = new URLSearchParams(old); q.set('tab', next); return q; }, { replace: true })} />
+      )}
+
+      {tab === 'progress' && <ProgressTab />}
+      {tab === 'badges' && <TrophyRoom part="shelf" />}
+
+      {tab === 'membership' && (<>
 
       {/* ── Membership ── */}
       <Panel glow={status.tone === 'action' ? 'action' : 'structure'}>
@@ -290,40 +310,6 @@ export default function MembershipHub() {
         </section>
       )}
 
-      {/* ── Points ── */}
-      <Panel onClick={() => navigate('/member/rewards')} ariaLabel={`${pointsWord(gymApp)} — open rewards`}>
-        <div className="flex items-center justify-between" style={{ gap: 12 }}>
-          <div>
-            <Eyebrow>{pointsWord(gymApp)}</Eyebrow>
-            <p style={{ fontSize: 34, fontWeight: 700, lineHeight: 1.1, marginTop: 6, letterSpacing: '-0.03em', color: 'var(--color-text-primary)' }}>
-              {balance ?? '—'}
-            </p>
-          </div>
-          <span className="inline-flex items-center flex-none" style={{ gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--color-secondary)' }}>
-            <Gift size={16} aria-hidden /> Spend
-          </span>
-        </div>
-        {balance == null ? (
-          <p style={{ fontSize: 12, marginTop: 4, color: 'var(--color-text-muted)' }}>Your balance could not be read.</p>
-        ) : nextUp ? (
-          <>
-            <ProgressBar style={{ marginTop: 12 }} fraction={balance / nextUp.costPoints} />
-            <p style={{ fontSize: 12, marginTop: 7, color: 'var(--color-text-secondary)' }}>
-              {nextUp.costPoints - balance} to go for {nextUp.name}
-              {canGet > 0 ? ` · ${canGet} ${canGet === 1 ? 'reward' : 'rewards'} you can get now` : ''}
-            </p>
-          </>
-        ) : rewards.length > 0 ? (
-          <p style={{ fontSize: 12, marginTop: 6, color: 'var(--color-primary-300)' }}>
-            Enough for every reward on the list.
-          </p>
-        ) : (
-          <p style={{ fontSize: 12, marginTop: 6, color: 'var(--color-text-muted)' }}>
-            The gym has no rewards listed right now.
-          </p>
-        )}
-      </Panel>
-
       {/* ── Everything else about the membership: one described row each, each its own page
           (redesign, 2026-10-26). The activity preview and its filter chips became the Activity
           page's own (it has the same filters); the text links became rows. ── */}
@@ -399,6 +385,7 @@ export default function MembershipHub() {
           </button>
         </Disclosure>
       </div>
+      </>)}
 
       <Modal
         isOpen={confirmLogout}

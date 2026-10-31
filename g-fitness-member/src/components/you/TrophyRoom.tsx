@@ -16,8 +16,10 @@ import { moduleOn } from '../../lib/gymApp';
  * You as a trophy room (wave 2, 2026-10-27, mock-up approved): the earned
  * level with both of the next level's requirements filling, a shelf of the
  * member's badges as medals (the newest shining), and their latest records.
- * Above the account, which stays as it was. Each part reads what its own
- * screen reads and draws nothing when that is empty or switched off.
+ * Each part reads what its own screen reads and draws nothing when that is
+ * empty or switched off. Since the simplify (2026-10-28) You draws it in two
+ * places: `part="level"` above You's tabs, `part="shelf"` (badges and records,
+ * each with See all) as the Badges & records tab.
  */
 
 const NEW_DAYS = 7;
@@ -29,7 +31,7 @@ interface Data {
   records: Record_[];
 }
 
-export default function TrophyRoom() {
+export default function TrophyRoom({ part }: { part: 'level' | 'shelf' }) {
   const navigate = useNavigate();
   const app = useGymApp();
   const progressOn = moduleOn(app, 'progress');
@@ -57,7 +59,8 @@ export default function TrophyRoom() {
     return () => { alive = false; };
   }, []);
 
-  if (!d || !progressOn) return null;
+  if (!d) return null;
+  if (part === 'level' && !progressOn) return null;
   const { prog } = d;
   const Emblem = prog?.level === 'advanced' ? Sparkles : prog?.level === 'intermediate' ? Shield : TrendingUp;
   const accent = prog ? LEVEL_ACCENT[prog.level] : 'var(--color-secondary)';
@@ -68,8 +71,8 @@ export default function TrophyRoom() {
 
   return (
     <div className="flex flex-col" style={{ gap: 4 }} data-trophy-room>
-      {prog && (
-        <button type="button" onClick={() => navigate('/member/progress')} className="lv-in text-left noc-press-soft"
+      {part === 'level' && prog && (
+        <button type="button" onClick={() => navigate('/member/achievements')} className="lv-in text-left noc-press-soft"
           style={{ ['--i' as string]: 0, padding: 16, borderRadius: 20, border: '1px solid color-mix(in srgb, var(--color-primary) 45%, transparent)',
             background: 'linear-gradient(150deg, var(--color-primary-light), var(--color-surface) 70%)' }} data-trophy-level>
           <span className="flex items-center" style={{ gap: 14 }}>
@@ -98,7 +101,14 @@ export default function TrophyRoom() {
         </button>
       )}
 
-      {d.badges.length > 0 && (
+      {part === 'shelf' && d.badges.length === 0 && d.records.length === 0 && (
+        <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }} data-trophy-empty>
+          No badges or records yet — they arrive as you train. <button type="button" onClick={() => navigate('/member/achievements')}
+            style={{ color: 'var(--color-primary-300)', fontWeight: 600 }}>See every badge</button>
+        </p>
+      )}
+
+      {part === 'shelf' && d.badges.length > 0 && (
         <section className="lv-in" style={{ ['--i' as string]: 1 }} data-trophy-badges>
           <SectionHead title="Badges" meta={`${d.badges.length} of ${Math.max(d.total, d.badges.length)} · See all`} />
           <button type="button" onClick={() => navigate('/member/achievements')} className="lv-shelf w-full text-left" aria-label="Your badges. See all">
@@ -113,7 +123,7 @@ export default function TrophyRoom() {
         </section>
       )}
 
-      {d.records.length > 0 && (
+      {part === 'shelf' && d.records.length > 0 && (
         <section className="lv-in" style={{ ['--i' as string]: 2 }} data-trophy-records>
           <SectionHead title="Your records" meta="See all" />
           <button type="button" onClick={() => navigate('/member/season/records')} className="grid w-full text-left"

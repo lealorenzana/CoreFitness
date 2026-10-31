@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import FriendsWinsStrip from '../components/friends/FriendsWinsStrip';
 import DailyArrival from '../components/moments/DailyArrival';
 import WhatsNew from '../components/WhatsNew';
 import PushPrompt from '../components/PushPrompt';
@@ -261,7 +260,7 @@ export default function Home() {
       key: 'coach', gutter: 'New',
       title: n.count === 1 ? `A note from ${n.from ?? 'your coach'}` : `${n.count} new coach notes`,
       meta: n.title,
-      action: 'Read', onClick: () => navigate('/member/progress?tab=feedback'),
+      action: 'Read', onClick: () => navigate('/member/coach-notes'),
     });
   }
 
@@ -278,7 +277,8 @@ export default function Home() {
     });
   }
 
-  if (home.nextEvent) {
+  // Gym events are a switch of their own (0220), off unless the gym turns it on.
+  if (home.nextEvent && moduleOn(gymApp, 'events')) {
     const e = home.nextEvent;
     entries.push({
       key: 'event',
@@ -289,34 +289,19 @@ export default function Home() {
     });
   }
 
-  const c = extras?.challenge;
-  if (c) {
-    // The joined challenge, with its own server-computed progress — moved here
-    // from the month panel; drawn only with a real target and count.
-    entries.push({
-      key: 'challenge',
-      gutter: shortDate(c.endsOn),
-      title: c.title,
-      meta: `${c.progress} of ${c.target} · ends ${shortDate(c.endsOn)}`,
-      progress: c.target > 0 ? Math.min(1, c.progress / c.target) : undefined,
-      onClick: () => navigate('/member/challenges'),
-    });
-  }
+  // Today's challenge moved to Rewards (simplify, 2026-10-28).
   if (!b) {
     entries.push({
       key: 'end', gutter: 'Later',
-      title: 'Nothing booked',
-      meta: 'Group classes and 1-on-1 sessions are on Train.',
+      title: 'Nothing coming up',
+      meta: 'Book a session with a coach on Train.',
       action: home.frozen || home.expired ? undefined : 'Book',
-      onClick: home.frozen || home.expired ? undefined : () => navigate('/member/book-class'),
+      onClick: home.frozen || home.expired ? undefined : () => navigate('/member/book-session'),
     });
   } else {
     entries.push({
       key: 'end', gutter: 'Later', titleMuted: true,
       title: 'Nothing after this',
-      meta: c && c.progress < c.target
-        ? `${c.target - c.progress} more would finish ${c.title}.`
-        : undefined,
     });
   }
 
@@ -454,8 +439,6 @@ export default function Home() {
       {moduleOn(gymApp, 'programs') && <ProgramNext />}
       {moduleOn(gymApp, 'rooms') && <DueStrip />}
       {moduleOn(gymApp, 'squads') && <GymGoalStrip />}
-      {/* Friends' latest wins (0217) — nothing unless the gym runs Friends. */}
-      <FriendsWinsStrip />
       <TermsUpdateStrip />
       <FinishPlanCard />
       <PushPrompt />

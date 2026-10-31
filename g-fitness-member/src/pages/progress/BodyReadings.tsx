@@ -36,7 +36,7 @@ export default function BodyReadings() {
 
   return (
     <Page>
-      <PageTitle back fallback="/member/progress?tab=body" title="Body readings" subtitle="Every reading you have logged, newest first" />
+      <PageTitle back fallback="/member/body" title="Body readings" subtitle="Every reading you have logged, newest first" />
       {error ? <p style={{ fontSize: 13, color: 'var(--color-secondary)' }}>{error}</p>
         : entries == null ? <SkeletonList />
         : newestFirst.length === 0 ? <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>No readings yet.</p>

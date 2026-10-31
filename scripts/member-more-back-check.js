@@ -118,7 +118,7 @@ async (page) => {
 
   // ── Back closes More (and the check-in code), never moves the page beneath it ─────────────────────
   const say = (label, ok, extra = '') => out.push(`${label}: ${ok ? 'yes' : 'MISSING ' + extra}`);
-  const sheet = () => page.getByRole('dialog', { name: 'Everything' });
+  const sheet = () => page.getByRole('dialog', { name: 'More' });
   await page.goto('http://localhost:5173/member/home', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(3000);
   // Somewhere to come from, so a wrong Back would visibly leave this page.

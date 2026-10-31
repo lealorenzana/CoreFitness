@@ -90,6 +90,10 @@
       "app": "member"
     },
     {
+      "file": "member-simplify-check.js",
+      "app": "member"
+    },
+    {
       "file": "member-you-check.js",
       "app": "member"
     },
@@ -171,10 +175,6 @@
     },
     {
       "file": "member-lively-check.js",
-      "app": "member"
-    },
-    {
-      "file": "member-friends-check.js",
       "app": "member"
     },
     {

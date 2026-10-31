@@ -10,7 +10,6 @@ import { clearCheckedInToday } from '../hooks/useCheckedInToday';
 import { clearOfflineReads } from './offlineReads';
 import { clearMomentCache } from './moments';
 import { clearLivelyCache } from './livelyCache';
-import { clearFriendsGate } from './friendsGate';
 import { clearCoachOpening } from './api/coachMoments';
 
 /**
@@ -75,7 +74,6 @@ export function clearMemberCaches(): void {
   // The points chip's last-shown balance (wave 2).
   clearLivelyCache();
   // Whether this gym runs Friends (0217).
-  clearFriendsGate();
   // The coach hub's once-per-open arrival and milestones (0218).
   clearCoachOpening();
 }

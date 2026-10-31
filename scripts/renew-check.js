@@ -225,8 +225,8 @@ async (page) => {
   out.push('rpc called: ' + JSON.stringify(CALLS.request_renewal));
   out.push('request panel: ' + (/The desk knows you are coming[^|]{0,80}/i.exec(text) || ['MISSING'])[0]);
 
-  // 2 — You tab and Payments show it too
-  await go('/member/membership');
+  // 2 — You (its Membership tab since the simplify, 2026-10-28) and Payments show it too
+  await go('/member/membership?tab=membership');
   text = (await page.locator('main').innerText()).replace(/\s+/g, ' ');
   out.push('you tab: ' + (/Renewal requested[^|]{0,60}/.exec(text) || ['MISSING'])[0]);
   await go('/member/payments');

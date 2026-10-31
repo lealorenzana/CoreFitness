@@ -124,7 +124,7 @@ export default function WorkoutsToday() {
         <LineRow gutter={<Books size={20} />} gutterWidth={36} title="Browse the free library" meta="Workouts and exercises — always free"
           onClick={() => navigate('/member/workouts')} last={!coach && gymPrograms === 0} />
         {coach && (
-          <LineRow gutter={<Sparkle size={20} />} gutterWidth={36} title="Ask the AI coach to build one" meta="A routine or a program around your goals"
+          <LineRow gutter={<Sparkle size={20} />} gutterWidth={36} title="Ask the assistant to build one" meta="A routine or a program around your goals"
             onClick={() => navigate('/member/chatbot')} last={gymPrograms === 0} />
         )}
         {gymPrograms > 0 && (
@@ -154,10 +154,10 @@ export default function WorkoutsToday() {
         <div className="flex flex-col" style={{ gap: 18 }}>
           {step(1, 'A program', nextDay
             ? `The long plan: weeks that build on each other. You follow ${nextDay.programName} — ${programDays.filter((d) => d.done).length} of ${programDays.length} days done.`
-            : 'The long plan: weeks that build on each other, heavier or longer each week. Optional — follow one from your gym, your coach or the AI coach.')}
+            : 'The long plan: weeks that build on each other, heavier or longer each week. Optional — follow one from your gym, your coach or the assistant.')}
           {step(2, 'Your routines', routines.length
             ? `Saved lists you repeat — ${routines.length} so far: ${routines.slice(0, 3).map((r) => `${r.name} (${routineSourceLabel(r, trainerCap)})`).join(', ')}.`
-            : 'Saved lists you repeat, like "Monday chest". Yours, or from your coach or the AI coach — each says which.')}
+            : 'Saved lists you repeat, like "Monday chest". Yours, or from your coach or the assistant — each says which.')}
           {step(3, "Today's workout", nextTitle ? `${nextTitle}. One session — start it and tick off your sets.` : 'One session, today. With nothing planned, pick one from the library.', true)}
         </div>
         {next ? (

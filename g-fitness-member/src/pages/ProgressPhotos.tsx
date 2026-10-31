@@ -76,7 +76,7 @@ export default function ProgressPhotos() {
 
   return (
     <Page>
-      <PageTitle back fallback="/member/progress" title="Progress photos" subtitle="Private — only you, unless you share with your coach" />
+      <PageTitle back fallback="/member/membership?tab=progress" title="Progress photos" subtitle="Private — only you, unless you share with your coach" />
 
       <Panel onClick={() => void share()} ariaLabel={shared ? 'Stop sharing photos with my coach' : 'Share photos with my coach'}>
         <div className="flex items-center justify-between" style={{ gap: 12 }}>

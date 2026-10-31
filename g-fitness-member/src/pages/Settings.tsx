@@ -1,6 +1,4 @@
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useFriendsOn } from '../hooks/useFriendsOn';
-import { myFriendPrivacy, setFriendPrivacy } from '../lib/api/friends';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useGymApp } from '../hooks/useGymApp';
 import { toast } from '../components/ui/Toast';
@@ -19,7 +17,7 @@ import { Page, PageTitle } from '../components/ui/page';
 import { Chip, LineRow, NocButton, SectionHead } from '../components/ui/noc';
 import Avatar from '../components/ui/Avatar';
 import Modal from '../components/ui/Modal';
-import { Bell, BellRinging, Buildings, HandsClapping, DownloadSimple, Eye, HandTap, Key, Phone, EnvelopeSimple, SignOut, Sparkle, Translate, UserGear, type Icon } from '@phosphor-icons/react';
+import { Bell, BellRinging, Buildings, DownloadSimple, Eye, HandTap, Key, Phone, EnvelopeSimple, SignOut, Sparkle, Translate, UserGear, type Icon } from '@phosphor-icons/react';
 import { saveAssistantPlacement, useAssistantPlacement, type AssistantPlacement } from '../lib/assistantPlacement';
 import { loadMomentPrefs, momentPrefs, setMemberSounds, subscribeMoments } from '../lib/moments';
 import { exportMemberData, downloadExport } from '../lib/memberDataExport';
@@ -161,8 +159,8 @@ const dialable = (phone: string) => {
   return (t.startsWith('+') ? '+' : '') + t.replace(/[^0-9]/g, '');
 };
 
-type Section = 'notifications' | 'coaches' | 'friends' | 'ai' | 'signin' | 'data' | 'language' | 'account' | 'gym';
-const SECTIONS: Section[] = ['notifications', 'coaches', 'friends', 'ai', 'signin', 'data', 'language', 'account', 'gym'];
+type Section = 'notifications' | 'coaches' | 'ai' | 'signin' | 'data' | 'language' | 'account' | 'gym';
+const SECTIONS: Section[] = ['notifications', 'coaches', 'ai', 'signin', 'data', 'language', 'account', 'gym'];
 
 export default function Settings() {
   // The test alert is shown by this gym's app, so it carries this gym's name.
@@ -204,17 +202,7 @@ export default function Settings() {
   const placement = useAssistantPlacement();
   // Sounds for the big moments (0216): the member's own switch; the owner's can turn them off for the gym.
   const moments = useSyncExternalStore(subscribeMoments, momentPrefs, momentPrefs);
-  // Friends (0217): the member's two switches, only where the gym runs Friends.
-  const friendsOn = useFriendsOn();
-  const [privacy, setPrivacy] = useState<{ findable: boolean; shareWins: boolean } | null>(null);
-  useEffect(() => { if (friendsOn) void (async () => setPrivacy(await myFriendPrivacy()))(); }, [friendsOn]);
-  const togglePrivacy = async (k: 'findable' | 'shareWins') => {
-    if (!privacy) return;
-    setBusy(k);
-    try { await setFriendPrivacy({ [k]: !privacy[k] }); setPrivacy({ ...privacy, [k]: !privacy[k] }); }
-    catch (err) { toast.error(errorMessage(err, 'That setting was not saved')); }
-    finally { setBusy(null); }
-  };
+
   useEffect(() => { void loadMomentPrefs(); }, []);
   const toggleMomentSounds = async () => {
     setBusy('momentSounds');
@@ -380,7 +368,7 @@ export default function Settings() {
     // interests drive what Train recommends, "I picked the wrong thing" needed an
     // answer other than "make a new account" — and 0036 marked every earlier
     // member onboarded, so their interests are empty until they get back here.
-    { label: 'Interests & experience', description: 'Change what we recommend you', to: '/onboarding' },
+    { label: 'Interests & how much you train', description: 'Change what we recommend you', to: '/onboarding' },
     // Was the one account detail nobody could change.
     { label: 'Change email', description: 'The address you sign in with', to: '/member/change-email' },
     { label: 'Change password', description: 'Update your password', to: '/member/change-password' },
@@ -407,15 +395,12 @@ export default function Settings() {
   const sharedCount = SHARE_ROWS.filter((r) => share[r.key]).length;
   const kindsOn = categoryRows.filter((r) => prefs[r.key]).length;
   const titles: Record<Section, string> = {
-    notifications: 'Notifications', coaches: 'What your trainer sees', friends: 'Friends', ai: 'AI coach', signin: 'Sign-in',
+    notifications: 'Notifications', coaches: 'What your trainer sees', ai: 'Assistant', signin: 'Sign-in',
     data: 'Your data', language: 'Language', account: 'Account & app', gym: gym?.gym_name ?? 'Your gym',
   };
   const listRows: { id: Section; icon: Icon; tone?: 'mine' | 'act' | 'info'; meta: string }[] = [
     { id: 'notifications', icon: Bell, tone: 'mine', meta: `${unavailableReason ? 'Push not available here' : pushOn ? 'Push on' : 'Push off'} · ${kindsOn} of ${categoryRows.length} kinds` },
     { id: 'coaches', icon: Eye, tone: 'mine', meta: `${sharedCount} of ${SHARE_ROWS.length} shared${coaches ? ` · ${coaches.length} ${coaches.length === 1 ? 'coach' : 'coaches'}` : ''}` },
-    // Friends (0217): only where the gym switched them on.
-    ...(friendsOn && privacy ? [{ id: 'friends' as Section, icon: HandsClapping, tone: 'mine' as const,
-      meta: `${privacy.findable ? 'Findable by name' : 'Not findable by name'} · ${privacy.shareWins ? 'sharing wins' : 'not sharing wins'}` }] : []),
     ...(coachOn !== null ? [{ id: 'ai' as Section, icon: Sparkle, tone: 'mine' as const, meta: coachOn ? 'Can read your training' : 'Cannot read your training' }] : []),
     { id: 'signin', icon: Key, meta: 'How you sign in, and linking Google' },
     { id: 'language', icon: Translate, meta: lang === 'fil' ? 'Filipino' : 'English' },
@@ -486,19 +471,6 @@ export default function Settings() {
             </section>
           </>
         )}
-        {section === 'friends' && privacy && (
-          <section data-friends-privacy>
-            <SectionHead title={t('Who can find you, and who sees your wins')} />
-            <div style={{ marginTop: 2 }}>
-              <SwitchRow label="Findable by name" description="People at your gym can find you in Add a friend. Your friend code works either way."
-                on={privacy.findable} busy={busy === 'findable'} disabled={busy === 'findable'}
-                onToggle={() => void togglePrivacy('findable')} />
-              <SwitchRow label="Share my wins" description="Your friends and your squad see your records, streaks, badges, targets and challenges."
-                on={privacy.shareWins} busy={busy === 'shareWins'} disabled={busy === 'shareWins'}
-                onToggle={() => void togglePrivacy('shareWins')} last />
-            </div>
-          </section>
-        )}
         {section === 'coaches' && (
           <>
             {/* What your trainer sees.
@@ -553,10 +525,10 @@ export default function Settings() {
           <>
             {coachOn !== null && (
               <section>
-                <SectionHead title={t('AI coach')} />
+                <SectionHead title={t('Assistant')} />
                 <SwitchRow
-                  label="Let the coach read my training"
-                  description="Your first name, goals, experience level, routines, weekly plan and how often you have trained lately. Never health answers, payments, contact details, chats or photos."
+                  label="Let the assistant read my training"
+                  description="Your first name, goals, how much you train, routines, weekly plan and how often you have trained lately. Never health answers, payments, contact details, chats or photos."
                   on={coachOn}
                   busy={busy === 'coach'}
                   disabled={busy === 'coach'}

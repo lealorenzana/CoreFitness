@@ -75,7 +75,7 @@ export default function Squad() {
 
   return (
     <Page>
-      <PageTitle back fallback="/member/challenges" title={squad ? squad.name : 'Team'}
+      <PageTitle back fallback="/member/rewards" title={squad ? squad.name : 'Team'}
         subtitle={squad ? 'Train together — hit the target, everyone gets the points' : 'Two to five friends, one weekly target'} />
 
       {squad ? (

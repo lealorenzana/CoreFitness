@@ -289,6 +289,10 @@ async (page) => {
   await page.waitForTimeout(1800);
   t = await text();
   out.push('You opens on the earned level, with both requirements: ' + (/Intermediate/.test(t) && /Training days 40 \/ 60/.test(t) && /Consistent weeks 9 \/ 12/.test(t) ? 'yes' : 'NO'));
+  // The shelf is You's Badges & records tab since the simplify (2026-10-28).
+  await go('/member/membership?tab=badges');
+  await page.waitForTimeout(1800);
+  t = await text();
   out.push('…the badges as medals, newest shining: ' + ((await page.locator('[data-trophy-badges] .lv-medal').count()) === 2 && (await page.locator('[data-trophy-badges] .lv-medal--new').count()) === 1 ? 'yes' : 'NO'));
   out.push('…and the records: ' + (/Barbell Squat/.test(t) && /80 kg/.test(t) ? 'yes' : 'NO'));
   await page.screenshot({ path: 'shots/lively-you.png', fullPage: true });

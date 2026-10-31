@@ -291,7 +291,8 @@ async (page) => {
   await page.waitForTimeout(700);
   t = await text();
   const gone = ['Shop', 'Messages', 'Rooms', 'Squad', 'My bookings'].filter((l) => new RegExp('\\b' + l + '\\b').test(t));
-  const kept = ['Challenges', 'Season', 'Invite a friend', 'Progress photos', 'Renew', 'Browse free workouts'].filter((l) => !t.includes(l));
+  // More is ten rows since the simplify (2026-10-28); Challenges and Season live in Rewards.
+  const kept = ['Rewards', 'Invite a friend', 'Equipment', 'Settings'].filter((l) => !t.includes(l));
   out.push('More drops what is off: ' + (gone.length ? 'STILL SHOWN ' + gone.join(', ') : 'yes'));
   out.push('More keeps what is on: ' + (kept.length ? 'MISSING ' + kept.join(', ') : 'yes'));
   await page.screenshot({ path: 'shots/member-switches-more.png' });

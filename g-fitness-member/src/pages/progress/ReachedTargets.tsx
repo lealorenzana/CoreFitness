@@ -39,7 +39,7 @@ export default function ReachedTargets() {
 
   return (
     <Page>
-      <PageTitle back fallback="/member/progress?tab=goals" title="Targets reached" subtitle="Every target you have hit, newest first" />
+      <PageTitle back fallback="/member/targets" title="Targets reached" subtitle="Every target you have hit, newest first" />
       {error ? <p style={{ fontSize: 13, color: 'var(--color-secondary)' }}>{error}</p>
         : goals == null ? <SkeletonList />
         : reached.length === 0 ? <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>None reached yet.</p>

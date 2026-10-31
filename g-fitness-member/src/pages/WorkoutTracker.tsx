@@ -151,7 +151,7 @@ export default function WorkoutTracker() {
     setBusy(true);
     try {
       await completeSession(logId, null);
-      navigate('/member/progress?tab=overview');
+      navigate('/member/membership?tab=progress');
     } catch (err) {
       setError(errorMessage(err));
       setBusy(false);
