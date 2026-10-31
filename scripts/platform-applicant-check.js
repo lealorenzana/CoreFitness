@@ -82,7 +82,7 @@ async (page) => {
   const summary = (id) => {
     const d = DOCS[id] ?? [];
     const missing = id === 'a2' ? [] : KINDS.filter((k) => !d.some((x) => x.kind === k.kind && x.status === 'verified')).map((k) => k.label);
-    return { application_id: id, verified: 6 - missing.length, waiting: d.filter((x) => x.status === 'pending').length, rejected: d.filter((x) => x.status === 'rejected').length, missing };
+    return { application_id: id, verified: 6 - missing.length, waiting: d.filter((x) => x.status === 'pending').length, rejected: d.filter((x) => x.status === 'rejected' || x.status === 'requested').length, missing };
   };
 
 
@@ -133,6 +133,8 @@ async (page) => {
     platform_application_accounts: () => [{ application_id: 'a1', has_account: true }, { application_id: 'a4', has_account: true }],
     application_document_kinds: () => KINDS,
     application_documents_of: (b) => DOCS[b.p_application] ?? [],
+    // 0223: send back a pending one (rejected) or a verified one (requested).
+    request_document_again: (b) => { CALLS.push(['again', b]); for (const list of Object.values(DOCS)) for (const d of list) if (d.id === b.p_document) { d.status = d.status === 'verified' ? 'requested' : 'rejected'; d.reason = b.p_reason; } return null; },
     platform_review_document: (b) => { CALLS.push(['review', b]); for (const list of Object.values(DOCS)) for (const d of list) if (d.id === b.p_document) { d.status = b.p_ok ? 'verified' : 'rejected'; d.reason = b.p_reason; } return null; },
     platform_delete_applicant: (b) => { CALLS.push(['delete', b]); return null; },
   });
@@ -175,15 +177,25 @@ async (page) => {
   out.push('the six documents, each to open: ' + ((await page.locator('[data-review-documents] [data-doc]').count()) === 6
     && (await page.locator('[data-review-documents]').getByRole('button', { name: 'Open' }).count()) === 6 ? 'yes' : 'MISSING'));
   const idRow = page.locator('[data-review-documents] [data-doc="owner_id"]');
-  await idRow.getByRole('button', { name: 'Reject' }).click();
-  out.push('rejecting needs a reason: ' + (await idRow.getByRole('button', { name: 'Reject' }).isDisabled() ? 'yes' : 'NO'));
-  await idRow.getByLabel(/Why .* is rejected/).fill('The photo is blurred.');
-  await idRow.getByRole('button', { name: 'Reject' }).click();
+  await idRow.getByRole('button', { name: 'Send back' }).click();
+  out.push('sending back needs a reason: ' + (await idRow.getByRole('button', { name: 'Send back' }).isDisabled() ? 'yes' : 'NO'));
+  await idRow.getByLabel(/Why .* is sent back/).fill('The photo is blurred.');
+  await idRow.getByRole('button', { name: 'Send back' }).click();
   await page.waitForTimeout(800);
-  const rev = CALLS.find((c) => c[0] === 'review');
-  out.push('a rejection is saved with its reason: ' + (rev && rev[1].p_document === 'd4' && rev[1].p_ok === false && rev[1].p_reason === 'The photo is blurred.' ? 'yes' : 'MISSING ' + JSON.stringify(rev)));
+  const rev = CALLS.find((c) => c[0] === 'again');
+  out.push('a send-back is saved with its reason: ' + (rev && rev[1].p_document === 'd4' && rev[1].p_reason === 'The photo is blurred.' ? 'yes' : 'MISSING ' + JSON.stringify(rev)));
   const mail = CALLS.find((c) => c[0] === 'email');
-  out.push('…the applicant is emailed the verdict: ' + (mail && mail[1].kind === 'application_documents' && mail[1].to === 'ana@ironden.ph' && /blurred/.test(mail[1].body) ? 'yes' : 'MISSING ' + JSON.stringify(mail)));
+  out.push('…the applicant is emailed what to send again: ' + (mail && mail[1].kind === 'application_documents' && mail[1].to === 'ana@ironden.ph' && /blurred/.test(mail[1].body) ? 'yes' : 'MISSING ' + JSON.stringify(mail)));
+  // A verified one can be asked for again too (expired, unreadable, wrong).
+  const permitRow = page.locator('[data-review-documents] [data-doc="permit"]');
+  await permitRow.locator('[data-ask-again]').click();
+  await permitRow.getByLabel(/Why .* is sent back/).fill('This permit is last year\'s.');
+  await permitRow.getByRole('button', { name: 'Send back' }).click();
+  await page.waitForTimeout(800);
+  const again = CALLS.filter((c) => c[0] === 'again')[1];
+  const mail2 = CALLS.filter((c) => c[0] === 'email')[1];
+  out.push('a verified one can be asked for again: ' + (again && again[1].p_document === 'd0' ? 'yes' : 'MISSING ' + JSON.stringify(again)));
+  out.push('…one email names every document waiting, with each reason: ' + (mail2 && /blurred/.test(mail2[1].body) && /last year/.test(mail2[1].body) && /2 documents/.test(mail2[1].subject ?? '') ? 'yes' : 'MISSING ' + JSON.stringify(mail2)));
   let t = await text();
   out.push('…and the screen says plainly no mail went: ' + (/Not emailed — no mail provider is set up yet/.test(t) ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/platform-application-documents.png' });

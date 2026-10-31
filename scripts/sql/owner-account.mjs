@@ -55,7 +55,9 @@ const appBen = await one(`select id from gym_applications where status_token = '
 const fileAll = async (uid, appId) => {
   await as(uid);
   const ids = [];
-  for (const k of KINDS) ids.push((await one(`select add_application_document('${appId}', '${k}', '${appId}/${k}-1.jpg', '${k}.jpg', ${NEEDS_EXPIRY.has(k) ? `${TODAY} + 200` : 'null'}) id`)).id);
+  // Since 0223 a document is attached as a draft and the six are submitted together.
+  for (const k of KINDS) ids.push((await one(`select save_document_draft('${appId}', '${k}', '${appId}/${k}-1.jpg', '${k}.jpg', ${NEEDS_EXPIRY.has(k) ? `${TODAY} + 200` : 'null'}) id`)).id);
+  await db.exec(`select submit_documents('${appId}')`);
   await as(PA);
   for (const d of ids) await db.exec(`select platform_review_document('${d}', true)`);
 };
@@ -63,8 +65,12 @@ await owner();
 await db.exec(`update auth.users set email_confirmed_at = now() where id = '${BEN}'`);
 await fileAll(BEN, appBen.id);
 
-// Ana files hers while unconfirmed? Filing needs her application to be hers — the token tie does that.
+// Since 0223 attaching needs a confirmed email, so Ana confirms, files, and is "unconfirmed" again for the approval test.
+await owner();
+await db.exec(`update auth.users set email_confirmed_at = now() where id = '${ANA}'`);
 await fileAll(ANA, app.id);
+await owner();
+await db.exec(`update auth.users set email_confirmed_at = null where id = '${ANA}'`);
 
 await as(PA);
 const unconfirmed = await tryExec(`select create_gym('Iron Den', 'iron-den', '${app.id}')`);

@@ -7,7 +7,7 @@ import { supabase } from '../supabaseClient';
  */
 export interface ApplicationDocument {
   id: string; kind: string; label: string; path: string; file_name: string | null; expires_on: string | null;
-  status: 'pending' | 'verified' | 'rejected' | 'replaced'; reason: string | null; uploaded_at: string;
+  status: 'draft' | 'pending' | 'verified' | 'rejected' | 'requested' | 'replaced'; reason: string | null; uploaded_at: string;
 }
 export interface DocumentKind { kind: string; label: string; needs_expiry: boolean; sort_order: number }
 export interface MyApplication {

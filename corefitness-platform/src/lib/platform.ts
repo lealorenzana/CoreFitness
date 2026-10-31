@@ -741,7 +741,7 @@ export async function supportScreenshot(path: string): Promise<string | null> {
 export interface DocKind { kind: string; label: string; needs_expiry: boolean; sort_order: number }
 export interface AppDocument {
   id: string; kind: string; label: string; path: string; file_name: string | null; expires_on: string | null;
-  status: 'pending' | 'verified' | 'rejected' | 'replaced'; reason: string | null; uploaded_at: string; reviewed_at: string | null;
+  status: 'draft' | 'pending' | 'verified' | 'rejected' | 'requested' | 'replaced'; reason: string | null; uploaded_at: string; reviewed_at: string | null;
 }
 export interface DocSummary { application_id: string; verified: number; waiting: number; rejected: number; missing: string[] }
 
@@ -750,6 +750,9 @@ export const documentKinds = async () =>
 export const applicationDocuments = (id: string) => call<AppDocument[]>('application_documents_of', { p_application: id });
 export const reviewDocument = (id: string, ok: boolean, reason: string | null) =>
   call<void>('platform_review_document', { p_document: id, p_ok: ok, p_reason: reason });
+/** Send a document back — one being checked, or one already verified (0223). */
+export const requestDocumentAgain = (id: string, reason: string) =>
+  call<void>('request_document_again', { p_document: id, p_reason: reason });
 /** Per application: verified/waiting/rejected and what is still missing. Empty before 0187. */
 export async function documentSummaries(): Promise<Map<string, DocSummary>> {
   try { return new Map((await call<DocSummary[]>('platform_application_documents_summary')).map((r) => [r.application_id, r])); }

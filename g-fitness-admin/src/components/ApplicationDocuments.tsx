@@ -10,6 +10,8 @@ const STATE = {
   pending: { text: 'Sent — Core Fitness is checking it', icon: Clock, color: MUTED },
   verified: { text: 'Verified', icon: CheckCircle2, color: 'var(--color-primary-300, var(--color-primary))' },
   rejected: { text: 'Not accepted', icon: XCircle, color: 'var(--color-secondary)' },
+  requested: { text: 'Core Fitness asks for it again', icon: XCircle, color: 'var(--color-secondary)' },
+  draft: { text: 'Attached — not sent yet', icon: Clock, color: MUTED },
 } as const;
 
 /**
@@ -43,7 +45,7 @@ function Row({ applicationId, kind, doc, onChanged, renewing }: {
   const [expires, setExpires] = useState('');
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
-  const canSend = !doc || doc.status === 'rejected' || open;
+  const canSend = !doc || doc.status === 'rejected' || doc.status === 'requested' || open;
   const s = doc && doc.status !== 'replaced' ? STATE[doc.status] : null;
 
   const send = async () => {
@@ -63,7 +65,7 @@ function Row({ applicationId, kind, doc, onChanged, renewing }: {
 
   return (
     <li className="rounded-xl p-3" data-doc={kind.kind}
-      style={{ background: 'var(--color-surface)', border: `1px solid ${doc?.status === 'rejected' ? 'var(--color-secondary)' : 'var(--color-border)'}` }}>
+      style={{ background: 'var(--color-surface)', border: `1px solid ${doc?.status === 'rejected' || doc?.status === 'requested' ? 'var(--color-secondary)' : 'var(--color-border)'}` }}>
       <div className="flex items-center gap-2 flex-wrap">
         <FileText size={15} style={{ color: MUTED }} />
         <span className="text-sm font-semibold text-white">{kind.label}</span>
@@ -79,7 +81,7 @@ function Row({ applicationId, kind, doc, onChanged, renewing }: {
           {doc.expires_on && <> · expires {day(doc.expires_on)}</>}
         </p>
       )}
-      {doc?.status === 'rejected' && doc.reason && <p className="text-xs mt-1" style={{ color: 'var(--color-secondary)' }}>{doc.reason} Send a new one.</p>}
+      {(doc?.status === 'rejected' || doc?.status === 'requested') && doc.reason && <p className="text-xs mt-1" style={{ color: 'var(--color-secondary)' }}>{doc.reason} Send a new one.</p>}
       {canSend ? (
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" aria-label={`File for ${kind.label}`}

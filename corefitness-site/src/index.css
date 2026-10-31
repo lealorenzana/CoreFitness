@@ -887,6 +887,10 @@ footer .links { display: flex; gap: 20px; }
 .doc-state { font-size: 12.5px; color: var(--text-3); }
 .doc.is-verified .doc-state { color: var(--violet-text); }
 .doc.is-rejected .doc-state { color: var(--amber-text); }
+.doc.is-requested .doc-state, .doc.is-missing .doc-state { color: var(--amber-text); }
+.doc.is-draft .doc-state { color: var(--violet-text); }
+.docs-submit { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 16px; }
+.docs-submit .cta { margin-top: 0; }
 .doc-meta { margin: 6px 0 0; font-size: 13px; color: var(--text-3); }
 .doc-form { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 10px; }
 .doc-form input[type=file] { flex: 1 1 220px; max-width: 100%; height: auto; min-height: 0; padding: 6px 0; border: 0; background: none; box-shadow: none; font-size: 13px; color: var(--text-2); }

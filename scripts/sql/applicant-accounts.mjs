@@ -78,14 +78,16 @@ check('a confirmed one finds the old application and keeps it', foundOld === 1
 // ---- documents -----------------------------------------------------------------------------------
 await as(ANA);
 const file = (k) => `${app.id}/${k}-1.jpg`;
+// Since 0223 each document is attached as a draft and the six go together (Submit documents).
 check('a file outside the application\'s folder is refused',
-  !!(await tryExec(`select add_application_document('${app.id}', 'permit', 'elsewhere/permit.jpg', 'p.jpg', ${TODAY} + 100)`)));
-check('a permit with no expiry date is refused', !!(await tryExec(`select add_application_document('${app.id}', 'permit', '${file('permit')}')`)));
-check('an expired one is refused', !!(await tryExec(`select add_application_document('${app.id}', 'permit', '${file('permit')}', 'p.jpg', ${TODAY} - 1)`)));
+  !!(await tryExec(`select save_document_draft('${app.id}', 'permit', 'elsewhere/permit.jpg', 'p.jpg', ${TODAY} + 100)`)));
+check('a permit with no expiry date is refused', !!(await tryExec(`select save_document_draft('${app.id}', 'permit', '${file('permit')}')`)));
+check('an expired one is refused', !!(await tryExec(`select save_document_draft('${app.id}', 'permit', '${file('permit')}', 'p.jpg', ${TODAY} - 1)`)));
 const docs = {};
 for (const k of KINDS) {
-  docs[k] = (await one(`select add_application_document('${app.id}', '${k}', '${file(k)}', '${k}.jpg', ${NEEDS_EXPIRY.has(k) ? `${TODAY} + 200` : 'null'}) id`)).id;
+  docs[k] = (await one(`select save_document_draft('${app.id}', '${k}', '${file(k)}', '${k}.jpg', ${NEEDS_EXPIRY.has(k) ? `${TODAY} + 200` : 'null'}) id`)).id;
 }
+await db.exec(`select submit_documents('${app.id}')`);
 check('the applicant files all six', (await one(`select count(*)::int n from application_documents_of('${app.id}')`)).n === 6);
 check('the storage rule lets them upload into their folder only',
   (await one(`select may_file_for_application(application_of_path('${file('permit')}')) ok`)).ok === true);
@@ -107,7 +109,8 @@ check('approve still refused while one is rejected', !!(await tryExec(`select cr
 await as(ANA);
 mine = (await one(`select my_applications() a`)).a;
 check('the applicant sees why', mine[0].documents.some((d) => d.kind === 'owner_id' && d.status === 'rejected' && d.reason === 'The photo is blurred.'));
-const id2 = (await one(`select add_application_document('${app.id}', 'owner_id', '${app.id}/owner_id-2.jpg', 'id.jpg', ${TODAY} + 900) id`)).id;
+const id2 = (await one(`select save_document_draft('${app.id}', 'owner_id', '${app.id}/owner_id-2.jpg', 'id.jpg', ${TODAY} + 900) id`)).id;
+await db.exec(`select submit_documents('${app.id}')`);
 check('a new copy replaces the rejected one', (await one(`select status from application_documents_of('${app.id}') where id = '${docs.owner_id}'`)).status === 'replaced');
 await as(PA);
 await db.exec(`select platform_review_document('${id2}', true)`);

@@ -44,7 +44,12 @@ async (page) => {
     submit_gym_application: (b) => { CALLS.push(['submit', b]); return TOKEN; },
     application_document_kinds: () => KINDS,
     my_applications: () => [APPLICATION],
-    add_application_document: (b) => { CALLS.push(['add', b]); APPLICATION.documents.unshift({ id: 'd9', kind: b.p_kind, label: KINDS.find((k) => k.kind === b.p_kind).label, path: b.p_path, file_name: b.p_file_name, expires_on: b.p_expires_on, status: 'pending', reason: null, uploaded_at: iso(0), reviewed_at: null }); return 'd9'; },
+    // 0223: a file is attached as a draft, and Submit documents sends the drafts together.
+    save_document_draft: (b) => { CALLS.push(['add', b]);
+      APPLICATION.documents = APPLICATION.documents.filter((d) => !(d.kind === b.p_kind && d.status === 'draft'));
+      APPLICATION.documents.unshift({ id: 'd-' + b.p_kind, kind: b.p_kind, label: KINDS.find((k) => k.kind === b.p_kind).label, path: b.p_path, file_name: b.p_file_name, expires_on: b.p_expires_on, status: 'draft', reason: null, uploaded_at: iso(0), reviewed_at: null }); return 'd-' + b.p_kind; },
+    submit_documents: (b) => { CALLS.push(['submit_docs', b]); let n = 0;
+      APPLICATION.documents.forEach((d) => { if (d.status === 'draft') { d.status = 'pending'; n++; } else if (d.status === 'rejected') d.status = 'replaced'; }); return n; },
     my_application_reply: (b) => { CALLS.push(['reply', b]); APPLICATION.messages.push({ from_platform: false, body: b.p_body, created_at: iso(0) }); return null; },
     withdraw_my_application: (b) => { CALLS.push(['withdraw', b]); APPLICATION.status = 'withdrawn'; return null; },
   };
@@ -115,18 +120,18 @@ async (page) => {
   out.push('a verified one cannot be resent here: ' + ((await page.locator('[data-doc="permit"] input[type=file]').count()) === 0 ? 'yes' : 'STILL SHOWN'));
   await page.screenshot({ path: 'shots/site-applicant-documents.png', fullPage: true });
 
-  // send the BIR 2303 (no expiry) and the ID (expiry)
+  // 0223: attach each document still to send (drafts), then Submit documents sends them together.
+  const submitBtn = page.locator('[data-submit-documents]');
+  out.push('Submit documents waits until every one is attached: ' + (await submitBtn.isDisabled() && /0 of 5 attached/.test(await page.locator('[data-docs-submit]').innerText()) ? 'yes' : 'MISSING'));
   await page.locator('[data-doc="bir_2303"] input[type=file]').setInputFiles({ name: '2303.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 test') });
-  await page.locator('[data-doc="bir_2303"]').getByRole('button', { name: 'Send' }).click();
   await page.waitForTimeout(800);
   const add = CALLS.find((c) => c[0] === 'add');
   const up = CALLS.find((c) => c[0] === 'upload');
-  out.push('a document uploads into the application\'s folder, then is filed: ' + (up && up[1].includes(`/applications/${APP}/bir_2303-`)
+  out.push('a document uploads into the application\'s folder, then is attached as a draft: ' + (up && up[1].includes(`/applications/${APP}/bir_2303-`)
     && add && add[1].p_application === APP && add[1].p_kind === 'bir_2303' && add[1].p_path.startsWith(`${APP}/bir_2303-`) && add[1].p_expires_on === null ? 'yes' : 'MISSING ' + JSON.stringify([up, add])));
-  out.push('…and shows as sent: ' + (/Sent — we are checking it/.test(await page.locator('[data-doc="bir_2303"]').innerText()) ? 'yes' : 'MISSING'));
+  out.push('…and shows as attached, not sent: ' + (/Attached — not sent yet/.test(await page.locator('[data-doc="bir_2303"]').innerText()) ? 'yes' : 'MISSING'));
   const idRow = page.locator('[data-doc="owner_id"]');
   await idRow.locator('input[type=file]').setInputFiles({ name: 'id.jpg', mimeType: 'image/jpeg', buffer: Buffer.from([0xff, 0xd8, 0xff]) });
-  await idRow.getByRole('button', { name: 'Send' }).click();
   await page.waitForTimeout(300);
   out.push('an ID needs its expiry date: ' + (/Give the date it expires/.test(await idRow.innerText()) ? 'yes' : 'MISSING'));
   await idRow.getByLabel('Month').selectOption('3');
@@ -134,10 +139,21 @@ async (page) => {
   const yearOpts = await idRow.getByLabel('Year').locator('option').allTextContents();
   await idRow.getByLabel('Year').selectOption(yearOpts[3]);
   out.push('the year list starts this year (no past years): ' + (Number(yearOpts[1]) === new Date().getFullYear() ? 'yes' : 'NO ' + yearOpts[1]));
-  await idRow.getByRole('button', { name: 'Send' }).click();
+  await idRow.locator('input[type=file]').setInputFiles({ name: 'id.jpg', mimeType: 'image/jpeg', buffer: Buffer.from([0xff, 0xd8, 0xff]) });
   await page.waitForTimeout(800);
   const add2 = CALLS.filter((c) => c[0] === 'add')[1];
-  out.push('…sent with it: ' + (add2 && add2[1].p_kind === 'owner_id' && add2[1].p_expires_on === `${yearOpts[3]}-03-15` ? 'yes' : 'MISSING ' + JSON.stringify(add2)));
+  out.push('…attached with it: ' + (add2 && add2[1].p_kind === 'owner_id' && add2[1].p_expires_on === `${yearOpts[3]}-03-15` ? 'yes' : 'MISSING ' + JSON.stringify(add2)));
+  for (const [k, name, expiry] of [['dti_sec', 'dti.pdf', false], ['front_photo', 'front.jpg', false], ['barangay', 'brgy.jpg', true]]) {
+    const row = page.locator(`[data-doc="${k}"]`);
+    if (expiry) { await row.getByLabel('Month').selectOption('6'); await row.getByLabel('Day').selectOption('1'); await row.getByLabel('Year').selectOption(yearOpts[2]); }
+    await row.locator('input[type=file]').setInputFiles({ name, mimeType: name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg', buffer: Buffer.from('x') });
+    await page.waitForTimeout(700);
+  }
+  out.push('all attached: Submit documents is ready: ' + (await submitBtn.isEnabled() ? 'yes' : 'MISSING ' + (await page.locator('[data-docs-submit]').innerText())));
+  await submitBtn.click();
+  await page.waitForTimeout(900);
+  out.push('one Submit sends them together: ' + (CALLS.some((c) => c[0] === 'submit_docs' && c[1].p_application === APP)
+    && /Sent 5 documents/.test(await page.locator('[data-documents]').innerText()) ? 'yes' : 'MISSING ' + JSON.stringify(CALLS.filter((c) => c[0] === 'submit_docs'))));
 
   await page.locator('.compose textarea').fill('Sent the 2303 and a clearer ID.');
   await page.locator('.compose').getByRole('button', { name: 'Send' }).click();
