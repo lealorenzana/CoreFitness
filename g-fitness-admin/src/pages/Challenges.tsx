@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Flag, Building2, UsersRound, Goal, Sparkles, Repeat, Eye, EyeOff, BarChart3, Lightbulb, Check, MoreHorizontal } from 'lucide-react';
 import { ChallengeStandingsModal } from '../components/ui/EngagementRules';
 import ImageField from '../components/ui/ImageField';
@@ -7,6 +7,7 @@ import Popover from '../components/ui/Popover';
 import SentenceDate from '../components/challenges/SentenceDate';
 import GymGoalTab from '../components/challenges/GymGoalTab';
 import SquadsTab from '../components/challenges/SquadsTab';
+import { useGymModules, moduleOn } from '../hooks/useGymModules';
 import GoalListTab from '../components/challenges/GoalListTab';
 import './attendance/att.css';
 import { showToast } from '../utils/toast';
@@ -68,6 +69,8 @@ export default function Challenges() {
   const [standing, setStanding] = useState<{ id: string; title: string; target: number } | null>(null);
   const [menu, setMenu] = useState<{ at: HTMLElement; c: Challenge } | null>(null);
   const [busy, setBusy] = useState(false);
+  // Squads are off by default since 0220: switched off, the card says so and the tab explains, never hides.
+  const squadsOn = moduleOn(useGymModules(), 'squads');
   const [preset, setPreset] = useState(PRESETS[0].name);
   const [form, setForm] = useState({ title: PRESETS[0].title, description: PRESETS[0].line, metric_key: 'training_days', target: '10',
     starts_on: today, ends_on: addDays(today, 29), reward_points: '250', imageUrl: '', repeatsWeekly: false });
@@ -174,7 +177,7 @@ export default function Challenges() {
   const ideas: [View, typeof Flag, string, React.ReactNode, string][] = [
     ['ch', Flag, 'Challenges', <>A target with dates that members <b style={{ color: '#fff' }}>join</b>. Each one chases it alone; finishing pays points once.</>, `${running.length} running · ${runningJoined} joined`],
     ['gg', Building2, 'Gym goal', <>One target for <b style={{ color: '#fff' }}>everyone together</b>. Every visit adds to it; when it is reached, everyone who helped gets the points.</>, summary.goal],
-    ['sq', UsersRound, 'Squads', <>Small groups of friends that <b style={{ color: '#fff' }}>members make</b> in the app, with a weekly target they hit together.</>, summary.squads],
+    ['sq', UsersRound, 'Squads', <>Small groups of friends that <b style={{ color: '#fff' }}>members make</b> in the app, with a weekly target they hit together.</>, squadsOn ? summary.squads : 'Off at your gym'],
     ['gp', Goal, 'Goals members pick', <>A <b style={{ color: '#fff' }}>personal goal</b> each member chooses from your list, like “train 12 days a month”. Private to them and their coach.</>, summary.list],
   ];
 
@@ -280,7 +283,17 @@ export default function Challenges() {
         </div>
       )}
       {view === 'gg' && <GymGoalTab onChanged={() => void loadSummary()} />}
-      {view === 'sq' && <SquadsTab />}
+      {view === 'sq' && (squadsOn ? <SquadsTab /> : (
+        <div className="a-card" data-squads-off style={{ flex: 1 }}>
+          <div className="a-ct"><h3><UsersRound size={16} />Squads are switched off</h3></div>
+          <p className="a-sub" style={{ maxWidth: 620 }}>
+            A squad is a group of up to five friends who make it themselves in the app and share one weekly target — training days
+            added up across the squad (10 unless they choose another). When the week's target is met, everyone in it earns your squad-week points.
+            Your members don't see Squads while it is off, and nothing here counts.
+          </p>
+          <div style={{ marginTop: 12 }}><Link to="/gym-app?tab=runs" className="a-btn violet">Switch it on in Your app</Link></div>
+        </div>
+      ))}
       {view === 'gp' && <GoalListTab onChanged={() => void loadSummary()} />}
 
       <Popover anchor={menu?.at ?? null} open={!!menu} onClose={() => setMenu(null)} width={210}>

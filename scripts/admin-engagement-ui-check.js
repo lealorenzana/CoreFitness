@@ -63,6 +63,7 @@ async (page) => {
       { id: 'n3', title: 'New class', message: 'Boxing', type: 'event', created_at: iso(-2), read: false, image_url: null }],
   };
   const CALLS = [];
+  let squadsOff = false;   // the gym's squads switch (0220 makes it off by default)
   await page.route(`**://${REF}.supabase.co/**`, async (route) => {
     const req = route.request();
     const after = req.url().replace(/^https?:\/\/[^/]+/, '');
@@ -79,6 +80,7 @@ async (page) => {
       CALLS.push(['rpc', fn, body]);
       if (fn === 'my_gym_context') return json([{ gym_id: 'gym-1', gym_name: 'Harbour Strength', slug: 'harbour', role: 'admin', status: 'active',
         lock_reason: null, short_name: null, logo_url: null, accent: 'violet', gym_count: 1, onboarded: true, onboarding_step: null, gym_state: 'open' }]);
+      if (fn === 'my_gym_app' && squadsOff) return json([{ modules: { engagement: true, squads: false } }]);
       if (fn === 'count_audience' || fn === 'broadcast_audience_count') return json(12);
       return json(fn === 'my_gym_modules' || fn === 'my_support_grant' ? [] : null);
     }
@@ -164,6 +166,15 @@ async (page) => {
     await page.waitForTimeout(800);
     await page.screenshot({ path: `shots/admin-challenges-${k}.png` });
   }
+  // Squads switched off at the gym: the card says so and the tab explains with the way to switch it on — never the live list.
+  squadsOff = true;
+  await page.goto('http://localhost:5174/challenges?tab=sq', { waitUntil: 'domcontentloaded' });
+  await page.locator('[data-squads-off]').waitFor({ timeout: 15000 }).catch(() => {});
+  out.push('squads off: the card says so, the tab explains and links to Your app: ' + ((await page.locator('[data-squads-off]').count()) === 1
+    && (await page.locator('[data-squads]').count()) === 0 && /Off at your gym/.test(await page.locator('[data-idea="sq"]').innerText())
+    && (await page.locator('[data-squads-off] a[href="/gym-app?tab=runs"]').count()) === 1 ? 'yes' : 'MISSING'));
+  await page.screenshot({ path: 'shots/admin-challenges-sq-off.png' });
+  squadsOff = false;
 
   // ---- Achievements --------------------------------------------------------------------------------
   await page.goto('http://localhost:5174/achievements', { waitUntil: 'domcontentloaded' });
