@@ -222,6 +222,25 @@ async (page) => {
   await page.keyboard.press('Escape');
   await page.waitForTimeout(300);
 
+  // 0228: on a paid plan, Send a way to pay also offers Pay online (PayMongo) — a message the site turns into a button.
+  const bulwarkRow = page.locator('.app-row').filter({ hasText: 'Bulwark Gym' });
+  await bulwarkRow.getByRole('button', { name: /Messages/ }).click();
+  await page.getByRole('button', { name: 'How to pay' }).click();
+  const pmOpt = page.locator('[data-pay-online-option]');
+  out.push('a paid plan can be sent Pay online (PayMongo): ' + ((await pmOpt.count()) === 1 ? 'yes' : 'MISSING'));
+  await pmOpt.click();
+  await page.getByRole('button', { name: 'Send it' }).click();
+  await page.waitForTimeout(900);
+  const pm = CALLS.filter((c) => c[0] === 'reply').pop();
+  out.push('…sent as the Pay for your plan message: ' + (pm && pm[1].p_id === 'a2' && /Pay for your plan/.test(pm[1].p_body) && /PayMongo/.test(pm[1].p_body) ? 'yes' : 'MISSING ' + JSON.stringify(pm)));
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  await page.locator('.app-row').filter({ hasText: 'Iron Den' }).getByRole('button', { name: /Messages/ }).click();
+  await page.getByRole('button', { name: 'How to pay' }).click();
+  out.push('…and not to one with nothing to pay: ' + ((await page.locator('[data-pay-online-option]').count()) === 0 ? 'yes' : 'STILL SHOWN'));
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+
   await page.locator('.filters').getByRole('button', { name: /Called off/ }).click();
   await page.waitForTimeout(300);
   const quit = page.locator('.app-row').filter({ hasText: 'Quit Gym' });

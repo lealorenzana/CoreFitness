@@ -103,7 +103,9 @@ async (page) => {
   // ---- confirmed: signed in, the application shows how they sign in ----
   CONFIRMED = true;
   await page.locator('form.account-form button[type=submit]').click();
-  await page.locator('[data-documents]').waitFor({ timeout: 8000 });
+  await page.locator('[data-app-tabs]').waitFor({ timeout: 8000 });
+  // Since 2026-11-01 sign-in methods are under the Account tab.
+  await page.locator('[data-tab="account"]').click();
   await page.locator('[data-signin-methods]').waitFor({ timeout: 8000 }).catch(() => {});
   const box = await page.locator('[data-signin-methods]').innerText().catch(() => '');
   say('signed in, the page says this account is their gym app login', /login to the gym app/.test(box), box.replace(/\s+/g, ' '));

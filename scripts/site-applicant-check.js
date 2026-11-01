@@ -112,6 +112,10 @@ async (page) => {
   await page.locator('#acc-email').fill('ana@ironden.ph');
   await page.locator('#acc-password').fill('correct-horse');
   await page.locator('form.account-form button[type=submit]').click();
+  await page.locator('[data-app-tabs]').waitFor({ timeout: 8000 });
+  out.push('the next step says to attach the documents: ' + (/Attach|Send the documents we asked for/.test(await page.locator('[data-next-step]').innerText()) ? 'yes' : 'MISSING'));
+  // Since 2026-11-01 the documents are their own tab, with a count that says what is owed.
+  await page.locator('[data-next-step]').getByRole('button', { name: 'Open Documents' }).click();
   await page.locator('[data-documents]').waitFor({ timeout: 8000 });
   let t = await page.locator('main').innerText();
   out.push('signed in, their application opens: ' + (/Iron Den/.test(t) && /signed in as ana@ironden\.ph/i.test(t) ? 'yes' : 'MISSING'));
@@ -155,12 +159,14 @@ async (page) => {
   out.push('one Submit sends them together: ' + (CALLS.some((c) => c[0] === 'submit_docs' && c[1].p_application === APP)
     && /Sent 5 documents/.test(await page.locator('[data-documents]').innerText()) ? 'yes' : 'MISSING ' + JSON.stringify(CALLS.filter((c) => c[0] === 'submit_docs'))));
 
+  await page.locator('[data-tab="messages"]').click();
   await page.locator('.compose textarea').fill('Sent the 2303 and a clearer ID.');
   await page.locator('.compose').getByRole('button', { name: 'Send' }).click();
   await page.waitForTimeout(600);
   const rep = CALLS.find((c) => c[0] === 'reply');
   out.push('writing goes through the account, not a link: ' + (rep && rep[1].p_application === APP && !('p_token' in rep[1]) ? 'yes' : 'MISSING ' + JSON.stringify(rep)));
 
+  await page.locator('[data-tab="account"]').click();
   await page.getByRole('button', { name: 'Call off this application' }).click();
   await page.getByRole('button', { name: 'Call it off' }).click();
   await page.waitForTimeout(800);

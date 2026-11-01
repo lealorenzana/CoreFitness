@@ -21,7 +21,10 @@ async (page) => {
   const APPLICATION = {
     id: APP, status_token: 'c'.repeat(64), gym_name: 'Iron Den', owner_name: 'Ana Cruz', email: 'ana@ironden.ph', status: 'pending', reason: null,
     created_at: iso(2), decided_at: null, plan: { key: 'starter', name: 'Starter', price_monthly: '1499', price_yearly: '14990', trial_days: null },
-    billing: 'monthly', gym_slug: null, paid_until: null, pay: null, contact: null, messages: [],
+    billing: 'monthly', gym_slug: null, paid_until: null, pay: null, contact: null,
+    messages: [{ from_platform: true, created_at: iso(0.1), sent_method: true, body: 'Here is our GCash.',
+                 pay: { kind: 'gcash', label: 'GCash · Core Fitness', account_name: 'Core Fitness', account_number: '0917 555 0101', qr_image: null, instructions: null } },
+               { from_platform: true, created_at: iso(0.05), body: 'Pay online: open Pay for your plan on your application page and press Pay online — GCash, Maya, card or online banking, through PayMongo.' }],
     documents: KINDS.map((k, i) => ({ id: 'd' + i, kind: k.kind, label: k.label, path: `${APP}/${k.kind}.jpg`, file_name: k.kind + '.jpg', expires_on: null, status: 'verified', reason: null, uploaded_at: iso(1), reviewed_at: iso(0.5) })),
     missing: [],
   };
@@ -32,6 +35,11 @@ async (page) => {
     application_document_kinds: () => KINDS,
     my_applications: () => [APPLICATION],
     platform_payment_options: () => METHODS,
+    platform_price_list: () => [
+      { key: 'trial', name: 'Free trial', blurb: null, price_monthly: '0', price_yearly: null, trial_days: 7, max_members: 50, includes: [], sort_order: 0 },
+      { key: 'starter', name: 'Starter', blurb: null, price_monthly: '1499', price_yearly: '14990', trial_days: null, max_members: 100, includes: [], sort_order: 1 },
+      { key: 'growth', name: 'Growth', blurb: null, price_monthly: '3499', price_yearly: '34990', trial_days: null, max_members: 400, includes: [], sort_order: 2 }],
+    change_application_plan: (b) => { CALLS.push(['plan', b]); return null; },
     application_payment_state: () => STATE,
     claim_application_payment: (b) => { CALLS.push(['claim', b]);
       STATE = { ...STATE, last: { id: 'p1', status: 'pending', method_label: 'GCash · Core Fitness', reference: b.p_reference, amount: 1499, reason: null, created_at: iso(0), decided_at: null } }; return 'p1'; },
@@ -80,6 +88,22 @@ async (page) => {
     && (await page.locator('[data-pay-online]').count()) === 0 ? 'yes' : 'MISSING ' + t));
   out.push('the page says a paid plan pays before being let in: ' + (/you pay here once your six documents are verified/.test(await page.locator('main').innerText()) ? 'yes' : 'MISSING'));
 
+  // 0228: change the plan from the Plan card, until a payment is sent.
+  await page.locator('[data-change-plan]').click();
+  await page.locator('#cp-plan option[value="growth"]').waitFor({ state: 'attached', timeout: 8000 });
+  await page.locator('#cp-plan').selectOption('growth');
+  await page.locator('[data-change-plan-form]').getByRole('button', { name: 'Save' }).click();
+  await page.waitForTimeout(800);
+  const pl = CALLS.find((c) => c[0] === 'plan');
+  out.push('the plan can be changed from the Plan card: ' + (pl && pl[1].p_application === APP && pl[1].p_plan === 'growth' && pl[1].p_billing === 'monthly' ? 'yes' : 'MISSING ' + JSON.stringify(pl)));
+  // The chat: "I've paid" is gone (Pay for your plan takes references), and the PayMongo message opens Pay for your plan.
+  await page.locator('[data-tab="messages"]').click();
+  out.push("the chat's I've paid is gone when Pay for your plan is there: " + ((await page.getByRole('button', { name: "I've paid" }).count()) === 0 ? 'yes' : 'STILL SHOWN'));
+  out.push("Core Fitness's Pay online message is a button: " + ((await page.locator('[data-open-pay-plan]').count()) === 1 ? 'yes' : 'MISSING'));
+  await page.locator('[data-open-pay-plan]').click();
+  await page.waitForTimeout(600);
+  out.push('…which opens Pay for your plan: ' + ((await page.locator('[data-panel="overview"] [data-pay-plan]').count()) === 1 ? 'yes' : 'MISSING'));
+
   STATE = { ...STATE, ready: true };
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.locator('[data-pay-state="open"]').waitFor({ timeout: 8000 });
@@ -112,13 +136,14 @@ async (page) => {
     && !('amount' in (open[1].details ?? {})) && open[1].returnUrl.startsWith('http://localhost:5176/') ? 'yes' : 'MISSING ' + JSON.stringify(open)));
   out.push('back from PayMongo, the payment is checked and shown paid: ' + (CALLS.some((c) => c[0] === 'paymongo' && c[1].reconcile === 'ck1')
     && /Paid — Starter, ₱1,499 for a month/.test(await pay.innerText()) ? 'yes' : 'MISSING ' + (await pay.innerText())));
+  out.push('paid: the plan is locked: ' + ((await page.locator('[data-plan-locked]').count()) === 1 && (await page.locator('[data-change-plan]').count()) === 0 ? 'yes' : 'MISSING'));
   out.push('…and the address is clean again: ' + (!/paid=/.test(page.url()) && page.url().endsWith('#account') ? 'yes' : 'NO ' + page.url()));
   await page.screenshot({ path: 'shots/site-pay-paid.png', fullPage: true });
 
   STATE = { due: false, plan_name: null, months: null, amount: null, ready: true, paid: false, last: null };
   APPLICATION.plan = { key: 'trial', name: 'Free trial', price_monthly: '0', price_yearly: null, trial_days: 7 };
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.locator('[data-documents]').waitFor({ timeout: 8000 });
+  await page.locator('[data-app-tabs]').waitFor({ timeout: 8000 });
   await page.waitForTimeout(800);
   out.push('the free trial pays nothing first: ' + ((await page.locator('[data-pay-plan]').count()) === 0
     && /The free trial needs no payment/.test(await page.locator('main').innerText()) ? 'yes' : 'MISSING'));

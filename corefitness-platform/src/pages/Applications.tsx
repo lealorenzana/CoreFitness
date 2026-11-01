@@ -253,7 +253,7 @@ export default function Applications() {
       <Modal open={dialog?.kind === 'talk'} onClose={() => { close(); void load(); }} size="md"
         title={dialog?.kind === 'talk' ? `Messages with ${dialog.app.gym_name}` : ''}
         subtitle={dialog?.kind === 'talk' ? `${dialog.app.owner_name} · ${dialog.app.email}` : undefined}>
-        {dialog?.kind === 'talk' && <ApplicationThread app={dialog.app} />}
+        {dialog?.kind === 'talk' && <ApplicationThread app={dialog.app} payDue={pays.has(dialog.app.id)} />}
       </Modal>
 
       <Modal open={dialog?.kind === 'docs'} onClose={() => { close(); void load(); }} size="md"

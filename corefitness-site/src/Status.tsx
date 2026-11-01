@@ -4,6 +4,7 @@ import Documents, { type AppDocument } from './Documents';
 import SignInMethods from './SignInMethods';
 import PayPlan from './PayPlan';
 import DeleteAccount from './DeleteAccount';
+import ChangePlan from './ChangePlan';
 
 const ADMIN_APP = 'https://corefitness-admin.vercel.app';
 const peso = (n: number) => '₱' + n.toLocaleString('en-PH');
@@ -26,6 +27,9 @@ interface Status {
   documents?: AppDocument[];
   missing?: string[];
 }
+
+/** Core Fitness's "Pay online" message (the platform's Send a way to pay → Pay online). */
+const PAY_ONLINE = /Pay for your plan/;
 
 const KIND: Record<string, string> = { gcash: 'GCash', maya: 'Maya', bank: 'Bank transfer', other: 'Payment' };
 
@@ -94,6 +98,10 @@ export default function StatusPage({ token, accountId, onSignOut, onDeleted }: {
   const [copied, setCopied] = useState(false);
   const [paid, setPaid] = useState<{ method: string; amount: string; reference: string } | null>(null);
   const end = useRef<HTMLDivElement>(null);
+  /** Which part of the page is open: one at a time, so it never becomes one long scroll. */
+  const [tab, setTab] = useState<'overview' | 'documents' | 'messages' | 'account'>('overview');
+  /** 0224/0228, signed in: whether a payment is due, and whether one was sent (which locks the plan). */
+  const [payState, setPayState] = useState<{ due: boolean; ready: boolean; paid: boolean; last: { status: string } | null } | null>(null);
 
   const load = useCallback(async () => {
     if (!supabase) { setS(null); return; }
@@ -101,6 +109,8 @@ export default function StatusPage({ token, accountId, onSignOut, onDeleted }: {
       const { data, error: e } = await supabase.rpc('my_applications');
       if (e) { setError(e.message); setS(null); return; }
       setS(((data ?? []) as Status[]).find((a) => a.id === accountId) ?? null);
+      const { data: ps } = await supabase.rpc('application_payment_state', { p_application: accountId });
+      setPayState((ps as typeof payState) ?? null);
       return;
     }
     const { data, error: e } = await supabase.rpc('application_status', { p_token: token });
@@ -164,6 +174,25 @@ export default function StatusPage({ token, accountId, onSignOut, onDeleted }: {
   const methodsToName = s.pay?.length ? s.pay : sentMethods;
   const step = s.status === 'approved' ? 3 : 2;
   const pill = s.status === 'approved' ? 'Let in' : s.status === 'rejected' ? 'Not this time' : s.status === 'withdrawn' ? 'Called off' : 'Being read';
+  const docs = s.documents ?? [];
+  const verifiedCount = 6 - (s.missing?.length ?? 6);
+  const toSend = docs.length === 0 || docs.some((d) => d.status === 'rejected' || d.status === 'requested') || (s.missing?.length ?? 0) > docs.filter((d) => d.status === 'pending' || d.status === 'verified').length;
+  const checking = !toSend && docs.some((d) => d.status === 'pending');
+  const tabs: { id: 'overview' | 'documents' | 'messages' | 'account'; label: string; badge?: string; warn?: boolean }[] = [
+    { id: 'overview', label: 'Overview' },
+    ...(s.id && s.documents ? [{ id: 'documents' as const, label: 'Documents', badge: `${verifiedCount}/6`, warn: s.status === 'pending' && toSend }] : []),
+    { id: 'messages', label: 'Messages', badge: s.messages.length ? String(s.messages.length) : undefined },
+    ...(accountId ? [{ id: 'account' as const, label: 'Account' }] : []),
+  ];
+  type Next = { title: string; text: string; good?: boolean; go?: { label: string; tab?: typeof tab; href?: string } };
+  const next: Next | null = s.status === 'approved'
+    ? { good: true, title: `${s.gym_name} is in`, text: 'Sign in to the gym app with this same account and set your gym up.', go: { label: 'Open the gym app', href: ADMIN_APP } }
+    : s.status !== 'pending' ? null
+    : !accountId ? { title: 'Sign in to send your documents', text: 'Your six business documents are sent from your account.', go: { label: 'Sign in', href: '#account' } }
+    : toSend ? { title: verifiedCount === 0 && docs.length === 0 ? 'Attach your six documents' : 'Send the documents we asked for', text: `${verifiedCount} of 6 verified. Attach each one, then press Submit — they go together.`, go: { label: 'Open Documents', tab: 'documents' } }
+    : checking ? { title: 'We are checking your documents', text: 'Nothing to do for now — we tell you here and by email. Ask us anything in Messages.', go: { label: 'Open Messages', tab: 'messages' } }
+    : payState?.due && !payState.paid ? { title: payState.last?.status === 'pending' ? 'We are checking your payment' : 'Pay for your plan', text: payState.last?.status === 'pending' ? 'We match it to the transfer and tell you here.' : 'All six documents are verified. Pay below — online, or by GCash, Maya or bank.' }
+    : { good: true, title: 'Ready for us', text: 'Everything is in. We let you in shortly — you will hear from us here and by email.' };
 
   return (
     <div className="status-page">
@@ -190,125 +219,159 @@ export default function StatusPage({ token, accountId, onSignOut, onDeleted }: {
 
       <div className="status-grid">
         <div className="status-main">
-          {s.status === 'pending' && (
-            <div className="status-callout">
-              <p>We read every application ourselves and usually answer within a day or two. Ask anything below — pricing, setup,
-                moving your members over. We answer here{s.email ? `, and by ${s.email}` : ''} or your phone if you asked us to.</p>
-              <p className="note">{price
-                ? `On ${s.plan?.name ?? 'a paid plan'}, you pay here once your six documents are verified — online, or by GCash, Maya or bank — and we let you in once it arrives.`
-                : 'The free trial needs no payment: we let you in once your six documents are verified.'}</p>
-            </div>
-          )}
-          {s.status === 'withdrawn' && (
-            <div className="status-callout">
-              <p>You called this application off. You can still write to us below, or apply again whenever you like.</p>
-            </div>
-          )}
-          {s.status === 'rejected' && (
-            <div className="status-callout">
-              <p>We cannot take {s.gym_name} on right now{s.reason ? `: ${s.reason}` : '.'} You can still write to us below.</p>
-            </div>
-          )}
-          {s.status === 'approved' && (
-            <div className="status-callout is-good">
-              <p><strong>{s.gym_name} is in.</strong> Sign in at <a href={ADMIN_APP}>the gym app</a> with {accountId
-                ? 'this same account — your email and password, or Google'
-                : 'the account you made when you applied — your email and password, or Google'},
-                then set your gym up.
-                {price ? ` ${s.plan?.name} has started — paid until ${s.paid_until ? day(s.paid_until) : 'the date on Your plan'}.` : s.plan?.trial_days ? ` Your ${s.plan.trial_days}-day free trial has started.` : ''}</p>
-              <a className="cta" href={ADMIN_APP}>Open the gym app</a>
-            </div>
-          )}
-
-          {s.status === 'approved' && s.pay && s.pay.length > 0 && (
-            <>
-              <h2 className="status-h">How to pay — from anywhere</h2>
-              <p className="status-sub">Send the amount to one of these, then sign in and open <strong>Your plan → Pay Core Fitness</strong> to send the
-                reference number and a screenshot. We check it and confirm.</p>
-              <div className="pay-grid">{s.pay.map((m) => <PayCard key={m.label + (m.account_number ?? '')} m={m} />)}</div>
-            </>
-          )}
-
-          {s.id && s.documents && (s.status === 'pending' || s.status === 'approved') && (
-            <Documents applicationId={s.id} documents={s.documents} onChanged={load} locked={s.status !== 'pending'} />
-          )}
-          {accountId && s.id && s.status === 'pending' && <PayPlan applicationId={s.id} onChanged={load} />}
-          {accountId && <SignInMethods />}
-          {accountId && onDeleted && <DeleteAccount onDeleted={onDeleted} />}
-          {!accountId && s.status === 'pending' && (
-            <div className="status-callout">
-              <p>Before we can let {s.gym_name} in, we check six business documents — your permit, DTI or SEC registration, BIR 2303,
-                barangay clearance, your ID and a photo of the gym's front. <a href="#account">Sign in</a> with the account you made when
-                you applied to send them.</p>
-            </div>
-          )}
-
-          <h2 className="status-h">Messages with Core Fitness</h2>
-          <div className="thread">
-            {s.messages.length === 0 && <p className="status-sub">No messages yet. Ask us anything — pricing, setup, moving your members over.</p>}
-            {s.messages.map((m, i) => (
-              <div key={i} className={`bubble${m.from_platform ? '' : ' mine'}${m.sent_method ? ' has-pay' : ''}`}>
-                <span className="who">{m.from_platform ? 'Core Fitness' : 'You'} · {when(m.created_at)}</span>
-                {m.body}
-                {m.pay && <PayCard m={m.pay} />}
-                {m.sent_method && !m.pay && <span className="pay-gone">This way to pay is no longer offered — ask us for the current one.</span>}
-              </div>
+          <nav className="app-tabs" role="tablist" aria-label="Your application" data-app-tabs>
+            {tabs.map((t) => (
+              <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} className={`app-tab${tab === t.id ? ' on' : ''}`}
+                onClick={() => setTab(t.id)} data-tab={t.id}>
+                {t.label}{t.badge ? <span className={`app-tab-badge${t.warn ? ' warn' : ''}`}>{t.badge}</span> : null}
+              </button>
             ))}
-            <div ref={end} />
-          </div>
+          </nav>
 
-          {paid ? (
-            <form className="paid-form" onSubmit={sendPaid}>
-              <strong>Tell us you paid</strong>
-              <div className="paid-fields">
-                <div className="field">
-                  <label htmlFor="paid-method">Paid by</label>
-                  <select id="paid-method" value={paid.method} onChange={(e) => setPaid({ ...paid, method: e.target.value })}>
-                    {methodsToName.map((m) => <option key={m.label}>{m.label}</option>)}
-                    <option>Other</option>
-                  </select>
+          {tab === 'overview' && (
+            <div className="app-panel" role="tabpanel" data-panel="overview">
+              {next && (
+                <div className={`next-card${next.good ? ' is-good' : ''}`} data-next-step>
+                  <span className="next-label">{next.good ? 'Where it stands' : 'Your next step'}</span>
+                  <strong className="next-title">{next.title}</strong>
+                  <p className="next-text">{next.text}</p>
+                  {next.go && <button type="button" className="cta" onClick={() => next.go!.tab ? setTab(next.go!.tab) : next.go!.href && window.location.assign(next.go!.href)}>{next.go.label}</button>}
                 </div>
-                <div className="field">
-                  <label htmlFor="paid-amount">Amount <span className="opt">(optional)</span></label>
-                  <input id="paid-amount" inputMode="decimal" placeholder={price ? String(price) : '999'} value={paid.amount}
-                    onChange={(e) => setPaid({ ...paid, amount: e.target.value })} />
+              )}
+              {s.status === 'pending' && (
+                <div className="status-callout">
+                  <p>We read every application ourselves and usually answer within a day or two. Ask anything in Messages — pricing, setup,
+                    moving your members over. We answer there{s.email ? `, and by ${s.email}` : ''} or your phone if you asked us to.</p>
+                  <p className="note">{price
+                    ? `On ${s.plan?.name ?? 'a paid plan'}, you pay here once your six documents are verified — online, or by GCash, Maya or bank — and we let you in once it arrives.`
+                    : 'The free trial needs no payment: we let you in once your six documents are verified.'}</p>
                 </div>
-                <div className="field full">
-                  <label htmlFor="paid-ref">Reference number</label>
-                  <input id="paid-ref" required minLength={4} maxLength={60} placeholder="From your GCash / bank receipt" value={paid.reference}
-                    onChange={(e) => setPaid({ ...paid, reference: e.target.value })} />
+              )}
+              {s.status === 'withdrawn' && (
+                <div className="status-callout"><p>You called this application off. You can still write to us in Messages, or apply again whenever you like.</p></div>
+              )}
+              {s.status === 'rejected' && (
+                <div className="status-callout"><p>We cannot take {s.gym_name} on right now{s.reason ? `: ${s.reason}` : '.'} You can still write to us in Messages.</p></div>
+              )}
+              {s.status === 'approved' && (
+                <div className="status-callout is-good">
+                  <p><strong>{s.gym_name} is in.</strong> Sign in at <a href={ADMIN_APP}>the gym app</a> with {accountId
+                    ? 'this same account — your email and password, or Google'
+                    : 'the account you made when you applied — your email and password, or Google'},
+                    then set your gym up.
+                    {price ? ` ${s.plan?.name} has started — paid until ${s.paid_until ? day(s.paid_until) : 'the date on Your plan'}.` : s.plan?.trial_days ? ` Your ${s.plan.trial_days}-day free trial has started.` : ''}</p>
+                  <a className="cta" href={ADMIN_APP}>Open the gym app</a>
                 </div>
+              )}
+              {s.status === 'approved' && s.pay && s.pay.length > 0 && (
+                <>
+                  <h2 className="status-h">How to pay — from anywhere</h2>
+                  <p className="status-sub">Send the amount to one of these, then sign in and open <strong>Your plan → Pay Core Fitness</strong> to send the
+                    reference number and a screenshot. We check it and confirm.</p>
+                  <div className="pay-grid">{s.pay.map((m) => <PayCard key={m.label + (m.account_number ?? '')} m={m} />)}</div>
+                </>
+              )}
+              {accountId && s.id && s.status === 'pending' && <PayPlan key={`${s.plan?.key}-${s.billing}`} applicationId={s.id} onChanged={load} />}
+              {!accountId && s.status === 'pending' && (
+                <div className="status-callout">
+                  <p>Before we can let {s.gym_name} in, we check six business documents — your permit, DTI or SEC registration, BIR 2303,
+                    barangay clearance, your ID and a photo of the gym's front. <a href="#account">Sign in</a> with the account you made when
+                    you applied to send them.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {tab === 'documents' && s.id && s.documents && (
+            <div className="app-panel" role="tabpanel" data-panel="documents">
+              <Documents applicationId={s.id} documents={s.documents} onChanged={load} locked={s.status !== 'pending'} />
+            </div>
+          )}
+
+          {tab === 'messages' && (
+            <div className="app-panel" role="tabpanel" data-panel="messages">
+              <div className="thread">
+                {s.messages.length === 0 && <p className="status-sub">No messages yet. Ask us anything — pricing, setup, moving your members over.</p>}
+                {s.messages.map((m, i) => (
+                  <div key={i} className={`bubble${m.from_platform ? '' : ' mine'}${m.sent_method ? ' has-pay' : ''}`}>
+                    <span className="who">{m.from_platform ? 'Core Fitness' : 'You'} · {when(m.created_at)}</span>
+                    {m.body}
+                    {m.pay && <PayCard m={m.pay} />}
+                    {m.sent_method && !m.pay && <span className="pay-gone">This way to pay is no longer offered — ask us for the current one.</span>}
+                    {/* Core Fitness's "Pay online" card (0228): opens Pay for your plan. */}
+                    {m.from_platform && PAY_ONLINE.test(m.body) && (
+                      <button type="button" className="cta pay-online-link" data-open-pay-plan
+                        onClick={() => { if (accountId) { setTab('overview'); window.setTimeout(() => document.querySelector('[data-pay-plan]')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60); } else window.location.assign('#account'); }}>
+                        Open Pay for your plan
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <div ref={end} />
               </div>
-              <p className="note">It goes to us as a message. We match it to the transfer and let you in — keep your receipt screenshot in case we ask.</p>
-              <div className="cta-row" style={{ marginTop: 6 }}>
-                <button className="cta" type="submit" disabled={busy || paid.reference.trim().length < 4}>{busy ? 'Sending…' : 'Send'}</button>
-                <button className="cta ghost" type="button" onClick={() => setPaid(null)}>Cancel</button>
-              </div>
-            </form>
-          ) : (
-            <form className="compose" onSubmit={send}>
-              <textarea value={body} maxLength={2000} rows={3} placeholder="Write to Core Fitness…" onChange={(e) => setBody(e.target.value)} />
-              <div className="cta-row" style={{ marginTop: 10 }}>
-                <button className="cta" type="submit" disabled={busy || !body.trim()}>{busy ? 'Sending…' : 'Send'}</button>
-                {s.status !== 'approved' && methodsToName.length > 0 && (
-                  <button className="cta ghost" type="button"
-                    onClick={() => setPaid({ method: methodsToName[methodsToName.length - 1].label, amount: '', reference: '' })}>I've paid</button>
-                )}
-              </div>
-            </form>
+
+              {paid ? (
+                <form className="paid-form" onSubmit={sendPaid}>
+                  <strong>Tell us you paid</strong>
+                  <div className="paid-fields">
+                    <div className="field">
+                      <label htmlFor="paid-method">Paid by</label>
+                      <select id="paid-method" value={paid.method} onChange={(e) => setPaid({ ...paid, method: e.target.value })}>
+                        {methodsToName.map((m) => <option key={m.label}>{m.label}</option>)}
+                        <option>Other</option>
+                      </select>
+                    </div>
+                    <div className="field">
+                      <label htmlFor="paid-amount">Amount <span className="opt">(optional)</span></label>
+                      <input id="paid-amount" inputMode="decimal" placeholder={price ? String(price) : '999'} value={paid.amount}
+                        onChange={(e) => setPaid({ ...paid, amount: e.target.value })} />
+                    </div>
+                    <div className="field full">
+                      <label htmlFor="paid-ref">Reference number</label>
+                      <input id="paid-ref" required minLength={4} maxLength={60} placeholder="From your GCash / bank receipt" value={paid.reference}
+                        onChange={(e) => setPaid({ ...paid, reference: e.target.value })} />
+                    </div>
+                  </div>
+                  <p className="note">It goes to us as a message. We match it to the transfer and let you in — keep your receipt screenshot in case we ask.</p>
+                  <div className="cta-row" style={{ marginTop: 6 }}>
+                    <button className="cta" type="submit" disabled={busy || paid.reference.trim().length < 4}>{busy ? 'Sending…' : 'Send'}</button>
+                    <button className="cta ghost" type="button" onClick={() => setPaid(null)}>Cancel</button>
+                  </div>
+                </form>
+              ) : (
+                <form className="compose" onSubmit={send}>
+                  <textarea value={body} maxLength={2000} rows={3} placeholder="Write to Core Fitness…" onChange={(e) => setBody(e.target.value)} />
+                  <div className="cta-row" style={{ marginTop: 10 }}>
+                    <button className="cta" type="submit" disabled={busy || !body.trim()}>{busy ? 'Sending…' : 'Send'}</button>
+                    {/* With Pay for your plan (0224) a reference goes there, where Core Fitness can confirm it — not into the chat. */}
+                    {s.status !== 'approved' && methodsToName.length > 0 && !payState?.due && (
+                      <button className="cta ghost" type="button"
+                        onClick={() => setPaid({ method: methodsToName[methodsToName.length - 1].label, amount: '', reference: '' })}>I've paid</button>
+                    )}
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
+
+          {tab === 'account' && accountId && (
+            <div className="app-panel" role="tabpanel" data-panel="account">
+              <SignInMethods />
+              {onDeleted && <DeleteAccount onDeleted={onDeleted} />}
+              {s.status === 'pending' && (
+                calling ? (
+                  <div className="status-callout" style={{ marginTop: 18 }}>
+                    <p>Call off {s.gym_name}'s application? We stop reviewing it. You can apply again later.</p>
+                    <div className="cta-row">
+                      <button className="cta" type="button" disabled={busy} onClick={() => void callOff()}>Call it off</button>
+                      <button className="cta ghost" type="button" onClick={() => setCalling(false)}>Keep it</button>
+                    </div>
+                  </div>
+                ) : <button type="button" className="link-btn" style={{ marginTop: 18 }} onClick={() => setCalling(true)}>Call off this application</button>
+              )}
+            </div>
           )}
           {error && <p className="note bad" style={{ marginTop: 10 }}>{error}</p>}
-          {accountId && s.status === 'pending' && (
-            calling ? (
-              <div className="status-callout" style={{ marginTop: 18 }}>
-                <p>Call off {s.gym_name}'s application? We stop reviewing it. You can apply again later.</p>
-                <div className="cta-row">
-                  <button className="cta" type="button" disabled={busy} onClick={() => void callOff()}>Call it off</button>
-                  <button className="cta ghost" type="button" onClick={() => setCalling(false)}>Keep it</button>
-                </div>
-              </div>
-            ) : <button type="button" className="link-btn" style={{ marginTop: 18 }} onClick={() => setCalling(true)}>Call off this application</button>
-          )}
         </div>
 
         <aside className="status-side">
@@ -323,6 +386,10 @@ export default function StatusPage({ token, accountId, onSignOut, onDeleted }: {
               </>
             ) : <p>Not chosen yet — ask us which fits.</p>}
             {s.paid_until && <p className="note">Paid until {day(s.paid_until)}</p>}
+            {accountId && s.id && s.status === 'pending' && (
+              <ChangePlan applicationId={s.id} current={s.plan?.key ?? null} billing={s.billing}
+                locked={!!payState && (payState.paid || payState.last?.status === 'pending')} onChanged={load} />
+            )}
           </div>
           {!accountId && <div className="card">
             <span className="side-label">This page</span>

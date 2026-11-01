@@ -1057,3 +1057,27 @@ html.anim .ticker b { transform: skewX(calc(var(--vel, 0) * -0.35deg)); transiti
 .pay-plan .cta-row { align-items: center; gap: 12px; flex-wrap: wrap; }
 .pay-plan .paid-form { margin-top: 14px; }
 .pay-plan-qr { display: block; width: 168px; max-width: 100%; margin: 8px 0; border-radius: 10px; background: #fff; padding: 6px; }
+
+/* 2026-11-01: the application page in tabs — one part open at a time */
+.app-tabs { display: flex; gap: 6px; flex-wrap: wrap; padding: 4px; margin-bottom: 18px; border-radius: 999px;
+  background: color-mix(in srgb, var(--violet) 8%, transparent); border: 1px solid var(--hairline); width: fit-content; max-width: 100%; }
+.app-tab { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 999px; font-weight: 600;
+  font-size: 14px; color: var(--text-2); background: transparent; border: 0; cursor: pointer; }
+.app-tab:hover { color: var(--text); }
+.app-tab.on { background: var(--violet); color: #fff; }
+.app-tab:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.app-tab-badge { font-size: 12px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: color-mix(in srgb, currentColor 16%, transparent); }
+.app-tab-badge.warn { background: var(--amber); color: #1a1205; }
+.app-panel { display: grid; gap: 16px; }
+.app-panel > .status-h:first-child, .app-panel .docs .status-h { margin-top: 0; }
+.next-card { padding: 20px 22px; border-radius: 18px; border: 1px solid color-mix(in srgb, var(--amber) 45%, var(--hairline));
+  background: color-mix(in srgb, var(--amber) 7%, var(--surface)); display: grid; gap: 6px; justify-items: start; }
+.next-card.is-good { border-color: color-mix(in srgb, var(--violet) 45%, var(--hairline)); background: color-mix(in srgb, var(--violet) 8%, var(--surface)); }
+.next-label { font-size: 12px; font-weight: 700; letter-spacing: .04em; color: var(--amber-text); }
+.next-card.is-good .next-label { color: var(--violet-text); }
+.next-title { font-size: 20px; }
+.next-text { margin: 0 0 6px; color: var(--text-2); }
+.pay-online-link { margin-top: 10px; }
+.change-plan { display: grid; gap: 8px; margin-top: 10px; }
+.change-plan select { width: 100%; }
+@media (max-width: 560px) { .app-tabs { border-radius: 16px; width: 100%; } .app-tab { flex: 1 1 auto; justify-content: center; padding: 9px 10px; } }

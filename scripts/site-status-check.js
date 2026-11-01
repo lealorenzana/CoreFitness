@@ -65,7 +65,11 @@ async (page) => {
   // ---- the status link is its own page -----------------------------------------------------------------
   await page.goto(`http://localhost:5176/#status/${TOKEN}`, { waitUntil: 'domcontentloaded' });
   await page.getByRole('heading', { name: 'Iron Den', level: 1 }).waitFor();
-  const t = await page.locator('main').innerText();
+  const t0 = await page.locator('main').innerText();
+  out.push('the page is in tabs, opening on Overview: ' + ((await page.locator('[data-app-tabs]').count()) === 1 && (await page.locator('[data-panel="overview"]').count()) === 1 ? 'yes' : 'MISSING'));
+  // Since 2026-11-01 the conversation is its own tab.
+  await page.locator('[data-tab="messages"]').click();
+  const t = t0 + '\n' + await page.locator('main').innerText();
   out.push('a page of its own, no marketing around it: ' + ((await page.locator('.hero').count()) === 0 && (await page.locator('#pricing').count()) === 0 ? 'yes' : 'STILL SHOWN'));
   out.push('opens at its top: ' + ((await page.evaluate(() => window.scrollY)) < 10 ? 'yes' : 'NO ' + (await page.evaluate(() => window.scrollY))));
   out.push('where it stands: ' + (/Being read/.test(t) && /Pay, then set up|Set up/.test(t) ? 'yes' : 'MISSING'));

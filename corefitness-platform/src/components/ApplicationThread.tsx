@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Copy, Send, Wallet, X } from 'lucide-react';
+import { Copy, CreditCard, Send, Wallet, X } from 'lucide-react';
 import {
   applicationThread, CHANGED, emailApplicant, explain, paymentMethods, replyApplication, sendApplicationPayment, statusLink,
   type Application, type ApplicationMessage, type PaymentMethod,
@@ -16,7 +16,15 @@ const stamp = (iso: string) => new Date(iso).toLocaleString('en-PH', { day: 'num
  * as a card — before they are let in, so a gym can pay first. The card is drawn
  * from Settings each time, so a corrected number corrects every conversation.
  */
-export default function ApplicationThread({ app }: { app: Application }) {
+/** The "Pay online" message (0228): the site shows it with a button to Pay for your plan. Keep "Pay for your plan" in it. */
+const PAY_ONLINE = 'Pay online: open Pay for your plan on your application page and press Pay online — GCash, Maya, card or online banking, through PayMongo.';
+const PAYMONGO = '__paymongo';
+
+export default function ApplicationThread({ app, payDue = false }: {
+  app: Application;
+  /** 0224: this application has a paid plan to pay before approval — PayMongo is offered too. */
+  payDue?: boolean;
+}) {
   const [msgs, setMsgs] = useState<ApplicationMessage[] | null>(null);
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
@@ -57,6 +65,14 @@ export default function ApplicationThread({ app }: { app: Application }) {
     if (!method) return;
     setBusy(true);
     try {
+      if (method === PAYMONGO) {
+        // Not a saved method: a message the site turns into a button to Pay for your plan.
+        const text = body.trim() ? `${body.trim()}\n\n${PAY_ONLINE}` : PAY_ONLINE;
+        await replyApplication(app.id, text);
+        setBody(''); setPaying(false); setMethod(null); await load();
+        setMailNote(await emailApplicant(app, 'application_message', 'Pay for your plan online', text));
+        return;
+      }
       await sendApplicationPayment(app.id, method, body.trim() || null);
       setBody(''); setPaying(false); setMethod(null); await load();
     } catch (err) { setError(err instanceof Error ? err.message : 'Could not send'); }
@@ -98,6 +114,15 @@ export default function ApplicationThread({ app }: { app: Application }) {
             <strong className="grow" style={{ fontSize: 13 }}>Send a way to pay</strong>
             <button type="button" className="btn ghost" style={{ padding: "4px 8px" }} aria-label="Close" onClick={() => { setPaying(false); setMethod(null); }}><X size={14} /></button>
           </div>
+          {payDue && (
+            <div className="pay-opts" role="radiogroup" aria-label="Pay online">
+              <button type="button" role="radio" aria-checked={method === PAYMONGO} data-pay-online-option
+                className={`pay-opt${method === PAYMONGO ? ' on' : ''}`} onClick={() => setMethod(PAYMONGO)}>
+                <CreditCard size={18} />
+                <span><b>Pay online (PayMongo)</b><small>Opens Pay for your plan on their page</small></span>
+              </button>
+            </div>
+          )}
           {methods === null ? <p className="meta">Loading…</p> : methods.length === 0 ? (
             <p className="meta">No ways to pay are switched on. Add GCash, Maya or a bank in Settings → How gyms pay you.</p>
           ) : (
