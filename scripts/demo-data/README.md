@@ -12,3 +12,5 @@ What is left here:
 
 The original seeds (parts 1 and 2) no longer load on today's schema. Part 1 lives on as a
 test fixture in `scripts/sql/fixtures/` (never paste it); part 2 was removed on 2026-10-18.
+
+**`lab-switch-members.sql`** (Part G, 2026-11-01) — paste once after migration 0229. Makes *Core Fitness Lab 2* (hidden, never billed, code LABTWO) owned by the Lab's owner login, and moves two of the Lab's made-up members through a real gym switch (one done, one waiting at the desk), so switching can be tried. Remove demo data takes the made-up members away; Lab 2 stays until deleted.
