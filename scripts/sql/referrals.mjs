@@ -83,8 +83,9 @@ check('signing up through the link records the referral', r1 && r1.referrer_id =
 check('signing up alone earns nothing', (await count(`select 1 from point_ledger where rule_key in ('referral','referral_welcome')`)) === 0);
 
 // ---- an existing account, in another gym, joins through the link ---------------------------------
+// Since 0227 a member of another gym moves by switching (with consent).
 await as(MB);
-await db.exec(`select request_to_join('${GYM_A}')`);
+await db.exec(`select request_gym_switch('${GYM_A}', 'link', null, true)`);
 check('an existing account claims the code after asking to join', !(await tryExec(`select claim_referral('${GYM_A}', '${code}')`)));
 check('and only once', !!(await tryExec(`select claim_referral('${GYM_A}', '${code}')`)));
 await as(PAYING);

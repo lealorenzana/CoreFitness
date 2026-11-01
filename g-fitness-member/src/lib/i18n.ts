@@ -53,7 +53,7 @@ const FIL: Record<string, string> = {
   "Invite a friend": "Mag-invite ng kaibigan",
   "Share your gym": "I-share ang gym mo",
   "Gyms": "Mga gym",
-  "Switch gym, or join another": "Lumipat ng gym, o sumali sa iba",
+  "Your gym, or switch to another": "Ang gym mo, o lumipat sa iba",
   "Profile": "Profile",
   "Your name, photo and details": "Pangalan, photo at details mo",
   "Settings": "Settings",

@@ -171,6 +171,8 @@ const GLOBAL = [
   'account_deletions', 'erasure_files',
   // 0226: the platform's suspension of a person, across every gym — definer functions only.
   'platform_suspensions',
+  // 0227: a member's move between two gyms, and the Storage files that follow them — definer functions only.
+  'gym_switches', 'storage_moves',
   // 0188: what a gym tells the platform — like support tickets, definer functions only, no policy.
   'platform_ratings', 'feature_requests', 'testimonials',
   // 0189: what a gym bought from the platform (AI coach top-ups) — definer functions only, no policy.
@@ -511,12 +513,14 @@ check('sign-up to a suspended gym is refused', !!(await fails(`update gyms set s
    '{"signup_source":"member_self_registration","gym_id":"${GYM_B}"}')`)));
 await db.exec(`update gyms set status = 'active' where id = '${GYM_B}'`);
 await as(P.memberA);
-await db.exec(`select request_to_join('${GYM_B}')`);
+// Since 0227 a member's second gym comes through a switch (switch-gym.mjs tests that flow). This suite needs
+// one person in two gyms to test isolation, so it asks the way request_gym_switch() does.
+await db.exec(`select set_config('corefitness.switching', 'on', false); select request_to_join('${GYM_B}'); select set_config('corefitness.switching', 'off', false);`);
 await asOwner();
 check('asking to join another gym is pending there',
   (await one(`select status from gym_roles where user_id = '${P.memberA}' and gym_id = '${GYM_B}'`))?.status === 'pending_approval');
 check("that gym's desk is told", (await one(`select count(*)::int as n from notifications
-  where gym_id = '${GYM_B}' and user_id = '${P.adminB}' and title = 'New member request'`)).n === 1);
+  where gym_id = '${GYM_B}' and user_id = '${P.adminB}' and title in ('New member request', 'Switching in from another gym')`)).n === 1);
 await as(P.adminB);
 await db.exec(`select set_account_status('${P.memberA}', 'active')`);
 await asOwner();

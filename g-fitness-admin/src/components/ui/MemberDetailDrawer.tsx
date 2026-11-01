@@ -10,6 +10,7 @@ import DatePicker from './DatePicker';
 import { todayKey } from '../../utils/dates';
 import Badge from './Badge';
 import { platformSuspendedIds } from '../../lib/api/platformSuspensions';
+import { gymSwitchMarks } from '../../lib/api/gymSwitches';
 import Button from './Button';
 import { removeAvatarFor } from '../../lib/api/avatars';
 import { listAccountStatusEvents, type AccountStatusEvent } from '../../lib/api/accountEvents';
@@ -100,9 +101,15 @@ export default function MemberDetailDrawer({ memberId, onClose, onChanged }: Pro
   const [tab, setTab] = useState<TabId>('overview');
   /** 0226: Core Fitness suspended this person — shown as a fact, never with the reason. */
   const [byPlatform, setByPlatform] = useState(false);
+  /** 0227: switching in from another gym, or switched out to one. */
+  const [switchMark, setSwitchMark] = useState<'in' | 'out' | null>(null);
   useEffect(() => {
     if (!memberId) return;
     void (async () => { setByPlatform((await platformSuspendedIds()).has(memberId)); })();
+    void (async () => {
+      const s = await gymSwitchMarks();
+      setSwitchMark(s.switchingIn.has(memberId) ? 'in' : s.switchedOut.has(memberId) ? 'out' : null);
+    })();
   }, [memberId]);
 
   const load = useCallback(async () => {
@@ -164,7 +171,7 @@ export default function MemberDetailDrawer({ memberId, onClose, onChanged }: Pro
             ) : error ? (
               <DrawerMessage onClose={onClose} text={error} />
             ) : detail ? (
-              <DrawerBody detail={detail} onClose={onClose} tab={tab} setTab={setTab} onRefresh={refresh} byPlatform={byPlatform} />
+              <DrawerBody detail={detail} onClose={onClose} tab={tab} setTab={setTab} onRefresh={refresh} byPlatform={byPlatform} switchMark={switchMark} />
             ) : null}
           </motion.aside>
         </>
@@ -191,8 +198,9 @@ function DrawerMessage({ text, onClose }: { text: string; onClose: () => void })
 /* ─────────────────────────── Body ─────────────────────────── */
 
 function DrawerBody({
-  detail, onClose, tab, setTab, onRefresh, byPlatform,
+  detail, onClose, tab, setTab, onRefresh, byPlatform, switchMark,
 }: {
+  switchMark: 'in' | 'out' | null;
   detail: MemberDetail;
   /** 0226: Core Fitness suspended this person. */
   byPlatform: boolean;
@@ -246,6 +254,8 @@ function DrawerBody({
                 ? <Badge variant={MEMBERSHIP_BADGE[current.status]}>{current.status}</Badge>
                 : <Badge variant="Inactive">no membership</Badge>}
               {profile.status !== 'active' && <Badge variant="Suspended">{profile.status.replace('_', ' ')}</Badge>}
+              {switchMark === 'in' && <span data-switching-in data-tip="Their training history comes with them once you accept their request."><Badge variant="Pending">Switching in from another gym</Badge></span>}
+              {switchMark === 'out' && <span data-switched-out data-tip="Their payments and visits stay here; their training went with them."><Badge variant="Inactive">Switched to another gym</Badge></span>}
               {byPlatform && <span data-platform-suspended-mark data-tip="Core Fitness suspended this account in every gym. Only Core Fitness can lift it."><Badge variant="Suspended">Suspended by Core Fitness</Badge></span>}
               {current?.membership_plans?.name && (
                 <span className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>

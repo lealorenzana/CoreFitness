@@ -51,7 +51,21 @@ Deno.serve(async (req) => {
       done.push(f.id);
     }
     if (done.length) await service.rpc("erasure_files_done", { p_ids: done });
-    return json({ erased: erased ?? 0, files: removed });
+
+    // 0227: a member who switched gyms — their progress photos move to the new gym's folder.
+    // Before 0227 the function is missing; that is not an error here.
+    let moved = 0;
+    const { data: moves } = await service.rpc("storage_moves_due");
+    const movedIds: string[] = [];
+    for (const m of (moves ?? []) as { id: string; bucket: string; from_path: string; to_path: string }[]) {
+      const { error } = await service.storage.from(m.bucket).move(m.from_path, m.to_path);
+      // A file already moved (or never uploaded) is done too; anything else is tried again next time.
+      if (error && !/not.?found|does not exist/i.test(error.message)) continue;
+      movedIds.push(m.id);
+      if (!error) moved++;
+    }
+    if (movedIds.length) await service.rpc("storage_moves_done", { p_ids: movedIds });
+    return json({ erased: erased ?? 0, files: removed, moved });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : "Unexpected error" }, 500);
   }

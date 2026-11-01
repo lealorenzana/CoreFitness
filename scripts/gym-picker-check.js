@@ -186,14 +186,15 @@ async (page) => {
   await page.screenshot({ path: 'shots/gym-03-locked.png' });
   state.lock = null;
 
-  // Join another gym: the list, and the ask.
+  // Another gym: the list, and (for a member) the switch.
   await go('/join');
   const joinText = await main();
   out.push('join list: ' + (/Seaside Fit/.test(joinText) ? 'other gyms shown' : 'MISSING gyms')
     + ' · already-joined marked: ' + (/already here/.test(joinText) ? 'yes' : 'NO'));
+  // A member of another gym switches rather than joining a second (0227).
   await page.getByText('Seaside Fit').click();
-  await page.waitForURL(/\/choose-gym/, { timeout: 20000 }).catch(() => {});
-  out.push('asked to join: ' + (CALLS.request_to_join ? CALLS.request_to_join.p_gym : 'MISSING'));
+  await page.waitForURL(/\/switch-gym/, { timeout: 20000 }).catch(() => {});
+  out.push('a member is sent to Switch gym, never a second join: ' + (page.url().endsWith('/switch-gym') && !CALLS.request_to_join ? 'yes' : 'MISSING ' + page.url()));
   await page.screenshot({ path: 'shots/gym-04-join.png' });
 
   // Relaunch: the gym they chose is remembered, so no picker on the way in.

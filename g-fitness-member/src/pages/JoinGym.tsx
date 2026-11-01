@@ -46,6 +46,8 @@ export default function JoinGym() {
   const [osm, setOsm] = useState<OsmGym[]>([]);
   const [suggested, setSuggested] = useState<Set<string>>(new Set());
   const [mine, setMine] = useState<Set<string>>(new Set());
+  /** 0227: already a member somewhere — joining another gym is a switch. */
+  const [memberAt, setMemberAt] = useState<string | null>(null);
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
   /** Signed in (Google, 0190) but in no gym: still a new member, who finishes signing up. */
   const [newAccount, setNewAccount] = useState(false);
@@ -76,7 +78,11 @@ export default function JoinGym() {
     void (async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setSignedIn(!!session);
-      if (session) setMine(new Set((await myGyms()).map((g) => g.gym_id)));
+      if (session) {
+        const list = await myGyms();
+        setMine(new Set(list.map((g) => g.gym_id)));
+        setMemberAt(list.find((g) => g.role === 'member' && (g.status === 'active' || g.status === 'pending_approval'))?.name ?? null);
+      }
       // Signed in with Google and in no gym yet (0190): joining is the sign-up form, finished without a password.
       if (session) setNewAccount(((await signupState())?.gyms ?? 1) === 0);
       await load(slug ?? '', !!slug);
@@ -157,6 +163,11 @@ export default function JoinGym() {
       // The slug rides along: a gym joined by link or code is not in the
       // public list Register would otherwise look it up in.
       navigate(`/register?gym=${encodeURIComponent(gym.id)}&join=${encodeURIComponent(gym.slug)}${ref ? `&ref=${ref}` : ''}`);
+      return;
+    }
+    // A member belongs to one gym at a time (0227): this is a switch, with its own screen.
+    if (memberAt) {
+      navigate('/switch-gym', { state: { gym: { id: gym.id, name: gym.name }, via: slug ? 'link' : 'list', ref } });
       return;
     }
     setBusy(gym.id);
@@ -250,7 +261,7 @@ export default function JoinGym() {
             const action = mine.has(gym.id) ? undefined
               : gym.join_policy === 'closed' && !ref ? 'Directions'
               : gym.join_policy === 'code' && !slug ? 'Have a code?'
-              : busy === gym.id ? 'Asking…' : 'Join';
+              : busy === gym.id ? 'Asking…' : memberAt ? 'Switch' : 'Join';
             const onClick = mine.has(gym.id) ? undefined
               : action === 'Directions' ? () => window.open(directionsUrl(gym), '_blank', 'noopener')
               : action === 'Have a code?' ? () => document.querySelector<HTMLInputElement>('input[aria-label="Join code"]')?.focus()

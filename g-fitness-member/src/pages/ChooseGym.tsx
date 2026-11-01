@@ -19,7 +19,7 @@ import { toast } from '../components/ui/Toast';
 /**
  * Which gym am I using? Shown when a person belongs to more than one — at
  * sign-in, and any time from More → Gyms. One gym never sees this screen on
- * the way in; they reach it only to join another gym.
+ * the way in; they reach it to switch gyms (a member, 0227) or join another (a coach).
  *
  * A gym you are waiting on, or one that suspended you, is listed and says so
  * rather than quietly vanishing: not seeing your gym at all reads as "the app
@@ -108,7 +108,10 @@ export default function ChooseGym() {
         </div>
       )}
 
-      <NocButton variant="action" onClick={() => navigate('/join')}>Join another gym</NocButton>
+      {/* A member belongs to one gym at a time (0227); a coach may still join another. */}
+      {gyms?.some((g) => g.role === 'member' && (g.status === 'active' || g.status === 'pending_approval'))
+        ? <NocButton variant="action" onClick={() => navigate('/switch-gym')}>Switch gym</NocButton>
+        : <NocButton variant="action" onClick={() => navigate('/join')}>{gyms?.length ? 'Join another gym' : 'Find your gym'}</NocButton>}
       <NocButton
         variant="ghost"
         icon={<SignOut size={18} />}

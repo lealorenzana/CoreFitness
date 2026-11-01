@@ -83,6 +83,8 @@ async (page) => {
   STATE = { ...STATE, ready: true };
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.locator('[data-pay-state="open"]').waitFor({ timeout: 8000 });
+  // The PayMongo button waits for the probe's answer; read the page once it is in.
+  await page.locator('[data-pay-online]').waitFor({ timeout: 8000 }).catch(() => {});
   t = await pay.innerText();
   out.push('all six verified: pay online, or send a reference: ' + ((await page.locator('[data-pay-online]').count()) === 1 && /Pay ₱1,499 online/.test(t)
     && (await page.locator('[data-pay-reference]').count()) === 1 && /0917 555 0101/.test(t) ? 'yes' : 'MISSING ' + t));

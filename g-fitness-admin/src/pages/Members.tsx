@@ -1,5 +1,6 @@
 import AddMemberWizard from '../components/members/AddMemberWizard';
 import { platformSuspendedIds } from '../lib/api/platformSuspensions';
+import { gymSwitchMarks } from '../lib/api/gymSwitches';
 import { setAccountStatus } from '../lib/api/accountEvents';
 import {
   declineMembershipRequest, listOpenMembershipRequests,
@@ -146,6 +147,9 @@ export default function Members() {
   /** 0226: people Core Fitness suspended — marked, never explained. */
   const [byPlatform, setByPlatform] = useState<Set<string>>(new Set());
   useEffect(() => { void (async () => { setByPlatform(await platformSuspendedIds()); })(); }, []);
+  /** 0227: members switching in from another gym, and those who left for one. */
+  const [switches, setSwitches] = useState<{ switchingIn: Set<string>; switchedOut: Set<string> }>({ switchingIn: new Set(), switchedOut: new Set() });
+  useEffect(() => { void (async () => { setSwitches(await gymSwitchMarks()); })(); }, []);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -716,6 +720,8 @@ export default function Members() {
                     <td><div className="a-who"><Av name={m.fullName} photo={m.photoUrl} />
                       <div className="min-w-0"><b className="block truncate">{m.fullName}</b>
                         {byPlatform.has(m.id) && <span className="a-sub" data-platform-suspended-mark style={{ color: 'var(--a-a300)' }}>Suspended by Core Fitness</span>}
+                        {switches.switchingIn.has(m.id) && <span className="a-sub" data-switching-in style={{ color: 'var(--a-p300)' }}>Switching in from another gym</span>}
+                        {switches.switchedOut.has(m.id) && <span className="a-sub" data-switched-out>Switched to another gym</span>}
                         <div className="a-sub truncate">{m.experienceLevel ? m.experienceLevel[0].toUpperCase() + m.experienceLevel.slice(1) : 'No level set'}{joined ? ` · joined ${joined}` : ''}</div></div></div></td>
                     <td>{m.phone ? formatPhoneNumber(m.phone) : <span className="a-sub">—</span>}</td>
                     <td>{m.planName}</td>

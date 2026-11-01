@@ -35,7 +35,7 @@ export default function Account() {
   const load = useCallback(async () => {
     if (!supabase) return;
     const { data: sus } = await supabase.rpc('my_platform_suspension');
-    setSuspension((sus as { reason: string; suspended_at: string } | null) ?? null);
+    setSuspension(sus && typeof (sus as { reason?: unknown }).reason === 'string' ? (sus as { reason: string; suspended_at: string }) : null);
     const { data: del } = await supabase.rpc('my_account_deletion');
     setEraseAfter((del as { pending: { erase_after: string } | null } | null)?.pending?.erase_after ?? null);
     const { data, error: e } = await supabase.rpc('my_applications');

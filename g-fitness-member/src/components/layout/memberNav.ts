@@ -237,7 +237,7 @@ export const EVERYTHING: { group: string; items: Destination[] }[] = [
       { label: 'Invite a friend', path: '/member/refer', module: 'referrals', icon: UserPlus, blurb: 'Share your gym' },
       // Which gym this app is showing. One gym: the screen is where you join
       // another. Several: it is how you switch (docs/TENANCY.md).
-      { label: 'Gyms', path: '/choose-gym', icon: Buildings, blurb: 'Switch gym, or join another' },
+      { label: 'Gyms', path: '/choose-gym', icon: Buildings, blurb: 'Your gym, or switch to another' },
       { label: 'Profile', path: '/member/profile', icon: UserCircle, blurb: 'Your name, photo and details' },
       { label: 'Settings', path: '/member/settings', icon: GearSix, blurb: 'Alerts, privacy, sign-in, password, email' },
       { label: 'Help', path: '/member/help', icon: Question, blurb: 'Tours of each screen, your gym, terms and privacy' },

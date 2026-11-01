@@ -127,6 +127,8 @@ async (page) => {
       accent: 'violet', accent_action: null, tagline: null }],
     my_gyms: () => [{ gym_id: 'gym-1', name: 'Core Fitness', slug: 'core-fitness', role: 'member', status: 'active' }],
     request_to_join: () => null,
+    request_gym_switch: () => 'desk',
+    my_gym_switch: () => ({ from_gym: { id: 'gym-1', name: 'Core Fitness' }, pending: null }),
     claim_referral: () => 'r1',
     request_renewal: (b) => { DB.renewal_requests.forEach((r) => { if (r.status === 'open') r.status = 'withdrawn'; });
       const plan = [PREMIUM, QUARTER].find((p) => p.id === b.p_plan);
@@ -242,11 +244,14 @@ async (page) => {
   out.push('invitations listed: ' + (/Ana R\. Paid — 100 points for you/.test(t) && /Joy M\. Joined — waiting for their first payment/.test(t) ? 'shown' : 'MISSING'));
   await page.screenshot({ path: 'shots/refer.png', fullPage: true });
 
-  // 2 - an existing account joins another gym through a friend's link.
+  // 2 - a member of another gym follows a friend's link: since 0227 that is a switch (with consent), and the code rides along.
   await go('/join/harbour?ref=abcdef');
   await page.getByRole('button', { name: /Harbour Strength/ }).first().click();
+  await page.waitForURL(/\/switch-gym/, { timeout: 8000 }).catch(() => {});
+  await page.locator('[data-switch-consent] input').check({ timeout: 8000 }).catch(() => {});
+  await page.getByRole('button', { name: /Switch to Harbour Strength/ }).click().catch(() => {});
   await page.waitForTimeout(1500);
-  out.push('join asked: ' + ('request_to_join' in CALLS ? 'yes' : 'MISSING'));
+  out.push('switch asked (never a second join): ' + ('request_gym_switch' in CALLS && !('request_to_join' in CALLS) ? 'yes' : 'MISSING ' + Object.keys(CALLS).join(',')));
   out.push('the code claimed after joining: ' + (CALLS.claim_referral?.p_code === 'ABCDEF' && CALLS.claim_referral?.p_gym === 'gym-2' ? 'ABCDEF' : 'MISSING ' + JSON.stringify(CALLS.claim_referral)));
 
   return out.join('\n');

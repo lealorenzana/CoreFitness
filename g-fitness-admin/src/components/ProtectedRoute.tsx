@@ -52,7 +52,8 @@ export default function ProtectedRoute({ children, adminOnly = false }: Protecte
       }
       // Suspended by Core Fitness (0226): nothing opens; they are shown why.
       const { data: sus } = await supabase.rpc('my_platform_suspension');
-      if (sus) {
+      // Only a real answer counts: a reason, as text. Anything else (null, an empty reply) is not a suspension.
+      if (sus && typeof (sus as { reason?: unknown }).reason === 'string') {
         if (active) { setSuspension(sus as { reason: string; suspended_at: string }); setStatus('suspended'); }
         return;
       }

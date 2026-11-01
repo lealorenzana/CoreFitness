@@ -130,6 +130,10 @@
       "app": "member"
     },
     {
+      "file": "member-switch-check.js",
+      "app": "member"
+    },
+    {
       "file": "member-checkin-sheet-check.js",
       "app": "member"
     },
@@ -447,6 +451,10 @@
     },
     {
       "file": "admin-delete-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "admin-switch-check.js",
       "app": "admin"
     },
     {

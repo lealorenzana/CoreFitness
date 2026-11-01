@@ -93,6 +93,7 @@ const GymPlan = lazyPage(() => import('./pages/GymPlan'));
 const MembershipHub = lazyPage(() => import('./pages/MembershipHub'));
 const ChooseGym = lazyPage(() => import('./pages/ChooseGym'));
 const JoinGym = lazyPage(() => import('./pages/JoinGym'));
+const SwitchGym = lazyPage(() => import('./pages/SwitchGym'));
 const AcceptInvite = lazyPage(() => import('./pages/AcceptInvite'));
 
 
@@ -149,7 +150,8 @@ function RoleProtectedRoute({
       }
       // Suspended by Core Fitness (0226): nothing opens; they are shown why.
       const { data: sus } = await supabase.rpc('my_platform_suspension');
-      if (sus) {
+      // Only a real answer counts: a reason, as text. Anything else (null, an empty reply) is not a suspension.
+      if (sus && typeof (sus as { reason?: unknown }).reason === 'string') {
         if (active) { setSuspension(sus as { reason: string; suspended_at: string }); setStatus('suspended'); }
         return;
       }
@@ -262,6 +264,7 @@ function App() {
         <Route path="/choose-gym" element={<StandalonePage><ChooseGym /></StandalonePage>} />
         <Route path="/join/map" element={<GymMap />} />
         <Route path="/join" element={<StandalonePage><JoinGym /></StandalonePage>} />
+        <Route path="/switch-gym" element={<StandalonePage><SwitchGym /></StandalonePage>} />
         <Route path="/join/:slug" element={<StandalonePage><JoinGym /></StandalonePage>} />
         {/* An invitation from a gym (0111). Public on purpose: it is usually
             opened before the person has an account, and `peek_invitation`
