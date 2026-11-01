@@ -57,9 +57,9 @@ begin
   select r.user_id into v_out from gym_roles r join profiles p on p.id = r.user_id
    where r.gym_id = v_lab and r.role = 'member' and r.status = 'active'
      and p.id::text like '5eed%' and p.email like '%@seed.corefitness-test.com'
-     and exists (select 1 from workout_logs w where w.member_id = p.id and w.gym_id = v_lab)
      and not exists (select 1 from gym_switches s where s.member = p.id)
-   order by p.id limit 1;
+   -- one with training to move if there is one (the Lab's made-up members may have none)
+   order by exists (select 1 from workout_logs w where w.member_id = p.id and w.gym_id = v_lab) desc, p.id limit 1;
   if v_out is not null and not exists (select 1 from gym_switches where to_gym = v_two and status = 'completed') then
     insert into gym_switches (member, from_gym, to_gym) values (v_out, v_lab, v_two);
     insert into member_profiles (gym_id, profile_id, qr_code) values (v_two, v_out, v_out::text) on conflict (gym_id, profile_id) do nothing;
