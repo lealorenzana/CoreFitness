@@ -90,12 +90,14 @@ async (page) => {
 
   // 0228: change the plan from the Plan card, until a payment is sent.
   await page.locator('[data-change-plan]').click();
-  await page.locator('#cp-plan option[value="growth"]').waitFor({ state: 'attached', timeout: 8000 });
-  await page.locator('#cp-plan').selectOption('growth');
+  await page.locator('[data-plan-opt="growth"]').waitFor({ timeout: 8000 });
+  await page.locator('[data-plan-opt="growth"]').click();
+  await page.locator('[data-billing="yearly"]').click();
+  await page.locator('aside').screenshot({ path: 'shots/site-change-plan.png' });
   await page.locator('[data-change-plan-form]').getByRole('button', { name: 'Save' }).click();
   await page.waitForTimeout(800);
   const pl = CALLS.find((c) => c[0] === 'plan');
-  out.push('the plan can be changed from the Plan card: ' + (pl && pl[1].p_application === APP && pl[1].p_plan === 'growth' && pl[1].p_billing === 'monthly' ? 'yes' : 'MISSING ' + JSON.stringify(pl)));
+  out.push('the plan can be changed from the Plan card: ' + (pl && pl[1].p_application === APP && pl[1].p_plan === 'growth' && pl[1].p_billing === 'yearly' ? 'yes' : 'MISSING ' + JSON.stringify(pl)));
   // The chat: "I've paid" is gone (Pay for your plan takes references), and the PayMongo message opens Pay for your plan.
   await page.locator('[data-tab="messages"]').click();
   out.push("the chat's I've paid is gone when Pay for your plan is there: " + ((await page.getByRole('button', { name: "I've paid" }).count()) === 0 ? 'yes' : 'STILL SHOWN'));

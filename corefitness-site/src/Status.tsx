@@ -300,9 +300,9 @@ export default function StatusPage({ token, accountId, onSignOut, onDeleted }: {
                     {m.sent_method && !m.pay && <span className="pay-gone">This way to pay is no longer offered — ask us for the current one.</span>}
                     {/* Core Fitness's "Pay online" card (0228): opens Pay for your plan. */}
                     {m.from_platform && PAY_ONLINE.test(m.body) && (
-                      <button type="button" className="cta pay-online-link" data-open-pay-plan
+                      <button type="button" className="cta cta-sm pay-online-link" data-open-pay-plan
                         onClick={() => { if (accountId) { setTab('overview'); window.setTimeout(() => document.querySelector('[data-pay-plan]')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60); } else window.location.assign('#account'); }}>
-                        Open Pay for your plan
+                        Go to payment
                       </button>
                     )}
                   </div>

@@ -3,14 +3,15 @@ import { supabase } from './supabase';
 import { toTier, type PublicPlanRow, type Tier } from './pricing';
 
 const peso = (n: number) => '₱' + n.toLocaleString('en-PH');
-/** What a tier costs, in words — never a number that is not there. */
-const describePrice = (t: Tier) => t.monthly == null ? 'Talk to us' : t.monthly === 0 ? 'Free' : `${peso(t.monthly)} a month${t.yearly ? ` or ${peso(t.yearly)} a year` : ''}`;
+/** What a tier costs a month, in words — never a number that is not there. */
+const monthly = (t: Tier) => t.monthly == null ? 'Talk to us' : t.monthly === 0 ? 'Free' : `${peso(t.monthly)} a month`;
 
 /**
- * Change plan (0228), in the application page's Plan card: any plan on the
- * price list, monthly or yearly where a yearly price exists. Open until a
- * payment is sent — then the database refuses and the card says why. The price
- * list is read, never typed in.
+ * Change plan (0228), in the application page's Plan card: each plan on the
+ * price list as a row to tap (its whole price shown, never cut off), then
+ * Monthly or Yearly where a yearly price exists. Open until a payment is sent —
+ * then the database refuses and the card says why. The price list is read,
+ * never typed in.
  */
 export default function ChangePlan({ applicationId, current, billing, locked, onChanged }: {
   applicationId: string; current: string | null; billing: 'monthly' | 'yearly' | null; locked: boolean;
@@ -35,11 +36,14 @@ export default function ChangePlan({ applicationId, current, billing, locked, on
   if (!open) return <button type="button" className="link-btn" onClick={() => setOpen(true)} data-change-plan>Change plan</button>;
 
   const chosen = plans?.find((p) => p.key === pick) ?? null;
+  const hasYearly = !!chosen?.yearly && chosen.yearly > 0;
+  const wantYearly = yearly && hasYearly;
+  const unchanged = pick === current && (wantYearly ? 'yearly' : 'monthly') === (billing ?? 'monthly');
   const save = async () => {
     if (!supabase || !pick) return;
     setBusy(true); setError(null);
     const { error: e } = await supabase.rpc('change_application_plan', {
-      p_application: applicationId, p_plan: pick, p_billing: yearly && chosen?.yearly ? 'yearly' : 'monthly',
+      p_application: applicationId, p_plan: pick, p_billing: wantYearly ? 'yearly' : 'monthly',
     });
     setBusy(false);
     if (e) { setError(e.message); return; }
@@ -51,21 +55,28 @@ export default function ChangePlan({ applicationId, current, billing, locked, on
     <div className="change-plan" data-change-plan-form>
       {plans === null ? <p className="note">Reading the price list…</p> : (
         <>
-          <label className="field" htmlFor="cp-plan">
-            <span>Plan</span>
-            <select id="cp-plan" value={pick} onChange={(e) => setPick(e.target.value)}>
-              {plans.map((p) => <option key={p.key} value={p.key}>{p.name} — {describePrice(p)}</option>)}
-            </select>
-          </label>
-          {chosen?.yearly != null && chosen.yearly > 0 && (
-            <label className="note" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <input type="checkbox" checked={yearly} onChange={(e) => setYearly(e.target.checked)} /> Pay yearly
-            </label>
+          <div className="cp-opts" role="radiogroup" aria-label="Plan">
+            {plans.map((p) => (
+              <button key={p.key} type="button" role="radio" aria-checked={pick === p.key} data-plan-opt={p.key}
+                className={`cp-opt${pick === p.key ? ' on' : ''}`} onClick={() => setPick(p.key)}>
+                <span className="cp-opt-name">{p.name}{p.key === current ? <span className="cp-opt-now">now</span> : null}</span>
+                <span className="cp-opt-price">{monthly(p)}</span>
+              </button>
+            ))}
+          </div>
+          {hasYearly && (
+            <div className="cp-seg" role="radiogroup" aria-label="How you pay">
+              <button type="button" role="radio" aria-checked={!wantYearly} className={`cp-seg-opt${!wantYearly ? ' on' : ''}`} onClick={() => setYearly(false)} data-billing="monthly">
+                Monthly<small>{peso(chosen!.monthly ?? 0)}</small>
+              </button>
+              <button type="button" role="radio" aria-checked={wantYearly} className={`cp-seg-opt${wantYearly ? ' on' : ''}`} onClick={() => setYearly(true)} data-billing="yearly">
+                Yearly<small>{peso(chosen!.yearly!)}</small>
+              </button>
+            </div>
           )}
-          <div className="cta-row" style={{ marginTop: 8 }}>
-            <button type="button" className="cta" disabled={busy || !pick || (pick === current && (yearly ? 'yearly' : 'monthly') === (billing ?? 'monthly'))}
-              onClick={() => void save()}>{busy ? 'Saving…' : 'Save'}</button>
-            <button type="button" className="cta ghost" onClick={() => setOpen(false)}>Cancel</button>
+          <div className="change-plan-actions">
+            <button type="button" className="cta cta-sm" disabled={busy || !pick || unchanged} onClick={() => void save()}>{busy ? 'Saving…' : 'Save'}</button>
+            <button type="button" className="cta ghost cta-sm" onClick={() => setOpen(false)}>Cancel</button>
           </div>
         </>
       )}

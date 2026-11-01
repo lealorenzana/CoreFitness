@@ -1077,7 +1077,25 @@ html.anim .ticker b { transform: skewX(calc(var(--vel, 0) * -0.35deg)); transiti
 .next-card.is-good .next-label { color: var(--violet-text); }
 .next-title { font-size: 20px; }
 .next-text { margin: 0 0 6px; color: var(--text-2); }
-.pay-online-link { margin-top: 10px; }
-.change-plan { display: grid; gap: 8px; margin-top: 10px; }
-.change-plan select { width: 100%; }
+/* A smaller call to action, for inside a message or a card */
+.cta.cta-sm { padding: 9px 16px; font-size: 14px; min-height: 0; box-shadow: none; }
+.pay-online-link { margin-top: 10px; justify-self: start; }
+.change-plan { display: grid; gap: 10px; margin-top: 12px; }
+.cp-opts { display: grid; gap: 6px; }
+.cp-opt { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; text-align: left;
+  padding: 10px 12px; border-radius: 12px; border: 1px solid var(--hairline); background: var(--surface-high);
+  color: var(--text); font: inherit; cursor: pointer; }
+.cp-opt:hover { border-color: var(--hairline-strong); }
+.cp-opt.on { border-color: var(--violet); background: color-mix(in srgb, var(--violet) 14%, var(--surface-high)); }
+.cp-opt:focus-visible, .cp-seg-opt:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.cp-opt-name { font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+.cp-opt-now { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; color: var(--violet-text);
+  background: color-mix(in srgb, var(--violet) 20%, transparent); }
+.cp-opt-price { font-size: 13px; color: var(--text-2); white-space: nowrap; }
+.cp-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 12px; border: 1px solid var(--hairline); background: var(--surface-high); }
+.cp-seg-opt { display: grid; gap: 1px; padding: 8px; border-radius: 9px; border: 0; background: transparent; color: var(--text-2);
+  font: inherit; font-weight: 600; cursor: pointer; }
+.cp-seg-opt small { font-size: 12px; font-weight: 500; }
+.cp-seg-opt.on { background: var(--violet); color: #fff; }
+.change-plan-actions { display: flex; gap: 8px; }
 @media (max-width: 560px) { .app-tabs { border-radius: 16px; width: 100%; } .app-tab { flex: 1 1 auto; justify-content: center; padding: 9px 10px; } }
