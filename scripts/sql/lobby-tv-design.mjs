@@ -38,9 +38,10 @@ await db.exec(`
   update gyms set plan = 'starter' where id = '${GYM}';`);
 
 check('the TV is a platform feature', !!(await one(`select 1 x from platform_features where key = 'lobby_tv'`)));
-check('it starts on Pro, Premium and the trial, not Starter or Growth',
+// 0230 put the lobby TV in Growth too (the owner's tiers); Starter stays without it.
+check('it starts on Growth, Pro, Premium and the trial, not Starter',
   (await one(`select string_agg(plan_key, ',' order by plan_key) s from platform_plan_features where feature_key = 'lobby_tv' and enabled`)).s
-    .split(',').filter((k) => ['pro', 'premium', 'trial', 'starter', 'growth'].includes(k)).join(',') === 'premium,pro,trial');
+    .split(',').filter((k) => ['pro', 'premium', 'trial', 'starter', 'growth'].includes(k)).join(',') === 'growth,premium,pro,trial');
 
 // On Starter: the owner reads "not sold", and cannot save.
 await as(AD);

@@ -148,6 +148,8 @@ export default function Register() {
   const deskOnly = rules?.policy === 'closed' && !refFromUrl() && !new URLSearchParams(window.location.search).get('invite');
   const [plans, setPlans] = useState<MembershipPlanRow[]>([]);
   const [gym, setGym] = useState<PublicGym | null>(null);
+  /** 0230: the gym's plan has no room for another member — said before anyone types. */
+  const [full, setFull] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   /** A uniqueness lookup is in flight — the step gate is async now. */
   const [checking, setChecking] = useState(false);
@@ -215,6 +217,7 @@ export default function Register() {
       if (cancelled) return;
       setGym(chosen);
       if (chosen) void gymJoinRules(chosen.id).then((r) => { if (!cancelled) setRules(r); });
+      if (chosen) void supabase.rpc('gym_is_full', { p_gym: chosen.id }).then(({ data }) => { if (!cancelled && data === true) setFull(true); });
       try {
         const rows = chosen ? await publicPlans(chosen.id) : await listPlans();
         if (!cancelled) setPlans(rows.filter((p) => p.is_active !== false));
@@ -244,6 +247,7 @@ export default function Register() {
    */
   const validate = async (which: number): Promise<boolean> => {
     if (which === 1) {
+      if (full) return fail(`${gym?.name ?? 'This gym'} is full on its current plan. Ask the front desk.`);
       if (deskOnly) return fail(`${gym?.name ?? 'This gym'} signs members up at the front desk. Ask a member for their invite link.`);
       if (!formData.firstName.trim()) return fail('Please enter your first name');
       if (!formData.lastName.trim()) return fail('Please enter your last name');
@@ -379,7 +383,9 @@ export default function Register() {
       setShowSuccess(true);
     } catch (err) {
       setIsLoading(false);
-      const message = err instanceof Error ? err.message : 'Registration failed';
+      const raw = err instanceof Error ? err.message : 'Registration failed';
+      // Supabase Auth hides a database refusal behind one sentence; the likeliest one now is a full gym (0230).
+      const message = /Database error saving new user/i.test(raw) ? `${gym?.name ?? 'This gym'} could not take your sign-up — it may be full on its current plan. Ask the front desk.` : raw;
       showErrorToast({ type: 'validation', message, details: '' });
       // Back to the step that owns the problem.
       if (/email/i.test(message)) go(2);
@@ -477,6 +483,14 @@ export default function Register() {
                     <p className="text-xs rounded-lg px-3 py-2" style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }} data-google-filled>
                       Filled in from your Google account ({google.email}). Check your name, then answer the rest.
                     </p>
+                  )}
+
+                  {full && (
+                    <div data-gym-full className="rounded-2xl px-4 py-3 text-xs leading-relaxed"
+                      style={{ background: 'var(--color-secondary-light, rgba(245,158,11,0.12))', color: 'var(--color-text)' }}>
+                      {gym?.name ?? 'This gym'} is full on its current plan, so it cannot take new members right now. Ask the front desk —
+                      they can make room by upgrading.
+                    </div>
                   )}
 
                   {deskOnly && (

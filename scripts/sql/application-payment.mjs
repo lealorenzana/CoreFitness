@@ -36,7 +36,7 @@ await db.exec(`
   insert into profiles (id, first_name, last_name, email, status, role) values ('${PA}', 'Pat', 'P', 'pa@pay-test.com', 'active', 'member') on conflict (id) do nothing;
   delete from gym_roles where user_id = '${PA}';
   insert into platform_admins (user_id) values ('${PA}') on conflict do nothing;
-  update platform_plans set price_monthly = 1499, price_yearly = 14990, is_active = true, is_public = true where key = 'starter';
+  update platform_plans set price_monthly = 1299, price_yearly = 12990, is_active = true, is_public = true where key = 'starter';
   insert into platform_payment_methods (id, kind, label, account_number) values ('${id('90')}', 'gcash', 'GCash · Core Fitness', '09170000000');`);
 
 const apply = async (name, email, plan, billing) => {
@@ -70,7 +70,7 @@ const fileAll = async (uid, appId, verify = true) => {
 await fileAll(ANA, A.app, false);
 await as(ANA);
 let st = (await one(`select application_payment_state('${A.app}') s`)).s;
-check('a paid plan is due, and says its price', st.due === true && Number(st.amount) === 1499 && st.months === 1 && st.ready === false, JSON.stringify(st));
+check('a paid plan is due, and says its price', st.due === true && Number(st.amount) === 1299 && st.months === 1 && st.ready === false, JSON.stringify(st));
 check('paying waits for the six documents', /once all six documents are verified/.test(await tryExec(`select claim_application_payment('${A.app}', '${id('90')}', 'REF-1001')`) ?? ''));
 await as(PA);
 check('approval waits too (documents first)', /Verify every document|documents/i.test(await tryExec(`select create_gym('Iron Den', 'iron-den', '${A.app}')`) ?? ''));
@@ -85,7 +85,7 @@ const p1 = (await one(`select claim_application_payment('${A.app}', '${id('90')}
 await owner();
 const row = await one(`select amount, months, plan_key, status from application_payments where id = '${p1}'`);
 await as(ANA);
-check('a GCash reference is recorded at the plan\'s price', Number(row.amount) === 1499 && row.status === 'pending' && row.plan_key === 'starter', JSON.stringify(row));
+check('a GCash reference is recorded at the plan\'s price', Number(row.amount) === 1299 && row.status === 'pending' && row.plan_key === 'starter', JSON.stringify(row));
 check('one payment at a time', /checking the payment/.test(await tryExec(`select claim_application_payment('${A.app}', '${id('90')}', 'REF-1002')`) ?? ''));
 check('…and PayMongo cannot open over it', /checking the payment/.test(await tryExec(`select paymongo_prepare_platform('application', '{"application":"${A.app}"}')`) ?? ''));
 
@@ -110,7 +110,7 @@ await owner();
 const g = await one(`select plan, paid_until, paid_until = (${TODAY} + interval '1 month')::date - 1 as month from gyms where id = '${gym}'`);
 const gp = await one(`select count(*)::int n, max(amount) a, max(reference) r from gym_payments where gym_id = '${gym}'`);
 check('paid and verified: let in on the plan they paid for', g.plan === 'starter' && g.month === true, JSON.stringify(g));
-check('…the payment is the gym\'s first, starting today', gp.n === 1 && Number(gp.a) === 1499 && gp.r === 'REF-1001', JSON.stringify(gp));
+check('…the payment is the gym\'s first, starting today', gp.n === 1 && Number(gp.a) === 1299 && gp.r === 'REF-1001', JSON.stringify(gp));
 await owner();
 check('…and the application payment points at it', !!(await one(`select gym_payment_id from application_payments where id = '${p2}'`)).gym_payment_id);
 
@@ -129,17 +129,17 @@ check('…and is let in on the trial', (await one(`select plan from gyms where i
 await fileAll(CARL, C.app);
 await as(CARL);
 const prep = (await one(`select paymongo_prepare_platform('application', '{"application":"${C.app}"}') p`)).p;
-check('PayMongo asks the yearly price from the database', Number(prep.amount) === 14990 && /12 months/.test(prep.description), JSON.stringify(prep));
+check('PayMongo asks the yearly price from the database', Number(prep.amount) === 12990 && /12 months/.test(prep.description), JSON.stringify(prep));
 const prep2 = (await one(`select paymongo_prepare_platform('application', '{"application":"${C.app}"}') p`)).p;
 await owner();
 await db.exec(`update paymongo_checkouts set checkout_session_id = 'cs_1' where id = '${prep.id}';
                update paymongo_checkouts set checkout_session_id = 'cs_2' where id = '${prep2.id}';`);
 check('a wrong amount is not accepted', (await one(`select paymongo_settle('cs_1', 'pay_x', 100, 'gcash') r`)).r === 'amount mismatch');
 await db.exec(`update paymongo_checkouts set status = 'pending' where id = '${prep.id}'`);
-const settled = (await one(`select paymongo_settle('cs_1', 'pay_1', 1499000, 'gcash') r`)).r;
+const settled = (await one(`select paymongo_settle('cs_1', 'pay_1', 1299000, 'gcash') r`)).r;
 const cp = await one(`select status, method, amount from application_payments where application_id = '${C.app}' and status = 'paid'`);
-check('the webhook records it paid', settled === 'settled' && cp?.method === 'paymongo' && Number(cp.amount) === 14990, settled + ' ' + JSON.stringify(cp));
-check('a second online payment is a duplicate, never applied twice', (await one(`select paymongo_settle('cs_2', 'pay_2', 1499000, 'gcash') r`)).r === 'settled'
+check('the webhook records it paid', settled === 'settled' && cp?.method === 'paymongo' && Number(cp.amount) === 12990, settled + ' ' + JSON.stringify(cp));
+check('a second online payment is a duplicate, never applied twice', (await one(`select paymongo_settle('cs_2', 'pay_2', 1299000, 'gcash') r`)).r === 'settled'
   && (await one(`select count(*)::int n from application_payments where application_id = '${C.app}' and status = 'duplicate'`)).n === 1);
 await as(PA);
 const cg = (await one(`select create_gym('Carl Gym', 'carl-gym', '${C.app}') id`)).id;

@@ -47,9 +47,9 @@ await as(DESK);
 check('the desk cannot pay Core Fitness', !!(await tryExec(`select paymongo_prepare_platform('gym_subscription', '{"months":1}')`)));
 await as(OWNER);
 const sub = (await one(`select paymongo_prepare_platform('gym_subscription', '{"months":1}') p`)).p;
-check('a month of Starter is the plan\'s price', Number(sub.amount) === 1499 && /Starter plan, 1 month/.test(sub.description), JSON.stringify(sub));
+check('a month of Starter is the plan\'s price', Number(sub.amount) === 1299 && /Starter plan, 1 month/.test(sub.description), JSON.stringify(sub));
 const yr = (await one(`select paymongo_prepare_platform('gym_subscription', '{"months":12}') p`)).p;
-check('twelve months is the yearly price', Number(yr.amount) === 14990);
+check('twelve months is the yearly price', Number(yr.amount) === 12990);
 const top = (await one(`select paymongo_prepare_platform('ai_topup', '{"packs":2}') p`)).p;
 check('two top-up packs at the platform\'s price', Number(top.amount) === 1398 && /1000 AI coach messages/.test(top.description));
 const col = (await one(`select paymongo_prepare_platform('custom_colours') p`)).p;
@@ -59,9 +59,9 @@ check('the checkouts table is closed', (await all(`select * from paymongo_checko
 
 // ---- the Edge Function's side ----
 await as(OWNER);
-check('a signed-in owner cannot settle a payment', !!(await tryExec(`select paymongo_settle('cs_x', 'pay_x', 149900)`)));
+check('a signed-in owner cannot settle a payment', !!(await tryExec(`select paymongo_settle('cs_x', 'pay_x', 129900)`)));
 await service();
-check('the function reads what to open, in centavos', (await one(`select paymongo_checkout_for('${sub.id}') c`)).c.amount_centavos === 149900);
+check('the function reads what to open, in centavos', (await one(`select paymongo_checkout_for('${sub.id}') c`)).c.amount_centavos === 129900);
 await db.exec(`select paymongo_attach('${sub.id}', 'cs_sub', 'https://checkout.paymongo.com/cs_sub');
   select paymongo_attach('${top.id}', 'cs_top', 'https://checkout.paymongo.com/cs_top');
   select paymongo_attach('${col.id}', 'cs_col', 'https://checkout.paymongo.com/cs_col');`);
@@ -70,12 +70,12 @@ await owner();
 await db.exec(`update paymongo_checkouts set status = 'pending' where id = '${sub.id}'`);
 const before = (await one(`select paid_until from gyms where id = '${GYM}'`)).paid_until;
 await service();
-check('the plan is settled', (await one(`select paymongo_settle('cs_sub', 'pay_sub', 149900, 'gcash') r`)).r === 'settled');
-check('…once: the same webhook again records nothing', (await one(`select paymongo_settle('cs_sub', 'pay_sub', 149900, 'gcash') r`)).r === 'already settled');
+check('the plan is settled', (await one(`select paymongo_settle('cs_sub', 'pay_sub', 129900, 'gcash') r`)).r === 'settled');
+check('…once: the same webhook again records nothing', (await one(`select paymongo_settle('cs_sub', 'pay_sub', 129900, 'gcash') r`)).r === 'already settled');
 await owner();
 const gp = await one(`select amount, covers_from, covers_until, method, reference from gym_payments where reference = 'pay_sub'`);
 const pu = (await one(`select paid_until from gyms where id = '${GYM}'`)).paid_until;
-check('…as a gym payment that extends paid_until by a month from where it was', gp && Number(gp.amount) === 1499 && gp.method === 'PayMongo · gcash'
+check('…as a gym payment that extends paid_until by a month from where it was', gp && Number(gp.amount) === 1299 && gp.method === 'PayMongo · gcash'
   && new Date(pu) > new Date(before) && Math.round((new Date(pu) - new Date(before)) / 86400000) >= 28, JSON.stringify([gp, before, pu]));
 check('…and the owner is told', (await one(`select count(*)::int n from notifications where user_id = '${OWNER}' and title = 'Payment received'`)).n >= 1);
 await service();

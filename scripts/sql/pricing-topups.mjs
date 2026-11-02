@@ -44,22 +44,23 @@ await db.exec(`
 await anon();
 const list = await all(`select * from platform_price_list()`);
 const by = (k) => list.find((p) => p.key === k);
-check('the website lists Starter, Growth and Pro at their launch prices', Number(by('starter')?.price_monthly) === 1499 && Number(by('growth')?.price_monthly) === 3499
-  && Number(by('pro')?.price_monthly) === 6999 && Number(by('pro')?.price_yearly) === 69990, JSON.stringify(list.map((p) => [p.key, p.price_monthly])));
+// 0230's prices (0189 launched at 1,499 / 3,499 / 6,999).
+check('the website lists Starter, Growth and Pro at their prices', Number(by('starter')?.price_monthly) === 1299 && Number(by('growth')?.price_monthly) === 2999
+  && Number(by('pro')?.price_monthly) === 5999 && Number(by('pro')?.price_yearly) === 59990, JSON.stringify(list.map((p) => [p.key, p.price_monthly])));
 check('…and no longer Standard or Premium', !by('standard') && !by('premium'));
 await owner();
 const plans = await all(`select key, max_members, max_staff, ai_monthly_cap, is_active from platform_plans where key in ('starter','growth','pro','standard','premium','trial') order by key`);
 const p = (k) => plans.find((x) => x.key === k);
-check('each tier carries its size and AI allowance', p('starter').max_members === 100 && p('starter').max_staff === 3 && p('starter').ai_monthly_cap === 300
-  && p('growth').max_members === 400 && p('growth').ai_monthly_cap === 1500 && p('pro').max_members === null && p('pro').ai_monthly_cap === 4000);
-check('Standard and Premium still work for the gyms on them', p('standard').is_active && p('premium').is_active);
+check('each tier carries its size and AI allowance', p('starter').max_members === 75 && p('starter').max_staff === 2 && p('starter').ai_monthly_cap === 300
+  && p('growth').max_members === 300 && p('growth').ai_monthly_cap === 1500 && p('pro').max_members === null && p('pro').ai_monthly_cap === 4000);
+// 0230 retires an old plan only when no gym is on it.
+check('an old plan stays for the gyms on it', (await one(`select bool_and(p.is_active or not exists (select 1 from gyms g where g.plan = p.key)) ok
+  from platform_plans p where key in ('standard', 'premium')`)).ok === true);
 check('the trial keeps 30 days and 300 AI messages', p('trial').ai_monthly_cap === 300);
-// 0209 made the lobby TV a Pro feature; every other switch is on in every tier.
-const off = (await one(`select count(*)::int n from platform_plan_features where plan_key in ('starter','growth','pro') and not enabled and feature_key <> 'lobby_tv'`)).n;
-const on = (await one(`select count(*)::int n from platform_plan_features where plan_key in ('starter','growth','pro') and enabled and feature_key <> 'lobby_tv'`)).n;
-const tv = (await one(`select string_agg(plan_key || ':' || enabled, ',' order by plan_key) s from platform_plan_features where plan_key in ('starter','growth','pro') and feature_key = 'lobby_tv'`)).s;
-check('every switch is on in every tier (the lobby TV only on Pro, 0209)', off === 0 && on === 3 * ((await one(`select count(*)::int n from platform_features`)).n - 1)
-  && tv === 'growth:false,pro:true,starter:false', `${off} off, ${on} on, tv ${tv}`);
+// 0230: plans differ by features — Pro unlocks everything; Growth all but the assistant, online payments
+// and analytics; Starter the essentials (member-limit.mjs checks each one).
+const lockedOn = async (k) => (await one(`select count(*)::int n from platform_plan_features where plan_key = '${k}' and not enabled`)).n;
+check('Pro unlocks everything, Growth holds three back, Starter more', (await lockedOn('pro')) === 0 && (await lockedOn('growth')) === 3 && (await lockedOn('starter')) > 3);
 
 // ---- the allowance and top-ups ----
 await db.exec(`update gyms set plan = 'pro' where id = '${GYM}';

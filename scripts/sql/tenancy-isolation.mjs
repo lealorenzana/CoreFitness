@@ -793,9 +793,9 @@ check('a gym the platform suspended is read-only for its own admin',
   !!(await fails(`insert into events (title, starts_at) values ('x', now())`)));
 await as(PLATFORM);
 await db.exec(`select set_gym_status('${GYM_B}', 'active', '')`);
-await db.exec(`select set_gym_plan('${GYM_B}', 'standard', (current_date + 30)::date)`);
+await db.exec(`select set_gym_plan('${GYM_B}', 'pro', (current_date + 30)::date)`);
 check('the plan and paid-until are recorded',
-  (await one(`select plan from platform_gyms() where id = '${GYM_B}'`)).plan === 'standard');
+  (await one(`select plan from platform_gyms() where id = '${GYM_B}'`)).plan === 'pro');
 check('every platform decision is logged, with the reason it was given',
   (await one(`select count(*)::int as n from platform_events_recent() where gym_id = '${GYM_B}'`)).n >= 3
   && (await one(`select count(*)::int as n from platform_events_recent()
@@ -865,9 +865,10 @@ check('the three plans gyms are already on exist as rows',
 check('no price is invented: only the trial and the three decided tiers carry a number',
   (await one("select string_agg(key, ',' order by key) as k from platform_plans where price_monthly is not null")).k === 'growth,pro,starter,trial'
   && Number((await one("select price_monthly from platform_plans where key = 'trial'")).price_monthly) === 0);
-// Since 0209 Lobby TV is sold by plan (on Pro, Premium and the trial only) — the one deliberate exception.
-check('every plan opens including everything, so pasting takes nothing away',
-  (await one("select count(*)::int as n from platform_plan_features where not enabled and feature_key <> 'lobby_tv'")).n === 0
+// Since 0230 plans differ by features (Starter and Growth hold some back); Pro and the trial still unlock everything,
+// and every plan still has a row for every feature, so nothing is missing by accident.
+check('Pro and the trial include everything, and every plan has a row per feature',
+  (await one("select count(*)::int as n from platform_plan_features where not enabled and plan_key in ('pro', 'trial')")).n === 0
   && (await one('select count(*)::int as n from platform_plan_features')).n
      === (await one('select ((select count(*) from platform_plans) * (select count(*) from platform_features))::int as n')).n);
 check('a gym cannot be put on a plan that does not exist',

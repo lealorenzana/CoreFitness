@@ -6,6 +6,7 @@ import Header from './Header';
 import TooltipLayer from '../ui/TooltipLayer';
 import ViewAll from '../ui/ViewAll';
 import SubscriptionBanner from '../SubscriptionBanner';
+import MemberLimitBanner from '../MemberLimitBanner';
 import AnnouncementBanner from '../AnnouncementBanner';
 import WhatsNew from '../WhatsNew';
 import GymTermsBanner from '../GymTermsBanner';
@@ -44,6 +45,8 @@ export default function Layout() {
             not be re-mounted by the route transition below. Renders nothing at
             all unless this gym's owner needs to know something. */}
         <SubscriptionBanner />
+        {/* The plan's member limit, from 90% (0230). */}
+        <MemberLimitBanner />
         {/* Core Fitness's announcements to gyms (0137). */}
         <AnnouncementBanner />
         {/* What changed in the app (0212): once, on the dashboard — the home screen. */}

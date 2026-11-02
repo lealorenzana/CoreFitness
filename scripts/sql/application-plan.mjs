@@ -26,7 +26,7 @@ const anon = () => db.exec(`reset role; select set_config('request.jwt.claim.sub
 const owner = () => db.exec(`reset role; select set_config('request.jwt.claim.sub', '', false);`);
 
 await owner();
-await db.exec(`update platform_plans set price_monthly = 1499, price_yearly = 14990, is_active = true, is_public = true where key = 'starter';
+await db.exec(`update platform_plans set price_monthly = 1299, price_yearly = 12990, is_active = true, is_public = true where key = 'starter';
   update platform_plans set is_public = false where key = 'premium';`);
 await anon();
 const tok = (await one(`select submit_gym_application('Iron Den', 'Ana Cruz', 'ana@ironden.ph', '09171234567', null, null, null, 'trial', 'monthly') t`)).t;
@@ -50,10 +50,10 @@ const a = await one(`select plan_key, billing from gym_applications where id = '
 check('the applicant changes their plan and billing', a.plan_key === 'starter' && a.billing === 'yearly', JSON.stringify(a));
 check('…and it is said in the conversation', (await one(`select count(*)::int n from application_messages where application_id = '${app}' and body like 'I changed my plan to Starter, billed yearly.'`)).n === 1);
 await as(ANA);
-check('Pay for your plan follows the new price', Number((await one(`select application_payment_state('${app}') s`)).s.amount) === 14990);
+check('Pay for your plan follows the new price', Number((await one(`select application_payment_state('${app}') s`)).s.amount) === 12990);
 await owner();
 await db.exec(`insert into application_payments (application_id, plan_key, months, amount, method, method_label, reference, status)
-  values ('${app}', 'starter', 12, 14990, 'gcash', 'GCash', 'REF-PLAN-1', 'pending')`);
+  values ('${app}', 'starter', 12, 12990, 'gcash', 'GCash', 'REF-PLAN-1', 'pending')`);
 await as(ANA);
 check('once a payment is sent, the plan is locked', /plan is fixed now/.test(await tryExec(`select change_application_plan('${app}', 'trial', 'monthly')`) ?? ''));
 
