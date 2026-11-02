@@ -209,7 +209,7 @@ export default function Money() {
               <span className="name">Billing rules</span>
               <span className="meta">Read-only {settings.grace_days} day{settings.grace_days === 1 ? '' : 's'} after the due date · owners reminded {settings.reminder_days.join(', ')} day{settings.reminder_days.length === 1 && settings.reminder_days[0] === 1 ? '' : 's'} before · receipts from {settings.business_name}</span>
             </span>
-            <Link to="/settings" className="btn ghost" style={{ textDecoration: 'none' }}>Change in Settings</Link>
+            <Link to="/settings?part=billing" className="btn ghost" style={{ textDecoration: 'none' }}>Change in Settings</Link>
           </div>
         </div>
       )}

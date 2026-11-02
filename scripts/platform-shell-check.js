@@ -253,7 +253,7 @@ async (page) => {
   await page.getByRole('button', { name: 'Close' }).click();
   // The rules are edited in Settings now (platform-insight-check saves them); Money says them and links there.
   out.push('Money states the rules and sends you to Settings: ' + (/Read-only 10 days after the due date/.test(await text())
-    && (await page.getByRole('link', { name: 'Change in Settings' }).getAttribute('href')) === '/settings' ? 'yes' : 'MISSING'));
+    && (await page.getByRole('link', { name: 'Change in Settings' }).getAttribute('href')) === '/settings?part=billing' ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/platform-money.png', fullPage: true });
   await page.getByRole('link', { name: 'Capacity' }).click();
   await page.waitForTimeout(900);
@@ -353,6 +353,39 @@ async (page) => {
     await page.screenshot({ path: 'shots/fill' + path.replace(/\//g, '-') + '.png' });
   }
   out.push('no dead space on any screen: ' + (gaps.length === 0 ? '14 screens filled' : 'MISSING ' + gaps.join('; ')));
+
+  // ---- 2026-11-02: Platform's two tabs, Settings one section at a time, View all ----------------
+  await page.goto('http://localhost:5175/platform', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('tab', { name: /Health/ }).waitFor({ timeout: 15000 });
+  const healthShown = /Crashes still open/.test(await text()) && !/What the platform did/.test(await text());
+  await page.getByRole('tab', { name: /Activity & access/ }).click();
+  await page.waitForTimeout(500);
+  out.push('Platform in two tabs, one at a time: ' + (healthShown && /What the platform did/.test(await text()) && !/Crashes still open/.test(await text()) ? 'yes' : 'MISSING'));
+  await page.goto('http://localhost:5175/settings', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /Save receipt details/ }).waitFor({ timeout: 15000 });
+  const firstPart = /Save receipt details/.test(await text()) && !/Save billing rules/.test(await text());
+  await page.locator('[data-set-part="billing"]').click();
+  await page.waitForTimeout(400);
+  out.push('Settings shows one section, chosen on the left: ' + (firstPart && /Save billing rules/.test(await text()) && !/Save receipt details/.test(await text()) ? 'yes' : 'MISSING'));
+  await page.setViewportSize({ width: 1600, height: 700 });
+  await page.goto('http://localhost:5175/overview', { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(2500);
+  const btns = page.locator('[data-view-all]');
+  const nBtn = await btns.count();
+  let lifted = false, closed = false, still = false;
+  if (nBtn > 0) {
+    const before = await page.evaluate(() => document.querySelector('.content .page').getBoundingClientRect().height);
+    await btns.first().click();
+    await page.waitForTimeout(400);
+    lifted = await page.evaluate(() => { const f = document.querySelector('.va-floating'); return !!f && f.clientHeight > 0 && f.scrollHeight <= f.clientHeight + 2 || (!!f && f.clientHeight > 300); });
+    still = await page.evaluate((h) => Math.abs(document.querySelector('.content .page').getBoundingClientRect().height - h) < 2, before);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(300);
+    closed = (await page.locator('.va-floating').count()) === 0 && (await page.locator('.va-hole').count()) === 0;
+  }
+  out.push('a box with more than it shows has View all; it opens over the page and Esc puts it back: '
+    + (nBtn > 0 && lifted && still && closed ? 'yes' : `MISSING buttons ${nBtn}, lifted ${lifted}, page still ${still}, closed ${closed}`));
+  await page.setViewportSize({ width: 1600, height: 950 });
 
   await page.getByRole('button', { name: 'Sign out' }).click();
   await page.evaluate(() => sessionStorage.setItem('out', '1'));

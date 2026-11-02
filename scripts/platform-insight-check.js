@@ -211,6 +211,7 @@ async (page) => {
 
   // ---- Settings ------------------------------------------------------------------------------
   await page.getByRole('link', { name: 'Settings' }).click();
+  await page.locator('[data-set-part="billing"]').click();
   await page.getByLabel('Days before read-only').waitFor({ timeout: 10000 });
   await page.getByLabel('Days before read-only').fill('10');
   await page.waitForTimeout(200);
@@ -219,6 +220,8 @@ async (page) => {
   await page.getByRole('button', { name: 'Save billing rules' }).click();
   await page.waitForTimeout(500);
   out.push('billing rules save from Settings: ' + (CALLS.some((c) => c[0] === 'billing' && c[1].p_grace_days === 10) ? 'grace 10' : 'MISSING'));
+  await page.locator('[data-set-part="business"]').click();
+  await page.waitForTimeout(300);
   out.push('receipt header previewed: ' + (/San Jose, Occidental Mindoro · billing@corefitness.test/.test(await text()) ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/platform-settings.png' });
 

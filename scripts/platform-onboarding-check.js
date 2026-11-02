@@ -206,8 +206,8 @@ async (page) => {
   out.push('verify records it: ' + (CALLS.some((c) => c[0] === 'verify' && c[1].p_claim === 'c1' && Number(c[1].p_amount) === 999) ? 'yes' : 'MISSING'));
 
   // ---- Settings: how gyms pay ----------------------------------------------------------------------
-  await page.goto('http://localhost:5175/settings', { waitUntil: 'domcontentloaded' });
-  await page.getByText('How gyms pay you').waitFor({ timeout: 15000 });
+  await page.goto('http://localhost:5175/settings?part=pay', { waitUntil: 'domcontentloaded' });
+  await page.getByText('How gyms pay you').first().waitFor({ timeout: 15000 });
   await page.getByText('J. Dela Cruz · 0917 555 0101').waitFor({ timeout: 10000 }).catch(() => undefined);
   t = await text();
   out.push('ways to pay, with QR: ' + (/0917 555 0101/.test(t) && (await page.locator('img.qr-thumb').count()) === 1 ? 'yes' : 'MISSING ' + t.slice(t.indexOf('How gyms pay'), t.indexOf('How gyms pay') + 300)));

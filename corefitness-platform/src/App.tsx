@@ -21,6 +21,7 @@ import Capacity from './pages/Capacity';
 import CommandPalette from './components/CommandPalette';
 import ErrorBoundary from './components/ErrorBoundary';
 import TooltipLayer from './components/TooltipLayer';
+import ViewAll from './components/ViewAll';
 import ActivityPage from './pages/Activity';
 import Usage from './pages/Usage';
 import People from './pages/People';
@@ -194,6 +195,7 @@ function Shell() {
           </span>
           <CommandPalette pages={PAGES} />
           <TooltipLayer />
+          <ViewAll root=".content" boxes=".card, section, .pf-col, .cap-col, .kpi" />
         </header>
         <div className="content">
           <div className="p-head" key={`h-${page.path}`}>

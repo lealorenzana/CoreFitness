@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { BellRing, Building, Keyboard, Monitor, Receipt, ShieldCheck, Timer, UserMinus, UserPlus } from 'lucide-react';
+import { BellRing, Building, ChevronRight, FileText, Keyboard, Monitor, Receipt, ShieldCheck, Timer, UserMinus, UserPlus, Wallet } from 'lucide-react';
 import {
   addAdmin, billingSettings, explain, listAdmins, removeAdmin, saveBillingSettings,
   type BillingSettings, type PlatformAdmin,
@@ -15,13 +15,30 @@ const long = (d: Date) => d.toLocaleDateString('en-PH', { day: 'numeric', month:
  * on every receipt, the billing rules every gym's lock and reminders follow
  * (0138), and who can run the platform (0109). Money and Platform point here
  * rather than each carrying a second copy of a form.
+ *
+ * Since 2026-11-02 one section at a time: the list on the left, the chosen one
+ * in full on the right — six cramped boxes with their own scrollbars read badly.
  */
+type Part = 'business' | 'billing' | 'pay' | 'admins' | 'docs' | 'install';
+const PARTS: [Part, string, string, typeof Building][] = [
+  ['business', 'Business and receipts', 'What every receipt says', Building],
+  ['billing', 'Billing rules', 'Read-only and reminders', Timer],
+  ['pay', 'How gyms pay you', 'GCash, Maya, bank, online', Wallet],
+  ['admins', 'Who can run the platform', 'Platform owners', ShieldCheck],
+  ['docs', 'Gym documents', 'Terms, DPA and privacy', FileText],
+  ['install', 'This installation', 'Where it runs, shortcuts', Monitor],
+];
 export default function Settings() {
   const [b, setB] = useState<(BillingSettings & { reminders: string }) | null | undefined>(undefined);
   const [admins, setAdmins] = useState<PlatformAdmin[] | null>(null);
   const [email, setEmail] = useState('');
   const [msg, setMsg] = useState<{ part: string; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  // `?part=billing` opens a section directly (Money's "Change in Settings" does).
+  const [part, setPart] = useState<Part>(() => {
+    const q = new URLSearchParams(window.location.search).get('part');
+    return PARTS.some(([k]) => k === q) ? (q as Part) : 'business';
+  });
 
   const load = useCallback(async () => {
     try { const s = await billingSettings(); setB(s ? { ...s, reminders: s.reminder_days.join(', ') } : null); }
@@ -51,8 +68,18 @@ export default function Settings() {
   const ref = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.replace(/^https?:\/\//, '').split('.')[0] ?? 'not set';
 
   return (
-    <>
-    <div className="set">
+    <div className="set2">
+      <nav className="set-nav" aria-label="Settings sections">
+        {PARTS.map(([k, label, sub, Icon]) => (
+          <button key={k} type="button" className={part === k ? 'on' : ''} aria-current={part === k ? 'page' : undefined} onClick={() => setPart(k)} data-set-part={k}>
+            <span className="set-ic"><Icon size={15} /></span>
+            <span className="grow"><b>{label}</b><small>{sub}</small></span>
+            <ChevronRight size={14} className="set-chev" />
+          </button>
+        ))}
+      </nav>
+      <div className="set-pane">
+      {part === 'business' && (
       <form className="card set-6" onSubmit={(e) => { e.preventDefault(); void save('business'); }}>
         <h2 className="section-title"><Building size={14} /> Business and receipts <InfoDot tip="Printed on every receipt a gym gets for paying Core Fitness — never typed into a screen." /></h2>
         {b === undefined ? <p className="empty">Loading…</p> : b === null ? <p className="empty">Paste migration 0138 to set these.</p> : (
@@ -72,7 +99,9 @@ export default function Settings() {
           </>
         )}
       </form>
+      )}
 
+      {part === 'billing' && (
       <form className="card set-6" onSubmit={(e) => { e.preventDefault(); void save('billing'); }}>
         <h2 className="section-title"><Timer size={14} /> Billing rules <InfoDot tip="Every gym's lock, the admin app's banner, the reminders and Money all read these two numbers (0138)." /></h2>
         {b ? (
@@ -92,7 +121,9 @@ export default function Settings() {
           </>
         ) : <p className="empty">Paste migration 0138 to set these.</p>}
       </form>
+      )}
 
+      {part === 'admins' && (
       <section className="card set-6">
         <h2 className="section-title"><ShieldCheck size={14} /> Who can run the platform <InfoDot tip="Anyone here can let a gym in, suspend one and change what the service sells. The last one cannot be removed." /></h2>
         <div className="set-admins">
@@ -120,9 +151,11 @@ export default function Settings() {
         </form>
         {said('admins')}
       </section>
+      )}
 
-      <PaymentMethods />
+      {part === 'pay' && <PaymentMethods />}
 
+      {part === 'install' && (
       <section className="card set-6">
         <h2 className="section-title"><Monitor size={14} /> This installation</h2>
         <dl className="qv-rows set-facts">
@@ -139,9 +172,10 @@ export default function Settings() {
           <li><kbd>↑</kbd><kbd>↓</kbd><kbd>Enter</kbd><span>Move through search results and open one</span></li>
         </ul>
       </section>
+      )}
+
+      {part === 'docs' && <GymDocuments />}
+      </div>
     </div>
-    {/* Below the grid, not in it: the grid makes every row as tall as its tallest card. */}
-    <div style={{ marginTop: 16 }}><GymDocuments /></div>
-    </>
   );
 }

@@ -231,3 +231,45 @@ button.btn.ghost:hover { background: var(--surface-high); }
   .page[data-page="overview"] .ov > .kpis, .page[data-page="overview"] .ov > .kpi { min-height: auto; }
   .page[data-page="overview"] .ov > .card { overflow-y: auto; scrollbar-width: thin; }
 }
+
+/* ---- View all: a box with more than it shows, lifted out over the page (components/ViewAll.tsx) ---- */
+.va-btn { position: fixed; z-index: 60; box-shadow: 0 6px 18px -6px rgba(0,0,0,.7); display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 8px;
+  background: var(--surface-high); border: 1px solid var(--hairline); color: var(--text-2); font-size: 11px; font-weight: 600; cursor: pointer; }
+.va-btn:hover { color: #fff; border-color: var(--accent); }
+.va-backdrop { position: fixed; inset: 0; z-index: 1000; background: rgba(6, 6, 12, .72); }
+.va-floating { position: fixed !important; top: 8vh !important; left: 50% !important; transform: translateX(-50%) !important;
+  width: min(1180px, 90vw) !important; height: auto !important; max-height: 84vh !important; min-height: 0 !important;
+  overflow-y: auto !important; z-index: 1001 !important; margin: 0 !important; grid-column: auto !important;
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, .8); border-color: var(--hairline) !important; }
+.va-floating .ov-scroll, .va-floating .a-scroll, .va-floating [style*="max-height"] { max-height: none !important; overflow: visible !important; }
+.va-close { position: fixed; z-index: 1002; top: calc(8vh - 44px); right: max(5vw, calc(50vw - 590px)); display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 12px; border-radius: 10px; background: var(--surface-raised); border: 1px solid var(--hairline); color: #fff; font-size: 12px; font-weight: 600; cursor: pointer; }
+body.va-open { overflow: hidden; }
+
+/* ---- Settings: the sections on the left, one in full on the right (2026-11-02) --------------- */
+.set2 { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 16px; min-height: 0; }
+.set-nav { display: flex; flex-direction: column; gap: 4px; background: var(--surface); border: 1px solid var(--border-soft); border-radius: 18px; padding: 8px; align-self: start; }
+.set-nav button { display: flex; align-items: center; gap: 11px; width: 100%; padding: 10px; border-radius: 12px; border: 1px solid transparent; background: none; color: var(--text-2); text-align: left; }
+.set-nav button:hover { background: var(--surface-raised); color: #fff; }
+.set-nav button.on { background: var(--accent-tint); border-color: #3b2f6b; color: #fff; }
+.set-nav b { display: block; font-size: 13px; font-weight: 600; }
+.set-nav small { display: block; font-size: 11px; color: var(--text-3); margin-top: 1px; }
+.set-ic { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; background: var(--surface-raised); color: var(--accent-text); flex: none; }
+.set-nav button.on .set-ic { background: var(--accent); color: #fff; }
+.set-chev { color: var(--text-3); }
+.set-pane { min-height: 0; min-width: 0; overflow-y: auto; scrollbar-width: thin; }
+.set-pane > .card { margin: 0; }
+.set-pane input { font-size: 13.5px; }
+@media (min-width: 1280px) {
+  .content .page[data-page="settings"] > .set2 { overflow: hidden; height: 100%; }
+}
+
+/* No entrance animation on the page: a transform there traps a lifted box under the backdrop. */
+.page, .p-head { animation: none !important; }
+.va-hole { border: 1px dashed var(--border-soft); border-radius: 18px; }
+
+@media (min-width: 1280px) {
+  .page[data-page="settings"] .set-nav { align-self: stretch; }
+  .page[data-page="settings"] .set-pane { display: flex; flex-direction: column; }
+  .page[data-page="settings"] .set-pane > .card { flex: 1 0 auto; }
+}
