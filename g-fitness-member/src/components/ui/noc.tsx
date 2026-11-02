@@ -207,7 +207,7 @@ export function NocButton({
 }) {
   const skin: CSSProperties =
     variant === 'fill'
-      ? { background: 'var(--color-secondary)', color: 'var(--color-bg)', border: '1px solid var(--color-secondary)',
+      ? { background: 'var(--grad-action, var(--color-secondary))', color: 'var(--color-bg)', border: '1px solid var(--color-secondary)',
           boxShadow: '0 0 26px -8px var(--color-secondary)' }
       : variant === 'action'
         ? { color: 'var(--color-secondary)', border: '1px solid var(--color-secondary)',
@@ -248,7 +248,8 @@ export function ProgressBar({
 }) {
   if (fraction == null || !Number.isFinite(fraction)) return null;
   const pct = Math.max(0, Math.min(1, fraction));
-  const fill = tone === 'action' ? 'var(--color-secondary)' : 'var(--color-primary)';
+  // A premium theme's gradient (0233) when the gym has one; its own colour otherwise.
+  const fill = tone === 'action' ? 'var(--grad-action, var(--color-secondary))' : 'var(--grad-primary, var(--color-primary))';
   return (
     <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct * 100)}
       className="overflow-hidden" style={{ height: 4, borderRadius: 2, background: 'var(--color-surface-high)', ...style }}>

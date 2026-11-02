@@ -1501,7 +1501,7 @@ img { -webkit-user-drag: none; user-select: none; }
 .rg-card { position: relative; height: 172px; transform-style: preserve-3d; transition: transform .9s cubic-bezier(.3, .9, .3, 1); }
 .rg-card.rg-flip { transform: rotateY(180deg); }
 .rg-face { position: absolute; inset: 0; border-radius: 22px; backface-visibility: hidden; -webkit-backface-visibility: hidden; padding: 18px; overflow: hidden; }
-.rg-front { background: linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 40%, var(--color-bg)));
+.rg-front { background: var(--grad-action, linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 40%, var(--color-bg))));
   box-shadow: 0 18px 40px -20px var(--color-primary); color: #fff; }
 .rg-back { transform: rotateY(180deg); background: var(--color-surface); border: 1.5px solid var(--color-primary); display: flex; align-items: center; gap: 16px; }
 .rg-shine { position: absolute; inset: -40%; background: linear-gradient(115deg, transparent 40%, rgba(255, 255, 255, .16) 50%, transparent 60%); animation: rg-shine 4.5s ease-in-out infinite; pointer-events: none; }

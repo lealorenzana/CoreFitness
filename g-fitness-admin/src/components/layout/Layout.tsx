@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Sidebar, { useSidebarCollapsed } from './Sidebar';
 import Header from './Header';
 import TooltipLayer from '../ui/TooltipLayer';
-import ViewAll from '../ui/ViewAll';
+import GymLook from '../GymLook';
 import SubscriptionBanner from '../SubscriptionBanner';
 import MemberLimitBanner from '../MemberLimitBanner';
 import AnnouncementBanner from '../AnnouncementBanner';
@@ -82,8 +82,8 @@ export default function Layout() {
       {/* One listener for every `data-tip` in the app. Mounted here so it
           covers the sidebar and header too, not just the routed page. */}
       <TooltipLayer />
-      {/* View all (2026-11-02): any box on a page with more than it shows can be read in full, over the page. */}
-      <ViewAll root="main" boxes=".a-card, .rounded-2xl, .rounded-3xl" />
+      {/* The gym's colours and premium theme on the owner's app too (2026-11-02). */}
+      <GymLook />
     </div>
   );
 }

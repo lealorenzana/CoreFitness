@@ -1,3 +1,4 @@
+import { clearGymLook } from '../components/GymLook';
 import { supabase } from './supabaseClient';
 import { clearGymContext } from './gymContext';
 import { clearBrandingCache } from '../hooks/useBranding';
@@ -41,6 +42,8 @@ export function clearAdminCaches(): void {
   clearGymModulesCache();
   clearGymFirstDayCache();
   clearTourCache();
+  // The gym's colours and premium theme on the page (GymLook) — the next account's gym has its own.
+  clearGymLook();
 }
 
 /** `undefined` until Supabase has said who is signed in at all. */

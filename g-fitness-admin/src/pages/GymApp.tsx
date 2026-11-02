@@ -25,6 +25,7 @@ import CoachTab from '../components/yourapp/CoachTab';
 import PayTab from '../components/yourapp/PayTab';
 import TvTab from '../components/yourapp/TvTab';
 import CelebrationsTab from '../components/yourapp/CelebrationsTab';
+import PremiumThemes from '../components/yourapp/PremiumThemes';
 import SavedThemes from '../components/yourapp/SavedThemes';
 import { cropPhoto } from '../components/ui/PhotoCropper';
 
@@ -236,6 +237,7 @@ export default function GymApp() {
             ))}
           </div>
           <SavedThemes accent={look.accent} action={look.action} onPick={(accent, action) => setLook((l) => ({ ...l, accent, action }))} />
+          <PremiumThemes />
           <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16, marginTop: 14 }}>
             <div>
               <b style={{ fontSize: 12.5 }}>Where you are, and what you have</b>

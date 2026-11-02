@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { getGymContext, type GymContext } from '../lib/gymContext';
 import { applyAccent } from '../lib/gymTheme';
+import { applyPremiumTheme } from '../lib/premiumThemes';
+import { supabase } from '../lib/supabaseClient';
 
 /**
  * The gym whose app this is: its colour on the screen, and whether it is
@@ -22,6 +24,9 @@ export function useGymBrand(): GymContext | null {
       // Both roles (0112): a gym that chose Rose used to get a red app with
       // amber buttons, which reads as the setting not having worked.
       applyAccent(c.accent, c.accentAction);
+      // Its premium theme (0233), when it bought one: the ground, surfaces and gradients. Before 0233, nothing.
+      const { data } = await supabase.rpc('my_gym_premium_theme');
+      if (active) applyPremiumTheme(typeof data === 'string' ? data : null);
     })();
     return () => { active = false; };
   }, []);
