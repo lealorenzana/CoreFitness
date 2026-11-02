@@ -6,8 +6,8 @@
 -- every gym needs. Now:
 --
 --   Starter  runs the gym, and members get a real app: announcements and push,
---            points, challenges, weekly quests, invite-a-friend, and analytics and
---            retention. (Not: packages and coach chat, the shop, Lobby TV, classes,
+--            points, challenges, weekly quests, invite-a-friend, coach chat, and analytics and
+--            retention. (Not: package rooms, the shop, Lobby TV, classes,
 --            seasons and teams, events, online payments, the assistant.)
 --   Growth   everything but the assistant — packages, the shop, Lobby TV, classes,
 --            online payments.
@@ -18,7 +18,7 @@
 
 select sync_platform_plan_features();
 update platform_plan_features set enabled = (feature_key in (
-  'front_desk', 'checkin', 'requests', 'coaching', 'progress', 'programs', 'photos', 'targets', 'equipment',
+  'front_desk', 'checkin', 'requests', 'coaching', 'chat', 'progress', 'programs', 'photos', 'targets', 'equipment',
   'push', 'engagement', 'points', 'quests', 'referrals', 'analytics'))
  where plan_key = 'starter';
 update platform_plan_features set enabled = (feature_key <> 'assistant') where plan_key = 'growth';
