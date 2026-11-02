@@ -284,3 +284,10 @@ body.va-open { overflow: hidden; }
 .cell-tick.on { background: var(--accent-tint); border-color: #3b2f6b; color: var(--accent-text); }
 .compare thead th { position: sticky; top: 0; background: var(--surface); z-index: 1; }
 .content .page[data-page="plans"] > .toolbar { flex: none; min-height: 0; overflow: visible; }
+
+/* ---- a gym's page: Manage this gym (2026-11-02) ----------------------------------------------- */
+.manage-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.manage-box { background: var(--surface-raised); border: 1px solid var(--border-soft); border-radius: 12px; padding: 11px 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.manage-box select { min-width: 0; }
+.content .page > .manage { flex: none; overflow: visible; }
+@media (max-width: 1200px) { .manage-grid { grid-template-columns: minmax(0, 1fr); } }

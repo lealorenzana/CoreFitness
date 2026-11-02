@@ -6,6 +6,7 @@ import {
 import GymMark from '../components/GymMark';
 import GymDetail from '../components/GymDetail';
 import ExportGym from '../components/ExportGym';
+import ManageGym from '../components/ManageGym';
 import SupportDoor from '../components/SupportDoor';
 import DatePicker from '../components/DatePicker';
 import {
@@ -104,6 +105,8 @@ export default function GymProfile() {
       </section>
 
       {error && <p className="err">{error}</p>}
+
+      <ManageGym gym={gym} onChanged={load} />
 
       <div className="kpis" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', marginTop: 16 }}>
         {kpis.map((k) => {
