@@ -272,7 +272,7 @@ async (page) => {
   await page.keyboard.press('Enter');
   await page.waitForTimeout(800);
   out.push('Enter opens its page: ' + (/\/gyms\/g3$/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
-  await page.getByRole('button', { name: /Find anything/ }).click();
+  await page.getByRole('button', { name: /Search anything/ }).click();
   await page.getByLabel('Search everything').fill('receipts');
   await page.waitForTimeout(400);
   out.push('it finds a support ticket: ' + ((await page.getByRole('option', { name: /Receipts will not print/ }).count()) === 1 ? 'yes' : 'MISSING'));

@@ -5,6 +5,7 @@ import App from './App';
 import './index.css';
 import './ui.css';
 import './bento.css';
+import './redesign.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

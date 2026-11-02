@@ -1,0 +1,156 @@
+/*
+ * The platform app in the owner's admin style (2026-11-02). The admin's
+ * redesign lives in g-fitness-admin/src/pages/attendance/att.css; its colours,
+ * sizes and radii are ported here onto the classes the platform's pages already
+ * use (.card, .section-title, .btn, .pill, .kpi, .tiles …), so every page takes
+ * the new look without a rewrite. Loaded last, so it wins at equal specificity.
+ *
+ * Fit the screen (the owner's rule for the admin, 2026-10-11): from 1280px wide
+ * the page never scrolls. The page's boxes share the height; a box with more
+ * than fits scrolls inside itself, and the last one takes what is left.
+ */
+:root {
+  --bg: #0D0D15;
+  --surface: #14141F;
+  --surface-raised: #1B1A2A;
+  --surface-high: #24223A;
+  --hairline: #2A2842;
+  --border-soft: #1E1D2D;
+  --text-2: #A1A1B5;
+  --text-3: #6E6E85;
+  --accent-tint: #1E1333;
+  --accent-text: #C4B5FD;
+  --warn-tint: #211A08;
+  --radius: 18px;
+  --side: 236px;
+}
+
+/* ---- sidebar: grouped drawers, as the admin's ------------------------------------------ */
+.side { background: #11111B; border-right: 1px solid var(--border-soft); padding: 16px 12px; overflow: hidden; }
+.brand { padding: 2px 6px 12px; gap: 10px; }
+.brand-logo { width: 38px; height: 38px; }
+.brand-name { font-size: 13.5px; letter-spacing: .04em; }
+.brand-sub { font-size: 9.5px; letter-spacing: .18em; }
+.collapse { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; height: 30px; border-radius: 9px;
+  background: var(--surface-raised); border: 1px solid var(--border-soft); color: var(--text-3); font-size: 11.5px; font-weight: 600; margin-bottom: 10px; }
+.collapse:hover { color: #fff; }
+.nav { overflow-y: auto; min-height: 0; flex: 1; gap: 4px; scrollbar-width: thin; }
+.nav-group { display: flex; flex-direction: column; }
+.nav-head { display: flex; align-items: center; gap: 8px; width: 100%; padding: 9px 10px; border: 0; background: none; border-radius: 10px;
+  color: var(--text-2); font-size: 13.5px; font-weight: 600; text-align: left; }
+.nav-head:hover { background: var(--surface-raised); color: #fff; }
+.nav-head .chev { margin-left: auto; color: var(--text-3); transition: transform .2s; }
+.nav-head[aria-expanded="true"] .chev { transform: rotate(180deg); }
+.nav-group.here > .nav-head { color: var(--accent-text); }
+.nav-items { display: flex; flex-direction: column; gap: 2px; margin: 2px 0 6px 14px; padding-left: 8px; border-left: 1px solid var(--border-soft); }
+.nav a { padding: 8px 10px; font-size: 13px; border-radius: 10px; }
+.nav a.on { background: var(--accent-tint); color: var(--accent-text); }
+.nav a.on svg { color: var(--accent-text); }
+.nav .count { background: linear-gradient(180deg, #FBBF24, #F59E0B); color: #1F1A0A; }
+.nav-head .count { margin-left: auto; }
+.nav-head .count + .chev { margin-left: 6px; }
+.side-foot { border-top: 1px solid var(--border-soft); padding-top: 10px; }
+.signout { color: var(--warn); }
+
+/* collapsed: icons only */
+.app.narrow { --side: 72px; }
+.app.narrow .brand-words, .app.narrow .nav-word, .app.narrow .nav-head, .app.narrow .nav .count { display: none; }
+.app.narrow .nav-items { margin: 0; padding: 0; border: 0; }
+.app.narrow .nav a, .app.narrow .signout { justify-content: center; }
+.app.narrow .brand { justify-content: center; }
+
+/* ---- top bar: title, the search pill, bell and profile ---------------------------------- */
+.topbar { padding: 12px 24px; gap: 16px; background: rgba(13, 13, 21, .9); }
+.top-title { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+.topbar .find { margin: 0 auto; width: min(440px, 40vw); justify-content: flex-start; border-radius: 999px; background: var(--surface);
+  border: 1px solid var(--border-soft); color: var(--text-3); height: 38px; padding: 0 14px; gap: 9px; font-size: 13px; display: flex; align-items: center; }
+.topbar .find kbd { margin-left: auto; }
+.top-right { display: flex; align-items: center; gap: 12px; flex: none; }
+.topbar .me { padding: 5px 12px 5px 5px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border-soft); max-width: 260px; }
+.topbar .me-avatar { width: 30px; height: 30px; }
+
+/* ---- the page's own head, as the admin's a-head ------------------------------------------ */
+.content { padding: 18px 24px 22px; }
+.p-head { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; animation: rise .35s ease both; }
+.p-head .min0 { min-width: 0; }
+.p-head h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -.01em; }
+.p-head p { margin: 2px 0 0; color: var(--text-2); font-size: 12px; }
+.p-head .today { margin-left: auto; color: var(--text-3); font-size: 12px; white-space: nowrap; }
+
+/* ---- cards, titles, pills, buttons ------------------------------------------------------- */
+.card { background: var(--surface); border: 1px solid var(--border-soft); border-radius: 18px; padding: 15px 16px; }
+.card:hover { border-color: #2a2842; }
+.card + .card { margin-top: 12px; }
+.section-title { font-size: 14px; font-weight: 700; letter-spacing: 0; text-transform: none; color: #fff; margin: 0 0 11px; }
+.section-title svg { color: var(--accent-text); }
+.name { font-size: 13.5px; font-weight: 600; }
+.meta { font-size: 11.5px; }
+.pill { font-size: 10.5px; font-weight: 600; border-radius: 7px; padding: 3px 7px; border: 0; background: var(--surface-raised); }
+.pill.warn { background: var(--warn-tint); color: #FCD34D; }
+.pill.ok { background: var(--accent-tint); color: var(--accent-text); }
+button.btn { height: auto; padding: 9px 14px; border-radius: 11px; font-size: 12px; font-weight: 600;
+  background: linear-gradient(180deg, #FBBF24, #F59E0B); color: #1F1A0A; border: 1px solid #F59E0B; box-shadow: 0 8px 22px -10px #f59e0b; }
+button.btn:hover { filter: brightness(1.08); background: linear-gradient(180deg, #FBBF24, #F59E0B); }
+button.btn.ghost { background: var(--surface-raised); color: #fff; border: 1px solid var(--hairline); box-shadow: none; }
+button.btn.ghost:hover { background: var(--surface-high); border-color: #3b2f6b; }
+label { font-size: 11.5px; letter-spacing: 0; text-transform: none; color: var(--text-2); font-weight: 600; }
+input, select, textarea { background: #0f0f19; border: 1px solid var(--hairline); border-radius: 11px; }
+.empty { padding: 22px 0; font-size: 12.5px; }
+
+/* the KPI tiles, as the admin's StatTile */
+.kpi { background: var(--surface); border: 1px solid var(--border-soft); border-radius: 18px; }
+.kpi-label { text-transform: none; letter-spacing: 0; font-size: 11.5px; color: var(--text-2); }
+.kpi-value { font-size: 26px; }
+.kpi-icon { border-radius: 11px; background: var(--accent-tint); color: var(--accent-text); }
+
+/* ---- fit the screen ------------------------------------------------------------------------ */
+@media (min-width: 1280px) {
+  .content { overflow: hidden; display: flex; flex-direction: column; }
+  .p-head { flex: none; }
+  .content > .page, .content > * > .page { flex: 1 1 0%; min-height: 0; display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+  /* Every box shares the height and scrolls itself; none is squeezed below 150px (the plan editor once was, to nothing). */
+  .content .page > * { flex: 0 1 auto; min-height: 150px; overflow-y: auto; scrollbar-width: thin; margin-top: 0 !important; margin-bottom: 0 !important; }
+  .content .page > :last-child { flex-grow: 1; }
+  .page > .card + .card { margin-top: 0; }
+  /* a row of boxes (two columns, a list beside its detail) shares the height it is given; each box scrolls itself */
+  .content .page > .grid-2, .content .page > .grid-3, .content .page > .bento, .content .page > .split, .content .page > .cap, .content .page > .set { overflow: hidden; align-items: stretch; }
+  .page > .grid-2 > *, .page > .grid-3 > *, .page > .bento > *, .page > .split > *, .page > .cap > *, .page > .set > * { min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+  /* stat tiles, toolbars, notices and errors keep their own height */
+  .content .page > .tiles, .content .page > .kpis, .content .page > .err, .content .page > .notice, .content .page > .toolbar,
+  .content .page > .row, .content .page > p, .content .page > .tabs, .content .page > .chips { flex: none; min-height: 0; overflow: visible; }
+}
+
+/* Money is seven boxes: two columns, every row the same share of the height. */
+@media (min-width: 1280px) {
+  .content .page[data-page="money"] { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); }
+  .content .page[data-page="money"] > * { min-height: 0; }
+  .content .page[data-page="money"] > .err { grid-column: 1 / -1; }
+}
+
+@media (min-width: 1280px) {
+  .content .page[data-page="money"] > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+select { font-size: 13px; }
+
+/* Pill tabs, as the admin's PageTabs. */
+.ptabs { display: inline-flex; gap: 2px; background: var(--surface); border: 1px solid var(--border-soft); border-radius: 999px; padding: 4px; align-self: flex-start; }
+.ptabs button { display: inline-flex; align-items: center; gap: 6px; padding: 7px 15px; border-radius: 999px; border: 0; background: none; color: var(--text-2); font-size: 12px; font-weight: 600; }
+.ptabs button:hover { color: #fff; }
+.ptabs button.on { background: var(--accent); color: #fff; }
+.ptabs em { font-style: normal; font-size: 10px; background: #ffffff1a; border-radius: 999px; padding: 0 6px; }
+/* Warning chips read as small pills, never boxes. */
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; border-radius: 999px; padding: 5px 11px; background: var(--surface-raised); color: var(--text-2); border: 1px solid var(--hairline); }
+.chip.warn { background: var(--warn-tint); color: #FCD34D; border-color: #5a4512; }
+@media (min-width: 1280px) {
+  .content .page > .ptabs { flex: none; min-height: 0; overflow: visible; }
+  /* Platform: each tab's boxes share the rows left under the tabs. */
+  .content .page[data-page="platform"] > .pf { grid-auto-rows: minmax(0, 1fr); }
+  .content .page[data-page="platform"] > .pf > *, .page[data-page="platform"] .pf-col > .card { min-height: 0; overflow-y: auto; }
+  .page[data-page="platform"] .pf-col { min-height: 0; }
+  .page[data-page="platform"] .pf .ov-scroll { max-height: none; }
+}
+@media (min-width: 1280px) {
+  /* a column of boxes inside a row (Capacity, Platform): each box scrolls itself */
+  .page .cap-col, .page .pf-col { min-height: 0; overflow: hidden; }
+  .page .cap-col > .card, .page .pf-col > .card { min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+}

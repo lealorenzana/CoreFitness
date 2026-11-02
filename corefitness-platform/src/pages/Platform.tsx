@@ -30,6 +30,8 @@ const peso = (n: string) => '₱' + Number(n).toLocaleString('en-PH', { maximumF
  */
 export default function Platform() {
   const [events, setEvents] = useState<PlatformEvent[] | null>(null);
+  // Two tabs (2026-11-02), so each fits the screen: the service's health, and who did what.
+  const [tab, setTab] = useState<'health' | 'people'>('health');
   const [crashes, setCrashes] = useState<CrashReport[] | null>(null);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [admins, setAdmins] = useState<PlatformAdmin[] | null>(null);
@@ -133,7 +135,6 @@ export default function Platform() {
         </>
       )}
 
-      <div className="pf">
       {grants.length > 0 && (
         <div className="card notice pf-card pf-12">
           <div className="name">
@@ -231,6 +232,13 @@ export default function Platform() {
         </div>
       )}
 
+      <div className="ptabs" role="tablist" aria-label="Platform">
+        <button type="button" role="tab" aria-selected={tab === 'health'} className={tab === 'health' ? 'on' : ''} onClick={() => setTab('health')}><Bug size={14} /> Health</button>
+        <button type="button" role="tab" aria-selected={tab === 'people'} className={tab === 'people' ? 'on' : ''} onClick={() => setTab('people')}><History size={14} /> Activity &amp; access</button>
+      </div>
+
+      <div className="pf">
+      {tab === 'health' && <>
       <div className="card pf-card pf-7">
         <div className="row">
           <span className="grow">
@@ -313,7 +321,9 @@ export default function Platform() {
         })()}
       </div>
       </div>
+      </>}
 
+      {tab === 'people' && <>
       <div className="card pf-card pf-7">
         <div className="section-title" style={{ marginBottom: 4 }}><History size={14} /> What the platform did <InfoDot tip="The latest events. Activity has the whole log, with search and filters." /></div>
         <div className="meta">Every gym let in, suspended, reactivated, renamed, paid or re-planned.</div>
@@ -382,6 +392,7 @@ export default function Platform() {
           </div>
         </div>
       )}
+      </>}
 
       </div>
     </>

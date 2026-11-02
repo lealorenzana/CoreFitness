@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { Activity, Building2, CreditCard, Grid3x3, History, Inbox, Layers, HardDrive, LayoutDashboard, LifeBuoy, Search, LogOut, Megaphone, MessageSquareHeart, Sparkles, Settings as SettingsIcon, TrendingUp, UserSearch, type LucideIcon } from 'lucide-react';
+import { Activity, Building2, ChevronDown, PanelLeftClose, PanelLeftOpen, CreditCard, Grid3x3, History, Inbox, Layers, HardDrive, LayoutDashboard, LifeBuoy, Search, LogOut, Megaphone, MessageSquareHeart, Sparkles, Settings as SettingsIcon, TrendingUp, UserSearch, type LucideIcon } from 'lucide-react';
 import { supabase } from './lib/supabaseClient';
 import { CHANGED, isPlatformAdmin, listApplications, listTickets, sweepBilling } from './lib/platform';
 import SignIn from './pages/SignIn';
@@ -39,7 +39,10 @@ import SupportView from './pages/SupportView';
  * finds this address sees the door, not the building.
  *
  * The shell matches the admin app (2026-09-27): a sidebar, the same tokens,
- * the window filled edge to edge.
+ * the window filled edge to edge. Since 2026-11-02 it is the owner's admin
+ * redesign itself (`redesign.css`): grouped drawers that open, the search pill
+ * and the profile in the top bar, the page's own head, and every page fitting
+ * the screen — boxes scroll inside, the page never does.
  */
 type Gate = 'checking' | 'in' | 'out';
 
@@ -111,70 +114,94 @@ function Shell() {
   }, [pathname]);
 
   const page = PAGES.find((p) => pathname.startsWith(p.path)) ?? PAGES[0];
+  // Every drawer starts open (sixteen pages, each one click away); set in the initialiser, never an effect.
+  // Closing one is remembered for this visit; the page you are on always keeps its group open.
+  const [open, setOpen] = useState<Record<string, boolean>>(() => Object.fromEntries(PAGES.map((p) => [p.group, true])));
+  const [narrow, setNarrow] = useState(false);
+  const groups = [...new Set(PAGES.map((p) => p.group))];
+  if (!open[page.group]) setOpen((o) => ({ ...o, [page.group]: true }));
   const today = new Date().toLocaleDateString('en-PH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   return (
-    <div className="app">
+    <div className={`app${narrow ? ' narrow' : ''}`}>
       <aside className="side">
         <div className="brand">
           <img className="brand-logo" src="/core-fitness-logo.png" alt="Core Fitness" />
-          <span>
+          <span className="brand-words">
             <span className="brand-name">Core Fitness</span>
-            <span className="brand-sub">Platform</span>
+            <span className="brand-sub">Platform panel</span>
           </span>
         </div>
+        <button type="button" className="collapse" onClick={() => setNarrow((n) => !n)} aria-label={narrow ? 'Open the menu' : 'Collapse the menu'}>
+          {narrow ? <PanelLeftOpen size={14} /> : <><PanelLeftClose size={14} /> Collapse</>}
+        </button>
 
         <nav className="nav">
-          {PAGES.map((p, i) => {
-            const Icon = p.icon;
+          {groups.map((g) => {
+            const items = PAGES.filter((p) => p.group === g);
+            const here = items.some((p) => p === page);
+            const isOpen = !!open[g] || narrow;
+            const badge = items.reduce((n, p) => n + (p.path === '/applications' ? waiting : p.path === '/support' ? supportWaiting : 0), 0);
             return (
-              <div key={p.path} style={{ display: 'contents' }}>
-              {(i === 0 || PAGES[i - 1].group !== p.group) && <div className="nav-label">{p.group}</div>}
-              <NavLink to={p.path} className={({ isActive }) => (isActive ? 'on' : '')} data-tip={p.lede}>
-                <Icon size={17} />
-                <span>{p.label}</span>
-                {p.path === '/applications' && waiting > 0 && <span className="count" aria-label={`${waiting} waiting`}>{waiting}</span>}
-                {p.path === '/support' && supportWaiting > 0 && <span className="count" aria-label={`${supportWaiting} support waiting`}>{supportWaiting}</span>}
-              </NavLink>
+              <div key={g} className={`nav-group${here ? ' here' : ''}`}>
+                <button type="button" className="nav-head" aria-expanded={isOpen} onClick={() => setOpen((o) => ({ ...o, [g]: !o[g] }))}>
+                  <span>{g}</span>
+                  {!isOpen && badge > 0 && <span className="count">{badge}</span>}
+                  <ChevronDown size={14} className="chev" />
+                </button>
+                {isOpen && (
+                  <div className="nav-items">
+                    {items.map((p) => {
+                      const Icon = p.icon;
+                      return (
+                        <NavLink key={p.path} to={p.path} className={({ isActive }) => (isActive ? 'on' : '')} data-tip={p.lede}>
+                          <Icon size={16} />
+                          <span className="nav-word">{p.label}</span>
+                          {p.path === '/applications' && waiting > 0 && <span className="count" aria-label={`${waiting} waiting`}>{waiting}</span>}
+                          {p.path === '/support' && supportWaiting > 0 && <span className="count" aria-label={`${supportWaiting} support waiting`}>{supportWaiting}</span>}
+                        </NavLink>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })}
         </nav>
 
         <div className="side-foot">
-          <div className="me">
-            <span className="me-avatar">{(email ?? '?').slice(0, 2).toUpperCase()}</span>
-            <span style={{ minWidth: 0 }}>
-              <span className="me-name">{email ?? ''}</span>
-              <span className="me-role">Platform owner</span>
-            </span>
-          </div>
           <button className="signout" onClick={() => void (async () => { await supabase.auth.signOut(); })()}>
-            <LogOut size={16} /> Sign out
+            <LogOut size={16} /> <span className="nav-word">Sign out</span>
           </button>
         </div>
       </aside>
 
       <div className="main">
         <header className="topbar">
-          <div>
-            <h1>{page.title}</h1>
-            <p className="lede">{page.lede}</p>
-          </div>
-          <button type="button" className="find" style={{ marginLeft: 'auto' }} data-tip="Find any gym, applicant, payment reference, ticket, log entry or screen — Ctrl K or /" onClick={() => window.dispatchEvent(new Event('platform:search'))}>
-            <Search size={15} /> <span>Find anything</span> <kbd>Ctrl K</kbd>
+          <span className="top-title">Core Fitness <span className="local-badge">This computer only</span></span>
+          <button type="button" className="find" data-tip="Find any gym, applicant, payment reference, ticket, log entry or screen — Ctrl K or /" onClick={() => window.dispatchEvent(new Event('platform:search'))}>
+            <Search size={15} /> <span>Search anything…</span> <kbd>Ctrl K</kbd>
           </button>
-          <span><Bell /></span>
+          <span className="top-right">
+            <Bell />
+            <span className="me">
+              <span className="me-avatar">{(email ?? '?').slice(0, 2).toUpperCase()}</span>
+              <span style={{ minWidth: 0 }}>
+                <span className="me-name">{email ?? ''}</span>
+                <span className="me-role">Platform owner</span>
+              </span>
+            </span>
+          </span>
           <CommandPalette pages={PAGES} />
           <TooltipLayer />
-          <span className="today" style={{ marginLeft: 0 }}>
-            <span className="local-badge">This computer only</span>
-            <span style={{ display: 'block', marginTop: 6 }}>{today}</span>
-          </span>
         </header>
         <div className="content">
+          <div className="p-head" key={`h-${page.path}`}>
+            <div className="min0"><h1>{page.title}</h1><p>{page.lede}</p></div>
+            <span className="today">{today}</span>
+          </div>
           <ErrorBoundary>
-            <div className="page" key={page.path}>
+            <div className="page" key={page.path} data-page={page.path.slice(1)}>
               <Routes>
                 <Route path="/" element={<Navigate to="/overview" replace />} />
                 <Route path="/overview" element={<Overview />} />
