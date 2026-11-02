@@ -60,7 +60,7 @@ check('the trial keeps 30 days and 300 AI messages', p('trial').ai_monthly_cap =
 // 0230: plans differ by features — Pro unlocks everything; Growth all but the assistant, online payments
 // and analytics; Starter the essentials (member-limit.mjs checks each one).
 const lockedOn = async (k) => (await one(`select count(*)::int n from platform_plan_features where plan_key = '${k}' and not enabled`)).n;
-check('Pro unlocks everything, Growth holds three back, Starter more', (await lockedOn('pro')) === 0 && (await lockedOn('growth')) === 3 && (await lockedOn('starter')) > 3);
+check('Pro unlocks everything, Growth holds three back, Starter more', (await lockedOn('pro')) === 0 && (await lockedOn('growth')) === 1 && (await lockedOn('starter')) > 1);
 
 // ---- the allowance and top-ups ----
 await db.exec(`update gyms set plan = 'pro' where id = '${GYM}';

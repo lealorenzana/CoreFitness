@@ -42,12 +42,14 @@ await db.exec(`
 
 // ---- what each plan unlocks -------------------------------------------------------------------------------
 const allows = async (plan, f) => (await one(`select enabled from platform_plan_features where plan_key = '${plan}' and feature_key = '${f}'`))?.enabled;
-check('Starter: the desk, check-in and coaches, not packages, the assistant or online payments',
+// 0232: Starter keeps members coming back — announcements, points, challenges and the retention view.
+check('Starter: the desk, check-in, coaches, announcements, points and retention; not packages, the assistant or online payments',
   (await allows('starter', 'front_desk')) && (await allows('starter', 'checkin')) && (await allows('starter', 'coaching'))
+  && (await allows('starter', 'push')) && (await allows('starter', 'engagement')) && (await allows('starter', 'analytics'))
   && !(await allows('starter', 'rooms')) && !(await allows('starter', 'assistant')) && !(await allows('starter', 'online_pay')));
-check('Growth adds packages, points, the shop and Lobby TV, not the assistant or analytics',
-  (await allows('growth', 'rooms')) && (await allows('growth', 'engagement')) && (await allows('growth', 'shop')) && (await allows('growth', 'lobby_tv'))
-  && !(await allows('growth', 'assistant')) && !(await allows('growth', 'analytics')));
+check('Growth adds packages, the shop, Lobby TV and online payments, not the assistant',
+  (await allows('growth', 'rooms')) && (await allows('growth', 'online_pay')) && (await allows('growth', 'shop')) && (await allows('growth', 'lobby_tv'))
+  && !(await allows('growth', 'assistant')));
 check('Pro and the trial unlock everything', Number((await one(`select count(*) n from platform_plan_features where plan_key in ('pro', 'trial') and not enabled`)).n) === 0);
 check('a Starter gym is told the assistant is not in its plan', (await one(`select gym_plan_allows('${G}', 'assistant') ok`)).ok === false);
 const p = await one(`select max_members m, price_monthly::int pm, price_yearly::int py from platform_plans where key = 'starter'`);
