@@ -360,6 +360,7 @@ function Breakdown({ title, icon: Icon, rows, total }: { title: string; icon: ty
 /** Every way to reach an applicant, as they asked to be reached first. */
 function Reach({ app, onTalk }: { app: Application; onTalk: () => void }) {
   const [copied, setCopied] = useState(false);
+  const [copiedPhone, setCopiedPhone] = useState(false);
   const digits = app.phone.replace(/[^0-9+]/g, '');
   const intl = digits.startsWith('+') ? digits : digits.startsWith('0') ? `+63${digits.slice(1)}` : digits;
   const handle = app.contact_handle?.trim() || null;
@@ -370,16 +371,21 @@ function Reach({ app, onTalk }: { app: Application; onTalk: () => void }) {
         <MessageSquare size={13} /> Messages{app.messages ? ` (${app.messages})` : ''}
         {!!app.unread && <span className="unread">{app.unread}</span>}
       </button>
-      <a href={`tel:${intl}`}><Phone size={13} /> Call</a>
-      <a href={`sms:${intl}?body=${greet}`}><MessageCircle size={13} /> SMS</a>
+      {/* A laptop cannot call or text (2026-11-02): the number is shown to dial on a phone, and copied with one click. */}
+      <button type="button" data-reach-phone onClick={() => void navigator.clipboard.writeText(app.phone).then(() => setCopiedPhone(true))}
+        data-tip="Call or text them from your phone — click to copy the number">
+        <Phone size={13} /> {app.phone} <span className="reach-hint">{copiedPhone ? 'copied' : 'copy'}</span>
+      </button>
       <a href={`viber://chat?number=${encodeURIComponent(intl)}`}>Viber</a>
       <a href={`https://wa.me/${intl.replace('+', '')}?text=${greet}`} target="_blank" rel="noreferrer">WhatsApp</a>
       {app.contact_pref === 'messenger' && handle && (
         <a href={`https://m.me/${encodeURIComponent(handle.replace(/^https?:\/\/(www\.)?(m\.me|facebook\.com)\//, ''))}`} target="_blank" rel="noreferrer">Messenger</a>
       )}
-      <a href={`mailto:${app.email}?subject=${encodeURIComponent(`Your Core Fitness application — ${app.gym_name}`)}&body=${encodeURIComponent(
+      {/* Gmail in a new tab, the address, subject and a first line already written; the address itself is shown. */}
+      <a data-reach-email target="_blank" rel="noreferrer" data-tip="Opens a new email to them in Gmail"
+        href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(app.email)}&su=${encodeURIComponent(`Your Core Fitness application — ${app.gym_name}`)}&body=${encodeURIComponent(
         `Hi ${app.owner_name.split(' ')[0]},\n\n` + (app.status_token ? `You can follow your application and write to us here:\n${statusLink(app.status_token)}\n\n` : '') + '— Core Fitness')}`}>
-        <Mail size={13} /> Email
+        <Mail size={13} /> {app.email} <span className="reach-hint">Gmail</span>
       </a>
       {app.status_token && (
         <button type="button" onClick={() => void navigator.clipboard.writeText(statusLink(app.status_token!)).then(() => setCopied(true))}

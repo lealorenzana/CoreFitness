@@ -169,7 +169,10 @@ async (page) => {
   out.push('the plan they want, where they heard, how to reach them: ' + (/Wants Premium, yearly/.test(t) && /Heard from Facebook/.test(t) && /Prefers Viber/.test(t) ? 'yes' : 'MISSING'));
   out.push('members they say they have, labelled: ' + (/120 Members they say they have/.test(t) ? 'yes' : 'MISSING'));
   out.push('where they come from has data: ' + (/How they heard of us/.test(t) && /Facebook/.test(t) && /Oriental Mindoro/.test(t) && /Plan they asked for/.test(t) ? 'yes' : 'MISSING'));
-  out.push('call/SMS/Viber/email buttons: ' + ((await page.locator('.reach a[href^="tel:+63917"]').count()) === 1 && (await page.locator('.reach a[href^="viber://"]').count()) >= 1 ? 'yes' : 'MISSING'));
+  // A laptop cannot call: the number is shown (and copied); email opens Gmail with their address (2026-11-02).
+  out.push('their number shown, Viber, and email in Gmail: ' + ((await page.locator('.reach [data-reach-phone]').first().innerText()).includes('0917')
+    && (await page.locator('.reach a[href^="viber://"]').count()) >= 1
+    && /^https:\/\/mail\.google\.com\/mail\/\?view=cm/.test(await page.locator('.reach [data-reach-email]').first().getAttribute('href') ?? '') ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/platform-applications.png' });
   await page.getByRole('button', { name: /Messages \(2\)/ }).click();
   await page.getByText('How much for 200 members?').waitFor({ timeout: 5000 });

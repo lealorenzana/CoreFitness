@@ -202,3 +202,32 @@ select { font-size: 13px; }
 
 /* a back link keeps its own size */
 .content .page > a.pill { flex: none; min-height: 0; overflow: visible; align-self: flex-start; }
+
+.reach-hint { font-size: 10px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; margin-left: 2px; }
+.reach > :hover .reach-hint { color: var(--accent-text); }
+
+/* ---- flat and professional (2026-11-02, the owner's call): no glows, no gradient washes --------
+   Colour is information here — violet for where you are and what you have, amber for what to do
+   next — so nothing is painted on for decoration. Solid fills, hairline borders, one shadow at most. */
+.tile::after, .kpi::after { display: none; }
+.tile.on { background: var(--surface); border-color: var(--accent); }
+.gym-card, .plan-grid > .card, .app-card { background: var(--surface-raised); }
+.avatar, .brand-mark { background: var(--accent); box-shadow: none; }
+.brand-logo { box-shadow: 0 0 0 1px var(--hairline); }
+.door-art { background: var(--surface); }
+button.btn, button.btn:hover { background: var(--warn); box-shadow: none; }
+button.btn:hover { background: var(--warn-hover); filter: none; }
+button.btn.ghost, button.btn.ghost:hover { background: var(--surface-raised); }
+button.btn.ghost:hover { background: var(--surface-high); }
+.nav .count { background: var(--warn); }
+.meter > span, .cap-bar > span, .ov-step-track span, .app-meter i { background: var(--accent); }
+.ov-step-track span.pay { background: var(--warn); }
+.bar-fill { background: var(--accent); }
+.bar.now .bar-fill { background: var(--warn); }
+
+@media (min-width: 1280px) {
+  /* Overview: the number tiles keep their full height; the two rows of boxes share what is left and scroll inside. */
+  .content .page[data-page="overview"] > .ov { grid-template-rows: auto minmax(0, 1.15fr) minmax(0, 1fr); overflow: hidden; }
+  .page[data-page="overview"] .ov > .kpis, .page[data-page="overview"] .ov > .kpi { min-height: auto; }
+  .page[data-page="overview"] .ov > .card { overflow-y: auto; scrollbar-width: thin; }
+}

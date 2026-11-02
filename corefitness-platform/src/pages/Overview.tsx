@@ -275,14 +275,8 @@ function GrowthChart({ months }: { months: GrowthMonth[] }) {
       </div>
       <div className="ov-chart" role="img" aria-label={`Members from ${first.members} to ${last.members} over ${n} months`}>
         <svg viewBox="0 0 100 100" preserveAspectRatio="none">
-          <defs>
-            <linearGradient id="ov-area" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0" stopColor="#7C3AED" stopOpacity="0.45" />
-              <stop offset="1" stopColor="#7C3AED" stopOpacity="0" />
-            </linearGradient>
-          </defs>
           {[25, 50, 75].map((g) => <line key={g} x1="0" x2="100" y1={g} y2={g} className="ov-grid" />)}
-          <path d={`${line} L${x(n - 1)},100 L${x(0)},100 Z`} fill="url(#ov-area)" />
+          <path d={`${line} L${x(n - 1)},100 L${x(0)},100 Z`} fill="#7C3AED" fillOpacity={0.14} />
           <path d={line} className="ov-line" />
         </svg>
         <div className="ov-gymbars">

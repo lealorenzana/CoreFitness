@@ -31,7 +31,7 @@ export default function GymMark({ name, logoUrl, accent, size = 42 }: {
   return (
     <span aria-label={`${name}, no logo yet`} role="img"
       style={{ ...box, display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: size * 0.36,
-        background: `linear-gradient(135deg, ${colour}, ${colour}99)` }}>
+        background: colour }}>
       {initials}
     </span>
   );
