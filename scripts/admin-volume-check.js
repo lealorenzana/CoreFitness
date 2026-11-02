@@ -181,5 +181,23 @@ async (page) => {
     await page.screenshot({ path: `shots/vol-coaching-all-${w}.png` });
   }
   await page.setViewportSize({ width: 1600, height: 1000 });
+  // View all (2026-11-02): with this much data, a box that scrolls offers View all; it opens over the page, Esc puts it back.
+  await page.setViewportSize({ width: 1440, height: 800 });
+  const vaPages = [];
+  for (const path of ['/dashboard', '/attendance', '/coaching', '/payments', '/members']) {
+    await page.goto('http://localhost:5174' + path, { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2600);
+    const n = await page.locator('[data-va]').count();
+    if (!n) continue;
+    await page.locator('[data-va]').first().click();
+    await page.waitForTimeout(400);
+    const open = (await page.locator('.va-floating').count()) === 1;
+    await page.screenshot({ path: `shots/vol-viewall${path.replace(/\//g, '-')}.png` });
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(300);
+    vaPages.push(`${path} ${n}${open && (await page.locator('.va-floating, .va-hole').count()) === 0 ? '' : ' BROKEN'}`);
+  }
+  has(`View all where a box scrolls (${vaPages.join(', ') || 'none found'})`, vaPages.length > 0 && !vaPages.some((p) => p.includes('BROKEN')));
+  await page.setViewportSize({ width: 1600, height: 1000 });
   return out.join('\n');
 }

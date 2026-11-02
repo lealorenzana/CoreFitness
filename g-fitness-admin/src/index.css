@@ -388,3 +388,19 @@
   * { scrollbar-width: thin; scrollbar-color: rgba(139, 92, 246, 0.4) transparent; }
   .scrollbar-hide { scrollbar-width: none; }
 }
+
+/* ---- View all (components/ui/ViewAll.tsx, 2026-11-02): a box with more than it shows, lifted out over the page ---- */
+.va-btn { position: fixed; z-index: 60; display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 8px;
+  background: #24223A; border: 1px solid #2A2842; color: #A1A1B5; font-size: 11px; font-weight: 600; cursor: pointer; box-shadow: 0 6px 18px -6px rgba(0,0,0,.7); }
+.va-btn:hover { color: #fff; border-color: #7C3AED; }
+.va-backdrop { position: fixed; inset: 0; z-index: 1000; background: rgba(6, 6, 12, .72); }
+.va-floating { position: fixed !important; top: 8vh !important; left: 50% !important; transform: translateX(-50%) !important;
+  width: min(1180px, 90vw) !important; height: auto !important; max-height: 84vh !important; min-height: 0 !important; flex: none !important;
+  overflow-y: auto !important; z-index: 1001 !important; margin: 0 !important; grid-column: auto !important;
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, .8); background: #14141F !important; }
+.va-floating .a-scroll, .va-floating .overflow-y-auto, .va-floating [style*="max-height"] { max-height: none !important; overflow: visible !important; }
+.va-close { position: fixed; z-index: 1002; top: calc(8vh - 44px); right: max(5vw, calc(50vw - 590px)); display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 12px; border-radius: 10px; background: #1B1A2A; border: 1px solid #2A2842; color: #fff; font-size: 12px; font-weight: 600; cursor: pointer; }
+.va-hole { border: 1px dashed #1E1D2D; border-radius: 18px; }
+body.va-open main > div { transform: none !important; }
+body.va-open { overflow: hidden; }

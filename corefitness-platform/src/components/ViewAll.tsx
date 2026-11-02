@@ -31,7 +31,7 @@ export default function ViewAll({ boxes, root }: { boxes: string; root: string }
       if (!area) { setSpots([]); return; }
       const found = new Map<HTMLElement, Spot>();
       for (const el of area.querySelectorAll<HTMLElement>('*')) {
-        if (el.scrollHeight <= el.clientHeight + 12 || el.clientHeight < 60) continue;
+        if (el === area || el.scrollHeight <= el.clientHeight + 12 || el.clientHeight < 60) continue; // never the page itself
         const oy = getComputedStyle(el).overflowY;
         if (oy !== 'auto' && oy !== 'scroll') continue;
         const box = (el.closest(boxes) as HTMLElement | null) ?? el;
@@ -91,14 +91,14 @@ export default function ViewAll({ boxes, root }: { boxes: string; root: string }
     <>
       {!open && spots.map((s, i) => (
         <button key={i} type="button" className="va-btn" style={{ top: s.top, right: s.right }} onClick={() => lift(s.el)}
-          aria-label="View all of this box" data-view-all>
+          aria-label="View all of this box" data-va>
           <Maximize2 size={12} /> View all
         </button>
       ))}
       {open && (
         <>
           <div className="va-backdrop" onClick={close} />
-          <button type="button" className="va-close" onClick={close} aria-label="Close the full view" data-view-all-close>
+          <button type="button" className="va-close" onClick={close} aria-label="Close the full view" data-va-close>
             <X size={16} /> Close
           </button>
         </>

@@ -370,7 +370,7 @@ async (page) => {
   await page.setViewportSize({ width: 1600, height: 700 });
   await page.goto('http://localhost:5175/overview', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(2500);
-  const btns = page.locator('[data-view-all]');
+  const btns = page.locator('[data-va]');
   const nBtn = await btns.count();
   let lifted = false, closed = false, still = false;
   if (nBtn > 0) {
