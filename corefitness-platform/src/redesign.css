@@ -154,3 +154,51 @@ select { font-size: 13px; }
   .page .cap-col, .page .pf-col { min-height: 0; overflow: hidden; }
   .page .cap-col > .card, .page .pf-col > .card { min-height: 0; overflow-y: auto; scrollbar-width: thin; }
 }
+
+/* Growth: the notice and tiles across the top, then its four boxes two by two. */
+@media (min-width: 1280px) {
+  .content .page[data-page="growth"] { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto auto minmax(0, 1fr) minmax(0, 1fr); }
+  .content .page[data-page="growth"] > .notice, .content .page[data-page="growth"] > .tiles, .content .page[data-page="growth"] > .kpis, .content .page[data-page="growth"] > .err { grid-column: 1 / -1; }
+  .content .page[data-page="growth"] > .grid-2 { display: contents; }
+  .content .page[data-page="growth"] > .grid-2 > * { min-height: 0; overflow-y: auto; }
+  .content .page[data-page="growth"] > * { min-height: 0; }
+}
+
+/* ---- Applications: one card per application (2026-11-02) ---------------------------------- */
+.app-card { border: 1px solid var(--border-soft); border-radius: 16px; background: linear-gradient(180deg, #17162400, #17162466), var(--surface-raised);
+  padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.app-card + .app-card { margin-top: 10px; }
+.app-top { display: flex; align-items: center; gap: 12px; }
+.app-title { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.app-title .name { font-size: 15px; font-weight: 700; }
+.app-sub { color: var(--text-2); font-size: 11.5px; }
+.app-top .actions { display: flex; gap: 8px; align-items: center; margin-left: auto; }
+.app-boxes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.app-box { background: var(--surface); border: 1px solid var(--border-soft); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.app-box > b { font-size: 13px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-lbl { display: flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .06em; }
+.app-lbl svg { color: var(--accent-text); }
+.app-line { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--text-2); min-width: 0; overflow-wrap: anywhere; }
+.app-line.muted { color: var(--text-3); }
+.app-line.warn { color: #FCD34D; }
+.app-meter { height: 5px; border-radius: 99px; background: var(--surface-high); overflow: hidden; margin: 2px 0; }
+.app-meter i { display: block; height: 100%; background: linear-gradient(90deg, #6d28d9, #a78bfa); border-radius: 99px; }
+.app-link { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; padding: 0; color: var(--accent-text); font-size: 11.5px; font-weight: 600; }
+.app-link:hover { color: #fff; text-decoration: underline; }
+.app-link.ok { color: var(--text-2); }
+.app-box .chips { margin: 0; }
+.app-notes { display: flex; flex-direction: column; gap: 4px; padding: 8px 12px; border-radius: 12px; background: var(--warn-tint); border: 1px solid #3e310f; }
+.app-foot { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-top: 10px; border-top: 1px solid var(--border-soft); }
+.app-tags { margin-left: auto; display: flex; gap: 12px; color: var(--text-3); font-size: 11.5px; }
+.app-tags span { display: inline-flex; align-items: center; gap: 5px; }
+/* every way to reach them, as one segmented bar */
+.reach { display: inline-flex; flex-wrap: wrap; gap: 0; margin: 0; border: 1px solid var(--hairline); border-radius: 10px; overflow: hidden; background: var(--surface); }
+.reach > a, .reach > button { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; font-size: 11.5px; font-weight: 600; color: var(--text-2);
+  background: none; border: 0; border-right: 1px solid var(--border-soft); border-radius: 0; text-decoration: none; }
+.reach > :last-child { border-right: 0; }
+.reach > a:hover, .reach > button:hover { background: var(--surface-high); color: #fff; }
+.reach > button:first-child { color: var(--accent-text); }
+@media (max-width: 1400px) { .app-boxes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* a back link keeps its own size */
+.content .page > a.pill { flex: none; min-height: 0; overflow: visible; align-self: flex-start; }

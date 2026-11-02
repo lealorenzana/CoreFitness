@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Banknote, CheckCircle2, ClipboardList, Clock, Copy, FileCheck2, FileQuestion, Inbox, KeyRound, Layers, Link2, Mail, MapPin, MessageCircle, MessageSquare, Phone, Settings2, Sparkles, Users, XCircle } from 'lucide-react';
+import { Banknote, CheckCircle2, ClipboardList, Clock, Copy, FileCheck2, FileQuestion, Inbox, KeyRound, Layers, Link2, Mail, MapPin, MessageCircle, MessageSquare, Phone, Settings2, ShieldCheck, Sparkles, Users, XCircle } from 'lucide-react';
 import {
   applicationAccounts, applicationPayments, confirmApplicationPayment, createGym, deleteApplicant, documentSummaries, emailApplicant, listApplications, rejectApplication,
   setGymPlan, slugFor, splitName, statusLink, type AppPayment, type Application, type DocSummary,
@@ -90,74 +90,95 @@ export default function Applications() {
           ) : (
             <div className="ov-scroll">
               {shown.map((app) => (
-                <div key={app.id} className="app-row">
-                  <GymMark name={app.gym_name} logoUrl={null} accent="violet" size={42} />
-                  <span className="app-text">
-                    <span className="name">{app.gym_name}
-                      {app.status === 'pending' && daysSince(app.created_at) >= 3 && <span className="pill warn" style={{ marginLeft: 8 }}>{daysSince(app.created_at)} days waiting</span>}
+                <article key={app.id} className="app-card" data-app-card>
+                  {/* 2026-11-02: one card per application — who and what at the top with the decision,
+                      the four things to check in labelled boxes, and every way to reach them in one bar. */}
+                  <header className="app-top">
+                    <GymMark name={app.gym_name} logoUrl={null} accent="violet" size={44} />
+                    <span className="app-title">
+                      <span className="name">{app.gym_name}
+                        {app.status === 'pending' && daysSince(app.created_at) >= 3 && <span className="pill warn" style={{ marginLeft: 8 }}>{daysSince(app.created_at)} days waiting</span>}
+                      </span>
+                      <span className="app-sub">
+                        Applied {when(app.created_at)}
+                        {app.address && <> · {app.address}</>}
+                        {app.member_estimate != null && <> · <span data-tip="Their own estimate of how many members the gym has">about {app.member_estimate} members</span></>}
+                      </span>
                     </span>
-                    <span className="app-facts">
-                      <span><Users size={12} />{app.owner_name}</span>
-                      <span><Mail size={12} />{app.email}</span>
-                      {app.phone && <span><Phone size={12} />{app.phone}</span>}
-                      {app.address && <span>{app.address}</span>}
-                      {app.member_estimate != null && <span data-tip="Their own estimate of how many members the gym has">about {app.member_estimate} members</span>}
-                      <span className="muted">Applied {when(app.created_at)}</span>
-                    </span>
-                    {(app.plan_name || app.heard_from) && (
-                      <span className="chips">
-                        {app.plan_name && <span className="chip"><Layers size={12} /> Wants {app.plan_name}{app.billing === 'yearly' ? ', yearly' : ''}</span>}
-                        {app.heard_from && <span className="chip"><Sparkles size={12} /> Heard from {app.heard_from}</span>}
-                        {app.contact_pref && <span className="chip"><MessageCircle size={12} /> Prefers {CONTACT[app.contact_pref]}</span>}
+                    {app.status === 'pending' ? (
+                      <span className="actions">
+                        <button className="btn ghost" onClick={() => setDialog({ kind: 'down', app })}>Turn down</button>
+                        {/* Approve waits for the documents (0187) — the database refuses it too. */}
+                        <button className="btn" disabled={!!docs.get(app.id)?.missing.length || (pays.has(app.id) && pays.get(app.id)!.status !== 'paid')}
+                          data-tip={docs.get(app.id)?.missing.length ? 'Verify all six documents first'
+                            : pays.has(app.id) && pays.get(app.id)!.status !== 'paid' ? `Waits for their payment for ${pays.get(app.id)!.plan_name}` : undefined}
+                          onClick={() => setDialog({ kind: 'in', app })}>Let them in</button>
+                      </span>
+                    ) : (
+                      <span className="actions">
+                        <span className={`pill${app.status === 'approved' ? ' ok' : ''}`}>{app.status === 'approved' ? 'Let in' : app.status === 'withdrawn' ? 'Called off' : 'Turned down'}</span>
+                        {(app.status === 'rejected' || app.status === 'withdrawn') && accounts.has(app.id) && (
+                          <button className="btn ghost" onClick={() => setDialog({ kind: 'delete', app })}>Delete their account</button>
+                        )}
                       </span>
                     )}
-                    {/* 0154: which version of the gym documents they agreed to. Before 0154 the field is absent — say nothing. */}
-                    {app.terms_version !== undefined && (
-                      <span className="chips">
-                        {app.terms_version
-                          ? <span className="chip" data-tip={app.terms_accepted_at ? `Agreed ${when(app.terms_accepted_at)}` : undefined}><FileCheck2 size={12} /> Agreed to gym terms (version of {app.terms_version})</span>
-                          : <span className="chip muted" data-tip="Applied before the gym documents were in effect, or the agreement did not reach us"><FileQuestion size={12} /> No agreement to the gym terms recorded</span>}
-                      </span>
-                    )}
-                    <Reach app={app} onTalk={() => setDialog({ kind: 'talk', app })} />
-                    {/* 0187: the six documents, and whether there is an account to sign in with. */}
-                    {docs.has(app.id) && (
-                      <span className="chips">
-                        <button type="button" className={`chip${(docs.get(app.id)!.missing.length === 0) ? ' ok' : ''}`} data-docs-chip
-                          onClick={() => setDialog({ kind: 'docs', app })}
-                          data-tip={docs.get(app.id)!.missing.length ? `Still needed: ${docs.get(app.id)!.missing.join('; ')}` : 'All six verified and in date'}>
-                          <FileCheck2 size={12} /> Documents {6 - docs.get(app.id)!.missing.length}/6 verified
-                          {docs.get(app.id)!.waiting > 0 && <b className="unread">{docs.get(app.id)!.waiting} to check</b>}
-                        </button>
-                        <span className="chip muted">{accounts.has(app.id) ? 'Has an account' : 'No account — status link only'}</span>
-                      </span>
-                    )}
-                    {/* 0224: a paid plan is paid before approval. */}
-                    {pays.has(app.id) && <PayChip p={pays.get(app.id)!} onCheck={() => setDialog({ kind: 'pay', app })} />}
-                    {/* 0111: the two things worth knowing before you create a gym. Neither blocks anything. */}
-                    {app.already_a_gym && <span className="meta" style={{ color: 'var(--warn)' }}>This email already owns a gym here. Letting them in again makes a second one.</span>}
-                    {!!app.duplicates && app.duplicates > 0 && <span className="meta" style={{ color: 'var(--warn)' }}>Applied {app.duplicates + 1} times in total, from this email or this gym name.</span>}
-                    {app.message && <span className="meta">“{app.message}”</span>}
-                    {app.status === 'rejected' && app.reason && <span className="meta">Turned down: {app.reason}</span>}
-                  </span>
-                  {app.status === 'pending' ? (
-                    <span className="actions">
-                      {/* Approve waits for the documents (0187) — the database refuses it too. */}
-                      <button className="btn" disabled={!!docs.get(app.id)?.missing.length || (pays.has(app.id) && pays.get(app.id)!.status !== 'paid')}
-                        data-tip={docs.get(app.id)?.missing.length ? 'Verify all six documents first'
-                          : pays.has(app.id) && pays.get(app.id)!.status !== 'paid' ? `Waits for their payment for ${pays.get(app.id)!.plan_name}` : undefined}
-                        onClick={() => setDialog({ kind: 'in', app })}>Let them in</button>
-                      <button className="btn ghost" onClick={() => setDialog({ kind: 'down', app })}>Turn down</button>
-                    </span>
-                  ) : (
-                    <span className="actions">
-                      <span className={`pill${app.status === 'approved' ? ' ok' : ''}`}>{app.status === 'approved' ? 'Let in' : app.status === 'withdrawn' ? 'Called off' : 'Turned down'}</span>
-                      {(app.status === 'rejected' || app.status === 'withdrawn') && accounts.has(app.id) && (
-                        <button className="btn ghost" onClick={() => setDialog({ kind: 'delete', app })}>Delete their account</button>
-                      )}
-                    </span>
+                  </header>
+
+                  <div className="app-boxes">
+                    <div className="app-box">
+                      <span className="app-lbl"><Users size={12} /> Owner</span>
+                      <b>{app.owner_name}</b>
+                      <span className="app-line"><Mail size={12} /> {app.email}</span>
+                      {app.phone && <span className="app-line"><Phone size={12} /> {app.phone}</span>}
+                    </div>
+                    <div className="app-box">
+                      <span className="app-lbl"><Layers size={12} /> Plan</span>
+                      <b>{app.plan_name ? `Wants ${app.plan_name}${app.billing === 'yearly' ? ', yearly' : ''}` : 'No plan chosen'}</b>
+                      {pays.has(app.id) ? <PayChip p={pays.get(app.id)!} onCheck={() => setDialog({ kind: 'pay', app })} />
+                        : <span className="app-line muted">Nothing to pay before approval</span>}
+                    </div>
+                    <div className="app-box">
+                      <span className="app-lbl"><FileCheck2 size={12} /> Documents</span>
+                      {docs.has(app.id) ? (
+                        <>
+                          <b>{docs.get(app.id)!.missing.length === 0 ? 'All six verified' : `${docs.get(app.id)!.missing.length} still to verify`}</b>
+                          <span className="app-meter" aria-hidden="true"><i style={{ width: `${((6 - docs.get(app.id)!.missing.length) / 6) * 100}%` }} /></span>
+                          <button type="button" className={`app-link${docs.get(app.id)!.missing.length === 0 ? ' ok' : ''}`} data-docs-chip onClick={() => setDialog({ kind: 'docs', app })}
+                            data-tip={docs.get(app.id)!.missing.length ? `Still needed: ${docs.get(app.id)!.missing.join('; ')}` : 'All six verified and in date'}>
+                            Documents {6 - docs.get(app.id)!.missing.length}/6 verified
+                            {docs.get(app.id)!.waiting > 0 && <b className="unread">{docs.get(app.id)!.waiting} to check</b>}
+                          </button>
+                        </>
+                      ) : <span className="app-line muted">Loading…</span>}
+                    </div>
+                    <div className="app-box">
+                      <span className="app-lbl"><ShieldCheck size={12} /> Sign-in and terms</span>
+                      <b>{accounts.has(app.id) ? 'Has an account' : 'No account — status link only'}</b>
+                      {/* 0154: which version of the gym documents they agreed to. Before 0154 the field is absent — say nothing. */}
+                      {app.terms_version !== undefined && (app.terms_version
+                        ? <span className="app-line" data-tip={app.terms_accepted_at ? `Agreed ${when(app.terms_accepted_at)}` : undefined}>Agreed to gym terms (version of {app.terms_version})</span>
+                        : <span className="app-line warn" data-tip="Applied before the gym documents were in effect, or the agreement did not reach us"><FileQuestion size={12} /> No agreement to the gym terms recorded</span>)}
+                    </div>
+                  </div>
+
+                  {/* 0111: the two things worth knowing before you create a gym. Neither blocks anything. */}
+                  {(app.already_a_gym || (!!app.duplicates && app.duplicates > 0) || app.message || (app.status === 'rejected' && app.reason)) && (
+                    <div className="app-notes">
+                      {app.already_a_gym && <span className="app-line warn">This email already owns a gym here. Letting them in again makes a second one.</span>}
+                      {!!app.duplicates && app.duplicates > 0 && <span className="app-line warn">Applied {app.duplicates + 1} times in total, from this email or this gym name.</span>}
+                      {app.message && <span className="app-line">&ldquo;{app.message}&rdquo;</span>}
+                      {app.status === 'rejected' && app.reason && <span className="app-line">Turned down: {app.reason}</span>}
+                    </div>
                   )}
-                </div>
+
+                  <footer className="app-foot">
+                    <Reach app={app} onTalk={() => setDialog({ kind: 'talk', app })} />
+                    <span className="app-tags">
+                      {app.contact_pref && <span><MessageCircle size={12} /> Prefers {CONTACT[app.contact_pref]}</span>}
+                      {app.heard_from && <span><Sparkles size={12} /> Heard from {app.heard_from}</span>}
+                    </span>
+                  </footer>
+                </article>
               ))}
               <Pagination page={paged.page} perPage={paged.perPage} total={paged.total} noun={paged.total === 1 ? 'application' : 'applications'} onPage={paged.setPage} />
             </div>

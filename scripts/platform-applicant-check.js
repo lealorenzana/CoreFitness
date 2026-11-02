@@ -169,8 +169,8 @@ async (page) => {
   await page.setViewportSize({ width: 1600, height: 1000 });
   await page.goto('http://localhost:5175/applications', { waitUntil: 'domcontentloaded' });
   await page.locator('[data-docs-chip]').first().waitFor({ timeout: 15000 });
-  const iron = page.locator('.app-row').filter({ hasText: 'Iron Den' });
-  const bulwark = page.locator('.app-row').filter({ hasText: 'Bulwark Gym' });
+  const iron = page.locator('.app-card').filter({ hasText: 'Iron Den' });
+  const bulwark = page.locator('.app-card').filter({ hasText: 'Bulwark Gym' });
   out.push('each application says where its documents stand: ' + (/Documents 5\/6 verified/.test(await iron.innerText()) && /1 to check/.test(await iron.innerText())
     && /Documents 6\/6 verified/.test(await bulwark.innerText()) ? 'yes' : 'MISSING'));
   out.push('Let them in is shut until all six are verified: ' + ((await iron.getByRole('button', { name: 'Let them in' }).isDisabled()) ? 'yes' : 'NO'));
@@ -223,7 +223,7 @@ async (page) => {
   await page.waitForTimeout(300);
 
   // 0228: on a paid plan, Send a way to pay also offers Pay online (PayMongo) — a message the site turns into a button.
-  const bulwarkRow = page.locator('.app-row').filter({ hasText: 'Bulwark Gym' });
+  const bulwarkRow = page.locator('.app-card').filter({ hasText: 'Bulwark Gym' });
   await bulwarkRow.getByRole('button', { name: /Messages/ }).click();
   await page.getByRole('button', { name: 'How to pay' }).click();
   const pmOpt = page.locator('[data-pay-online-option]');
@@ -235,7 +235,7 @@ async (page) => {
   out.push('…sent as the Pay for your plan message: ' + (pm && pm[1].p_id === 'a2' && /Pay for your plan/.test(pm[1].p_body) && /PayMongo/.test(pm[1].p_body) ? 'yes' : 'MISSING ' + JSON.stringify(pm)));
   await page.keyboard.press('Escape');
   await page.waitForTimeout(300);
-  await page.locator('.app-row').filter({ hasText: 'Iron Den' }).getByRole('button', { name: /Messages/ }).click();
+  await page.locator('.app-card').filter({ hasText: 'Iron Den' }).getByRole('button', { name: /Messages/ }).click();
   await page.getByRole('button', { name: 'How to pay' }).click();
   out.push('…and not to one with nothing to pay: ' + ((await page.locator('[data-pay-online-option]').count()) === 0 ? 'yes' : 'STILL SHOWN'));
   await page.keyboard.press('Escape');
@@ -243,8 +243,8 @@ async (page) => {
 
   await page.locator('.filters').getByRole('button', { name: /Called off/ }).click();
   await page.waitForTimeout(300);
-  const quit = page.locator('.app-row').filter({ hasText: 'Quit Gym' });
-  out.push('called-off applications are their own list: ' + ((await quit.count()) === 1 && (await page.locator('.app-row').filter({ hasText: 'Iron Den' }).count()) === 0 ? 'yes' : 'MISSING'));
+  const quit = page.locator('.app-card').filter({ hasText: 'Quit Gym' });
+  out.push('called-off applications are their own list: ' + ((await quit.count()) === 1 && (await page.locator('.app-card').filter({ hasText: 'Iron Den' }).count()) === 0 ? 'yes' : 'MISSING'));
   await quit.getByRole('button', { name: 'Delete their account' }).click();
   await page.getByRole('button', { name: 'Delete the account' }).click();
   await page.waitForTimeout(800);
