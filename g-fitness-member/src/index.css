@@ -1495,3 +1495,29 @@ img { -webkit-user-drag: none; user-select: none; }
   .td-arrive { animation: none; }
   .tw-card { transition: none; }
 }
+
+/* Sign-up (2026-11-02, direction B): the member card fills in as they answer, then flips. */
+.rg-scene { perspective: 1100px; }
+.rg-card { position: relative; height: 172px; transform-style: preserve-3d; transition: transform .9s cubic-bezier(.3, .9, .3, 1); }
+.rg-card.rg-flip { transform: rotateY(180deg); }
+.rg-face { position: absolute; inset: 0; border-radius: 22px; backface-visibility: hidden; -webkit-backface-visibility: hidden; padding: 18px; overflow: hidden; }
+.rg-front { background: linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 40%, var(--color-bg)));
+  box-shadow: 0 18px 40px -20px var(--color-primary); color: #fff; }
+.rg-back { transform: rotateY(180deg); background: var(--color-surface); border: 1.5px solid var(--color-primary); display: flex; align-items: center; gap: 16px; }
+.rg-shine { position: absolute; inset: -40%; background: linear-gradient(115deg, transparent 40%, rgba(255, 255, 255, .16) 50%, transparent 60%); animation: rg-shine 4.5s ease-in-out infinite; pointer-events: none; }
+@keyframes rg-shine { 0%, 60% { transform: translateX(-60%); } 100% { transform: translateX(60%); } }
+.rg-tag { font-size: 12px; font-weight: 700; background: rgba(0, 0, 0, .28); padding: 5px 10px; border-radius: 999px; animation: rg-pop .45s cubic-bezier(.2, 1.4, .4, 1) both; }
+@keyframes rg-pop { from { opacity: 0; transform: scale(.7); } }
+.rg-pane { animation: rg-in .45s cubic-bezier(.2, .8, .2, 1) both; }
+.rg-pane.rg-back-dir { animation-name: rg-in-back; }
+@keyframes rg-in { from { opacity: 0; transform: translateX(28px); } }
+@keyframes rg-in-back { from { opacity: 0; transform: translateX(-28px); } }
+.rg-dot { height: 8px; border-radius: 8px; background: var(--color-surface-high); transition: width .4s cubic-bezier(.2, .8, .2, 1), background .4s; }
+.rg-dot.on { background: var(--color-primary); }
+.rg-seg { border: 1.5px solid var(--color-border); background: var(--color-surface); color: var(--color-text-secondary); border-radius: 14px; padding: 11px 12px; font-size: 14px; font-weight: 600; min-height: 44px; text-align: left; transition: border-color .2s, background .2s, transform .12s; }
+.rg-seg:active { transform: scale(.97); }
+.rg-seg.on { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 16%, var(--color-surface)); color: #fff; }
+@media (prefers-reduced-motion: reduce) {
+  .rg-card { transition: none; }
+  .rg-shine, .rg-tag, .rg-pane { animation: none; }
+}

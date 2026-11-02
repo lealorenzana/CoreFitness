@@ -85,6 +85,12 @@ export default function Onboarding() {
         getInterests(memberId).catch(() => [] as string[]),
       ]);
       if (cancelled) return;
+      // What they picked at sign-up (2026-11-02) starts selected; a saved answer wins.
+      const { data: { user } } = await supabase.auth.getUser();
+      const meta = (user?.user_metadata ?? {}) as { signup_experience?: string; signup_goal?: string };
+      if (cancelled) return;
+      if (!savedLevel && meta.signup_experience) setExperience(meta.signup_experience);
+      if (meta.signup_goal && FITNESS_GOALS.some((g) => g.id === meta.signup_goal)) setGoals((g) => (g.length ? g : [meta.signup_goal!]));
       if (savedLevel) setExperience(savedLevel);
       if (savedInterests.length > 0) setInterests(savedInterests);
     })();

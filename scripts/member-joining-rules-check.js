@@ -48,18 +48,18 @@ async (page) => {
 
   // ---- its sign-up page ----------------------------------------------------------------------------
   await page.goto('http://localhost:5173/register?gym=gym-c&join=desk-gym', { waitUntil: 'domcontentloaded' });
-  await page.getByText('What should we call you?').waitFor({ timeout: 15000 });
+  await page.getByText('Start with you').waitFor({ timeout: 15000 });
   await page.waitForTimeout(1500);
   out.push('its sign-up page says to visit the desk: ' + ((await page.locator('[data-desk-only]').count()) === 1 ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/member-join-desk-only.png' });
   await page.goto('http://localhost:5173/register?gym=gym-c&join=desk-gym&ref=FRIEND', { waitUntil: 'domcontentloaded' });
-  await page.getByText('What should we call you?').waitFor({ timeout: 15000 });
+  await page.getByText('Start with you').waitFor({ timeout: 15000 });
   await page.waitForTimeout(1500);
   out.push("…but not with a member's invite: " + ((await page.locator('[data-desk-only]').count()) === 0 ? 'yes' : 'STILL SHOWN'));
 
   // ---- a listed gym with its own rules ---------------------------------------------------------------
   await page.goto('http://localhost:5173/register?gym=gym-o&join=g-fitness', { waitUntil: 'domcontentloaded' });
-  await page.getByText('What should we call you?').waitFor({ timeout: 15000 });
+  await page.getByText('Start with you').waitFor({ timeout: 15000 });
   await page.waitForTimeout(1500);
   out.push("the gym's rules are asked of the database: " + (CALLS.some(([f, b]) => f === 'gym_join_rules' && b.p_gym === 'gym-o') ? 'yes' : 'MISSING'));
   out.push('an open gym shows no desk notice: ' + ((await page.locator('[data-desk-only]').count()) === 0 ? 'yes' : 'STILL SHOWN'));

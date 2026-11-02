@@ -132,6 +132,9 @@ export async function registerMember(input: {
   joinCode?: string;
   /** Under 18: the parent or guardian who agrees (0179). */
   guardianName?: string;
+  /** Asked at sign-up (2026-11-02) for the card; Onboarding starts with them picked. No session yet, so they wait in the metadata. */
+  signupExperience?: string;
+  signupGoal?: string;
   /**
    * True when the new account is already signed in.
    *
@@ -181,6 +184,8 @@ export async function registerMember(input: {
         join_via: input.joinVia ?? 'list',
         join_code: input.joinCode ?? '',
         guardian_name: input.guardianName ?? '',
+        signup_experience: input.signupExperience ?? '',
+        signup_goal: input.signupGoal ?? '',
       },
     },
   });

@@ -50,6 +50,10 @@
       "app": "member"
     },
     {
+      "file": "member-signup-card-check.js",
+      "app": "member"
+    },
+    {
       "file": "member-renew-paymongo-check.js",
       "app": "member"
     },

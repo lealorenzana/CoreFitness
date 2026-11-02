@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import {
-  Mail, Phone, Lock, ArrowLeft, ArrowRight, CheckCircle, Check,
-  Eye, EyeOff, User, Dumbbell, Info, ShieldAlert, Users, MapPin,
+  Mail, Phone, Lock, ArrowRight, Check,
+  Eye, EyeOff, User, Dumbbell, ShieldAlert, Users, MapPin, QrCode, Gift,
 } from 'lucide-react';
 import MobileFrame from '../components/layout/MobileFrame';
 import LoadingOverlay from '../components/ui/LoadingOverlay';
@@ -20,87 +19,81 @@ import { refFromUrl } from '../lib/api/referrals';
 import { finishSignup, signupState, type SignupState } from '../lib/api/google';
 import { TERMS_VERSION, PRIVACY_VERSION } from '../lib/legalVersions';
 import { finishSignIn, logout } from '../utils/auth';
+import { applyAccent } from '../lib/gymTheme';
+import { getCurrentMemberId, setExperienceLevel } from '../services/bookingService';
 import GoogleButton from '../components/ui/GoogleButton';
 
 /**
- * Member sign-up, as a three-step onboarding flow.
+ * Member sign-up — direction B of the 2026-11-02 mock-ups: **the member card
+ * fills in as you answer**, in the gym's own colours, and flips at the end.
  *
- * Four things were wrong here, and none of them were visual.
+ * Four things were wrong here once, and none of them were visual: a Trainer
+ * card that offered a choice you could not take; Continue filling the form in
+ * with a placeholder person; invented plans; and the chosen plan thrown away.
+ * All four stay fixed — every step validates, nothing is substituted, plans
+ * come from `membership_plans`, and the one tapped reaches the desk as
+ * `requested_plan_id`.
  *
- * **A fourth step that offered one real choice.** The flow opened on "Choose
- * Role" with Member and Trainer cards. Picking Trainer only revealed a panel
- * explaining that trainer accounts are created by the gym and a button back to
- * Login — a whole screen whose second option was "you cannot do this here".
- * Trainers now get one line at the bottom of step 1, and the flow is 3 steps.
- *
- * **Continue filled the form in for you.** `handleContinue` wrote
- * `PROTOTYPE_REGISTER` into any blank field and moved on, and the submit did the
- * same again with `formData.email || PROTOTYPE_REGISTER.email`. Tapping through
- * without typing created a real Supabase account under a placeholder person's
- * name, email, phone and password. Every step now validates and refuses to
- * advance, and nothing is substituted at submit.
- *
- * **The plans were invented.** Basic/Standard/Premium at ₱800/₱1,500/₱2,500
- * with "Sauna" and "8 PT sessions" — the fourth copy of a price list that
- * matches no row in `membership_plans`. They come from the database now.
- *
- * **And the chosen plan was thrown away.** `registerMember` has taken a
- * `requestedPlanId` all along; the call simply never passed one, so the whole
- * plan step was decoration. It is now sent, lands in the signup metadata, and
- * reaches the front desk as the plan this person asked for.
+ * What 2026-11-02 changed:
+ * - **The header said "Step N of 3" over four steps.** It counts `STEPS` now.
+ * - **Inside a gym, the gym's colours** (`applyAccent`), never a fixed violet —
+ *   the card wears its logo and name. Put back on leaving, so Login is
+ *   Core Fitness again; the shells re-apply the gym's own after sign-in.
+ * - **Experience and a main goal are asked here**, so the card can show them.
+ *   With no session yet (email to confirm) they travel in the sign-up metadata
+ *   (`signup_experience`, `signup_goal`) and Onboarding starts with them picked;
+ *   with Google there is a session, so the experience is written at once.
+ *   Onboarding's goal ids are used, so the two screens agree.
+ * - **A friend's code can be typed**, not only arrive in a `?ref=` link — 0125's
+ *   trigger reads it, and a bad code never blocks sign-up.
+ * - **Plan is honest about starting free**: one tap marks interest (tap again to
+ *   clear) and the desk sees it; nothing is charged.
+ * - **An email taken at another gym** says to sign in and switch gyms (0227) —
+ *   a member belongs to one gym at a time.
  */
 
 function getOverlayRoot(): HTMLElement | null {
   return document.getElementById('phone-overlay-root') ?? document.getElementById('phone-screen');
 }
 
-// Defined outside Register so it keeps a stable component identity across
-// re-renders — declaring it inside the component body made React remount a
-// fresh <input> on every keystroke (new function = new component type),
-// which dropped focus after each character typed.
-function Field({
-  label, icon: Icon, type = 'text', value, onChange, placeholder, hint, autoComplete, inputMode,
-}: any) {
+// Outside Register so it keeps a stable identity across renders — declared
+// inside, React remounted the <input> on every keystroke and focus was lost.
+interface FieldProps {
+  id: string; label: string; icon?: React.ComponentType<{ size?: number; className?: string; style?: React.CSSProperties }>;
+  type?: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  placeholder?: string; hint?: string; autoComplete?: string; inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
+}
+
+function Field({ label, icon: Icon, type = 'text', value, onChange, placeholder, hint, autoComplete, inputMode, id }: FieldProps) {
   return (
     <div>
-      <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--color-text-secondary)' }}>
+      <label htmlFor={id} className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--color-text-secondary)' }}>
         {label}
       </label>
       <div className="relative">
         {Icon && (
-          <Icon
-            size={15}
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
-            style={{ color: 'var(--color-text-muted)' }}
-          />
+          <Icon size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+            style={{ color: 'var(--color-text-muted)' }} />
         )}
         <input
-          type={type}
-          value={value}
-          onChange={onChange}
-          placeholder={placeholder}
-          autoComplete={autoComplete}
-          inputMode={inputMode}
+          id={id} type={type} value={value} onChange={onChange} placeholder={placeholder}
+          autoComplete={autoComplete} inputMode={inputMode}
           className="field-input w-full h-12 rounded-xl text-white text-sm"
           style={{
-            background: 'var(--color-bg)',
-            border: '1px solid var(--color-border)',
-            paddingLeft: Icon ? '2.5rem' : '0.875rem',
-            paddingRight: '0.875rem',
+            background: 'var(--color-bg)', border: '1px solid var(--color-border)',
+            paddingLeft: Icon ? '2.5rem' : '0.875rem', paddingRight: '0.875rem',
           }}
         />
       </div>
-      {hint && (
-        <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>{hint}</p>
-      )}
+      {hint && <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>{hint}</p>}
     </div>
   );
 }
 
 const STEPS = [
   { n: 1, label: 'You' },
-  { n: 2, label: 'Safety' },
-  { n: 3, label: 'Account' },
+  { n: 2, label: 'Safety and sign-in' },
+  { n: 3, label: 'Your training' },
   { n: 4, label: 'Plan' },
 ];
 
@@ -110,6 +103,23 @@ const GENDERS = [
   { value: 'prefer_not_to_say', label: 'Rather not say' },
 ];
 
+/** The same three as Onboarding and `member_profiles.experience_level` — self-declared, never the earned level. */
+const EXPERIENCE = [
+  { id: 'beginner', label: 'Beginner', desc: 'New, or back after a break' },
+  { id: 'intermediate', label: 'Intermediate', desc: '6+ months of steady training' },
+  { id: 'advanced', label: 'Advanced', desc: '2+ years of dedicated training' },
+];
+
+/** Onboarding's goal ids, so its first step starts with this one picked. */
+const GOALS = [
+  { id: 'lose-weight', label: 'Lose weight' },
+  { id: 'build-muscle', label: 'Build muscle' },
+  { id: 'stay-fit', label: 'Stay fit' },
+  { id: 'flexibility', label: 'Flexibility' },
+  { id: 'endurance', label: 'Endurance' },
+];
+
+const initials = (s: string) => s.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
 
 export default function Register() {
   const navigate = useNavigate();
@@ -124,6 +134,8 @@ export default function Register() {
     email: '', password: '', confirmPassword: '',
     selectedPlanId: '', termsAccepted: false,
     guardianName: '',
+    experience: '', goal: '',
+    referralCode: refFromUrl() ?? '',
   });
   /** The gym's joining rule, approval and minimum age (0179); null = not known. */
   const [rules, setRules] = useState<JoinRules | null>(null);
@@ -142,15 +154,14 @@ export default function Register() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [overlayRoot, setOverlayRoot] = useState<HTMLElement | null>(null);
+  const [overlayRoot] = useState<HTMLElement | null>(() => getOverlayRoot());
   /**
    * Signed in with Google and not in a gym yet (0190): the same steps, with
-   * Google's name filled in and no email or password to choose — the account
-   * is finished by finish_signup(), under the same joining rule.
+   * Google's name filled in and no email to choose — the account is finished
+   * by finish_signup(), under the same joining rule.
    */
   const [google, setGoogle] = useState<SignupState | null>(null);
 
-  useEffect(() => { setOverlayRoot(getOverlayRoot()); }, []);
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -164,16 +175,16 @@ export default function Register() {
     return () => { cancelled = true; };
   }, []);
 
-  // Real plans. A failed load leaves the step saying so instead of offering a
-  // price the gym never set.
-  //
-  // Nothing is pre-selected. This choice is written to
-  // `pending_registrations.requested_plan_id` and is what the front desk bills
-  // against at approval, so defaulting to whichever plan sorted first would put
-  // a price on someone who never picked one.
+  // The gym's colours while signing up to it; Core Fitness's again on the way out.
+  useEffect(() => {
+    if (gym) applyAccent(gym.accent, gym.accent_action);
+  }, [gym]);
+  useEffect(() => () => applyAccent(null, null), []);
+
   // Which gym this sign-up joins. `?gym=` carries it from the gym list or a
   // `/join/<slug>` link; with only one gym on the platform there is nothing to
-  // choose and the question is never asked.
+  // choose. Plans are the gym's real ones; nothing is pre-selected, because the
+  // choice reaches the desk as what to offer this person.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -181,11 +192,8 @@ export default function Register() {
       const wanted = params.get('gym');
       let chosen: PublicGym | null = null;
       try {
-        // An invitation or a join link names its gym by address, which finds
-        // a gym that is not in the public list ("only with your link or code").
-        // Looking those up in listGyms() — open gyms only — found nothing and
-        // sent the person to /join, which is how an invitation's "Create my
-        // account" ended up on the gym search instead of the sign-up form.
+        // An invitation or a join link names its gym by address, which finds a
+        // gym that is not in the public list ("only with your link or code").
         const invite = params.get('invite');
         let slug = params.get('join');
         if (invite && !slug) {
@@ -217,7 +225,7 @@ export default function Register() {
     return () => { cancelled = true; };
   }, [navigate]);
 
-  const update = (key: string, val: any) => setFormData((p) => ({ ...p, [key]: val }));
+  const update = (key: string, val: string | boolean) => setFormData((p) => ({ ...p, [key]: val }));
 
   const go = (next: number) => {
     setDirection(next > step ? 1 : -1);
@@ -230,22 +238,16 @@ export default function Register() {
   };
 
   /**
-   * Each step is checked before it can be left. Nothing is auto-filled.
-   *
-   * The uniqueness lookups run on the step that owns the field, so a taken
-   * email is caught on Account rather than after the plan has been chosen and
-   * the account attempted. They are advice, not the boundary — 0027's trigger
-   * and the unique index on `auth.users.email` are what actually refuse.
+   * Each step is checked before it can be left. Nothing is auto-filled. The
+   * uniqueness lookups run on the step that owns the field; they are advice —
+   * 0027's trigger and the unique index on `auth.users.email` actually refuse.
    */
   const validate = async (which: number): Promise<boolean> => {
     if (which === 1) {
       if (deskOnly) return fail(`${gym?.name ?? 'This gym'} signs members up at the front desk. Ask a member for their invite link.`);
       if (!formData.firstName.trim()) return fail('Please enter your first name');
       if (!formData.lastName.trim()) return fail('Please enter your last name');
-
-      // A birth date, never an age: an age is right for one year and then
-      // quietly wrong. The bounds here catch typos; they are not gym policy on
-      // who may join, which is the front desk's call at approval.
+      // A birth date, never an age: an age is right for one year and then quietly wrong.
       if (!formData.dateOfBirth) return fail('Please enter your date of birth');
       const dobProblem = birthDateProblem(formData.dateOfBirth);
       if (dobProblem) return fail(dobProblem);
@@ -254,52 +256,41 @@ export default function Register() {
         return fail(`${gym?.name ?? 'This gym'} welcomes members from age ${minAge}. Ask at the front desk.`);
       if (years != null && years < 18 && !formData.guardianName.trim())
         return fail('Under 18: please enter the name of the parent or guardian who agrees');
-
       if (!formData.gender) return fail('Please choose an option for gender');
-
       if (formData.phone.trim()) {
-        if (!PHONE_RE.test(formData.phone.trim()))
-          return fail('That phone number does not look right');
+        if (!PHONE_RE.test(formData.phone.trim())) return fail('That phone number does not look right');
         if (await isPhoneTaken(formData.phone))
           return fail('That phone number is already registered. Ask the front desk if this is yours.');
       }
       return true;
     }
     if (which === 2) {
-      // Required, unlike the address. This is a gym: the one blank field that
-      // actually matters is who to call. `member_profiles` has had these
-      // columns since 0001 and nothing has ever filled them.
+      // Who to call is the one blank field that actually matters at a gym.
       if (!formData.emergencyName.trim()) return fail('Please enter an emergency contact name');
       if (!formData.emergencyPhone.trim()) return fail('Please enter an emergency contact number');
-      if (!PHONE_RE.test(formData.emergencyPhone.trim()))
-        return fail('That emergency contact number does not look right');
-      return true;
-    }
-    if (which === 3) {
+      if (!PHONE_RE.test(formData.emergencyPhone.trim())) return fail('That emergency contact number does not look right');
       // Google already proved the address; a password is still chosen, so either way signs in.
-      if (google) {
-        if (formData.password.length < 8) return fail('Your password needs at least 8 characters');
-        if (formData.password !== formData.confirmPassword) return fail('The passwords do not match');
-        return true;
+      if (!google) {
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) return fail('Please enter a valid email address');
+        if (await isEmailTaken(formData.email))
+          return fail('That email already has an account. Sign in — if you train at another gym now, switch gyms in More → Gyms.');
       }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim()))
-        return fail('Please enter a valid email address');
-      if (await isEmailTaken(formData.email))
-        return fail('An account already exists for that email. Try signing in instead.');
       if (formData.password.length < 8) return fail('Your password needs at least 8 characters');
       if (formData.password !== formData.confirmPassword) return fail('The passwords do not match');
       return true;
     }
-    // Only demanded when there are plans to choose from. If the catalog failed
-    // to load, blocking registration on a list the member cannot see would
-    // strand them; the front desk sets the plan at approval anyway.
-    // Not required any more. It records what to offer them, and everybody
-    // starts on the free plan regardless — so refusing to continue over an
-    // unanswered preference would block a sign-up for nothing.
-
+    if (which === 3) {
+      // Optional — Onboarding asks again — but a code typed in must look like one (six letters).
+      const code = formData.referralCode.trim();
+      if (code && !/^[A-Za-z]{6}$/.test(code)) return fail("A friend's code is six letters — check it, or leave it blank");
+      return true;
+    }
+    // Plan interest is optional: everybody starts on the free plan regardless.
     if (!formData.termsAccepted) return fail('Please accept the Terms and Privacy Policy');
     return true;
   };
+
+  const referral = formData.referralCode.trim().toUpperCase() || null;
 
   const handleContinue = async () => {
     if (checking) return;
@@ -314,7 +305,7 @@ export default function Register() {
       try {
         if (!gym) throw new Error('Choose your gym first.');
         const way = await finishSignup({
-          gymId: gym.id, joinVia: viaLink ? 'link' : 'list', referralCode: refFromUrl() ?? null,
+          gymId: gym.id, joinVia: viaLink ? 'link' : 'list', referralCode: referral,
           firstName: formData.firstName.trim(), lastName: formData.lastName.trim(), phone: formData.phone.trim() || undefined,
           dateOfBirth: formData.dateOfBirth, guardianName: needsGuardian ? formData.guardianName.trim() : undefined,
           gender: formData.gender || undefined, address: formData.address.trim() || undefined,
@@ -328,11 +319,17 @@ export default function Register() {
           navigate('/login', { replace: true, state: { pendingApproval: true } });
           return;
         }
-        // The password they chose, so this account signs in with email too.
-        const { error: pwError } = await supabase.auth.updateUser({ password: formData.password });
+        // The password they chose, so this account signs in with email too; the goal rides along for Onboarding.
+        const { error: pwError } = await supabase.auth.updateUser({
+          password: formData.password, data: { signup_experience: formData.experience, signup_goal: formData.goal },
+        });
         if (pwError) showErrorToast({ type: 'validation', message: 'You are signed up, but the password was not saved', details: pwError.message });
         const { data: { session } } = await supabase.auth.getSession();
         if (session) await finishSignIn(session.user.id);
+        if (formData.experience) {
+          const memberId = await getCurrentMemberId().catch(() => null);
+          if (memberId) await setExperienceLevel(memberId, formData.experience as 'beginner').catch(() => undefined);
+        }
         localStorage.setItem('isLoggedIn', 'true');
         localStorage.removeItem('trainerMode');
         navigate('/onboarding', { replace: true });
@@ -346,46 +343,32 @@ export default function Register() {
     }
     try {
       const { signedIn } = await registerMember({
-        // The gym this account joins (0100). Left out on a one-gym platform,
-        // where the sign-up trigger files it under the only gym there is.
         gymId: gym?.id,
-        // Supabase stores addresses lowercased; normalising here means the
-        // "already registered" check compares like with like.
+        // Supabase stores addresses lowercased; normalising keeps "already registered" comparing like with like.
         email: formData.email.trim().toLowerCase(),
         password: formData.password,
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
         phone: formData.phone.trim() || undefined,
-        // Parked in `pending_registrations` by the 0005/0031 trigger and copied
-        // onto the member row at approval — a self-registering member has no
-        // member_profiles row to write to yet.
         dateOfBirth: formData.dateOfBirth || undefined,
         gender: formData.gender || undefined,
         address: formData.address.trim() || undefined,
         emergencyContactName: formData.emergencyName.trim() || undefined,
         emergencyContactPhone: formData.emergencyPhone.trim() || undefined,
         emergencyContactRelationship: formData.emergencyRelationship.trim() || undefined,
-        // Passed at last. The front desk sees which plan this person asked for
-        // instead of guessing at approval time.
         requestedPlanId: formData.selectedPlanId || undefined,
-        // The checkbox above already blocks submission without it (line ~232),
-        // so this is always true here — sent anyway rather than hardcoded,
-        // because a consent record that cannot be false is not a record.
+        // Sent rather than hardcoded: a consent record that cannot be false is not a record.
         termsAccepted: formData.termsAccepted,
-        // A friend's code from the join link (0125): carried into the account's metadata.
-        referralCode: refFromUrl() ?? undefined,
+        referralCode: referral ?? undefined,
         joinVia: viaLink ? 'link' : 'list',
         guardianName: needsGuardian ? formData.guardianName.trim() : undefined,
+        signupExperience: formData.experience || undefined,
+        signupGoal: formData.goal || undefined,
       });
       setIsLoading(false);
 
-      // Straight into onboarding when the account is already signed in. With
-      // email confirmation on there is no session yet, so the alternative is
-      // not "log in anyway" — it's telling them to check their inbox, because
-      // onboarding writes `experience_level` against their member row and has
-      // nothing to write to without a session.
-      // Back to the invitation, which accepts it: an invited person is active
-      // straight away, not queued for the desk's approval.
+      // Signed in already (no email to confirm): straight on. Otherwise the
+      // card flips and they are told to check their inbox.
       const invite = new URLSearchParams(window.location.search).get('invite');
       if (signedIn) {
         localStorage.setItem('isLoggedIn', 'true');
@@ -393,157 +376,102 @@ export default function Register() {
         navigate(invite ? `/invite/${invite}` : '/onboarding', { replace: true });
         return;
       }
-
       setShowSuccess(true);
-      setTimeout(() => navigate(invite ? `/login?invite=${invite}` : '/login', { replace: true }), 3500);
     } catch (err) {
       setIsLoading(false);
       const message = err instanceof Error ? err.message : 'Registration failed';
       showErrorToast({ type: 'validation', message, details: '' });
-      // Send them back to the step that owns the problem. Being told the email
-      // is taken while looking at a list of plans gives you nothing to act on.
-      if (/email/i.test(message)) go(3);
+      // Back to the step that owns the problem.
+      if (/email/i.test(message)) go(2);
       else if (/phone/i.test(message)) go(1);
     }
   };
 
   const selectedPlan = plans.find((p) => p.id === formData.selectedPlanId) ?? null;
-
-  // ── Success ──
-  if (showSuccess) {
-    return (
-      <MobileFrame>
-        <div className="flex items-center justify-center h-full px-6" style={{ backgroundColor: 'var(--color-bg)' }}>
-          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center">
-            <motion.div
-              initial={{ scale: 0 }} animate={{ scale: 1 }}
-              transition={{ type: 'spring', stiffness: 260, damping: 18, delay: 0.15 }}
-              className="w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6"
-              style={{ background: 'var(--color-primary-light)', border: '2px solid var(--color-primary)' }}
-            >
-              <CheckCircle size={44} style={{ color: 'var(--color-primary)' }} />
-            </motion.div>
-            <h2 className="display text-2xl text-white">You're registered</h2>
-            <p className="text-xs mt-3 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-              {rules?.approval === 'auto'
-                ? <>Confirm your email, then sign in — you are on the free plan{selectedPlan ? ` (we have noted you asked about ${selectedPlan.name})` : ''}.</>
-                : <>Confirm your email. The gym reviews new sign-ups, and once yours is approved you can
-              sign in on the free plan{selectedPlan ? ` — we have noted you asked about ${selectedPlan.name}` : ''}.</>}
-              Visit the gym to pay whenever you want to upgrade.
-            </p>
-            <p className="text-xs mt-4" style={{ color: 'var(--color-text-muted)' }}>Taking you to sign in…</p>
-          </motion.div>
-        </div>
-      </MobileFrame>
-    );
-  }
+  const freePlan = plans.find((p) => Number(p.price) === 0) ?? null;
+  const gymName = gym?.short_name || gym?.name || 'Your gym';
+  const cardName = `${formData.firstName} ${formData.lastName}`.trim();
+  const level = EXPERIENCE.find((e) => e.id === formData.experience);
+  const goal = GOALS.find((g) => g.id === formData.goal);
+  const invite = new URLSearchParams(window.location.search).get('invite');
+  const toSignIn = () => navigate(invite ? `/login?invite=${invite}` : '/login', { replace: true });
 
   return (
     <MobileFrame>
       {overlayRoot && isLoading && createPortal(<LoadingOverlay message="Creating your account…" />, overlayRoot)}
 
-      <div className="h-full flex flex-col" style={{ backgroundColor: 'var(--color-bg)' }}>
-        <div
-          className="absolute -top-20 -right-16 w-80 h-80 rounded-full pointer-events-none"
-          style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.14) 0%, transparent 70%)' }}
-        />
-
-        <div className="flex-1 flex flex-col px-5 py-5 overflow-hidden relative z-10">
-          {/* Header */}
-          <div className="flex items-center justify-between gap-3 flex-shrink-0">
-            <button
-              onClick={() => (step === 1 ? navigate('/login') : go(step - 1))}
-              aria-label="Back"
-              className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-              style={{
-                background: 'var(--color-surface-raised)',
-                border: '1px solid var(--color-border)',
-                color: 'var(--color-text-secondary)',
-              }}
-            >
-              <ArrowLeft size={18} />
-            </button>
-            <div className="text-center min-w-0">
-              <p className="text-xs uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>
-                Step {step} of 3
-              </p>
-              <p className="display text-lg text-white leading-none mt-0.5">
-                {STEPS[step - 1].label}
-              </p>
+      <div className="h-full flex flex-col" style={{ backgroundColor: 'var(--color-bg)' }} data-register>
+        <div className="flex-1 flex flex-col px-5 pt-5 pb-5 overflow-hidden">
+          {/* Step and the dots: the count comes from STEPS, never a literal. */}
+          <div className="flex items-center justify-between mb-3 flex-shrink-0">
+            <p className="text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }} data-step-label>
+              {showSuccess ? 'Done' : `Step ${step} of ${STEPS.length} · ${STEPS[step - 1].label}`}
+            </p>
+            <div className="flex items-center gap-1.5" aria-hidden="true">
+              {STEPS.map(({ n }) => (
+                <span key={n} className={`rg-dot ${n <= step || showSuccess ? 'on' : ''}`} style={{ width: n === step && !showSuccess ? 24 : 8 }} />
+              ))}
             </div>
-            <img
-              src="/logo.png" alt="Core Fitness"
-              className="w-10 h-10 rounded-full object-contain flex-shrink-0"
-              style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}
-            />
           </div>
 
-          {/* Stepper. Numbered nodes with a connecting track, rather than three
-              anonymous bars — you can see which step you are on and which are
-              behind you without reading the header. */}
-          <div className="flex items-center mt-5 mb-6 flex-shrink-0">
-            {STEPS.map(({ n, label }, i) => {
-              const done = n < step;
-              const active = n === step;
-              return (
-                <div key={n} className="flex items-center flex-1 last:flex-none">
-                  <div className="flex flex-col items-center gap-1.5">
-                    <motion.div
-                      animate={{ scale: active ? 1.1 : 1 }}
-                      transition={{ type: 'spring', stiffness: 400, damping: 22 }}
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
-                      style={{
-                        background: done || active ? 'var(--color-primary)' : 'var(--color-surface-raised)',
-                        border: `1px solid ${done || active ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                        color: done || active ? '#fff' : 'var(--color-text-muted)',
-                      }}
-                    >
-                      {done ? <Check size={13} strokeWidth={3} /> : n}
-                    </motion.div>
-                    <span
-                      className="text-xs font-semibold"
-                      style={{ color: active ? '#fff' : 'var(--color-text-muted)' }}
-                    >
-                      {label}
-                    </span>
+          {/* The card: it fills in as they answer, and flips when they are done. */}
+          <div className="rg-scene flex-shrink-0" data-member-card>
+            <div className={`rg-card ${showSuccess ? 'rg-flip' : ''}`}>
+              <div className="rg-face rg-front">
+                <span className="rg-shine" />
+                <div className="relative flex flex-col h-full">
+                  <div className="flex items-center gap-2.5">
+                    {gym?.logo_url
+                      ? <img src={gym.logo_url} alt="" className="w-9 h-9 rounded-xl object-cover" style={{ background: 'rgba(0,0,0,.25)' }} />
+                      : <span className="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-extrabold" style={{ background: 'rgba(0,0,0,.25)' }}>{initials(gymName)}</span>}
+                    <span className="font-bold text-[15px] truncate">{gymName}</span>
                   </div>
-                  {i < STEPS.length - 1 && (
-                    <div className="flex-1 h-0.5 mx-2 -mt-5 rounded-full overflow-hidden"
-                      style={{ background: 'var(--color-surface-high)' }}>
-                      <motion.div
-                        className="h-full rounded-full origin-left"
-                        style={{ background: 'var(--color-primary)' }}
-                        animate={{ scaleX: n < step ? 1 : 0 }}
-                        transition={{ duration: 0.35, ease: 'easeOut' }}
-                      />
+                  <div className="mt-auto">
+                    <p className="text-xs font-semibold" style={{ opacity: 0.85 }}>Member</p>
+                    <p className="text-2xl font-extrabold truncate" style={{ minHeight: 32 }} data-card-name>{cardName || 'Your name'}</p>
+                    <div className="flex gap-2 mt-2 flex-wrap">
+                      {level && <span key={level.id} className="rg-tag">Experience: {level.label}</span>}
+                      {goal && <span key={goal.id} className="rg-tag">{goal.label}</span>}
+                      {step === STEPS.length && <span className="rg-tag">{freePlan?.name ?? 'Free plan'} to start</span>}
                     </div>
-                  )}
+                  </div>
                 </div>
-              );
-            })}
+              </div>
+              <div className="rg-face rg-back">
+                <span className="w-24 h-24 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: 'var(--color-primary-light)' }}>
+                  <QrCode size={52} style={{ color: 'var(--color-primary-300)' }} />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold" style={{ color: 'var(--color-text-muted)' }}>Your check-in code</p>
+                  <p className="text-base font-bold text-white mt-1 leading-snug">
+                    {rules?.approval === 'auto' ? 'Ready when you first sign in' : 'Ready once the desk approves you'}
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto scrollbar-hide">
-            <AnimatePresence mode="wait" custom={direction}>
-              {step === 1 && (
-                <motion.div
-                  key="s1" custom={direction}
-                  initial={{ opacity: 0, x: 24 * direction }} animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -24 * direction }} transition={{ duration: 0.22 }}
-                  className="space-y-4 pb-4"
-                >
-                  <div>
-                    <h1 className="display text-2xl text-white leading-tight">What should we call you?</h1>
-                    <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
-                      This is the name the gym will see on your membership.
-                    </p>
-                  </div>
+          <div className="flex-1 overflow-y-auto scrollbar-hide pt-5 min-h-0">
+            {showSuccess ? (
+              <div className="rg-pane text-center pt-2" data-register-done>
+                <h1 className="text-2xl font-extrabold text-white">That's your card, {formData.firstName.trim() || 'friend'}.</h1>
+                <p className="text-sm mt-3 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+                  {rules?.approval === 'auto'
+                    ? <>Confirm your email, then sign in — you start on the free plan.</>
+                    : <>Confirm your email. {gym?.name ?? 'The gym'} reviews new sign-ups, and once yours is approved you can sign in on the free plan.</>}
+                  {selectedPlan && Number(selectedPlan.price) > 0 ? ` The desk will tell you about ${selectedPlan.name}.` : ''}
+                  {' '}Pay at the gym whenever you want to upgrade.
+                </p>
+              </div>
+            ) : (
+              <div key={step} className={`rg-pane space-y-4 pb-4 ${direction < 0 ? 'rg-back-dir' : ''}`}>
+                {step === 1 && (<>
+                  <h1 className="text-2xl font-extrabold text-white leading-tight">Start with you</h1>
                   {/* Google first (0190): it fills the name and the sign-in; these steps ask the rest. */}
                   {!google ? (
                     <div className="space-y-2">
                       <GoogleButton next={window.location.pathname + window.location.search} label="Sign up with Google" />
-                      <p className="text-center text-[11px]" style={{ color: 'var(--color-text-muted)' }}>or fill these in and choose a password</p>
+                      <p className="text-center text-xs" style={{ color: 'var(--color-text-muted)' }}>or fill these in and choose a password</p>
                     </div>
                   ) : (
                     <p className="text-xs rounded-lg px-3 py-2" style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }} data-google-filled>
@@ -560,20 +488,14 @@ export default function Register() {
                   )}
 
                   <div className="grid grid-cols-2 gap-3">
-                    {/* Placeholders were "Eya" / "Lorenzana" — one real member's
-                        name used as the example on every signup. */}
-                    <Field label="First name" icon={User} value={formData.firstName} placeholder="Juan"
-                      autoComplete="given-name" onChange={(e: any) => update('firstName', e.target.value)} />
-                    <Field label="Last name" icon={User} value={formData.lastName} placeholder="Dela Cruz"
-                      autoComplete="family-name" onChange={(e: any) => update('lastName', e.target.value)} />
+                    <Field id="rg-first" label="First name" icon={User} value={formData.firstName} placeholder="Juan"
+                      autoComplete="given-name" onChange={(e: React.ChangeEvent<HTMLInputElement>) => update('firstName', e.target.value)} />
+                    <Field id="rg-last" label="Last name" icon={User} value={formData.lastName} placeholder="Dela Cruz"
+                      autoComplete="family-name" onChange={(e: React.ChangeEvent<HTMLInputElement>) => update('lastName', e.target.value)} />
                   </div>
 
-                  {/* Date of birth, not age — see `ageFrom` above. The live
-                      "You are N" line is the confirmation that the date was
-                      typed the way they meant it. */}
                   <div>
-                    <BirthDateField value={formData.dateOfBirth} minAge={minAge}
-                      onChange={(v) => update('dateOfBirth', v)} />
+                    <BirthDateField value={formData.dateOfBirth} minAge={minAge} onChange={(v) => update('dateOfBirth', v)} />
                     {formData.dateOfBirth && ageFrom(formData.dateOfBirth) != null && (
                       <p className="text-xs mt-1.5 font-semibold" style={{ color: 'var(--color-secondary)' }}>
                         You are {ageFrom(formData.dateOfBirth)} years old
@@ -581,13 +503,12 @@ export default function Register() {
                     )}
                   </div>
 
-                  {/* Under 18: the gym takes them with a parent's or guardian's
-                      consent (0179), recorded on the member row the desk sees. */}
+                  {/* Under 18: the gym takes them with a parent's or guardian's consent (0179). */}
                   {needsGuardian && (
                     <div data-guardian>
-                      <Field label="Parent or guardian who agrees" icon={User} value={formData.guardianName}
+                      <Field id="rg-guardian" label="Parent or guardian who agrees" icon={User} value={formData.guardianName}
                         placeholder="Their full name" autoComplete="off"
-                        onChange={(e: { target: { value: string } }) => update('guardianName', e.target.value)} />
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => update('guardianName', e.target.value)} />
                       <p className="text-xs mt-1.5" style={{ color: 'var(--color-text-muted)' }}>
                         Under 18, you join with their consent. The front desk may ask them to sign the waiver.
                       </p>
@@ -595,160 +516,78 @@ export default function Register() {
                   )}
 
                   <div>
-                    <p className="text-xs font-semibold mb-2" style={{ color: 'var(--color-text-secondary)' }}>
-                      Gender
-                    </p>
+                    <p className="text-xs font-semibold mb-2" style={{ color: 'var(--color-text-secondary)' }}>Gender</p>
                     <div className="grid grid-cols-3 gap-2">
-                      {GENDERS.map((g) => {
-                        const on = formData.gender === g.value;
-                        return (
-                          <button
-                            key={g.value}
-                            type="button"
-                            onClick={() => update('gender', g.value)}
-                            aria-pressed={on}
-                            className="h-11 rounded-xl text-xs font-semibold transition-colors active:scale-95"
-                            style={{
-                              background: on ? 'var(--color-primary)' : 'var(--color-surface)',
-                              border: `1px solid ${on ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                              color: on ? '#fff' : 'var(--color-text-muted)',
-                            }}
-                          >
-                            {g.label}
-                          </button>
-                        );
-                      })}
+                      {GENDERS.map((g) => (
+                        <button key={g.value} type="button" onClick={() => update('gender', g.value)} aria-pressed={formData.gender === g.value}
+                          className={`rg-seg text-center ${formData.gender === g.value ? 'on' : ''}`}>{g.label}</button>
+                      ))}
                     </div>
                   </div>
 
-                  <Field label="Phone" icon={Phone} type="tel" value={formData.phone}
+                  <Field id="rg-phone" label="Phone" icon={Phone} type="tel" value={formData.phone}
                     placeholder="+63 912 345 6789" autoComplete="tel" inputMode="tel"
                     hint="Optional — how the gym reaches you about your booking."
-                    onChange={(e: any) => update('phone', e.target.value)} />
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => update('phone', e.target.value)} />
 
-                  {/* The old flow spent an entire step offering Trainer as a
-                      choice you could not take. One line covers it. */}
-                  <div
-                    className="flex items-start gap-2.5 p-3.5 rounded-2xl"
-                    style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
-                  >
-                    <Dumbbell size={15} style={{ color: 'var(--color-primary)' }} className="flex-shrink-0 mt-0.5" />
+                  <div className="flex items-start gap-2.5 p-3.5 rounded-2xl" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+                    <Dumbbell size={15} style={{ color: 'var(--color-primary-300)' }} className="flex-shrink-0 mt-0.5" />
                     <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-                      Coaching at this gym? Trainer accounts are created by the gym — ask the front
-                      desk, then{' '}
-                      <button
-                        type="button"
-                        onClick={() => navigate('/login')}
-                        className="font-semibold"
-                        style={{ color: 'var(--color-secondary)' }}
-                      >
-                        sign in here
-                      </button>
-                      .
+                      Coaching or at the front desk? Your gym invites you — then{' '}
+                      <button type="button" onClick={() => navigate('/login')} className="font-semibold" style={{ color: 'var(--color-secondary)' }}>sign in here</button>.
                     </p>
                   </div>
-                </motion.div>
-              )}
+                </>)}
 
-              {step === 2 && (
-                <motion.div
-                  key="s2" custom={direction}
-                  initial={{ opacity: 0, x: 24 * direction }} animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -24 * direction }} transition={{ duration: 0.22 }}
-                  className="space-y-4 pb-4"
-                >
+                {step === 2 && (<>
                   <div>
-                    <h1 className="display text-2xl text-white leading-tight">Who should we call?</h1>
+                    <h1 className="text-2xl font-extrabold text-white leading-tight">Safety and sign-in</h1>
                     <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-                      If something happens while you are training, this is who the gym contacts.
+                      If something happens while you train, this is who the gym calls.
                     </p>
                   </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field id="rg-ec" label="Emergency contact" icon={ShieldAlert} value={formData.emergencyName}
+                      placeholder="Maria Dela Cruz" autoComplete="off" onChange={(e: React.ChangeEvent<HTMLInputElement>) => update('emergencyName', e.target.value)} />
+                    <Field id="rg-ecp" label="Their phone" icon={Phone} type="tel" value={formData.emergencyPhone}
+                      placeholder="+63 9…" autoComplete="off" inputMode="tel" onChange={(e: React.ChangeEvent<HTMLInputElement>) => update('emergencyPhone', e.target.value)} />
+                  </div>
+                  <Field id="rg-rel" label="Relationship" icon={Users} value={formData.emergencyRelationship}
+                    placeholder="Mother, spouse, friend…" autoComplete="off" hint="Optional."
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => update('emergencyRelationship', e.target.value)} />
+                  <Field id="rg-addr" label="Home address" icon={MapPin} value={formData.address}
+                    placeholder="Barangay, Mamburao" autoComplete="street-address" hint="Optional."
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => update('address', e.target.value)} />
 
-                  <Field label="Emergency contact name" icon={ShieldAlert} value={formData.emergencyName}
-                    placeholder="Maria Dela Cruz" autoComplete="off"
-                    onChange={(e: any) => update('emergencyName', e.target.value)} />
-
-                  <Field label="Their phone number" icon={Phone} type="tel" value={formData.emergencyPhone}
-                    placeholder="+63 912 345 6789" autoComplete="off" inputMode="tel"
-                    onChange={(e: any) => update('emergencyPhone', e.target.value)} />
-
-                  <Field label="Relationship" icon={Users} value={formData.emergencyRelationship}
-                    placeholder="Mother, spouse, friend…" autoComplete="off"
-                    hint="Optional — helps the desk know who they are speaking to."
-                    onChange={(e: any) => update('emergencyRelationship', e.target.value)} />
-
-                  <Field label="Home address" icon={MapPin} value={formData.address}
-                    placeholder="Barangay, Mamburao" autoComplete="street-address"
-                    hint="Optional."
-                    onChange={(e: any) => update('address', e.target.value)} />
-                </motion.div>
-              )}
-
-              {step === 3 && (
-                <motion.div
-                  key="s3" custom={direction}
-                  initial={{ opacity: 0, x: 24 * direction }} animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -24 * direction }} transition={{ duration: 0.22 }}
-                  className="space-y-4 pb-4"
-                >
                   {google ? (
-                    <div data-google-account>
-                      <h1 className="display text-2xl text-white leading-tight">Your sign-in</h1>
-                      <p className="text-sm mt-2" style={{ color: 'var(--color-text-secondary)' }}>
-                        You sign in with Google as <b className="text-white">{google.email}</b>. Choose a password too, so you can
-                        also sign in with your email and password.
-                      </p>
-                    </div>
-                  ) : (<>
-                  <div>
-                    <h1 className="display text-2xl text-white leading-tight">Set up your sign-in</h1>
-                    <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
-                      We send a confirmation link to this address.
+                    <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }} data-google-account>
+                      You sign in with Google as <b className="text-white">{google.email}</b>. Choose a password too, so you can also sign in with your email.
                     </p>
-                  </div>
-
-                  <Field label="Email" icon={Mail} type="email" value={formData.email}
-                    placeholder="you@example.com" autoComplete="email" inputMode="email"
-                    onChange={(e: any) => update('email', e.target.value)} />
-                  </>)}
+                  ) : (
+                    <Field id="rg-email" label="Email — we send a confirmation link" icon={Mail} type="email" value={formData.email}
+                      placeholder="you@example.com" autoComplete="email" inputMode="email" onChange={(e: React.ChangeEvent<HTMLInputElement>) => update('email', e.target.value)} />
+                  )}
 
                   <div>
-                    <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--color-text-secondary)' }}>
-                      Password
-                    </label>
+                    <label htmlFor="rg-pw" className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--color-text-secondary)' }}>Password</label>
                     <div className="relative">
-                      <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
-                        style={{ color: 'var(--color-text-muted)' }} />
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        value={formData.password}
-                        onChange={(e) => update('password', e.target.value)}
-                        placeholder="At least 8 characters"
-                        autoComplete="new-password"
+                      <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--color-text-muted)' }} />
+                      <input id="rg-pw" type={showPassword ? 'text' : 'password'} value={formData.password}
+                        onChange={(e) => update('password', e.target.value)} placeholder="At least 8 characters" autoComplete="new-password"
                         className="field-input w-full h-12 rounded-xl text-white text-sm pl-10 pr-11"
-                        style={{ background: 'var(--color-surface-high)' }}
-                      />
-                      <button type="button" onClick={() => setShowPassword((v) => !v)}
-                        aria-label={showPassword ? 'Hide password' : 'Show password'}
-                        className="absolute right-3 top-1/2 -translate-y-1/2"
-                        style={{ color: 'var(--color-text-muted)' }}>
+                        style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
+                      <button type="button" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }}>
                         {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
-                    {/* Live, so the rule is met before submitting rather than
-                        discovered by a toast afterwards. */}
+                    {/* Live, so the rule is met before Continue rather than found by a toast. */}
                     <div className="flex items-center gap-1.5 mt-1.5">
                       <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: 'var(--color-surface-high)' }}>
-                        <motion.div
-                          className="h-full rounded-full origin-left"
-                          style={{
-                            background: formData.password.length >= 8
-                              ? 'var(--color-primary)'
-                              : 'var(--color-secondary)',
-                          }}
-                          animate={{ scaleX: Math.min(1, formData.password.length / 8) }}
-                          transition={{ duration: 0.2 }}
-                        />
+                        <div className="h-full rounded-full" style={{
+                          width: `${Math.min(100, (formData.password.length / 8) * 100)}%`, transition: 'width .25s',
+                          background: formData.password.length >= 8 ? 'var(--color-primary)' : 'var(--color-secondary)',
+                        }} />
                       </div>
                       <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
                         {formData.password.length >= 8 ? 'Good' : `${formData.password.length}/8`}
@@ -757,98 +596,94 @@ export default function Register() {
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--color-text-secondary)' }}>
-                      Confirm password
-                    </label>
+                    <label htmlFor="rg-pw2" className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--color-text-secondary)' }}>Confirm password</label>
                     <div className="relative">
-                      <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
-                        style={{ color: 'var(--color-text-muted)' }} />
-                      <input
-                        type={showConfirmPassword ? 'text' : 'password'}
-                        value={formData.confirmPassword}
-                        onChange={(e) => update('confirmPassword', e.target.value)}
-                        placeholder="Type it again"
-                        autoComplete="new-password"
+                      <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--color-text-muted)' }} />
+                      <input id="rg-pw2" type={showConfirmPassword ? 'text' : 'password'} value={formData.confirmPassword}
+                        onChange={(e) => update('confirmPassword', e.target.value)} placeholder="Type it again" autoComplete="new-password"
                         className="field-input w-full h-12 rounded-xl text-white text-sm pl-10 pr-11"
                         style={{
                           background: 'var(--color-bg)',
-                          border: `1px solid ${
-                            formData.confirmPassword && formData.confirmPassword !== formData.password
-                              ? 'var(--color-secondary)'
-                              : 'var(--color-border)'
-                          }`,
-                        }}
-                      />
-                      <button type="button" onClick={() => setShowConfirmPassword((v) => !v)}
-                        aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
-                        className="absolute right-3 top-1/2 -translate-y-1/2"
-                        style={{ color: 'var(--color-text-muted)' }}>
+                          border: `1px solid ${formData.confirmPassword && formData.confirmPassword !== formData.password ? 'var(--color-secondary)' : 'var(--color-border)'}`,
+                        }} />
+                      <button type="button" onClick={() => setShowConfirmPassword((v) => !v)} aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                        className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }}>
                         {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
                   </div>
-                </motion.div>
-              )}
+                </>)}
 
-              {step === 4 && (
-                <motion.div
-                  key="s4" custom={direction}
-                  initial={{ opacity: 0, x: 24 * direction }} animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -24 * direction }} transition={{ duration: 0.22 }}
-                  className="space-y-4 pb-4"
-                >
+                {step === 3 && (<>
                   <div>
-                    <h1 className="display text-2xl text-white leading-tight">Which plan interests you?</h1>
-                    {/* "Which plan do you want?" read like a choice that took
-                        effect. It did not: everyone starts on the free plan when
-                        the desk approves them, and a paid plan begins the moment
-                        cash changes hands, not the moment a form is submitted.
-                        This tells the desk what to offer, and nothing more. */}
+                    <h1 className="text-2xl font-extrabold text-white leading-tight">Your training</h1>
                     <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-                      You start on the free plan. Tell us what you are after and the front
-                      desk will sort it when you come in — nothing is charged here.
+                      So your coach and the app start in the right place. Change it any time in Settings.
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold mb-2" style={{ color: 'var(--color-text-secondary)' }}>How you train now</p>
+                    <div className="space-y-2" data-experience>
+                      {EXPERIENCE.map((e) => (
+                        <button key={e.id} type="button" aria-pressed={formData.experience === e.id}
+                          onClick={() => update('experience', formData.experience === e.id ? '' : e.id)}
+                          className={`rg-seg w-full flex items-center justify-between gap-3 ${formData.experience === e.id ? 'on' : ''}`}>
+                          <span><b className="block text-white">{e.label}</b><span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{e.desc}</span></span>
+                          {formData.experience === e.id && <Check size={16} style={{ color: 'var(--color-primary-300)' }} />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold mb-2" style={{ color: 'var(--color-text-secondary)' }}>Your main goal</p>
+                    <div className="flex flex-wrap gap-2" data-goal>
+                      {GOALS.map((g) => (
+                        <button key={g.id} type="button" aria-pressed={formData.goal === g.id}
+                          onClick={() => update('goal', formData.goal === g.id ? '' : g.id)}
+                          className={`rg-seg ${formData.goal === g.id ? 'on' : ''}`} style={{ borderRadius: 999, padding: '10px 15px' }}>{g.label}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <Field id="rg-ref" label="A friend's code (optional)" icon={Gift} value={formData.referralCode}
+                    placeholder="Six letters, e.g. JUANDC" autoComplete="off"
+                    hint={refFromUrl() ? 'Filled in from your friend’s link.' : 'If a member sent you their code, type it here.'}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => update('referralCode', e.target.value.toUpperCase().replace(/[^A-Za-z]/g, '').slice(0, 6))} />
+                </>)}
+
+                {step === 4 && (<>
+                  <div>
+                    <h1 className="text-2xl font-extrabold text-white leading-tight">You start on the free plan</h1>
+                    {/* Everyone starts free when the desk approves them; a paid plan
+                        begins when cash changes hands. This only tells the desk what to offer. */}
+                    <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+                      Nothing is charged here. Want something more? Tap a plan and the front desk will tell you about it when you come in.
                     </p>
                   </div>
 
                   {plans.length === 0 ? (
-                    <div className="p-6 rounded-2xl text-center"
-                      style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+                    <div className="p-5 rounded-2xl text-center" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
                       <p className="text-sm font-semibold text-white">Plans unavailable</p>
                       <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
-                        We couldn't load the gym's plans. You can still register — the front desk will set
-                        your plan when you pay.
+                        We couldn't load the gym's plans. You can still sign up — the desk sets your plan when you pay.
                       </p>
                     </div>
                   ) : (
-                    <div className="space-y-2.5">
-                      {plans.map((plan, i) => {
-                        const isSelected = plan.id === formData.selectedPlanId;
-                        const features = (plan.description ?? '')
-                          .split(/\\n|\n/).map((l) => l.trim()).filter(Boolean);
+                    <div className="space-y-2.5" data-plans>
+                      {plans.map((plan) => {
+                        const on = plan.id === formData.selectedPlanId;
+                        const features = (plan.description ?? '').split(/\\n|\n/).map((l) => l.trim()).filter(Boolean);
                         return (
-                          <motion.button
-                            key={plan.id}
-                            type="button"
-                            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: Math.min(i * 0.06, 0.25) }}
-                            onClick={() => update('selectedPlanId', plan.id)}
-                            className="w-full p-4 rounded-2xl text-left transition-all active:scale-[0.99]"
-                            style={{
-                              background: isSelected ? 'var(--color-primary-light)' : 'var(--color-surface)',
-                              border: `1.5px solid ${isSelected ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                            }}
-                          >
+                          <button key={plan.id} type="button" aria-pressed={on}
+                            onClick={() => update('selectedPlanId', on ? '' : plan.id)}
+                            className={`rg-seg w-full p-4 ${on ? 'on' : ''}`}>
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0">
                                 <p className="text-sm font-bold text-white">{plan.name}</p>
                                 {features.length > 0 && (
                                   <ul className="mt-1.5 space-y-1">
                                     {features.map((f) => (
-                                      <li key={f} className="text-xs flex items-start gap-1.5"
-                                        style={{ color: 'var(--color-text-secondary)' }}>
-                                        <Check size={11} className="flex-shrink-0 mt-0.5"
-                                          style={{ color: 'var(--color-primary)' }} />
-                                        {f}
+                                      <li key={f} className="text-xs flex items-start gap-1.5" style={{ color: 'var(--color-text-secondary)' }}>
+                                        <Check size={11} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--color-primary-300)' }} />{f}
                                       </li>
                                     ))}
                                   </ul>
@@ -856,96 +691,68 @@ export default function Register() {
                               </div>
                               <div className="text-right flex-shrink-0">
                                 <p className="text-base font-bold" style={{ color: 'var(--color-secondary)' }}>
-                                  ₱{Number(plan.price).toLocaleString()}
+                                  {Number(plan.price) === 0 ? 'Free' : `₱${Number(plan.price).toLocaleString()}`}
                                 </p>
                                 <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
                                   {plan.duration_days == null ? 'no expiry' : `${plan.duration_days} days`}
                                 </p>
                               </div>
                             </div>
-                          </motion.button>
+                            {on && Number(plan.price) > 0 && <p className="text-xs mt-2" style={{ color: 'var(--color-primary-300)' }}>The desk will tell you about this one.</p>}
+                          </button>
                         );
                       })}
                     </div>
                   )}
 
-                  <div className="flex items-start gap-2.5 p-3.5 rounded-2xl"
-                    style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-                    <Info size={15} style={{ color: 'var(--color-primary)' }} className="flex-shrink-0 mt-0.5" />
-                    <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-                      Your account stays pending until the gym records your payment. Bring cash to
-                      the gym and it activates on the spot.
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => update('termsAccepted', !formData.termsAccepted)}
-                    className="w-full flex items-start gap-3 text-left"
-                  >
-                    <span
-                      className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors"
+                  <div className="flex items-start gap-3">
+                    <button type="button" role="checkbox" aria-checked={formData.termsAccepted} aria-label="I agree to the Terms of Service and Privacy Policy"
+                      onClick={() => update('termsAccepted', !formData.termsAccepted)}
+                      className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors"
                       style={{
                         background: formData.termsAccepted ? 'var(--color-primary)' : 'transparent',
                         border: `1.5px solid ${formData.termsAccepted ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                      }}
-                    >
-                      {formData.termsAccepted && <Check size={12} strokeWidth={3} className="text-white" />}
-                    </span>
-                    <span className="text-xs leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+                      }}>
+                      {formData.termsAccepted && <Check size={13} strokeWidth={3} className="text-white" />}
+                    </button>
+                    <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
                       I agree to the{' '}
-                      <span
-                        role="link"
-                        onClick={(e) => { e.stopPropagation(); navigate('/terms'); }}
-                        className="font-semibold"
-                        style={{ color: 'var(--color-secondary)' }}
-                      >
-                        Terms of Service
-                      </span>{' '}
-                      and{' '}
-                      <span
-                        role="link"
-                        onClick={(e) => { e.stopPropagation(); navigate('/privacy'); }}
-                        className="font-semibold"
-                        style={{ color: 'var(--color-secondary)' }}
-                      >
-                        Privacy Policy
-                      </span>
-                      .
-                    </span>
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                      <button type="button" onClick={() => navigate('/terms')} className="font-semibold" style={{ color: 'var(--color-secondary)' }}>Terms of Service</button>
+                      {' '}and{' '}
+                      <button type="button" onClick={() => navigate('/privacy')} className="font-semibold" style={{ color: 'var(--color-secondary)' }}>Privacy Policy</button>.
+                    </p>
+                  </div>
+                </>)}
+              </div>
+            )}
           </div>
 
-          {/* CTA */}
           <div className="flex-shrink-0 pt-3 space-y-2.5">
-            <motion.button
-              onClick={handleContinue}
-              disabled={isLoading || checking}
-              whileTap={{ scale: 0.985 }}
-              className="w-full h-12 rounded-full font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50"
-              style={{
-                background: 'var(--color-secondary)',
-                color: '#000',
-                boxShadow: '0 8px 24px rgba(245,158,11,0.25)',
-              }}
-            >
-              {/* Keyed to STEPS.length, not a literal. The label said "Create my
-                  account" on the Account step for exactly as long as it took to
-                  add a fourth step and forget one hardcoded 3. */}
-              {checking ? 'Checking…' : step === STEPS.length ? 'Create my account' : 'Continue'}
-              {!checking && <ArrowRight size={16} />}
-            </motion.button>
-
-            {step === 1 && (
+            {showSuccess ? (
+              <button type="button" onClick={toSignIn}
+                className="w-full h-12 rounded-full font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+                style={{ background: 'var(--color-secondary)', color: '#000' }}>
+                Go to sign in <ArrowRight size={16} />
+              </button>
+            ) : (
+              <div className="flex gap-2.5">
+                <button type="button" onClick={() => (step === 1 ? navigate('/login') : go(step - 1))}
+                  className="h-12 px-5 rounded-full text-sm font-semibold"
+                  style={{ border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                  Back
+                </button>
+                <button type="button" onClick={handleContinue} disabled={isLoading || checking}
+                  className="flex-1 h-12 rounded-full font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.98] transition-transform"
+                  style={{ background: 'var(--color-secondary)', color: '#000', boxShadow: '0 8px 24px color-mix(in srgb, var(--color-secondary) 30%, transparent)' }}>
+                  {checking ? 'Checking…' : step === STEPS.length ? 'Create my account' : 'Continue'}
+                  {!checking && <ArrowRight size={16} />}
+                </button>
+              </div>
+            )}
+            {step === 1 && !showSuccess && (
               <p className="text-center text-xs" style={{ color: 'var(--color-text-muted)' }}>
                 Already have an account?{' '}
-                <button onClick={() => navigate('/login')} className="font-semibold"
-                  style={{ color: 'var(--color-secondary)' }}>
-                  Sign in
-                </button>
+                <button type="button" onClick={() => navigate('/login')} className="font-semibold" style={{ color: 'var(--color-secondary)' }}>Sign in</button>
               </p>
             )}
           </div>

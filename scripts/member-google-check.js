@@ -58,7 +58,7 @@ async (page) => {
 
   // ---- signed out: the buttons hand off to Google with the way back ----
   await page.goto('http://localhost:5173/register?gym=gym-o&join=g-fitness', { waitUntil: 'domcontentloaded' });
-  await page.getByText('What should we call you?').waitFor({ timeout: 15000 });
+  await page.getByText('Start with you').waitFor({ timeout: 15000 });
   await page.locator('[data-google-button]').click();
   await page.waitForTimeout(1500);
   let a = CALLS.find((c) => c[0] === 'authorize');
