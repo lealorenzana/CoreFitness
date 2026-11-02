@@ -169,6 +169,8 @@ async (page) => {
   // ---- a brand colour by code ----
   await page.getByRole('tab', { name: 'Look' }).click();
   await page.waitForTimeout(400);
+  await page.locator('[data-look-step="own"]').click();
+  await page.waitForTimeout(300);
   await page.locator('#look-accent-code').fill('#1F8A70');
   await page.waitForTimeout(300);
   t = await text();

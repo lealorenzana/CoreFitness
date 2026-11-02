@@ -135,12 +135,14 @@ async (page) => {
   await page.waitForTimeout(2500);
   let t = await text();
 
-  out.push('look card: ' + has(t, 'Ready-made pairs'));
-  // Two rows, named for what they mean rather than "colour 1" and "colour 2" —
-  // the roles are what keep the screen readable, and an owner picking blind is
-  // how the first one ended up rose with amber buttons.
-  out.push('role 1: ' + has(t, 'Where you are, and what you have'));
-  out.push('role 2: ' + has(t, 'What you can do next'));
+  out.push('look card: ' + has(t, 'One tap sets both colours'));
+  // Since 2026-11-02 the look is four steps; the two roles are on "Your own colours",
+  // named for what they mean rather than "colour 1" and "colour 2".
+  await page.locator('[data-look-step="own"]').click();
+  await page.waitForTimeout(300);
+  t = await text();
+  out.push('role 1: ' + (/Main colour/.test(t) && /where you are and what you have/.test(t) ? 'shown' : 'MISSING'));
+  out.push('role 2: ' + (/Button colour/.test(t) && /what members can do next/.test(t) ? 'shown' : 'MISSING'));
   // A gym that never set the second one is told what it currently is, rather
   // than shown fourteen unselected swatches and left to guess.
   out.push('unset says amber: ' + (/Not set, so your buttons are standard amber/.test(t) ? 'shown' : 'MISSING'));
@@ -149,6 +151,8 @@ async (page) => {
   out.push('nouns: ' + has(await text(), 'What you call your people'));
   await page.getByRole('tab', { name: 'Look' }).click();
   await page.waitForTimeout(400);
+  await page.locator('[data-look-step="own"]').click();
+  await page.waitForTimeout(300);
   await page.screenshot({ path: 'shots/admin-gym-app.png', fullPage: true });
 
   // Pick an action colour and a noun, then save. The assertion is on what was

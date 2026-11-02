@@ -141,6 +141,9 @@ async (page) => {
   await page.setViewportSize({ width: 1500, height: 900 });
   await page.goto('http://localhost:5174/gym-app?tab=look', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(3000);
+  // The two colour pickers are step 2 of the look (2026-11-02).
+  await page.locator('[data-look-step="own"]').click();
+  await page.waitForTimeout(400);
   const buy = await page.locator('[data-buy-colours]').count();
   const code = await page.locator('[aria-label="Colour code"]').count();
   say('Volt selected, not bought: both colours offer the purchase, no code box', buy === 2 && code === 0, `buy ${buy}, code boxes ${code}`);

@@ -167,6 +167,8 @@ async (page) => {
 
   // ── Your app logo: a square frame; Cancel sends nothing ──
   await go('/gym-app?tab=look');
+  await page.locator('[data-look-step="logo"]').click();
+  await page.waitForTimeout(300);
   const tall = await makePng(300, 600);
   const logoInput = page.locator('label', { hasText: /Choose a logo|Change logo/ }).locator('input[type="file"]');
   say('Your app offers a logo upload', (await logoInput.count()) === 1);

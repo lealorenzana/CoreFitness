@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import {
-  Bell, Bot, Building2, Calendar, CalendarHeart, Camera, Check, Coins, Copy, CreditCard, DoorOpen, Dumbbell, Flag, Globe, HeartHandshake, Image,
-  Lock, MessageSquare, PartyPopper, NotebookPen, Palette, Printer, QrCode, RefreshCw, Salad, Share2, ShoppingBag, Smartphone, Sparkles,
+  Bell, Bot, Building2, Calendar, CalendarHeart, Camera, Check, Coins, Copy, CreditCard, DoorOpen, Dumbbell, Flag, Globe, HeartHandshake,
+  Lock, MessageSquare, PartyPopper, NotebookPen, Palette, Printer, QrCode, RefreshCw, Salad, Share2, ShoppingBag, Smartphone,
   ToggleRight, Trophy, Tv, Type, UserCheck, UserPlus, Users, type LucideIcon,
 } from 'lucide-react';
 import './attendance/att.css';
@@ -84,6 +84,7 @@ export default function GymApp() {
   const [vocab, setVocab] = useState<GymVocabulary | null>(null);
   /** Both colour roles and the logo, edited together because they are one look. */
   const [look, setLook] = useState({ accent: 'violet', action: '', logo_url: '' });
+  const [lookStep, setLookStep] = useState<'pair' | 'own' | 'premium' | 'logo'>('pair');
   const [group, setGroup] = useState(GROUPS[0]);
   const [uploading, setUploading] = useState(false);
   /** The gym's address, open for editing. NULL means "not editing", so an accidental empty box cannot be saved. */
@@ -222,9 +223,19 @@ export default function GymApp() {
             <TabBar on="Today" colour={a.c300} />
           </Phone>
         )}>
-          <div className="a-ct"><h3><Palette size={16} />Colours</h3><small>two colours, two jobs</small></div>
+          {/* Four steps, one at a time (2026-11-02): pairs, saved and premium themes and the two pickers
+              were stacked into one long list whose titles did not say how they differ. */}
+          <div className="a-ct"><h3><Palette size={16} />Your look</h3><small>pick a step — the preview follows</small></div>
+          <div className="flex gap-1.5 flex-wrap" style={{ marginBottom: 12 }} role="tablist" aria-label="Look steps">
+            {([['pair', '1 · Colour pair'], ['own', '2 · Your own colours'], ['premium', '3 · Premium theme'], ['logo', '4 · Logo and name']] as const).map(([k, l]) => (
+              <button key={k} type="button" role="tab" aria-selected={lookStep === k} className={`a-chip ${lookStep === k ? 'v' : ''}`} onClick={() => setLookStep(k)} data-look-step={k}>{l}</button>
+            ))}
+          </div>
+
+          {lookStep === 'pair' && <>
+            <p className="a-sub" style={{ marginBottom: 10 }}>The quickest way: a ready-made pair sets your main colour and your button colour together. Free.</p>
           <div className="flex items-center gap-2 flex-wrap" style={{ marginBottom: 6 }}>
-            <span className="a-lbl">Ready-made pairs <span style={{ fontWeight: 500 }}>· one tap sets both</span></span>
+            <span className="a-lbl">One tap sets both colours</span>
             <span style={{ marginLeft: 'auto' }} />
             {GROUPS.map((g) => <button key={g} type="button" className={`a-chip ${group === g ? 'v' : ''}`} onClick={() => setGroup(g)}>{g}</button>)}
           </div>
@@ -237,17 +248,20 @@ export default function GymApp() {
             ))}
           </div>
           <SavedThemes accent={look.accent} action={look.action} onPick={(accent, action) => setLook((l) => ({ ...l, accent, action }))} />
-          <PremiumThemes />
-          <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16, marginTop: 14 }}>
+          </>}
+
+          {lookStep === 'own' && <>
+            <p className="a-sub" style={{ marginBottom: 10 }}>Choose each colour yourself. The swatches are free; typing your own colour code is part of the one-time colours unlock.</p>
+          <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16, marginTop: 4 }}>
             <div>
-              <b style={{ fontSize: 12.5 }}>Where you are, and what you have</b>
-              <div className="a-sub" style={{ margin: '2px 0 8px' }}>selected tabs, progress, points</div>
+              <b style={{ fontSize: 12.5 }}>Main colour</b>
+              <div className="a-sub" style={{ margin: '2px 0 8px' }}>where you are and what you have — selected tabs, progress, points</div>
               <ColourRolePicker compact idPrefix="look-accent" value={look.accent} fallback="violet"
                 onChange={(val) => setLook((l) => ({ ...l, accent: val || 'violet' }))} />
             </div>
             <div>
-              <b style={{ fontSize: 12.5 }}>What you can do next</b>
-              <div className="a-sub" style={{ margin: '2px 0 8px' }}>book, renew, save, send</div>
+              <b style={{ fontSize: 12.5 }}>Button colour</b>
+              <div className="a-sub" style={{ margin: '2px 0 8px' }}>what members can do next — book, renew, save, send</div>
               <ColourRolePicker compact idPrefix="look-action" value={look.action} fallback="amber"
                 unsetLabel="Standard amber, the colour every gym started with"
                 onChange={(val) => setLook((l) => ({ ...l, action: val }))} />
@@ -255,7 +269,14 @@ export default function GymApp() {
             </div>
           </div>
 
-          <div className="a-ct" style={{ marginTop: 16 }}><h3><Image size={16} />Logo and name</h3></div>
+          </>}
+
+          {lookStep === 'premium' && <>
+            <p className="a-sub" style={{ marginBottom: 4 }}>A whole style on top of your colours: the background, the panels, and a gradient on the main buttons, bars and member card. Saved as soon as you tap one.</p>
+            <PremiumThemes />
+          </>}
+
+          {lookStep === 'logo' && <>
           <div className="flex items-center gap-3.5">
             {logo(64)}
             <div className="a-fld" style={{ flex: 1 }}>
@@ -283,7 +304,8 @@ export default function GymApp() {
             {look.logo_url && <button type="button" className="a-btn ghost" onClick={() => setLook({ ...look, logo_url: '' })}>Remove</button>}
           </div>
           <p className="a-sub" style={{ marginTop: 6 }}>Square works best — it shows in a circle. With none, members see the Core Fitness mark.</p>
-          <div className="a-hint" style={{ marginTop: 12 }}><Sparkles size={15} /><span>Premium themes (photo backgrounds, your own fonts) are coming — these colours carry over.</span></div>
+          </>}
+
           <button type="button" className="a-btn violet" style={{ marginTop: 'auto', alignSelf: 'flex-end' }} onClick={() => void saveLook()} disabled={saving || uploading}>
             <Check size={15} />{saving ? 'Publishing…' : 'Publish to members'}
           </button>
