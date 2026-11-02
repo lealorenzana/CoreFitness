@@ -925,3 +925,11 @@ export async function emailSuspension(p: { email: string; name: string | null },
     return `Not emailed: ${e instanceof Error ? e.message : 'unknown error'}.`;
   }
 }
+
+/** Which PayMongo key Core Fitness has saved — read from the key's prefix by the Edge Function; the key never comes back.
+ *  null = the function could not be reached. */
+export async function paymongoMode(): Promise<{ configured: boolean; live: boolean } | null> {
+  const { data, error } = await supabase.functions.invoke('paymongo-checkout', { body: { probe: true } });
+  if (error || !data || typeof data.configured !== 'boolean') return null;
+  return { configured: data.configured, live: data.live === true };
+}

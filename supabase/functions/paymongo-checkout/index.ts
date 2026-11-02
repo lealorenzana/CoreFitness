@@ -41,7 +41,8 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const platformKey = Deno.env.get("PAYMONGO_SECRET_KEY");
-    if (body.probe) return json({ configured: !!platformKey });
+    // The mode comes from the key's own prefix; the key itself never leaves this function.
+    if (body.probe) return json({ configured: !!platformKey, live: !!platformKey && platformKey.startsWith("sk_live_") });
 
     // Back from PayMongo, the screen asks: was it paid? This asks PayMongo itself (not the screen, not
     // the webhook) and records it the same way the webhook would — so a late or lost webhook never

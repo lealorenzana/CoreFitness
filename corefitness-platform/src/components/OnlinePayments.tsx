@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CreditCard } from 'lucide-react';
-import { explain, onlinePayments, setColoursPrice, themePrice, type OnlinePaymentRow } from '../lib/platform';
+import { explain, onlinePayments, paymongoMode, setColoursPrice, themePrice, type OnlinePaymentRow } from '../lib/platform';
 
 const peso = (n: string | number) => '₱' + Number(n).toLocaleString('en-PH', { maximumFractionDigits: 2 });
 const when = (iso: string) => new Date(iso).toLocaleString('en-PH', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
@@ -17,6 +17,8 @@ export default function OnlinePayments() {
   const [price, setPrice] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [mode, setMode] = useState<{ configured: boolean; live: boolean } | null | undefined>(undefined);
+  useEffect(() => { void paymongoMode().then(setMode); }, []);
   const load = useCallback(async () => {
     try { const [r, p] = await Promise.all([onlinePayments(), themePrice()]); setRows(r); setPrice(p != null ? String(Number(p)) : ''); setError(null); }
     catch (e) { setRows([]); setError(explain(e, '0191')); }
@@ -25,7 +27,12 @@ export default function OnlinePayments() {
 
   return (
     <section className="card" style={{ marginTop: 16 }} data-online-payments>
-      <h2 className="section-title"><CreditCard size={14} /> Paid online (PayMongo)</h2>
+      <h2 className="section-title"><CreditCard size={14} /> Paid online (PayMongo)
+        <span className="meta" data-paymongo-mode style={{ margin: '0 0 0 auto', fontWeight: 600, color: mode?.live ? 'var(--amber, #F59E0B)' : undefined }}>
+          {mode === undefined ? 'Checking the key…' : mode === null ? 'Key mode unknown — the payment function did not answer'
+            : !mode.configured ? 'No PayMongo key saved — online payment is off'
+            : mode.live ? 'Live — real money' : 'Test mode — no real money moves'}
+        </span></h2>
       {error && <p className="err">{error}</p>}
       <div className="row" style={{ gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
         <span className="meta" style={{ margin: 0 }}>Custom colours cost ₱</span>
