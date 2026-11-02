@@ -179,10 +179,18 @@ async (page) => {
   await page.getByRole('button', { name: 'Open its full page' }).click();
   await page.waitForTimeout(1200);
   t = await text();
-  out.push("a gym's own page: " + (/\/gyms\/g1$/.test(page.url()) && /Who runs it/i.test(t) && /What it uses/i.test(t) && /Payments to Core Fitness/i.test(t) ? 'opened' : 'MISSING ' + page.url()));
-  out.push('contacts to reach: ' + (/owner@gfitness\.test/.test(t) && /09171234567/.test(t) && /signed in 2 days ago/.test(t) ? 'shown' : 'MISSING'));
+  // Since 2026-11-02 a gym's page is in tabs: Overview, Manage, Billing and payments, People and notes, History.
   out.push('26 weeks of use: ' + ((await page.locator('.bar').count()) === 26 ? 'charted' : 'MISSING ' + (await page.locator('.bar').count())));
   out.push('features used, and not: ' + (/Coaching room posts/.test(t) && /Not used yet: Shop sales/.test(t) ? 'shown' : 'MISSING'));
+  const overviewHasUse = /What it uses/i.test(t);
+  await page.locator('[data-gym-tab="money"]').click();
+  await page.waitForTimeout(300);
+  const moneyTab = /Payments to Core Fitness/i.test(await text());
+  await page.locator('[data-gym-tab="people"]').click();
+  await page.waitForTimeout(300);
+  t = await text();
+  out.push("a gym's own page: " + (/\/gyms\/g1$/.test(page.url()) && /Who runs it/i.test(t) && overviewHasUse && moneyTab ? 'opened' : 'MISSING ' + page.url()));
+  out.push('contacts to reach: ' + (/owner@gfitness\.test/.test(t) && /09171234567/.test(t) && /signed in 2 days ago/.test(t) ? 'shown' : 'MISSING'));
   await page.getByLabel('New note').fill('Owner prefers calls after 6pm');
   await page.getByRole('button', { name: 'Add note' }).click();
   await page.waitForTimeout(800);

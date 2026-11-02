@@ -160,6 +160,7 @@ async (page) => {
   out.push('the full page is one more click: ' + (/\/gyms\/g1$/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
 
   // A new password can be emailed; with no mail provider it says nothing was sent.
+  await page.locator('[data-gym-tab="manage"]').click();
   await page.getByRole('button', { name: 'New password' }).first().click();
   await page.getByText('A new password for Ana Reyes').waitFor({ timeout: 8000 });
   await page.getByRole('button', { name: 'Email it to ana@alpha.test' }).click();

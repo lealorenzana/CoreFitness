@@ -195,7 +195,7 @@ function Shell() {
           </span>
           <CommandPalette pages={PAGES} />
           <TooltipLayer />
-          <ViewAll root=".content" boxes=".card, section, .pf-col, .cap-col, .kpi" />
+          <ViewAll root=".content" boxes=".card, section, .pf-col, .cap-col, .kpi" fit />
         </header>
         <div className="content">
           <div className="p-head" key={`h-${page.path}`}>

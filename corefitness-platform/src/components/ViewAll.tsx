@@ -18,8 +18,32 @@ import { Maximize2, X } from 'lucide-react';
 interface Spot { el: HTMLElement; top: number; right: number }
 
 const FLOAT = 'va-floating';
+/** The smallest a reading box is shrunk to (2026-11-02) — below it the text stops being readable, so it scrolls. */
+const MIN_FIT = 0.6;
 
-export default function ViewAll({ boxes, root }: { boxes: string; root: string }) {
+/**
+ * Something you work through, not just read: a form, or a long list (8+ rows side by side in one parent).
+ * Those keep their scroll; a box that is only for reading is fitted instead (the owner's rule).
+ */
+function scrolls(el: HTMLElement): boolean {
+  if (el.querySelector('input, textarea, select')) return true;
+  let most = 0;
+  for (const n of [el, ...Array.from(el.querySelectorAll<HTMLElement>('*'))]) {
+    if (n.childElementCount > most) most = n.childElementCount;
+    if (most >= 8) return true;
+  }
+  return false;
+}
+
+/** Put a fitted box back to its own size. */
+function unfit(el: HTMLElement) {
+  if (el.dataset.vaFit === undefined) return;
+  for (const c of Array.from(el.children) as HTMLElement[]) c.style.removeProperty('zoom');
+  el.style.removeProperty('overflow-y');
+  delete el.dataset.vaFit;
+}
+
+export default function ViewAll({ boxes, root, fit = false }: { boxes: string; root: string; fit?: boolean }) {
   const [spots, setSpots] = useState<Spot[]>([]);
   const [open, setOpen] = useState<HTMLElement | null>(null);
   const frame = useRef(0);
@@ -31,9 +55,31 @@ export default function ViewAll({ boxes, root }: { boxes: string; root: string }
       if (!area) { setSpots([]); return; }
       const found = new Map<HTMLElement, Spot>();
       for (const el of area.querySelectorAll<HTMLElement>('*')) {
-        if (el === area || el.scrollHeight <= el.clientHeight + 12 || el.clientHeight < 60) continue; // never the page itself
+        if (el === area || el.closest('.' + FLOAT)) continue; // never the page itself, nor the open window
+        // `fit`: a box with more than it shows has its contents shrunk to fit — no scrollbar — and keeps
+        // View all for the full size. Re-measured each pass, so new rows (or fewer) are fitted again.
+        const wasFit = el.dataset.vaFit !== undefined;
+        if (wasFit) unfit(el);
+        if (el.scrollHeight <= el.clientHeight + 12 || el.clientHeight < 60) continue;
         const oy = getComputedStyle(el).overflowY;
         if (oy !== 'auto' && oy !== 'scroll') continue;
+        // A column of several boxes (a side rail) keeps its own scroll, as the owner asked: only a single box is fitted.
+        if (el.querySelectorAll(boxes).length > 1 || el.closest('[data-va-keep]')) continue;
+        const need = Math.floor((el.clientHeight / el.scrollHeight) * 100) / 100;
+        if (fit && need >= MIN_FIT && !scrolls(el)) {
+          // Padding and gaps do not shrink with the contents, so step down until it really fits.
+          let ratio = need;
+          const kids = Array.from(el.children) as HTMLElement[];
+          for (;;) {
+            for (const c of kids) c.style.setProperty('zoom', String(ratio));
+            if (el.scrollHeight <= el.clientHeight + 2 || ratio <= MIN_FIT) break;
+            ratio = Math.max(MIN_FIT, Math.round((ratio - 0.03) * 100) / 100);
+          }
+          el.dataset.vaFit = String(ratio);
+          el.style.setProperty('overflow-y', 'hidden');
+          // Fitted, it shows everything: no View all (the owner's call). View all is for what still scrolls.
+          if (el.scrollHeight <= el.clientHeight + 2) continue;
+        }
         const box = (el.closest(boxes) as HTMLElement | null) ?? el;
         if (!area.contains(box) || box.classList.contains(FLOAT) || found.has(box)) continue;
         const r = box.getBoundingClientRect();
@@ -56,9 +102,10 @@ export default function ViewAll({ boxes, root }: { boxes: string; root: string }
 
   const close = useCallback(() => {
     document.querySelectorAll('.va-hole').forEach((n) => n.remove());
+    requestAnimationFrame(() => scan());
     setOpen((el) => { el?.classList.remove(FLOAT); return null; });
     document.body.classList.remove('va-open');
-  }, []);
+  }, [scan]);
 
   useEffect(() => {
     if (!open) return;
@@ -81,6 +128,9 @@ export default function ViewAll({ boxes, root }: { boxes: string; root: string }
     hole.className = 'va-hole';
     hole.style.cssText = `width:${r.width}px;height:${r.height}px;grid-column:${cs.gridColumn};grid-row:${cs.gridRow};flex:none;`;
     el.parentElement?.insertBefore(hole, el);
+    // Full size in the window: undo the fitting inside it.
+    unfit(el);
+    el.querySelectorAll<HTMLElement>('[data-va-fit]').forEach(unfit);
     el.classList.add(FLOAT);
     el.scrollTop = 0;
     document.body.classList.add('va-open');

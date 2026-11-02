@@ -33,6 +33,8 @@ function ago(iso: string | null): string {
  * Counts and dates only — never a gym's rows (docs/TENANCY.md). The people are
  * its owner and desk, the platform's counterparties; never its members.
  */
+type GymTab = 'overview' | 'manage' | 'money' | 'people' | 'history';
+
 export default function GymProfile() {
   const { gymId = '' } = useParams();
   const [gym, setGym] = useState<PlatformGym | null | undefined>(undefined);
@@ -47,6 +49,8 @@ export default function GymProfile() {
   const [live, setLive] = useState(true);
   const [billing, setBilling] = useState<{ until: string; note: string } | null>(null);
   const [billBusy, setBillBusy] = useState(false);
+  // Tabs (2026-11-02): one subject at a time, each with the whole height — nothing squeezed under the rest.
+  const [tab, setTab] = useState<GymTab>('overview');
 
   const loadNotes = useCallback(async () => { try { setNotes(await gymNotes(gymId)); } catch { /* before 0135 */ } }, [gymId]);
   const load = useCallback(async () => {
@@ -86,29 +90,38 @@ export default function GymProfile() {
     { icon: Wallet, label: 'Paid in all', value: peso(gym.paid_total), foot: gym.paid_until ? `paid to ${day(gym.paid_until)}` : 'no paid-until date' },
   ];
 
+  const TABS: [GymTab, string, typeof Activity][] = [
+    ['overview', 'Overview', BarChart3], ['manage', 'Manage', UserCog], ['money', 'Billing and payments', Wallet],
+    ['people', 'People and notes', Users], ['history', 'History', Activity],
+  ];
   return (
     <>
       <Back />
-      <section className="card" style={{ marginTop: 12 }}>
-        <div className="row" style={{ gap: 18 }}>
-          <GymMark name={gym.name} logoUrl={gym.logo_url} accent={gym.accent} size={72} />
-          <span className="grow">
-            <span className="name" style={{ fontSize: 22 }}>{gym.name}</span>
-            <span className="meta">/join/{gym.slug} · on Core Fitness since {day(gym.created_at)} · {gym.plan_name ?? gym.plan}</span>
-          </span>
-          {gym.lock_reason
-            ? <span className="pill warn"><span className="dot" />{gym.lock_reason === 'suspended' ? 'Suspended' : gym.lock_reason === 'trial_ended' ? 'Trial ended — paused' : 'Overdue — read-only'}</span>
-            : <span className="pill ok"><span className="dot" />{gym.owners === 0 || !gym.onboarded ? 'Setting up' : 'Live'}</span>}
-          <SupportDoor gymId={gym.id} />
-          <ExportGym gymId={gym.id} gymName={gym.name} />
-        </div>
+      <section className="card gym-head">
+        <GymMark name={gym.name} logoUrl={gym.logo_url} accent={gym.accent} size={52} />
+        <span className="grow" style={{ minWidth: 0 }}>
+          <span className="name" style={{ fontSize: 19 }}>{gym.name}</span>
+          <span className="meta" style={{ marginTop: 2 }}>/join/{gym.slug} · on Core Fitness since {day(gym.created_at)} · {gym.plan_name ?? gym.plan}</span>
+        </span>
+        {gym.lock_reason
+          ? <span className="pill warn"><span className="dot" />{gym.lock_reason === 'suspended' ? 'Suspended' : gym.lock_reason === 'trial_ended' ? 'Trial ended — paused' : 'Overdue — read-only'}</span>
+          : <span className="pill ok"><span className="dot" />{gym.owners === 0 || !gym.onboarded ? 'Setting up' : 'Live'}</span>}
+        <SupportDoor gymId={gym.id} />
+        <ExportGym gymId={gym.id} gymName={gym.name} />
       </section>
+
+      <div className="ptabs" role="tablist" aria-label="This gym">
+        {TABS.map(([k, label, Icon]) => (
+          <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)} data-gym-tab={k}>
+            <Icon size={14} /> {label}
+          </button>
+        ))}
+      </div>
 
       {error && <p className="err">{error}</p>}
 
-      <ManageGym gym={gym} onChanged={load} />
-
-      <div className="kpis" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', marginTop: 16 }}>
+      {tab === 'overview' && <>
+      <div className="kpis" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
         {kpis.map((k) => {
           const Icon = k.icon;
           return (
@@ -122,7 +135,53 @@ export default function GymProfile() {
         })}
       </div>
 
-      <section className="card" style={{ marginTop: 16 }} data-card="billing">
+      {live && (
+        <div className="grid-2">
+          <section className="card">
+            <h2 className="section-title"><BarChart3 size={14} /> Check-ins per week, 26 weeks</h2>
+            {weeks.every((w) => w.checkins === 0) ? <p className="empty">No check-ins in the last half year.</p> : (
+              <div className="bars" style={{ gap: 4 }}>
+                {weeks.map((w, i) => (
+                  <div key={w.week_start} className={`bar${i === weeks.length - 1 ? ' now' : ''}`}
+                    title={`Week of ${day(w.week_start)}: ${w.checkins} check-ins, ${w.new_members} new members, ${w.workouts} workouts`}>
+                    <span className="bar-fill" style={{ height: `${Math.max(2, (w.checkins / top) * 160)}px`, maxWidth: 22 }} />
+                    <span className="bar-label">{i % 4 === 0 ? new Date(`${w.week_start}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }) : ''}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="meta" style={{ marginTop: 10 }}>
+              {weeks.reduce((n, w) => n + w.new_members, 0)} new members and {weeks.reduce((n, w) => n + w.workouts, 0)} logged workouts in these weeks ·
+              {' '}{peso(weeks.reduce((n, w) => n + Number(w.payments), 0))} taken at its desk
+            </p>
+          </section>
+
+          <section className="card">
+            <h2 className="section-title"><Sparkles size={14} /> What it uses</h2>
+            {used.length === 0 && <p className="empty">Nothing used yet.</p>}
+            {used.map((f) => (
+              <div key={f.feature} className="log" style={{ display: 'flex', gap: 10 }}>
+                <span style={{ flex: 1, color: 'var(--text)' }}>{f.label}</span>
+                <span className="muted" style={{ fontSize: 12 }}>{f.last_30.toLocaleString('en-PH')} in 30 days</span>
+                <span style={{ fontSize: 12, fontWeight: 700, width: 60, textAlign: 'right' }}>{f.ever.toLocaleString('en-PH')}</span>
+              </div>
+            ))}
+            {unused.length > 0 && (
+              <p className="meta" style={{ marginTop: 10 }}>Not used yet: {unused.map((f) => f.label).join(', ')} — worth a word with the owner.</p>
+            )}
+          </section>
+        </div>
+      )}
+
+      </>}
+
+      {tab === 'manage' && <>
+      <ManageGym gym={gym} onChanged={load} />
+      <GymDetail gym={gym} onChanged={() => void load()} />
+      </>}
+
+      {tab === 'money' && <div className="grid-2">
+        <section className="card" data-card="billing">
         <h2 className="section-title"><Clock size={14} /> Billing</h2>
         <p className="meta">
           {gym.paid_until && Number(gym.paid_total) === 0 && gym.plan === 'trial'
@@ -164,45 +223,21 @@ export default function GymProfile() {
         )}
       </section>
 
-      {live && (
-        <div className="grid-2">
-          <section className="card">
-            <h2 className="section-title"><BarChart3 size={14} /> Check-ins per week, 26 weeks</h2>
-            {weeks.every((w) => w.checkins === 0) ? <p className="empty">No check-ins in the last half year.</p> : (
-              <div className="bars" style={{ gap: 4 }}>
-                {weeks.map((w, i) => (
-                  <div key={w.week_start} className={`bar${i === weeks.length - 1 ? ' now' : ''}`}
-                    title={`Week of ${day(w.week_start)}: ${w.checkins} check-ins, ${w.new_members} new members, ${w.workouts} workouts`}>
-                    <span className="bar-fill" style={{ height: `${Math.max(2, (w.checkins / top) * 160)}px`, maxWidth: 22 }} />
-                    <span className="bar-label">{i % 4 === 0 ? new Date(`${w.week_start}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }) : ''}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-            <p className="meta" style={{ marginTop: 10 }}>
-              {weeks.reduce((n, w) => n + w.new_members, 0)} new members and {weeks.reduce((n, w) => n + w.workouts, 0)} logged workouts in these weeks ·
-              {' '}{peso(weeks.reduce((n, w) => n + Number(w.payments), 0))} taken at its desk
-            </p>
-          </section>
+        <section className="card">
+          <h2 className="section-title"><Receipt size={14} /> Payments to Core Fitness</h2>
+          {payments.length === 0 && <p className="empty">None recorded.</p>}
+          {payments.slice(0, 8).map((p) => (
+            <div key={p.id} className="log" style={{ display: 'flex', gap: 10 }}>
+              <span style={{ flex: 1 }}>{day(p.paid_on)}<span className="muted"> · covers to {day(p.covers_until)}{p.method ? ` · ${p.method}` : ''}</span></span>
+              <span style={{ fontWeight: 700, color: 'var(--text)' }}>{peso(p.amount)}</span>
+            </div>
+          ))}
+          {payments.length > 8 && <p className="meta"><Link to="/money">All {payments.length} on Money</Link></p>}
+        </section>
 
-          <section className="card">
-            <h2 className="section-title"><Sparkles size={14} /> What it uses</h2>
-            {used.length === 0 && <p className="empty">Nothing used yet.</p>}
-            {used.map((f) => (
-              <div key={f.feature} className="log" style={{ display: 'flex', gap: 10 }}>
-                <span style={{ flex: 1, color: 'var(--text)' }}>{f.label}</span>
-                <span className="muted" style={{ fontSize: 12 }}>{f.last_30.toLocaleString('en-PH')} in 30 days</span>
-                <span style={{ fontSize: 12, fontWeight: 700, width: 60, textAlign: 'right' }}>{f.ever.toLocaleString('en-PH')}</span>
-              </div>
-            ))}
-            {unused.length > 0 && (
-              <p className="meta" style={{ marginTop: 10 }}>Not used yet: {unused.map((f) => f.label).join(', ')} — worth a word with the owner.</p>
-            )}
-          </section>
-        </div>
-      )}
+      </div>}
 
-      <div className="grid-3">
+      {tab === 'people' && <div className="grid-2">
         <section className="card">
           <h2 className="section-title"><UserCog size={14} /> Who runs it</h2>
           {contacts.length === 0 && <p className="empty">Nobody can sign in yet.</p>}
@@ -221,31 +256,6 @@ export default function GymProfile() {
           ))}
         </section>
 
-        <section className="card">
-          <h2 className="section-title"><Receipt size={14} /> Payments to Core Fitness</h2>
-          {payments.length === 0 && <p className="empty">None recorded.</p>}
-          {payments.slice(0, 8).map((p) => (
-            <div key={p.id} className="log" style={{ display: 'flex', gap: 10 }}>
-              <span style={{ flex: 1 }}>{day(p.paid_on)}<span className="muted"> · covers to {day(p.covers_until)}{p.method ? ` · ${p.method}` : ''}</span></span>
-              <span style={{ fontWeight: 700, color: 'var(--text)' }}>{peso(p.amount)}</span>
-            </div>
-          ))}
-          {payments.length > 8 && <p className="meta"><Link to="/money">All {payments.length} on Money</Link></p>}
-        </section>
-
-        <section className="card">
-          <h2 className="section-title"><Activity size={14} /> Timeline</h2>
-          {events.length === 0 && <p className="empty">Nothing yet.</p>}
-          {events.slice(0, 10).map((e) => (
-            <div key={e.id} className="log" style={{ display: 'flex', gap: 10 }}>
-              <span style={{ flex: 1, color: 'var(--text)' }}>{e.summary}</span>
-              <span className="muted" style={{ whiteSpace: 'nowrap', fontSize: 11.5 }}>{day(e.created_at)}</span>
-            </div>
-          ))}
-        </section>
-      </div>
-
-      <div className="grid-2">
         <section className="card">
           <h2 className="section-title"><NotebookPen size={14} /> Your notes</h2>
           <p className="meta" style={{ marginTop: -6, marginBottom: 10 }}>Only you see these — never the gym.</p>
@@ -266,10 +276,20 @@ export default function GymProfile() {
           ))}
         </section>
 
-        <div>
-          <GymDetail gym={gym} onChanged={() => void load()} />
-        </div>
-      </div>
+      </div>}
+
+      {tab === 'history' && <>
+        <section className="card">
+          <h2 className="section-title"><Activity size={14} /> Timeline</h2>
+          {events.length === 0 && <p className="empty">Nothing yet.</p>}
+          {events.slice(0, 10).map((e) => (
+            <div key={e.id} className="log" style={{ display: 'flex', gap: 10 }}>
+              <span style={{ flex: 1, color: 'var(--text)' }}>{e.summary}</span>
+              <span className="muted" style={{ whiteSpace: 'nowrap', fontSize: 11.5 }}>{day(e.created_at)}</span>
+            </div>
+          ))}
+        </section>
+      </>}
     </>
   );
 }
