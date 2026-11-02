@@ -273,3 +273,14 @@ body.va-open { overflow: hidden; }
   .page[data-page="settings"] .set-pane { display: flex; flex-direction: column; }
   .page[data-page="settings"] .set-pane > .card { flex: 1 0 auto; }
 }
+
+/* ---- Plans: cards in one tab, one table to tick in the other (2026-11-02) --------------------- */
+.plan-locked { display: flex; gap: 6px; align-items: flex-start; margin: 6px 0 0; font-size: 11.5px; color: var(--text-3); line-height: 1.45; }
+.plan-locked svg { flex: none; margin-top: 2px; }
+.compare td.yes, .compare td.no { text-align: center; padding: 3px; }
+.cell-tick { width: 30px; height: 26px; border-radius: 8px; border: 1px solid var(--border-soft); background: var(--surface); color: var(--text-3);
+  display: inline-grid; place-items: center; cursor: pointer; }
+.cell-tick:hover { border-color: var(--accent); color: #fff; }
+.cell-tick.on { background: var(--accent-tint); border-color: #3b2f6b; color: var(--accent-text); }
+.compare thead th { position: sticky; top: 0; background: var(--surface); z-index: 1; }
+.content .page[data-page="plans"] > .toolbar { flex: none; min-height: 0; overflow: visible; }

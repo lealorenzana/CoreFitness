@@ -223,6 +223,7 @@ async (page) => {
 
   // ---- Plans: the comparison, no stale notices ----------------------------------------------------------
   await page.goto('http://localhost:5175/plans', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('tab', { name: /What each plan unlocks/ }).click();
   await page.getByText('What each plan gets').waitFor({ timeout: 15000 });
   t = await text();
   out.push('the two confusing notices are gone: ' + (!/plans have no price/.test(t) && !/exactly the same things/.test(t) ? 'yes' : 'STILL SHOWN'));

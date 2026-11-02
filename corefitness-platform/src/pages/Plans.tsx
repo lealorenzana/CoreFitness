@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import InfoDot from '../components/InfoDot';
-import { Building2, Eye, Layers, Plus, Wallet } from 'lucide-react';
+import { Building2, Check, Eye, Layers, Lock, Minus, Plus, Wallet } from 'lucide-react';
 import Modal from '../components/Modal';
 import Tiles from '../components/Tiles';
 import {
@@ -36,6 +35,8 @@ export default function Plans() {
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<PlatformPlan | null>(null);
   const [busy, setBusy] = useState(false);
+  // Two tabs (2026-11-02): the plans as cards, and one table to tick what each unlocks.
+  const [tab, setTab] = useState<'plans' | 'unlocks'>('plans');
   /** Which gyms are on which plan — counts on the cards, never a gym's rows. */
   const [gyms, setGyms] = useState<PlatformGym[]>([]);
 
@@ -149,9 +150,12 @@ export default function Plans() {
         { icon: Wallet, value: peso(String(gyms.reduce((n, g) => n + Number(plans?.find((p) => p.key === g.plan)?.price_monthly ?? 0), 0))) ?? '₱0', label: 'A month, at list price' },
       ]} />
       <div className="toolbar">
-        <span className="muted" style={{ fontSize: 13 }}>
-          {plans ? `${plans.length} plan${plans.length === 1 ? '' : 's'} · tick what each one unlocks` : 'Loading…'}
-        </span>
+        <div className="ptabs" role="tablist" aria-label="Plans">
+          <button type="button" role="tab" aria-selected={tab === 'plans'} className={tab === 'plans' ? 'on' : ''} onClick={() => setTab('plans')}>
+            <Wallet size={14} /> Plans <em>{plans?.filter((p) => p.is_active).length ?? 0}</em></button>
+          <button type="button" role="tab" aria-selected={tab === 'unlocks'} className={tab === 'unlocks' ? 'on' : ''} onClick={() => setTab('unlocks')}>
+            <Layers size={14} /> What each plan unlocks</button>
+        </div>
         <span className="spacer" />
         <button className="btn" onClick={() => setEditing(blank((plans?.length ?? 0) + 1))}>
           <Plus size={15} /> Add a plan
@@ -160,8 +164,10 @@ export default function Plans() {
 
       {error && <p className="err">{error}</p>}
 
-      <ComparePlans plans={(plans ?? []).filter((p) => p.is_active)} features={features} on={on}
-        onSuggest={allSame ? () => void suggest() : undefined} />
+      {tab === 'unlocks' && (
+        <ComparePlans plans={(plans ?? []).filter((p) => p.is_active)} features={features} on={on}
+          onToggle={(plan, f) => void toggle(plan, f)} onSuggest={allSame ? () => void suggest() : undefined} />
+      )}
 
       <Modal open={!!editing} onClose={() => setEditing(null)} size="lg" label="Plan">
       {editing && (
@@ -273,7 +279,7 @@ export default function Plans() {
       )}
       </Modal>
 
-      <div className="plan-grid">
+      {tab === 'plans' && <div className="plan-grid">
       {plans?.map((plan) => {
         const onIt = gyms.filter((g) => g.plan === plan.key).length;
         const unlocked = features.filter((f) => on(plan.key, f.key)).length;
@@ -299,16 +305,14 @@ export default function Plans() {
             {plan.max_photos !== undefined && <span className="chip">{plan.max_photos === null ? 'Any number of photos' : `Up to ${plan.max_photos} photos`}</span>}
           </div>
           <div className="plan-unlocks">
-            <span className="section-title" style={{ margin: 0 }}>Unlocks {unlocked} of {features.length} <InfoDot tip="Tick what this plan includes. The database enforces it: a gym on this plan loses what is unticked, and the website follows." /></span>
-            <div className="ticks">
-              {features.map((f) => (
-                <label className="tick" key={f.key} title={f.description}>
-                  <input type="checkbox" checked={on(plan.key, f.key)}
-                    onChange={() => void toggle(plan.key, f.key)} />
-                  <span>{f.label}</span>
-                </label>
-              ))}
+            <div className="row" style={{ gap: 8 }}>
+              <span className="section-title grow" style={{ margin: 0 }}>Unlocks {unlocked} of {features.length}</span>
+              <button type="button" className="app-link" onClick={() => setTab('unlocks')}>Change</button>
             </div>
+            <span className="app-meter" aria-hidden="true"><i style={{ width: `${features.length ? (unlocked / features.length) * 100 : 0}%` }} /></span>
+            {unlocked < features.length && (
+              <p className="plan-locked"><Lock size={12} /> Not included: {features.filter((f) => !on(plan.key, f.key)).map((f) => f.label).join(', ')}</p>
+            )}
           </div>
           <div className="plan-foot">
             <button className="btn ghost" onClick={() => setEditing(plan)}>Edit the plan</button>
@@ -317,7 +321,7 @@ export default function Plans() {
         </div>
         );
       })}
-      </div>
+      </div>}
 
       {plans?.length === 0 && (
         <p className="empty">
@@ -336,8 +340,9 @@ const STANDARD_KEEPS = ['front_desk', 'checkin', 'classes', 'progress', 'push', 
  * not, with the rows that differ marked — the answer to "what is the
  * difference between them?" in one look.
  */
-function ComparePlans({ plans, features, on, onSuggest }: {
-  plans: PlatformPlan[]; features: PlatformFeature[]; on: (plan: string, feature: string) => boolean; onSuggest?: () => void;
+function ComparePlans({ plans, features, on, onToggle, onSuggest }: {
+  plans: PlatformPlan[]; features: PlatformFeature[]; on: (plan: string, feature: string) => boolean;
+  onToggle: (plan: string, feature: string) => void; onSuggest?: () => void;
 }) {
   if (plans.length < 2) return null;
   const differs = (f: string) => new Set(plans.map((p) => on(p.key, f))).size > 1;
@@ -347,7 +352,7 @@ function ComparePlans({ plans, features, on, onSuggest }: {
     <section className="card" style={{ marginBottom: 16 }}>
       <div className="row" style={{ gap: 10 }}>
         <h2 className="section-title grow" style={{ margin: 0 }}><Layers size={14} /> What each plan gets</h2>
-        <span className="muted" style={{ fontSize: 12.5 }}>{nDiff === 0 ? 'No feature differs between plans yet' : `${nDiff} feature${nDiff === 1 ? ' differs' : 's differ'}`}</span>
+        <span className="muted" style={{ fontSize: 12.5 }}>{nDiff === 0 ? 'No feature differs between plans yet' : `${nDiff} feature${nDiff === 1 ? ' differs' : 's differ'}`} · click a cell to include or take out — gyms on that plan follow at once</span>
         {onSuggest && <button className="btn ghost" onClick={onSuggest}>Use a suggested split</button>}
       </div>
       <div style={{ overflowX: 'auto' }}>
@@ -363,9 +368,17 @@ function ComparePlans({ plans, features, on, onSuggest }: {
             {features.map((f) => (
               <tr key={f.key} className={differs(f.key) ? 'diff' : ''}>
                 <td title={f.description}>{f.label}</td>
-                {plans.map((p) => on(p.key, f.key)
-                  ? <td key={p.key} className="yes" aria-label="Included">✓</td>
-                  : <td key={p.key} className="no" aria-label="Not included">—</td>)}
+                {plans.map((p) => {
+                  const yes = on(p.key, f.key);
+                  return (
+                    <td key={p.key} className={yes ? 'yes' : 'no'}>
+                      <button type="button" className={`cell-tick${yes ? ' on' : ''}`} aria-pressed={yes}
+                        aria-label={`${f.label} on ${p.name}: ${yes ? 'included' : 'not included'}`} onClick={() => onToggle(p.key, f.key)}>
+                        {yes ? <Check size={14} /> : <Minus size={14} />}
+                      </button>
+                    </td>
+                  );
+                })}
               </tr>
             ))}
           </tbody>
