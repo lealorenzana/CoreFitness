@@ -40,6 +40,7 @@ const push = (message: string, type: ToastType) => {
   }, type === 'error' || type === 'warning' ? 4000 : 2600);
 };
 
+// eslint-disable-next-line react-refresh/only-export-components -- a helper shared with this component; only hot reload in development is affected
 export const toast = {
   success: (m: string) => push(m, 'success'),
   error:   (m: string) => push(m, 'error'),

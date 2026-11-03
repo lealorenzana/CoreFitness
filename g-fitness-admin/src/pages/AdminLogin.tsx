@@ -11,27 +11,32 @@ import { getSessionPersistence, setSessionPersistence } from '../lib/authStorage
 
 // Floating particles
 function Particles() {
+  // Rolled once, when the page opens — a re-render must not scatter them again.
+  const [dots] = useState(() => Array.from({ length: 30 }, () => ({
+    left: Math.random() * 100, top: Math.random() * 100, rise: 30 + Math.random() * 50, drift: (Math.random() - 0.5) * 30,
+    grow: 1 + Math.random(), duration: 4 + Math.random() * 4, delay: Math.random() * 5,
+  })));
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none z-[1]">
-      {Array.from({ length: 30 }).map((_, i) => (
+      {dots.map((d, i) => (
         <motion.div
           key={i}
           className="absolute w-1 h-1 rounded-full"
           style={{
             background: i % 3 === 0 ? 'rgba(124,58,237,0.6)' : 'rgba(255,255,255,0.3)',
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
+            left: `${d.left}%`,
+            top: `${d.top}%`,
           }}
           animate={{
-            y: [0, -30 - Math.random() * 50, 0],
-            x: [0, (Math.random() - 0.5) * 30, 0],
+            y: [0, -d.rise, 0],
+            x: [0, d.drift, 0],
             opacity: [0, 0.8, 0],
-            scale: [0, 1 + Math.random(), 0],
+            scale: [0, d.grow, 0],
           }}
           transition={{
-            duration: 4 + Math.random() * 4,
+            duration: d.duration,
             repeat: Infinity,
-            delay: Math.random() * 5,
+            delay: d.delay,
             ease: 'easeInOut',
           }}
         />

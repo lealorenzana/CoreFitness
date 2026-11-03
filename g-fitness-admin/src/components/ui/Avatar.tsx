@@ -29,6 +29,7 @@ interface AvatarProps {
   zoom?: boolean;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- a helper shared with this component; only hot reload in development is affected
 export function initialsOf(name: string | null | undefined): string {
   if (!name) return '';
   return name

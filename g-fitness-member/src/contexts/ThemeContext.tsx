@@ -45,6 +45,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- a helper shared with this component; only hot reload in development is affected
 export function useTheme() {
   const context = useContext(ThemeContext);
   if (!context) {

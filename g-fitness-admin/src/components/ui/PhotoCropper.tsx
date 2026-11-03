@@ -28,6 +28,7 @@ const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
 /** Ask the person to frame `file`. Resolves with the cropped file, or null if they cancel. */
+// eslint-disable-next-line react-refresh/only-export-components -- a helper shared with this component; only hot reload in development is affected
 export function cropPhoto(file: File, opts: CropOptions): Promise<File | null> {
   // Not an image we can draw (a PDF, a GIF that should stay animated): hand it back untouched.
   if (!/^image\/(jpeg|png|webp)$/.test(file.type)) return Promise.resolve(file);

@@ -111,7 +111,7 @@ export async function broadcastNotification(input: {
   message: string;
   actionUrl?: string | null;
 }): Promise<BroadcastResult> {
-  let recipientIds: string[] = [];
+  let recipientIds: string[];
 
   if (input.audience === 'specific') {
     recipientIds = input.userIds ?? [];

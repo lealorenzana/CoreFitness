@@ -13,6 +13,7 @@ import { cn } from '../../lib/utils';
  * the call sites are `motion.div`s that need to keep their own animation props;
  * those spread `panelStyle` instead of wrapping in `<Card>`.
  */
+// eslint-disable-next-line react-refresh/only-export-components -- a helper shared with this component; only hot reload in development is affected
 export const panelStyle: CSSProperties = {
   background: 'var(--color-surface-raised)',
   border: '1px solid var(--color-border)',
@@ -27,6 +28,7 @@ export const panelStyle: CSSProperties = {
  * anything on it being wrong. The parent card already supplies the edge; this
  * only needs to separate.
  */
+// eslint-disable-next-line react-refresh/only-export-components -- a helper shared with this component; only hot reload in development is affected
 export const insetStyle: CSSProperties = {
   background: 'var(--color-surface-high)',
 };

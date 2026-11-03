@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import Popover from './Popover';
 import { boundsHint, dateBounds, narrow, type BoundOpts, type DateMode } from '../../lib/dateRules';
@@ -52,6 +52,7 @@ function parse(value: string): { y: number; m: number; d: number } | null {
   return { y: Number(match[1]), m: Number(match[2]) - 1, d: Number(match[3]) };
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- a helper shared with this component; only hot reload in development is affected
 export function formatDisplay(value: string): string {
   const p = parse(value);
   if (!p) return '';
@@ -91,7 +92,8 @@ export default function DatePicker({
   const { min, max } = narrow(dateBounds(mode, bounds), minProp, maxProp);
   const [open, setOpen] = useState(false);
   const [showYears, setShowYears] = useState(startView === 'year');
-  const anchorRef = useRef<HTMLButtonElement>(null);
+  // The trigger, held in state (a callback ref) so the popover gets it without reading a ref while drawing.
+  const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
 
   const selected = parse(value);
   const today = parse(todayKey())!;
@@ -164,20 +166,20 @@ export default function DatePicker({
   return (
     <>
       {triggerClassName ? (
-        <button ref={anchorRef} type="button" className={triggerClassName} aria-label={triggerAriaLabel} aria-expanded={open}
+        <button ref={setAnchor} type="button" className={triggerClassName} aria-label={triggerAriaLabel} aria-expanded={open}
           onClick={() => { setOpen((o) => !o); setShowYears(startView === 'year' && !value); }}>
           {triggerLabel ?? (value ? formatDisplay(value) : placeholder)}
         </button>
       ) : (
       <button
-        ref={anchorRef}
+        ref={setAnchor}
         type="button"
         onClick={() => { setOpen((o) => !o); setShowYears(startView === 'year' && !value); }}
         className="w-full px-3 py-2 rounded-xl text-xs text-left flex items-center justify-between gap-2 transition-colors"
         style={{
           background: 'var(--color-bg)',
           border: `1px solid ${open ? 'var(--color-primary)' : 'var(--color-border)'}`,
-          color: value ? '#fff' : 'var(--color-text-muted)',
+          color: value ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
         }}
       >
         <span className="truncate">{value ? formatDisplay(value) : placeholder}</span>
@@ -185,7 +187,7 @@ export default function DatePicker({
       </button>
       )}
 
-      <Popover anchor={anchorRef.current} open={open} onClose={() => setOpen(false)} width={268}>
+      <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} width={268}>
         <div className="p-3">
           {/* Month header */}
           <div className="flex items-center justify-between mb-2">

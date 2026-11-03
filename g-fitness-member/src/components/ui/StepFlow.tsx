@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Check, Minus, Plus, X } from '@phosphor-icons/react';
@@ -65,21 +65,22 @@ export default function StepFlow({
   onClose: () => void;
   onSubmit: () => void;
 }) {
-  const [index, setIndex] = useState(0);
+  const [rawIndex, setIndex] = useState(0);
 
-  // Reset on each open, and clamp if the step list shrinks underneath us —
-  // the goals flow drops a step when the metric changes to "something else".
-  useEffect(() => {
-    if (!open) return;
-    const start = initialStepId ? steps.findIndex((s) => s.id === initialStepId) : 0;
-    setIndex(start >= 0 ? start : 0);
-    // `steps` is rebuilt every render by every caller, so depending on it here
-    // would reset the member to step one on each keystroke.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, initialStepId]);
-  useEffect(() => {
-    setIndex((i) => Math.min(i, Math.max(0, steps.length - 1)));
-  }, [steps.length]);
+  // Reset on each open (compared during render, not in an effect). Keyed on
+  // `open` and `initialStepId` only: `steps` is rebuilt every render by every
+  // caller, so watching it would reset the member to step one on each keystroke.
+  const [seen, setSeen] = useState({ open: false, initialStepId });
+  if (seen.open !== open || seen.initialStepId !== initialStepId) {
+    setSeen({ open, initialStepId });
+    if (open) {
+      const start = initialStepId ? steps.findIndex((s) => s.id === initialStepId) : 0;
+      setIndex(start >= 0 ? start : 0);
+    }
+  }
+  // Clamped if the step list shrinks underneath us — the goals flow drops a
+  // step when the metric changes to "something else".
+  const index = Math.min(rawIndex, Math.max(0, steps.length - 1));
 
   const root = typeof document !== 'undefined' ? document.getElementById('phone-overlay-root') : null;
   if (!root || steps.length === 0) return null;
@@ -89,8 +90,8 @@ export default function StepFlow({
   const blocked = step.valid === false;
   const optional = step.valid === undefined && !step.answered;
 
-  const back = () => (index === 0 ? onClose() : setIndex((i) => i - 1));
-  const next = () => (isLast ? onSubmit() : setIndex((i) => i + 1));
+  const back = () => (index === 0 ? onClose() : setIndex(index - 1));
+  const next = () => (isLast ? onSubmit() : setIndex(index + 1));
 
   return createPortal(
     // An always-mounted wrapper, OUTSIDE AnimatePresence, carrying the only

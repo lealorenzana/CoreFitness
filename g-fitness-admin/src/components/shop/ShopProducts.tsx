@@ -176,8 +176,8 @@ export default function ShopProducts({ products, owner, busy, form, setForm, sto
               <div className="flex gap-1.5 flex-wrap" role="group" aria-label="Quick picks">
                 {categories.map((c) => (
                   <button key={c} type="button" onClick={() => setForm({ ...form, category: c })} className="h-7 px-2.5 rounded-full text-[12px] font-semibold"
-                    style={form.category === c ? { background: 'rgba(124,58,237,0.22)', color: '#EDE9FE', border: '1px solid rgba(139,92,246,0.7)' }
-                      : { color: MUTED, border: '1px solid rgba(255,255,255,0.1)' }}>{c}</button>
+                    style={form.category === c ? { background: 'rgba(124,58,237,0.22)', color: 'var(--tone-violet-fg, #EDE9FE)', border: '1px solid rgba(139,92,246,0.7)' }
+                      : { color: MUTED, border: '1px solid var(--color-border)' }}>{c}</button>
                 ))}
               </div>
               <Labelled label="Description (optional)">

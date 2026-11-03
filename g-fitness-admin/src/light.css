@@ -52,6 +52,7 @@
 :root[data-mode="light"] [style*="border: 1px solid rgba(255, 255, 255"]:not(.keep-dark *) { border-color: var(--color-border) !important; }
 :root[data-mode="light"] [style*="background: rgba(255, 255, 255, 0.0"]:not(.keep-dark *) { background: var(--color-surface) !important; }
 :root[data-mode="light"] [style*="color: rgb(196, 181, 253)"]:not(.keep-dark *) { color: var(--tone-violet-fg) !important; }
+:root[data-mode="light"] [style*="color: rgb(237, 233, 254)"]:not(.keep-dark *) { color: var(--tone-violet-fg) !important; }
 :root[data-mode="light"] .text-gray-300, :root[data-mode="light"] .text-gray-200 { color: var(--color-text-secondary); }
 :root[data-mode="light"] .text-gray-400 { color: var(--color-text-muted); }
 /* The old dark-* surface names. */
@@ -156,3 +157,7 @@
 :root[data-mode="light"] .att .a-phone .a-phcard b[style*="color: rgb("], :root[data-mode="light"] .att .a-phone .a-phcard [style*="color: rgb("]:not(.a-phbtn) { filter: brightness(0.62) saturate(1.2); }
 /* A soft amber button's words are the deep amber in light; the bright one is for edges and fills. */
 :root[data-mode="light"] .att .a-btn.soft { color: var(--a-a300); border-color: color-mix(in srgb, var(--a-amber) 35%, transparent); }
+/* A legacy dark box (bg-dark*) turns light above, so its white words turn dark with it — the Record
+   Payment method select and the older forms read white on white without this. */
+:root[data-mode="light"] :is(.bg-dark, .bg-dark-lighter, .bg-dark-surface).text-white,
+:root[data-mode="light"] :is(.bg-dark, .bg-dark-lighter, .bg-dark-surface) option { color: var(--color-text-primary); }

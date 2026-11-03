@@ -53,7 +53,7 @@ export default function TabBar() {
   // The bar marks a tab only on its root. On a pushed screen the tab still
   // colours its icon — you are inside it — but the underline mark means "this
   // screen", and it would be untrue two levels down.
-  const onRoot = TABS.some((t) => tabPath(t, app) === location.pathname);
+  const onRoot = TABS.some((t) => tabPath(t) === location.pathname);
 
   const blockColour = checkedIn ? 'var(--color-primary-400)' : 'var(--color-secondary)';
   const blockEdge = checkedIn ? 'var(--color-primary)' : 'var(--color-secondary)';
@@ -76,7 +76,7 @@ export default function TabBar() {
           return (
             <button
               key={tab.id}
-              onClick={() => { const to = tabPath(tab, app); if (location.pathname !== to) navigate(to); }}
+              onClick={() => { const to = tabPath(tab); if (location.pathname !== to) navigate(to); }}
               aria-current={isActive && onRoot ? 'page' : undefined}
               className="flex-1 flex flex-col items-center justify-start noc-press"
               style={{

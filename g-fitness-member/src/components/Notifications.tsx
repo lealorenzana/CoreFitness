@@ -43,7 +43,6 @@ export default function Notifications() {
   const allRoute = isTrainer ? '/trainer/notifications' : '/member/notifications';
 
   const [isOpen, setIsOpen] = useState(false);
-  const [overlayRoot, setOverlayRoot] = useState<HTMLElement | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [detail, setDetail] = useState<Notification | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -52,7 +51,8 @@ export default function Notifications() {
 
   const seenIds = useRef<Set<string> | null>(null);
 
-  useEffect(() => { setOverlayRoot(getOverlayRoot()); }, []);
+  // Read when the panel opens (after a tap), when the phone's overlay root is surely in the page.
+  const overlayRoot = isOpen ? getOverlayRoot() : null;
 
   // Real auth, not the legacy localStorage cache.
   useEffect(() => {
@@ -88,7 +88,7 @@ export default function Notifications() {
     }
   }, [userId, soundOn]);
 
-  useEffect(() => { if (userId) load(); }, [userId, load]);
+  useEffect(() => { if (userId) void (async () => { await load(); })(); }, [userId, load]);
 
   // Poll in the foreground; stops entirely when the tab is hidden. Deliberately
   // not Supabase realtime — that needs the table in the `supabase_realtime`

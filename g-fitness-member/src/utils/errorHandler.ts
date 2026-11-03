@@ -9,7 +9,8 @@ export interface AppError {
   code?: string;
 }
 
-export const handleError = (error: any): AppError => {
+export const handleError = (thrown: unknown): AppError => {
+  const error = (thrown ?? {}) as { message?: string; status?: number };
   if (error.message === 'Network Error' || !navigator.onLine) {
     return {
       type: 'network',
@@ -23,7 +24,7 @@ export const handleError = (error: any): AppError => {
       type: 'auth',
       message: 'Authentication failed',
       details: 'Please log in again',
-      code: error.status.toString(),
+      code: String(error.status),
     };
   }
 
@@ -36,12 +37,12 @@ export const handleError = (error: any): AppError => {
     };
   }
 
-  if (error.status >= 500) {
+  if ((error.status ?? 0) >= 500) {
     return {
       type: 'server',
       message: 'Server error',
       details: 'Something went wrong on our end. Please try again later',
-      code: error.status.toString(),
+      code: String(error.status),
     };
   }
 

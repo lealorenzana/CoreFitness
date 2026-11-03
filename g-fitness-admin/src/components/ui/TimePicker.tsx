@@ -34,6 +34,7 @@ function to24(hour12: number, minute: number, pm: boolean): string {
   return `${String(h).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- a helper shared with this component; only hot reload in development is affected
 export function formatDisplay(value: string): string {
   const p = parse(value);
   if (!p) return '';
@@ -50,7 +51,8 @@ export interface TimePickerProps {
 
 export default function TimePicker({ value, onChange, placeholder = 'Select a time' }: TimePickerProps) {
   const [open, setOpen] = useState(false);
-  const anchorRef = useRef<HTMLButtonElement>(null);
+  // The trigger, held in state (a callback ref) so the popover gets it without reading a ref while drawing.
+  const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
 
   const parsed = parse(value);
   const hour12 = parsed ? (parsed.h % 12 === 0 ? 12 : parsed.h % 12) : null;
@@ -66,21 +68,21 @@ export default function TimePicker({ value, onChange, placeholder = 'Select a ti
   return (
     <>
       <button
-        ref={anchorRef}
+        ref={setAnchor}
         type="button"
         onClick={() => setOpen((o) => !o)}
         className="w-full px-3 py-2 rounded-xl text-xs text-left flex items-center justify-between gap-2 transition-colors"
         style={{
           background: 'var(--color-bg)',
           border: `1px solid ${open ? 'var(--color-primary)' : 'var(--color-border)'}`,
-          color: value ? '#fff' : 'var(--color-text-muted)',
+          color: value ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
         }}
       >
         <span className="truncate">{value ? formatDisplay(value) : placeholder}</span>
         <Clock size={13} style={{ color: 'var(--color-text-muted)' }} className="flex-shrink-0" />
       </button>
 
-      <Popover anchor={anchorRef.current} open={open} onClose={() => setOpen(false)} width={210}>
+      <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} width={210}>
         <div className="flex" style={{ height: 200 }}>
           <Column
             items={HOURS12.map((h) => ({ key: h, label: String(h), selected: h === hour12 }))}

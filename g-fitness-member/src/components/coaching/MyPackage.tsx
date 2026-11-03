@@ -48,6 +48,7 @@ export default function MyPackage() {
   useEffect(() => { void gymOnlinePay().then(setOnlinePay); }, []);
   const [confirming, setConfirming] = useState<'waiting' | 'slow' | null>(null);
   const [busy, setBusy] = useState(false);
+  const [openedAt] = useState(() => Date.now()); // how far through the package, as of opening the screen
   const [standinOpen, setStandinOpen] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
   const [endReason, setEndReason] = useState('');
@@ -185,7 +186,7 @@ export default function MyPackage() {
                 <p style={{ fontSize: 13.5, color: 'var(--color-text-primary)' }}>Until {fmt(current.endsOn)}{current.roomId ? ' · Chat · Classwork' : ''}</p>
                 {/* How far through the package: only with both dates, never a guessed bar. */}
                 {current.startsOn && current.endsOn && (
-                  <ProgressBar style={{ marginTop: 8 }} fraction={(Date.now() - new Date(`${current.startsOn}T00:00:00`).getTime())
+                  <ProgressBar style={{ marginTop: 8 }} fraction={(openedAt - new Date(`${current.startsOn}T00:00:00`).getTime())
                     / (new Date(`${current.endsOn}T00:00:00`).getTime() - new Date(`${current.startsOn}T00:00:00`).getTime())} />
                 )}
                 {current.roomId && (

@@ -119,7 +119,7 @@ export default function LevelProgressCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
   // Timer, not rAF: see the note at the top of the file.
   useEffect(() => {

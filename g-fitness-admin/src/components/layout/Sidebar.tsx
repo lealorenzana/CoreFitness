@@ -368,6 +368,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 }
 
 /** Hook to read & persist the sidebar collapsed state. */
+// eslint-disable-next-line react-refresh/only-export-components -- a helper shared with this component; only hot reload in development is affected
 export function useSidebarCollapsed() {
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     try { return localStorage.getItem(STORAGE_KEY) === '1'; }

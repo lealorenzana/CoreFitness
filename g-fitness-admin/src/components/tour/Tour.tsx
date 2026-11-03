@@ -26,6 +26,7 @@ const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
 /** Forget what was read — called with the other per-person caches on sign-out and gym switch. */
+// eslint-disable-next-line react-refresh/only-export-components -- a helper shared with this component; only hot reload in development is affected
 export function clearTourCache(): void { seen.clear(); loading.clear(); replay = null; active = null; emit(); }
 
 async function seenFor(app: TourApp): Promise<Set<string> | null> {
@@ -42,6 +43,7 @@ async function seenFor(app: TourApp): Promise<Set<string> | null> {
 }
 
 /** Help's Replay: the next time this tour's screen opens, it runs again. */
+// eslint-disable-next-line react-refresh/only-export-components -- a helper shared with this component; only hot reload in development is affected
 export function replayTour(id: string): void { replay = id; }
 
 function end(def: TourDef) {
@@ -53,6 +55,7 @@ function end(def: TourDef) {
 }
 
 /** Shows `def`'s tour on this screen when it has not been seen, or when Help asked to replay it. */
+// eslint-disable-next-line react-refresh/only-export-components -- a helper shared with this component; only hot reload in development is affected
 export function useTour(def: TourDef | undefined, translate: (s: string) => string = (s) => s, ready = true): void {
   useEffect(() => {
     if (!def || !ready) return;

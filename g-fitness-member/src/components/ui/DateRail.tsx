@@ -34,6 +34,7 @@ export interface RailDay {
  * Always build keys from a `Date`, never from `toISOString()` — that shifts a
  * Manila evening into tomorrow.
  */
+// eslint-disable-next-line react-refresh/only-export-components -- a helper shared with this component; only hot reload in development is affected
 export function buildRail(
   days: number,
   keyOf: (d: Date) => string,

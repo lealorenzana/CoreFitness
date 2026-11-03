@@ -42,7 +42,7 @@ export default function CoachHome() {
     return () => { alive = false; };
   }, []);
 
-  const now = Date.now();
+  const [now] = useState(() => Date.now()); // the moment the screen opened
   const coming = (rows ?? []).filter((r) => isUpcoming(r, now)).sort((a, b) => (a.startsAt ?? '').localeCompare(b.startsAt ?? ''));
   const past = (rows ?? []).filter((r) => !isUpcoming(r, now) && r.status === 'approved');
   const preview = [...coming.slice(0, 3), ...past.slice(0, Math.max(0, 4 - Math.min(coming.length, 3)))];

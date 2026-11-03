@@ -154,6 +154,41 @@ async (page) => {
     await page.screenshot({ path: `shots/admin-light${p.replace(/\//g, '-')}.png` });
   }
   say('every main page readable in light (3:1 or better)', bad.length === 0, bad.join(' || '));
+
+  // The pop-ups: each is opened for real and its text judged the same way. One that cannot be
+  // opened is reported, never skipped.
+  const POPS = [
+    ['search', '/dashboard', (p) => p.getByText('Search anything').first()],
+    ['bell', '/dashboard', (p) => p.locator('header button[aria-label*="lert"]').first()],
+    ['member drawer', '/members', (p) => p.getByText('Aileen Navarro').first()],
+    ['record payment', '/payments', (p) => p.getByRole('button', { name: /record payment/i }).first()],
+    ['new plan', '/membership-plans', (p) => p.getByRole('button', { name: /new plan/i }).first()],
+    ['invite a group', '/invitations', (p) => p.getByRole('tab', { name: /invite a group/i }).first()],
+    ['new product', '/shop', async (p) => {
+      const tab = p.getByRole('button', { name: /^add products$/i }).first();
+      if (await tab.count()) { await tab.click(); await p.waitForTimeout(600); }
+      return p.getByRole('button', { name: /^add product$/i }).first();
+    }],
+  ];
+  // These open in the page itself (the side panel, a tab), not over it.
+  const INLINE = new Set(['member drawer', 'new plan', 'invite a group']);
+  const OPEN = '[role="dialog"], [aria-modal="true"], [role="menu"], [data-popover], [role="listbox"], .fixed.inset-0';
+  const popBad = [], unopened = [];
+  for (const [name, path, target] of POPS) {
+    await page.goto('http://localhost:5174' + path, { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1800);
+    const before = await page.locator(OPEN).count();
+    try { await (await target(page)).click({ timeout: 3000 }); } catch { unopened.push(name); continue; }
+    await page.waitForTimeout(700);
+    const after = await page.locator(OPEN).count();
+    if (after <= before && !INLINE.has(name)) { unopened.push(`${name} (nothing opened)`); }
+    const f = await faint();
+    if (f.length) popBad.push(`${name}: ${f.join(' | ')}`);
+    await page.screenshot({ path: `shots/admin-light-pop-${name.replace(/ /g, '-')}.png` });
+    await page.keyboard.press('Escape');
+  }
+  say('every pop-up readable in light (3:1 or better)', popBad.length === 0, popBad.join(' || '));
+  say('every pop-up opened', unopened.length === 0, unopened.join(', '));
   await page.goto('http://localhost:5174/dashboard', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(3000);
   await page.screenshot({ path: 'shots/admin-light-dashboard-settled.png' });

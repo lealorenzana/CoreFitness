@@ -113,7 +113,7 @@ export function tabForPath(pathname: string): TabId | null {
  * gym has (simplify, 2026-10-28) — it used to open the class booking, and the
  * free library for a gym without classes.
  */
-export function tabPath(tab: Tab, _app: GymApp | null): string {
+export function tabPath(tab: Tab): string {
   return tab.path;
 }
 

@@ -39,7 +39,7 @@ export interface Notification {
   /** A picture the gym attached to an announcement (0065). Absent on every
    *  automated notice — bookings, payments and reminders never carry one. */
   imageUrl?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   /** Swiped right: dealt with, moved out of the inbox into Archived (0029). */
   archived: boolean;
   /** Swiped left: out of the bell, still in the inbox list. */
@@ -147,7 +147,7 @@ export const notificationService = {
     title: string,
     message: string,
     actionUrl?: string,
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>
   ): Promise<void> {
     await this.addNotification({ userId, type, title, message, actionUrl, metadata });
   },

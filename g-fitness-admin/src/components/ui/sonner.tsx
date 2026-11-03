@@ -16,6 +16,7 @@ interface ToastItem {
 let _counter = 0;
 let _setToasts: React.Dispatch<React.SetStateAction<ToastItem[]>> | null = null;
 
+// eslint-disable-next-line react-refresh/only-export-components -- a helper shared with this component; only hot reload in development is affected
 export const toast = {
   success: (message: string) => _add(message, 'success'),
   error:   (message: string) => _add(message, 'error'),

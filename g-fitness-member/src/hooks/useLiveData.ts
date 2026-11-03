@@ -34,7 +34,7 @@ export function useLiveData(
   // Held in a ref so a caller passing an inline arrow does not tear the
   // listeners down and rebuild them on every render.
   const latest = useRef(refresh);
-  latest.current = refresh;
+  useEffect(() => { latest.current = refresh; });
 
   useEffect(() => {
     if (!enabled) return;

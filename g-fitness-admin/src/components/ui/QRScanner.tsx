@@ -121,6 +121,7 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
   useEffect(() => {
     if (!isOpen || !isScanning || !cameraId) return;
     let cancelled = false;
+    const videoEl = videoRef.current; // the element this run streamed into, for the cleanup
     doneRef.current = false;
 
     (async () => {
@@ -239,7 +240,7 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
       rafRef.current = null;
       stopStream(streamRef.current);
       streamRef.current = null;
-      if (videoRef.current) videoRef.current.srcObject = null;
+      if (videoEl) videoEl.srcObject = null;
     };
     // onScan/onClose are called, not observed — re-subscribing on every parent
     // render would tear down the live camera stream mid-scan.

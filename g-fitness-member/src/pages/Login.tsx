@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { accountLockoutReason } from '../lib/api/profiles';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
@@ -26,20 +26,13 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role>('member');
-  const [overlayRoot, setOverlayRoot] = useState<HTMLElement | null>(null);
-  const [pendingApproval, setPendingApproval] = useState(false);
-
-  useEffect(() => {
-    setOverlayRoot(getOverlayRoot());
-  }, []);
-
   // Onboarding hands the pending state over when a just-registered member
   // finishes but the gym hasn't taken their payment yet. Without this they
   // arrive at a blank login with no idea why they were sent back.
   const handoff = (useLocation().state as { pendingApproval?: boolean } | null) ?? null;
-  useEffect(() => {
-    if (handoff?.pendingApproval) setPendingApproval(true);
-  }, [handoff]);
+  const [pendingApproval, setPendingApproval] = useState(() => !!handoff?.pendingApproval);
+  // Read while signing in (after a tap), when the phone's overlay root is surely in the page.
+  const overlayRoot = isLoading ? getOverlayRoot() : null;
 
   // The `selectedGym` localStorage write that used to sit here is gone. It was
   // left from the multi-gym prototype: Login wrote it, Register read it only to

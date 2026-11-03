@@ -16,6 +16,7 @@ const subscribe = (l: () => void) => { listeners.add(l); return () => { listener
 const snapshot = () => shown;
 
 /** Show `url` full screen. `label` is what a screen reader hears ("Ana Reyes's photo"). */
+// eslint-disable-next-line react-refresh/only-export-components -- a helper shared with this component; only hot reload in development is affected
 export function openPhoto(url: string, label = 'Photo'): void {
   shown = { url, label };
   // Back closes the viewer rather than leaving the screen underneath.
@@ -45,6 +46,8 @@ function Viewer({ shown: s }: { shown: Shown }) {
   const [zoom, setZoom] = useState(1);
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const drag = useRef<{ x: number; y: number; px: number; py: number; moved: boolean } | null>(null);
+  // Mirrors `drag` for drawing: no easing while a finger moves the photo.
+  const [dragging, setDragging] = useState(false);
   const pts = useRef<Map<number, { x: number; y: number }>>(new Map());
   const pinch = useRef<{ d: number; z: number } | null>(null);
 
@@ -67,6 +70,7 @@ function Viewer({ shown: s }: { shown: Shown }) {
       pinch.current = { d: Math.hypot(a.x - b.x, a.y - b.y), z: zoom };
     } else {
       drag.current = { x: e.clientX, y: e.clientY, px: pos.x, py: pos.y, moved: false };
+      setDragging(true);
     }
   };
   const move = (e: RPointerEvent) => {
@@ -87,6 +91,7 @@ function Viewer({ shown: s }: { shown: Shown }) {
     if (pts.current.size < 2) pinch.current = null;
     const d = drag.current;
     drag.current = null;
+    setDragging(false);
     // A tap (no drag, no pinch) on the dark around a photo at normal size closes it.
     if (d && !d.moved && zoom === 1 && e.target === e.currentTarget) close();
   };
@@ -99,7 +104,7 @@ function Viewer({ shown: s }: { shown: Shown }) {
         display: 'grid', placeItems: 'center', overflow: 'hidden' }}>
       <img src={s.url} alt={s.label} draggable={false}
         style={{ maxWidth: '100vw', maxHeight: '86vh', objectFit: 'contain', userSelect: 'none', pointerEvents: 'none',
-          transform: `translate(${pos.x}px, ${pos.y}px) scale(${zoom})`, transition: drag.current ? 'none' : 'transform 0.12s ease-out' }} />
+          transform: `translate(${pos.x}px, ${pos.y}px) scale(${zoom})`, transition: dragging ? 'none' : 'transform 0.12s ease-out' }} />
       <button type="button" aria-label="Close" onPointerDown={(e) => e.stopPropagation()} onClick={() => close()} data-photo-close
         style={{ position: 'absolute', top: 'max(14px, env(safe-area-inset-top))', right: 14, width: 40, height: 40, borderRadius: 20,
           display: 'grid', placeItems: 'center', fontSize: 22, color: '#fff', background: 'rgba(255,255,255,0.12)' }}>

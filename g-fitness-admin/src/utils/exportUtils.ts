@@ -6,7 +6,7 @@ import { todayKey } from './dates';
  *   caller has already put the relevant date in the name — otherwise exporting
  *   last Tuesday's attendance produces `attendance_2026-08-11_2026-08-16.csv`.
  */
-export const exportToCSV = (data: any[], filename: string, stampDate = true) => {
+export const exportToCSV = (data: Record<string, unknown>[], filename: string, stampDate = true) => {
   if (data.length === 0) {
     alert('No data to export');
     return;
@@ -99,7 +99,13 @@ export const exportMembersToCSV = (members: MemberCsvRow[]) => {
   exportToCSV(exportData, 'members_report');
 };
 
-export const exportPaymentsToCSV = (payments: any[]) => {
+/** The fields of a payment row this export reads; the rest of the row is ignored. */
+interface PaymentExportRow {
+  invoiceNumber?: unknown; memberName?: unknown; memberId?: unknown; amount: number;
+  plan?: unknown; method?: unknown; date?: unknown; dueDate?: unknown; status?: unknown;
+}
+
+export const exportPaymentsToCSV = (payments: PaymentExportRow[]) => {
   const exportData = payments.map(payment => ({
     'Invoice': payment.invoiceNumber,
     'Member Name': payment.memberName,
