@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { getGymContext, type GymContext } from '../lib/gymContext';
 import { applyAccent } from '../lib/gymTheme';
 import { applyPremiumTheme } from '../lib/premiumThemes';
+import { loadColorMode } from '../lib/colorMode';
 import { supabase } from '../lib/supabaseClient';
 
 /**
@@ -18,6 +19,8 @@ export function useGymBrand(): GymContext | null {
   useEffect(() => {
     let active = true;
     void (async () => {
+      // This account's light/dark choice (0234) — before the gym's colours, which follow the mode.
+      await loadColorMode();
       const c = await getGymContext();
       if (!active || !c) return;
       setCtx(c);

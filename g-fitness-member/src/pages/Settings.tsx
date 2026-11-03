@@ -24,6 +24,7 @@ import { exportMemberData, downloadExport } from '../lib/memberDataExport';
 import { loadCoachDirectory, type CoachCard } from '../services/coachDirectoryService';
 import { logout } from '../utils/auth';
 import { getCoachStatus, setCoachConsent } from '../lib/api/aiCoach';
+import Appearance from '../components/settings/Appearance';
 import { saveLanguagePreference, useLanguage, useT, type Lang } from '../lib/i18n';
 import DeleteAccount from '../components/account/DeleteAccount';
 import SignInMethods from '../components/account/SignInMethods';
@@ -397,7 +398,7 @@ export default function Settings() {
   const kindsOn = categoryRows.filter((r) => prefs[r.key]).length;
   const titles: Record<Section, string> = {
     notifications: 'Notifications', coaches: 'What your trainer sees', ai: 'Assistant', signin: 'Sign-in',
-    data: 'Your data', language: 'Language', account: 'Account & app', gym: gym?.gym_name ?? 'Your gym',
+    data: 'Your data', language: 'Language and look', account: 'Account & app', gym: gym?.gym_name ?? 'Your gym',
   };
   const listRows: { id: Section; icon: Icon; tone?: 'mine' | 'act' | 'info'; meta: string }[] = [
     { id: 'notifications', icon: Bell, tone: 'mine', meta: `${unavailableReason ? 'Push not available here' : pushOn ? 'Push on' : 'Push off'} · ${kindsOn} of ${categoryRows.length} kinds` },
@@ -578,6 +579,7 @@ export default function Settings() {
                   : 'Filipino covers the main screens — navigation, check-in and Settings. The rest stays in English for now.'}
               </p>
             </section>
+            <Appearance />
           </>
         )}
         {section === 'account' && (

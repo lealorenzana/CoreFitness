@@ -22,16 +22,17 @@ export const GLASS: CSSProperties = {
   // at the top edge and blur behind to stay glass.
   // The tint at the top edge is the gym's own colour (applyAccent), never a fixed
   // violet — a blue gym's sheets were violet-black (2026-10-27).
-  background: 'linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 9%, rgba(14, 14, 20, 0.95)) 0%, rgba(9, 9, 13, 0.97) 100%)',
+  // Colour roles (0234): the glass is dark on dark and frosted white in light mode (index.css --glass-*).
+  background: 'var(--glass-bg)',
   backdropFilter: 'blur(24px) saturate(160%)',
   WebkitBackdropFilter: 'blur(24px) saturate(160%)',
-  border: '1px solid rgba(255, 255, 255, 0.10)',
-  boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 24px 60px -24px rgba(0, 0, 0, 0.75)',
+  border: '1px solid var(--glass-line)',
+  boxShadow: 'var(--glass-shadow)',
 };
 
 /** The dimmer behind a glass panel: enough to separate, light enough to show through. */
 export const SCRIM: CSSProperties = {
-  background: 'rgba(4, 4, 8, 0.6)',
+  background: 'var(--glass-scrim)',
   backdropFilter: 'blur(3px)',
   WebkitBackdropFilter: 'blur(3px)',
 };

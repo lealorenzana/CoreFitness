@@ -139,38 +139,51 @@ export function rampFor(key: string | null | undefined, fallback: AccentKey): Ra
  * Both are set as CSS variables on the root, so a screen that was written
  * against `--color-primary` or `--color-secondary` needs no change at all.
  */
+let lastAccent: [string | null | undefined, string | null | undefined] = [undefined, undefined];
+
+/** Put the last accent back — after the light/dark mode changes (lib/colorMode.ts). */
+export function reapplyAccent(): void {
+  applyAccent(lastAccent[0], lastAccent[1]);
+}
+
 export function applyAccent(accent: string | null | undefined, action?: string | null): void {
+  lastAccent = [accent, action];
+  // Light mode (0234) turns the ramp around: text that was a pale tint on black is a deep shade on white,
+  // and the soft background tint is the colour mixed into white rather than into black.
+  const light = document.documentElement.dataset.mode === 'light';
   const ramp = rampFor(accent, 'violet');
   const s = document.documentElement.style;
   s.setProperty('--color-primary', ramp.base);
   s.setProperty('--color-primary-hover', ramp.hover);
   s.setProperty('--color-primary-lift', ramp.lift);
   s.setProperty('--color-primary-deep', ramp.deep);
-  s.setProperty('--color-primary-light', ramp.light);
-  s.setProperty('--color-primary-200', ramp.c200);
-  s.setProperty('--color-primary-300', ramp.c300);
-  s.setProperty('--color-primary-400', ramp.c400);
+  s.setProperty('--color-primary-light', light ? `color-mix(in srgb, ${ramp.base} 13%, #ffffff)` : ramp.light);
+  s.setProperty('--color-primary-200', light ? ramp.c800 : ramp.c200);
+  s.setProperty('--color-primary-300', light ? ramp.c700 : ramp.c300);
+  s.setProperty('--color-primary-400', light ? ramp.c600 : ramp.c400);
   s.setProperty('--color-primary-600', ramp.c600);
   s.setProperty('--color-primary-700', ramp.c700);
   s.setProperty('--color-primary-800', ramp.c800);
   s.setProperty('--color-primary-900', ramp.c900);
   document.documentElement.dataset.accent = ramp === ACCENTS.violet ? 'violet' : (accent as string);
 
-  // The action role. Absent leaves the stylesheet's amber untouched rather
+  // The action role. Absent (and dark) leaves the stylesheet's amber untouched rather
   // than writing it back — so a gym that never chose one is byte-identical to
-  // how it rendered before this existed.
-  if (!action) {
+  // how it rendered before this existed. In light mode amber's text shades turn too.
+  if (!action && !light) {
     ['', '-hover', '-light', '-200', '-300', '-700'].forEach((step) =>
       s.removeProperty(`--color-secondary${step}`));
     delete document.documentElement.dataset.accentAction;
     return;
   }
   const act = rampFor(action, 'amber');
-  s.setProperty('--color-secondary', act.base);
-  s.setProperty('--color-secondary-hover', act.hover);
-  s.setProperty('--color-secondary-light', act.light);
-  s.setProperty('--color-secondary-200', act.c200);
-  s.setProperty('--color-secondary-300', act.c300);
+  // On white, the action colour is used one shade deeper — as text and as a button behind white words, both 4.5:1.
+  s.setProperty('--color-secondary', light ? act.c700 : act.base);
+  s.setProperty('--color-secondary-hover', light ? act.c800 : act.hover);
+  s.setProperty('--color-secondary-light', light ? `color-mix(in srgb, ${act.base} 15%, #ffffff)` : act.light);
+  s.setProperty('--color-secondary-200', light ? act.c800 : act.c200);
+  s.setProperty('--color-secondary-300', light ? act.c700 : act.c300);
   s.setProperty('--color-secondary-700', act.c700);
-  document.documentElement.dataset.accentAction = action;
+  if (action) document.documentElement.dataset.accentAction = action;
+  else delete document.documentElement.dataset.accentAction;
 }

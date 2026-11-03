@@ -11,6 +11,7 @@ import { Page, PageTitle } from '../../components/ui/page';
 import { LineRow, NocButton, SectionHead } from '../../components/ui/noc';
 import SignInMethods from '../../components/account/SignInMethods';
 import DeleteAccount from '../../components/account/DeleteAccount';
+import Appearance from '../../components/settings/Appearance';
 
 const APP_VERSION = '1.0.0';
 
@@ -179,6 +180,9 @@ export default function TrainerSettings() {
       ))}
 
       <SignInMethods returnPath="/trainer/settings" />
+
+      {/* Light or dark (0234), the coach's own choice. */}
+      <Appearance />
 
       <section>
         <SectionHead title="About" meta="Core Fitness trainer app" />

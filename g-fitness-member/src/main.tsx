@@ -1,5 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { applyColorMode } from './lib/colorMode';
 import './index.css';
 import App from './App.tsx';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -18,6 +19,9 @@ installErrorReporter('member');
 forgetGymWhenAccountChanges();
 // No browser long-press menu on pictures — see appFeel.ts.
 feelLikeAnApp();
+
+// Light or dark before the first paint: the device's setting until the account's choice is read (0234).
+applyColorMode();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
