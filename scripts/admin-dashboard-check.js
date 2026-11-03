@@ -65,7 +65,7 @@ async (page) => {
     ],
     class_availability: [{ class_id: 'c1', booked_count: 14 }, { class_id: 'c2', booked_count: 9 }, { class_id: 'c3', booked_count: 10 }],
     bookings: [
-      { id: 'b1', member_id: 'ivy', class_id: 'c2', status: 'pending', requested_at: at(addDays(today, -2), '09:00') },
+      { id: 'b1', member_id: 'ivy', class_id: 'c2', status: 'pending', requested_at: at(addDays(today, -2), '00:00') }, // midnight: two full days at any hour of the run
       { id: 'b2', member_id: 'rhea', class_id: 'c3', status: 'pending', requested_at: at(addDays(today, -1), '09:00') },
     ],
     pt_sessions: [],
