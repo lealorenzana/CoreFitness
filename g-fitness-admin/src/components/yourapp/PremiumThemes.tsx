@@ -3,7 +3,7 @@ import { Check, Lock, Sparkles } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { themeState } from '../../lib/api/paymongo';
 import { PREMIUM_THEMES } from '../../lib/premiumThemes';
-import { loadGymLook } from '../GymLook';
+import { loadGymLook } from '../../lib/gymLook';
 
 /**
  * Premium themes on Your app → Look (0233): twelve whole looks — the ground,

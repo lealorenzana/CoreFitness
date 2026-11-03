@@ -1,0 +1,97 @@
+/*
+ * Light mode for the owner's and desk's app (0234, 2026-11-03).
+ *
+ * `data-mode="light"` on <html> (lib/colorMode.ts). Loaded last. Three layers:
+ *   1. the app's roles (`--color-*`, the shadcn hsl tokens, the old dark-* names);
+ *   2. the redesigned pages' own roles (`.att`'s `--a-*`, incl. --a-ink / --a-well);
+ *   3. a few decorative dark gradients, and text written as plain white.
+ * The gym's accent and premium theme are redrawn in light shades by GymLook.
+ */
+:root[data-mode="light"] {
+  color-scheme: light;
+  --color-bg:              #F6F6F9;
+  --color-surface:         #FFFFFF;
+  --color-surface-raised:  #F2F2F6;
+  --color-surface-high:    #E8E8EF;
+  --color-primary-light:   #EFE8FD;
+  --color-secondary:       #B45309;
+  --color-secondary-light: #FCF1DE;
+  --color-secondary-hover: #92400E;
+  --color-text-primary:    #15151C;
+  --color-text-secondary:  #474A5C;
+  --color-text-muted:      #686B7E;
+  --color-border:          #E3E3EA;
+  --shadow-card:           0 2px 14px rgba(20, 20, 40, 0.08);
+  --background:            240 20% 97%;
+  --foreground:            240 14% 10%;
+  --card:                  0 0% 100%;
+  --card-foreground:       240 14% 10%;
+  --popover:               0 0% 100%;
+  --popover-foreground:    240 14% 10%;
+  --muted:                 240 14% 94%;
+  --muted-foreground:      235 9% 40%;
+  --accent:                262 80% 95%;
+  --accent-foreground:     262 70% 40%;
+  --border:                240 12% 89%;
+  --input:                 240 12% 89%;
+  /* The kit's pill text shades and soft fills (components/ui/rdTokens.ts). */
+  --tone-violet-fg: #6D28D9; --tone-amber-fg: #B45309; --tone-green-fg: #15803D; --tone-red-fg: #B91C1C; --tone-blue-fg: #1D4ED8;
+  --tone-gray-fg: #4A4D5E; --tone-gray-bg: rgba(20, 20, 32, 0.05); --tone-gray-line: rgba(20, 20, 32, 0.12);
+  --rd-input-bg: #FFFFFF; --rd-input-line: rgba(20, 20, 32, 0.14); --rd-soft-bg: #FFFFFF;
+  --rd-tab-on: #5B21B6;
+  --rd-card-line: #E6E6ED; --glow-from: #EFE8FD; --glow-line: #DDD3F8;
+}
+:root[data-mode="light"] body { background: var(--color-bg); color: var(--color-text-primary); }
+
+/* Text written as white meant "the strongest text". Kept white where the element paints its own fill,
+   and on the sign-in page, which is a dark branded page in both modes (.keep-dark). */
+:root[data-mode="light"] .text-white:not([class^="bg-"]):not([class*=" bg-"]):not(.keep-dark *) { color: var(--color-text-primary); }
+:root[data-mode="light"] [style*="color: rgb(255, 255, 255)"]:not([style*="background"]):not(.keep-dark *),
+:root[data-mode="light"] [style*="color: rgb(255, 255, 255)"][style*="background: rgba(255, 255, 255"]:not(.keep-dark *) { color: var(--color-text-primary) !important; }
+/* Faint white lines and fills written into an element read as nothing on white: the light equivalents. */
+:root[data-mode="light"] [style*="border: 1px solid rgba(255, 255, 255"]:not(.keep-dark *) { border-color: var(--color-border) !important; }
+:root[data-mode="light"] [style*="background: rgba(255, 255, 255, 0.0"]:not(.keep-dark *) { background: var(--color-surface) !important; }
+:root[data-mode="light"] [style*="color: rgb(196, 181, 253)"]:not(.keep-dark *) { color: var(--tone-violet-fg) !important; }
+:root[data-mode="light"] .text-gray-300, :root[data-mode="light"] .text-gray-200 { color: var(--color-text-secondary); }
+:root[data-mode="light"] .text-gray-400 { color: var(--color-text-muted); }
+/* The old dark-* surface names. */
+:root[data-mode="light"] .bg-dark, :root[data-mode="light"] .bg-dark-lighter { background-color: var(--color-surface); }
+:root[data-mode="light"] .bg-dark-surface { background-color: var(--color-surface-raised); }
+:root[data-mode="light"] .border-dark-border { border-color: var(--color-border); }
+
+/* ── The redesigned pages (pages/attendance/att.css) ─────────────────────────── */
+:root[data-mode="light"] .att {
+  --a-surface: #FFFFFF; --a-raised: #F3F3F7; --a-high: #E8E8EF; --a-border: #E6E6ED; --a-line: #DCDCE5;
+  --a-primary: #7C3AED; --a-p300: #6D28D9; --a-p400: #7C3AED; --a-plight: #EFE8FD;
+  --a-amber: #B45309; --a-a300: #B45309; --a-alight: #FCF1DE;
+  --a-text2: #4A4D5E; --a-muted: #6B6E80;
+  --a-ink: #15151C; --a-well: #F7F7FA;
+}
+:root[data-mode="light"] .att .a-card.glow { background: radial-gradient(120% 90% at 0% 0%, var(--a-plight) 0%, var(--a-surface) 70%); border-color: #DDD3F8; }
+:root[data-mode="light"] .att .a-door,
+:root[data-mode="light"] .att .a-prev { background: linear-gradient(160deg, #FAF8FF, #F1EEF9); border-color: var(--a-line); }
+:root[data-mode="light"] .att .a-screen { background: #F3F3F7; border-color: var(--a-line); }
+:root[data-mode="light"] .att .a-tv span { background: #E2DCF5; }
+:root[data-mode="light"] .att .a-toast { background: linear-gradient(90deg, #F1EAFE, #FFFFFF); border-color: #DDD3F8; }
+:root[data-mode="light"] .att .a-toast.amber { background: linear-gradient(90deg, #FDF3E2, #FFFFFF); border-color: #F2DDB4; }
+:root[data-mode="light"] .att .a-spark i { background: #DDD3F8; }
+:root[data-mode="light"] .att .a-stage { background: radial-gradient(70% 60% at 50% 40%, #EFE8FD, #F6F6F9); }
+:root[data-mode="light"] .att .a-thumb { background: linear-gradient(135deg, #E7DFFB, #DCEFF1); }
+:root[data-mode="light"] .att .a-phcard { background: #FFFFFF; border-color: var(--a-line); }
+:root[data-mode="light"] .att .a-sn button.on { background: var(--a-plight); }
+:root[data-mode="light"] .att .a-wk .dh.today { background: var(--a-plight); }
+:root[data-mode="light"] .att .a-av.v { background: #EDE7FD; } :root[data-mode="light"] .att .a-av.a { background: #FCEFD8; }
+:root[data-mode="light"] .att .a-av.g { background: #DDF5F0; color: #0F766E; } :root[data-mode="light"] .att .a-av.p { background: #F8E3F3; color: #9D174D; }
+:root[data-mode="light"] .att .a-table tbody tr:hover td { background: #00000005; }
+:root[data-mode="light"] .att .a-chip.on { border-color: #F2DDB4; }
+:root[data-mode="light"] .att .a-chip.v { border-color: #DDD3F8; }
+
+/* The sign-in page stays dark in both modes: its own dark roles, whatever <html> says. */
+:root[data-mode="light"] .keep-dark {
+  color-scheme: dark;
+  --color-surface: #161622; --color-surface-raised: #1E1B30; --color-surface-high: #262238;
+  --color-text-primary: #FFFFFF; --color-text-secondary: #9CA3AF; --color-text-muted: #6B7280; --color-border: #1F1F2E;
+  --rd-input-bg: rgba(255,255,255,0.03); --rd-input-line: rgba(255,255,255,0.1);
+}
+
+:root[data-mode="light"] .att .a-hint { background: #F7F5FD; border-color: #DDD3F8; }

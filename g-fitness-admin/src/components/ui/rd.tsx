@@ -20,7 +20,7 @@ import Popover from './Popover';
 import { TONE, type Tone } from './rdTokens';
 
 const CARD_BG = 'linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0) 60%), var(--color-surface)';
-const CARD_LINE = '1px solid rgba(255, 255, 255, 0.06)';
+const CARD_LINE = '1px solid var(--rd-card-line, rgba(255, 255, 255, 0.06))';
 const MUTED = 'var(--color-text-muted)';
 const SECOND = 'var(--color-text-secondary)';
 
@@ -39,9 +39,9 @@ export function RdTabs({ tabs }: { tabs: RdTab[] }) {
           <NavLink key={t.to} to={t.to} role="tab" aria-selected={on}
             className="h-10 px-5 rounded-xl text-sm font-semibold inline-flex items-center gap-2 transition-colors"
             style={{
-              background: on ? 'rgba(124, 58, 237, 0.18)' : 'rgba(255,255,255,0.02)',
-              border: `1px solid ${on ? 'rgba(139, 92, 246, 0.7)' : 'rgba(255,255,255,0.08)'}`,
-              color: on ? '#E9E3FF' : SECOND,
+              background: on ? 'rgba(124, 58, 237, 0.18)' : 'var(--rd-soft-bg, rgba(255,255,255,0.02))',
+              border: `1px solid ${on ? 'rgba(139, 92, 246, 0.7)' : 'var(--rd-input-line, rgba(255,255,255,0.08))'}`,
+              color: on ? 'var(--rd-tab-on, #E9E3FF)' : SECOND,
               boxShadow: on ? '0 0 0 3px rgba(124, 58, 237, 0.12)' : undefined,
             }}>
             {t.label}
@@ -283,7 +283,7 @@ export function RdSelect({ value, onChange, children, label, className = '' }: {
         style={{
           background: open ? 'rgba(124,58,237,0.10)' : 'rgba(255,255,255,0.025)',
           border: `1px solid ${open ? 'rgba(139,92,246,0.7)' : 'rgba(255,255,255,0.08)'}`,
-          color: isPlaceholder ? SECOND : '#fff',
+          color: isPlaceholder ? SECOND : 'var(--color-text-primary)',
         }}>
         <span className="block truncate">{current?.text ?? options[0]?.text ?? label}</span>
         <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none transition-transform"
@@ -327,7 +327,7 @@ export function RdSelect({ value, onChange, children, label, className = '' }: {
 type BtnVariant = 'primary' | 'secondary' | 'amber' | 'ghost' | 'danger' | 'soft';
 const BTN: Record<BtnVariant, React.CSSProperties> = {
   primary: { background: 'linear-gradient(180deg, #8B5CF6, #7C3AED)', color: '#fff', border: '1px solid rgba(167,139,250,0.6)', boxShadow: '0 10px 30px -12px rgba(124,58,237,0.8)' },
-  secondary: { background: 'rgba(255,255,255,0.025)', color: '#fff', border: '1px solid rgba(255,255,255,0.12)' },
+  secondary: { background: 'var(--rd-soft-bg, rgba(255,255,255,0.025))', color: 'var(--color-text-primary)', border: '1px solid var(--rd-input-line, rgba(255,255,255,0.12))' },
   amber: { background: TONE.amber.bg, color: TONE.amber.fg, border: `1px solid ${TONE.amber.line}` },
   ghost: { background: 'transparent', color: SECOND, border: '1px solid transparent' },
   danger: { background: TONE.red.bg, color: TONE.red.fg, border: `1px solid ${TONE.red.line}` },
@@ -456,7 +456,7 @@ export function TableFooter({ page, perPage, total, noun, onPage }: { page: numb
   }
   const btn = (on: boolean): React.CSSProperties => ({
     background: on ? 'linear-gradient(180deg,#8B5CF6,#7C3AED)' : 'rgba(255,255,255,0.03)',
-    border: `1px solid ${on ? 'rgba(167,139,250,0.6)' : 'rgba(255,255,255,0.08)'}`, color: on ? '#fff' : 'var(--color-text-primary)',
+    border: `1px solid ${on ? 'rgba(167,139,250,0.6)' : 'var(--rd-input-line, rgba(255,255,255,0.08))'}`, color: on ? '#fff' : 'var(--color-text-primary)',
   });
   return (
     <div className="flex items-center justify-between gap-3 flex-wrap px-4 py-4" data-rd-footer>
@@ -596,7 +596,7 @@ export function PageTabs<K extends string>({ tabs, value, onChange, label }: {
         return (
           <button key={t.key} type="button" role="tab" aria-selected={on} onClick={() => onChange(t.key)} data-tab={t.key}
             className="h-9 px-3.5 rounded-lg text-[14px] font-semibold inline-flex items-center gap-2 whitespace-nowrap transition-colors"
-            style={on ? { background: 'rgba(124,58,237,0.25)', color: '#EDE9FE', boxShadow: 'inset 0 0 0 1px rgba(139,92,246,0.55)' } : { color: SECOND }}>
+            style={on ? { background: 'rgba(124,58,237,0.25)', color: 'var(--rd-tab-on, #EDE9FE)', boxShadow: 'inset 0 0 0 1px rgba(139,92,246,0.55)' } : { color: SECOND }}>
             {Icon && <Icon size={15} />}{t.label}
             {t.count ? <span className="text-[11.5px] tabular-nums px-1.5 rounded-full" style={{ background: TONE.amber.bg, color: TONE.amber.fg }}>{t.count}</span> : null}
           </button>

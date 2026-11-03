@@ -10,6 +10,7 @@ import { dashboardService, type HeaderAlert } from '../../services/dashboardServ
 import { getMyProfile, MY_PROFILE_CHANGED } from '../../lib/api/profiles';
 import Avatar from '../ui/Avatar';
 import GlobalSearch from '../ui/GlobalSearch';
+import ModeToggle from './ModeToggle';
 
 const SURFACE        = 'var(--color-surface)';
 const SURFACE_RAISED = 'var(--color-surface-raised)';
@@ -113,6 +114,7 @@ export default function Header() {
       </div>
 
       <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-2 flex-shrink-0">
+        <ModeToggle />
         <div className="relative">
           <button
             onClick={() => setShowNotifications(!showNotifications)}

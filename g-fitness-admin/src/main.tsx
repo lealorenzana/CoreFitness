@@ -1,6 +1,8 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
+import './light.css'
+import { applyColorMode } from './lib/colorMode'
 import App from './App.tsx'
 import { installErrorReporter } from './lib/errorReporter'
 import { forgetGymWhenAccountChanges } from './lib/adminCaches'
@@ -10,6 +12,9 @@ import ErrorBoundary from './components/ErrorBoundary'
 installErrorReporter('admin')
 // A new account never inherits the last one's gym — see adminCaches.ts.
 forgetGymWhenAccountChanges()
+
+// Light or dark before the first paint: the computer's setting until the account's choice is read (0234).
+applyColorMode()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

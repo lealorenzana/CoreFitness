@@ -58,6 +58,10 @@
       "app": "member"
     },
     {
+      "file": "admin-light-check.js",
+      "app": "admin"
+    },
+    {
       "file": "member-renew-paymongo-check.js",
       "app": "member"
     },

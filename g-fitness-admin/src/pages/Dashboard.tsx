@@ -32,8 +32,9 @@ import { useTour } from '../components/tour/Tour';
 import { tourFor } from '../lib/tours';
 
 const VIOLET     = '#7C3AED';
-const VIOLET_300 = '#C4B5FD';
-const YELLOW     = '#F59E0B';
+// Text shades go through variables so light mode (light.css, 0234) can deepen them.
+const VIOLET_300 = 'var(--tone-violet-fg, #C4B5FD)';
+const YELLOW     = 'var(--color-secondary, #F59E0B)';
 const TEXT_MUTED = 'var(--color-text-muted)';
 const TEXT_2     = 'var(--color-text-secondary)';
 const BORDER     = 'var(--color-border)';
@@ -167,8 +168,8 @@ function Card({ children, onClick, tip, glow, className = '', style }: {
     <Tag onClick={onClick} data-tip={tip}
       className={`rounded-2xl p-4 text-left min-w-0 min-h-0 overflow-hidden flex flex-col items-stretch justify-start ${className}`}
       style={{
-        background: glow ? 'linear-gradient(160deg, #211a3a 0%, var(--color-surface) 55%)' : SURFACE,
-        border: `1px solid ${glow ? '#2f2752' : BORDER}`,
+        background: glow ? 'linear-gradient(160deg, var(--glow-from, #211a3a) 0%, var(--color-surface) 55%)' : SURFACE,
+        border: `1px solid ${glow ? 'var(--glow-line, #2f2752)' : BORDER}`,
         boxShadow: 'var(--shadow-card)',
         cursor: onClick ? 'pointer' : 'default',
         ...style,
@@ -382,7 +383,7 @@ export default function Dashboard() {
           </button>
           <button onClick={() => navigate('/payments?record=new')}
             className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg font-semibold text-[12px] text-black"
-            style={{ background: YELLOW }}>
+            style={{ background: '#F59E0B' }}>
             <Banknote size={14} /> Record payment
           </button>
         </div>

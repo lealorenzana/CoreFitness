@@ -302,7 +302,7 @@ export default function Achievements() {
               </div>
             </div>
           )}
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', padding: 10, borderRadius: 14, background: '#120f20', border: '1px solid #33295c' }} data-preview>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', padding: 10, borderRadius: 14, background: 'var(--a-raised)', border: '1px solid var(--a-line)' }} data-preview>
             <Medal icon={draft.icon} tier={draft.tier} size={58} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <b style={{ fontSize: 15 }}>{draft.title || 'Untitled'}</b>

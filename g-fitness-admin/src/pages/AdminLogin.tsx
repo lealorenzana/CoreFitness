@@ -159,7 +159,8 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="w-full relative" style={{ background: '#000' }}>
+    // A dark branded page in both modes (0234): .keep-dark keeps light mode's overrides off it.
+    <div className="w-full relative keep-dark" style={{ background: '#000' }}>
     {/* Login Section — full viewport */}
     <div className="min-h-screen w-full relative overflow-hidden flex flex-col items-center justify-center">
       {/* Background violet gradient */}
