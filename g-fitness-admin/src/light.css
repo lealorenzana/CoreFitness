@@ -63,7 +63,7 @@
 :root[data-mode="light"] .att {
   --a-surface: #FFFFFF; --a-raised: #F3F3F7; --a-high: #E8E8EF; --a-border: #E6E6ED; --a-line: #DCDCE5;
   --a-primary: #7C3AED; --a-p300: #6D28D9; --a-p400: #7C3AED; --a-plight: #EFE8FD;
-  --a-amber: #B45309; --a-a300: #B45309; --a-alight: #FCF1DE;
+  --a-amber: #E08A0B; --a-a300: #B45309; --a-alight: #FDF3E1;
   --a-text2: #4A4D5E; --a-muted: #6B6E80;
   --a-ink: #15151C; --a-well: #F7F7FA;
 }
@@ -95,3 +95,64 @@
 }
 
 :root[data-mode="light"] .att .a-hint { background: #F7F5FD; border-color: #DDD3F8; }
+
+/* ── Polish (2026-11-03): what makes light mode feel designed, not inverted ────────────────────
+   Depth comes from a slightly grey page and white cards on soft, layered shadows — not from
+   lines alone. Selected means a soft tint and a coloured outline, never a dark glow. Notices
+   are a pale tint with a coloured edge. Colour is used in deep shades and sparingly. */
+:root[data-mode="light"] {
+  --color-bg: #F4F5F8;
+  --lift-1: 0 1px 2px rgba(16, 24, 40, 0.05), 0 1px 3px rgba(16, 24, 40, 0.06);
+  --lift-2: 0 4px 10px -2px rgba(16, 24, 40, 0.07), 0 2px 4px -2px rgba(16, 24, 40, 0.05);
+}
+:root[data-mode="light"] .att .a-card,
+:root[data-mode="light"] .att .a-what,
+:root[data-mode="light"] .att .a-opt,
+:root[data-mode="light"] .att .a-door2,
+:root[data-mode="light"] .rounded-2xl[style*="var(--color-surface)"] { box-shadow: var(--lift-1); }
+:root[data-mode="light"] .att .a-card.glow { box-shadow: var(--lift-2); }
+/* Selected: a soft tint and the colour's own outline. */
+:root[data-mode="light"] .att .a-what.on,
+:root[data-mode="light"] .att .a-door2.on { background: var(--a-plight); border-color: var(--a-p400); box-shadow: 0 0 0 3px color-mix(in srgb, var(--a-p400) 14%, transparent); }
+:root[data-mode="light"] .att .a-opt.on { background: var(--a-alight); border-color: var(--a-amber); box-shadow: 0 0 0 3px color-mix(in srgb, var(--a-amber) 14%, transparent); }
+:root[data-mode="light"] .att .a-card.press:hover, :root[data-mode="light"] .att .a-opt:hover { border-color: #CFC6EE; }
+:root[data-mode="light"] .att .a-card.press.on { border-color: #E9A23B; background: var(--a-alight); box-shadow: 0 0 0 3px rgba(233, 162, 59, 0.16); }
+:root[data-mode="light"] .att .a-tile.on, :root[data-mode="light"] .att .a-badge.on { border-color: var(--a-p400); box-shadow: 0 0 0 3px color-mix(in srgb, var(--a-p400) 14%, transparent); }
+:root[data-mode="light"] .att .a-in:focus { border-color: var(--a-p400); box-shadow: 0 0 0 3px color-mix(in srgb, var(--a-p400) 16%, transparent); }
+/* Buttons: flat fills with a light shadow — glows belong to the dark. */
+:root[data-mode="light"] .att .a-btn { box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06); }
+:root[data-mode="light"] .att .a-btn.violet { box-shadow: 0 2px 8px -2px color-mix(in srgb, #7C3AED 45%, transparent); }
+:root[data-mode="light"] .att .a-btn.amber { box-shadow: 0 2px 8px -2px rgba(217, 119, 6, 0.4); }
+/* Heat cells, weeks, events and chat in pale tints of their own colours. */
+:root[data-mode="light"] .att .l0 { background: #EEEEF3; color: #9A9DB0 !important; }
+:root[data-mode="light"] .att .l1 { background: #E4DCFB; } :root[data-mode="light"] .att .l2 { background: #C5B3F6; }
+:root[data-mode="light"] .att .l3 { background: #9B7CF0; } :root[data-mode="light"] .att .l4 { background: #7C3AED; }
+:root[data-mode="light"] .att .a-wkg .d.rest { background: #F1F1F5; }
+:root[data-mode="light"] .att .a-wkg .d.t0, :root[data-mode="light"] .att .a-ev.c0 { background: #EFE8FD; color: #5B21B6; }
+:root[data-mode="light"] .att .a-wkg .d.t1, :root[data-mode="light"] .att .a-ev.c1 { background: #DDF5F0; color: #0F766E; }
+:root[data-mode="light"] .att .a-wkg .d.t2, :root[data-mode="light"] .att .a-ev.c2 { background: #FDF0D8; color: #92400E; }
+:root[data-mode="light"] .att .a-wkg .d.t3, :root[data-mode="light"] .att .a-ev.c3 { background: #FBE4F7; color: #9D174D; }
+:root[data-mode="light"] .att .a-wkg .d.t4, :root[data-mode="light"] .att .a-ev.c4 { background: #E1ECFD; color: #1D4ED8; }
+:root[data-mode="light"] .att .a-wkg .d.t5, :root[data-mode="light"] .att .a-ev.c5 { background: #ECF6D6; color: #3F6212; }
+:root[data-mode="light"] .att .a-ev small { color: inherit; opacity: .8; }
+:root[data-mode="light"] .att .a-wk .col.today { background: repeating-linear-gradient(180deg, #F7F4FE 0 35px, #EDE7FB 35px 36px); }
+:root[data-mode="light"] .att .a-bubble { background: #F3EFFD; border-color: #E1D8F8; }
+:root[data-mode="light"] .att .a-msg.me { background: #EFE8FD; }
+:root[data-mode="light"] .att .a-medal.locked { border-color: #D9D9E3; color: #9A9DB0; }
+:root[data-mode="light"] .att .a-av.v, :root[data-mode="light"] .att .a-av.a { color: inherit; }
+/* The phone preview keeps a dark frame — it is a picture of a phone — with a light screen inside. */
+:root[data-mode="light"] .att .a-phone { outline-color: #D9D9E3; }
+/* Notices: pale tint, coloured edge, dark words. */
+:root[data-mode="light"] [role="region"][aria-label="Terms for gyms"],
+:root[data-mode="light"] [role="status"].rounded-lg { background: color-mix(in srgb, var(--color-secondary) 7%, #ffffff) !important; box-shadow: inset 3px 0 0 var(--color-secondary); }
+/* Sidebar and header: white, a hairline, the active row a soft tint. */
+:root[data-mode="light"] aside { box-shadow: 1px 0 0 #E6E7EC; }
+:root[data-mode="light"] header { box-shadow: 0 1px 0 #E6E7EC; }
+/* The Your app preview shows the members' app in light too: a dark bezel (a phone), a light screen inside;
+   its pale accent text is drawn a shade deeper so it reads on white, as the member app does. */
+:root[data-mode="light"] .att .a-phone { background: #F4F5F8; }
+:root[data-mode="light"] .att .a-phcard { background: #FFFFFF; border-color: #E6E7EC; box-shadow: var(--lift-1); }
+:root[data-mode="light"] .att .a-phone [style*="background: rgb(30, 29, 43)"] { background: #E8E8EF !important; }
+:root[data-mode="light"] .att .a-phone .a-phcard b[style*="color: rgb("], :root[data-mode="light"] .att .a-phone .a-phcard [style*="color: rgb("]:not(.a-phbtn) { filter: brightness(0.62) saturate(1.2); }
+/* A soft amber button's words are the deep amber in light; the bright one is for edges and fills. */
+:root[data-mode="light"] .att .a-btn.soft { color: var(--a-a300); border-color: color-mix(in srgb, var(--a-amber) 35%, transparent); }

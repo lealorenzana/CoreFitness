@@ -1565,3 +1565,23 @@ img { -webkit-user-drag: none; user-select: none; }
 /* Text written as "white" meant "the strongest text" — on light, that is near-black. */
 :root[data-mode="light"] .text-white { color: var(--color-text-primary); }
 :root[data-mode="light"] body { background: var(--color-bg); color: var(--color-text-primary); }
+
+/* Light (0234): the week strip's cells were drawn for a dark ground — white glass and a near-black core
+   for today. In light the empty cells are a soft grey well and today is the ring around a pale tint. */
+:root[data-mode="light"] .orb-cell:not(.orb-cell--on):not(.orb-cell--ring) {
+  border-color: rgba(20, 20, 40, 0.08);
+  background: rgba(20, 20, 40, 0.035);
+  box-shadow: none;
+}
+:root[data-mode="light"] .orb-cell--ring {
+  border: 1.5px solid transparent;
+  background:
+    radial-gradient(130% 120% at 30% 10%, color-mix(in srgb, var(--color-primary) 14%, #ffffff) 0%, #ffffff 75%) padding-box,
+    conic-gradient(from var(--orb-a), var(--color-primary), var(--color-primary-300), var(--color-secondary), var(--color-primary)) border-box;
+  box-shadow: 0 6px 16px -10px color-mix(in srgb, var(--color-primary) 60%, transparent);
+}
+:root[data-mode="light"] .orb-cell--busy {
+  border-color: color-mix(in srgb, var(--color-primary) 22%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 10%, #ffffff);
+}
+:root[data-mode="light"] .orb-cell--planned { border-color: color-mix(in srgb, var(--color-primary) 40%, transparent); }
