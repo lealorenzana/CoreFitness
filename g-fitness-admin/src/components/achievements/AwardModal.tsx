@@ -12,7 +12,7 @@ import {
 
 const SECOND = 'var(--color-text-secondary)';
 const MUTED = 'var(--color-text-muted)';
-const LINE = '1px solid rgba(255,255,255,0.06)';
+const LINE = '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.06)';
 const RING: Record<AchievementTier, string> = { bronze: '#d97745', silver: '#b8c2d6', gold: '#f5b82e', platinum: '#a78bfa' };
 
 /**

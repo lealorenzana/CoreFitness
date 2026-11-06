@@ -86,7 +86,7 @@ export default function EverythingSheet({ open, onClose, onGo }: { open: boolean
         <div className="flex items-center justify-between">
           <h2 className="screen-title">{t('More')}</h2>
           <button onClick={onClose} aria-label="Close" className="grid place-items-center" style={{
-            width: 34, height: 34, borderRadius: 8, border: '1px solid rgba(233, 233, 237, 0.14)', color: 'var(--color-text-secondary)',
+            width: 34, height: 34, borderRadius: 8, border: '1px solid rgb(var(--hair-rgb, 233 233 237) / 0.14)', color: 'var(--color-text-secondary)',
           }}>
             <X size={16} />
           </button>

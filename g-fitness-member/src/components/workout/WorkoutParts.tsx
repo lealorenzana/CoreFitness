@@ -14,25 +14,25 @@ import { Minus, Plus, type Icon } from '@phosphor-icons/react';
 export function WorkoutBackdrop({ icon: Glyph, cue }: { icon: Icon; cue: string }) {
   return (
     <div aria-hidden className="absolute inset-0 overflow-hidden pointer-events-none">
-      <div className="absolute inset-0" style={{
+      <div className="absolute inset-0 gw-wash" style={{
         background:
           'radial-gradient(120% 70% at 100% 0%, color-mix(in srgb, var(--color-primary) 34%, transparent) 0%, transparent 60%),'
           + 'radial-gradient(90% 60% at 0% 100%, color-mix(in srgb, var(--color-secondary) 14%, transparent) 0%, transparent 60%),'
           + 'var(--color-bg)',
       }} />
       <div key={cue} className="absolute noc-gw-icon-in" style={{ top: '-4%', right: '-30%', width: 460, height: 460 }}>
-        <div className="noc-gw-drift" style={{ color: 'var(--color-primary)', opacity: 0.55, filter: 'blur(44px)' }}>
+        <div className="noc-gw-drift gw-blur" style={{ color: 'var(--color-primary)', opacity: 0.55, filter: 'blur(44px)' }}>
           <Glyph size={460} weight="fill" />
         </div>
       </div>
       {/* The icon itself, softly out of focus — recognisable, never sharp enough to compete with the text. */}
       <div key={cue + ':a'} className="absolute noc-gw-icon-in" style={{ top: '2%', right: '-22%', width: 380, height: 380, animationDelay: '40ms' }}>
-        <div className="noc-gw-drift" style={{ color: 'var(--color-primary-400)', opacity: 0.42, filter: 'blur(9px)' }}>
+        <div className="noc-gw-drift gw-glyph" style={{ color: 'var(--color-primary-400)', opacity: 0.42, filter: 'blur(9px)' }}>
           <Glyph size={380} weight="duotone" />
         </div>
       </div>
       <div key={cue + ':b'} className="absolute noc-gw-icon-in" style={{ bottom: '6%', left: '-26%', width: 300, height: 300, animationDelay: '120ms' }}>
-        <div className="noc-gw-drift noc-gw-drift--slow" style={{ color: 'var(--color-secondary)', opacity: 0.22, filter: 'blur(38px)' }}>
+        <div className="noc-gw-drift noc-gw-drift--slow gw-blur" style={{ color: 'var(--color-secondary)', opacity: 0.22, filter: 'blur(38px)' }}>
           <Glyph size={300} weight="fill" />
         </div>
       </div>
@@ -42,7 +42,7 @@ export function WorkoutBackdrop({ icon: Glyph, cue }: { icon: Icon; cue: string 
           <Glyph size={380} weight="thin" />
         </div>
       </div>
-      <div className="absolute inset-0" style={{
+      <div className="absolute inset-0 gw-scrim" style={{
         background: 'linear-gradient(180deg, rgba(8, 8, 14, 0.05) 0%, rgba(8, 8, 14, 0.45) 42%, rgba(8, 8, 14, 0.9) 100%)',
       }} />
     </div>
@@ -76,7 +76,7 @@ export function CountRing({
             <stop offset="100%" style={{ stopColor: b }} />
           </linearGradient>
         </defs>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(233, 233, 237, 0.08)" strokeWidth={stroke} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" style={{ stroke: 'rgb(var(--hair-rgb, 233 233 237) / 0.08)' }} strokeWidth={stroke} />
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={`url(#${id})`} strokeWidth={stroke}
           strokeLinecap="round" strokeDasharray={len} strokeDashoffset={len * (1 - f)}
           style={{ transition: 'stroke-dashoffset 0.3s linear', filter: `drop-shadow(0 0 10px ${b})` }} />
@@ -103,7 +103,7 @@ export function Stepper({
   const fmt = (x: number) => String(Math.round(Math.max(0, x) * 100) / 100);
   const btn: CSSProperties = {
     width: 36, height: 36, borderRadius: 11, flex: 'none',
-    border: '1px solid rgba(233, 233, 237, 0.14)', background: 'rgba(255, 255, 255, 0.04)',
+    border: '1px solid rgb(var(--hair-rgb, 233 233 237) / 0.14)', background: 'var(--gw-pill, rgba(255, 255, 255, 0.04))',
     color: 'var(--color-text-secondary)',
   };
   return (

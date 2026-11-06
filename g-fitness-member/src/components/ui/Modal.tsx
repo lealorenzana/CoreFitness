@@ -111,7 +111,7 @@ export default function Modal({
               <button
                 onClick={onClose}
                 className="grid place-items-center flex-shrink-0"
-                style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid rgba(233, 233, 237, 0.14)', color: 'var(--color-text-secondary)' }}
+                style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid rgb(var(--hair-rgb, 233 233 237) / 0.14)', color: 'var(--color-text-secondary)' }}
                 aria-label="Close"
               >
                 <X size={16} />

@@ -38,7 +38,7 @@ const ICON: Record<string, LucideIcon> = {
   classwork_on_time: BookOpen, streak_milestone: Flame, shop_purchase: ShoppingBag, membership_paid: Banknote,
 };
 const per = (r: PointRule) => (r.key === 'shop_purchase' ? ' per ₱100' : '');
-const FIELD = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)' };
+const FIELD = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)' };
 
 /**
  * Rewards → How members earn points (0051's point_rules; 0159 adds two). The
@@ -85,7 +85,7 @@ export default function EarningRules() {
 
   return (
     <RdCard className="flex flex-col min-h-0 overflow-hidden rd-fit-fill" data-earning>
-      <div className="flex items-center gap-3 px-4 py-3.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      <div className="flex items-center gap-3 px-4 py-3.5" style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.06)' }}>
         <Coins size={20} style={{ color: TONE.violet.fg }} />
         <div className="min-w-0 flex-1">
           <h2 className="text-[16px] font-semibold text-white">How members earn points</h2>
@@ -107,7 +107,7 @@ export default function EarningRules() {
                 const dirty = d.label !== r.label || d.points !== String(r.points);
                 const Icon = ICON[r.key] ?? CheckCircle2;
                 return (
-                  <div key={r.key} className="rounded-xl p-3.5 flex gap-3" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }} data-rule={r.key}>
+                  <div key={r.key} className="rounded-xl p-3.5 flex gap-3" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.07)' }} data-rule={r.key}>
                     <span className="w-10 h-10 rounded-xl grid place-items-center flex-none" style={{ background: TONE.violet.bg, color: TONE.violet.fg }}><Icon size={18} /></span>
                     <div className="min-w-0 flex-1 space-y-2">
                       <div className="flex items-center gap-2">
@@ -135,7 +135,7 @@ export default function EarningRules() {
                     const Icon = ICON[r.key] ?? CheckCircle2;
                     return (
                       <button key={r.key} type="button" onClick={() => { setAdding(r); setNewPoints(String(r.points)); }} data-rule-off={r.key}
-                        className="text-left rounded-xl px-3.5 py-3 flex items-start gap-3 hover:bg-white/[0.04]" style={{ border: '1px dashed rgba(255,255,255,0.12)' }}>
+                        className="text-left rounded-xl px-3.5 py-3 flex items-start gap-3 hover:bg-white/[0.04]" style={{ border: '1px dashed rgb(var(--hair-rgb, 255 255 255) / 0.12)' }}>
                         <Icon size={16} className="mt-0.5 flex-none" style={{ color: 'var(--color-text-muted)' }} />
                         <span className="min-w-0 flex-1">
                           <span className="block text-[13.5px] font-semibold" style={{ color: 'var(--color-text-secondary)' }}>{r.label}</span>

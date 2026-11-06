@@ -54,7 +54,8 @@ export default function Avatar({
   const showPhoto = Boolean(photoUrl) && !failed;
 
   const bg = tone === 'secondary' ? 'var(--color-secondary)' : 'var(--color-primary)';
-  const fg = tone === 'secondary' ? '#000' : '#fff';
+  // On amber: black on dark mode's bright amber, white on light mode's deep amber (light.css sets --on-secondary).
+  const fg = tone === 'secondary' ? 'var(--on-secondary, #000)' : '#fff';
   const viewable = zoom && showPhoto;
   const view = (e: { stopPropagation: () => void; preventDefault: () => void }) => {
     e.stopPropagation(); e.preventDefault();

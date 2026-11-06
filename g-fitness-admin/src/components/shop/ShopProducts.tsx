@@ -11,7 +11,7 @@ import { blankProduct, type ProductForm, type StockChange } from './shopForm';
 
 const MUTED = 'var(--color-text-muted)';
 const SECOND = 'var(--color-text-secondary)';
-const LINE = '1px solid rgba(255,255,255,0.06)';
+const LINE = '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.06)';
 const STARTER_CATEGORIES = ['Drinks', 'Supplements', 'Snacks', 'Merch', 'Rentals', 'Other'];
 
 interface Props {
@@ -228,7 +228,7 @@ export default function ShopProducts({ products, owner, busy, form, setForm, sto
                 <button key={k} type="button" onClick={() => setStockFor({ ...stockFor, reason: k, qty: k === 'count' ? String(stockFor.p.stock) : '' })}
                   aria-pressed={stockFor.reason === k} className="h-9 px-3.5 rounded-xl text-[13px] font-semibold"
                   style={stockFor.reason === k ? { background: 'rgba(124,58,237,0.22)', color: '#EDE9FE', border: '1px solid rgba(139,92,246,0.7)' }
-                    : { color: SECOND, border: '1px solid rgba(255,255,255,0.1)' }}>{label}</button>
+                    : { color: SECOND, border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)' }}>{label}</button>
               ))}
             </div>
             <div className="grid gap-3" style={{ gridTemplateColumns: '140px minmax(0, 1fr)' }}>

@@ -22,6 +22,16 @@ export function clearGymLook(): void {
   document.getElementById(ID)?.remove();
 }
 
+/** White or near-black — whichever reads better on this colour (WCAG contrast). For words on the gym's own fills. */
+function wordsOn(hex: string): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return '#FFFFFF';
+  const lin = (i: number) => { const v = parseInt(m[1].slice(i, i + 2), 16) / 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+  const l = 0.2126 * lin(0) + 0.7152 * lin(2) + 0.0722 * lin(4);
+  const dark = 0.0065; // #1a1205, the near-black written on amber
+  return (1.05) / (l + 0.05) >= (l + 0.05) / (dark + 0.05) ? '#FFFFFF' : '#1a1205';
+}
+
 /** Draw the last-read look in the current mode (lib/colorMode.ts calls this when the mode changes). */
 export function renderGymLook(): void {
   if (!last) return;
@@ -45,6 +55,7 @@ export function renderGymLook(): void {
   --color-primary: ${p.base}; --color-primary-hover: ${p.hover}; --color-primary-light: ${pLight};
   --color-secondary: ${aBase}; --color-secondary-hover: ${light ? a.c800 : a.hover}; --color-secondary-light: ${aLight};${ground}${light ? `
   --fill-action-gym: ${a.c700}; --fill-primary-gym: ${p.c700};` : ''}
+  --on-secondary: ${light ? '#FFFFFF' : wordsOn(a.base)};
 }
 body { background: var(--color-bg); }
 .att, :root[data-mode] .att {

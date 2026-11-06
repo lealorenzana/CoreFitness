@@ -58,7 +58,7 @@ export function IconButton({
       style={{ width: 44, height: 44, margin: -5 }}>
       <span className="relative grid place-items-center" style={{
         width: 34, height: 34, borderRadius: 8,
-        border: '1px solid rgba(233, 233, 237, 0.14)',
+        border: '1px solid rgb(var(--hair-rgb, 233 233 237) / 0.14)',
         color: 'var(--color-text-secondary)',
       }}>
         {children}

@@ -27,7 +27,7 @@ export default function Pager({ page, pages, total, noun, onPage }: {
   };
   const btn = (on: boolean): React.CSSProperties => ({
     minWidth: 40, height: 40, borderRadius: 10, fontSize: 14, fontWeight: 600,
-    background: on ? 'var(--color-primary)' : 'rgba(233,233,237,0.05)',
+    background: on ? 'var(--color-primary)' : 'rgb(var(--hair-rgb, 233 233 237) / 0.05)',
     color: on ? '#fff' : 'var(--color-text-secondary)',
   });
 

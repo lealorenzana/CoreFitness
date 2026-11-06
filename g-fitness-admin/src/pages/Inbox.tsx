@@ -57,7 +57,7 @@ const pageName = (url: string) => PAGES.find(([p]) => url === p || url.startsWit
 const PER_PAGE = 30;
 const MUTED = 'var(--color-text-muted)';
 const SECOND = 'var(--color-text-secondary)';
-const LINE = '1px solid rgba(255,255,255,0.06)';
+const LINE = '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.06)';
 
 /** A link the admin app can open; member/trainer paths belong to the phone app. */
 const openable = (url: string | null) => !!url && url.startsWith('/') && !/^\/(member|trainer)\b/.test(url);
@@ -255,7 +255,7 @@ export default function Inbox() {
                       <div key={n.id}>
                         {head && <p className="px-4 pt-3 pb-1.5 text-[12px] font-semibold sticky top-0 z-[1]" style={{ color: SECOND, background: 'var(--color-surface)' }}>{head}</p>}
                         <div className="group flex items-start gap-3 px-4 py-3 transition-colors hover:bg-white/[0.025]" data-inbox-row data-unread={!n.read || undefined}
-                          style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: on ? 'rgba(124,58,237,0.12)' : undefined,
+                          style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.04)', background: on ? 'rgba(124,58,237,0.12)' : undefined,
                             boxShadow: on ? 'inset 3px 0 0 #8B5CF6' : undefined }}>
                           <input type="checkbox" className="mt-2.5 accent-violet-500" checked={picked.has(n.id)} aria-label={`Select ${n.title}`}
                             onChange={(e) => { const s = new Set(picked); if (e.target.checked) s.add(n.id); else s.delete(n.id); setPicked(s); }} />

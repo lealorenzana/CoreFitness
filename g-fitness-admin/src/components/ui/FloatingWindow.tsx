@@ -22,7 +22,7 @@ export default function FloatingWindow({ open, onClose, title, icon: Icon, count
         className="w-full flex flex-col rounded-2xl overflow-hidden"
         style={{ maxWidth: 1240, height: 'min(88vh, 980px)', background: 'var(--color-surface)', border: '1px solid rgba(139,92,246,0.35)',
           boxShadow: '0 40px 120px -30px rgba(124,58,237,0.6)' }}>
-        <div className="flex items-center justify-between gap-3 flex-wrap px-5 py-3.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+        <div className="flex items-center justify-between gap-3 flex-wrap px-5 py-3.5" style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.07)' }}>
           <div className="flex items-center gap-3">
             <Icon size={22} style={{ color: '#A78BFA' }} />
             <h2 className="text-[19px] font-semibold text-white">{title}</h2>
@@ -33,11 +33,11 @@ export default function FloatingWindow({ open, onClose, title, icon: Icon, count
           <div className="flex items-center gap-3 flex-wrap">
             {tools}
             <button type="button" onClick={onClose} aria-label="Close" className="w-11 h-11 rounded-xl grid place-items-center hover:bg-white/[0.06]"
-              style={{ border: '1px solid rgba(255,255,255,0.1)', color: 'var(--color-text-secondary)' }}><X size={18} /></button>
+              style={{ border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)', color: 'var(--color-text-secondary)' }}><X size={18} /></button>
           </div>
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto rd-fit-scroll" data-window-body>{children}</div>
-        {footer && <div className="px-5 py-3 flex items-center justify-between gap-3 flex-wrap" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>{footer}</div>}
+        {footer && <div className="px-5 py-3 flex items-center justify-between gap-3 flex-wrap" style={{ borderTop: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.07)' }}>{footer}</div>}
       </div>
     </div>,
     document.body,

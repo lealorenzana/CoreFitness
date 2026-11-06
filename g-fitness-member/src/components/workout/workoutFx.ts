@@ -108,10 +108,10 @@ export function useWakeLock(active: boolean): boolean {
 
 /** Frosted glass for the run screen's cards: lighter than a sheet, so the backdrop shows through. */
 export const glassCard: CSSProperties = {
-  background: 'linear-gradient(160deg, rgba(34, 31, 54, 0.62) 0%, rgba(16, 15, 26, 0.58) 100%)',
+  background: 'var(--gw-card, linear-gradient(160deg, rgba(34, 31, 54, 0.62) 0%, rgba(16, 15, 26, 0.58) 100%))',
   backdropFilter: 'blur(20px) saturate(150%)',
   WebkitBackdropFilter: 'blur(20px) saturate(150%)',
-  border: '1px solid rgba(233, 233, 237, 0.10)',
-  boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 18px 40px -24px rgba(0, 0, 0, 0.8)',
+  border: '1px solid rgb(var(--hair-rgb, 233 233 237) / 0.10)',
+  boxShadow: 'var(--gw-card-shadow, inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 18px 40px -24px rgba(0, 0, 0, 0.8))',
   borderRadius: 20,
 };

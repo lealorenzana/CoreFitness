@@ -49,7 +49,7 @@ export default function ReferralsSection() {
   const pointsOut = paid.reduce((n, r) => n + r.referrer_points + r.friend_points, 0);
   const fmt = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   const tile = (label: string, value: string | number, sub: string) => (
-    <div className="rounded-xl px-3.5 py-3" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}>
+    <div className="rounded-xl px-3.5 py-3" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.07)' }}>
       <p className="text-[12.5px]" style={{ color: 'var(--color-text-secondary)' }}>{label}</p>
       <p className="text-[22px] font-bold text-white tabular-nums">{value}</p>
       <p className="text-[12px]" style={{ color: MUTED }}>{sub}</p>
@@ -58,7 +58,7 @@ export default function ReferralsSection() {
 
   return (
     <RdCard className="flex flex-col min-h-0 overflow-hidden rd-fit-fill" data-referrals>
-      <div className="flex items-center gap-3 px-4 py-3.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      <div className="flex items-center gap-3 px-4 py-3.5" style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.06)' }}>
         <UserPlus size={20} style={{ color: TONE.violet.fg }} />
         <div className="min-w-0 flex-1">
           <h2 className="text-[16px] font-semibold text-white">Referrals</h2>
@@ -78,7 +78,7 @@ export default function ReferralsSection() {
         ) : (
           <div className="space-y-1.5">
             {rows.map((r) => (
-              <div key={r.id} className="flex items-center gap-3 rounded-xl px-3.5 py-2.5" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div key={r.id} className="flex items-center gap-3 rounded-xl px-3.5 py-2.5" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.06)' }}>
                 <p className="text-[13.5px] text-white flex-1 min-w-0 truncate">
                   <strong>{r.referrer_name}</strong> brought <strong>{r.friend_name}</strong>
                   <span style={{ color: MUTED }}> · {fmt(r.created_at)}</span>

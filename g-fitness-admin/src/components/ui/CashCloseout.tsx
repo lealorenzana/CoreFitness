@@ -121,14 +121,14 @@ export default function CashCloseout({ refreshKey }: { refreshKey?: unknown }) {
               <span style={{ color: 'var(--color-text-secondary)' }}>Refunds paid out</span>
               <span className="text-white tabular-nums">{summary.refundsOut ? `− ${peso(summary.refundsOut)}` : '—'}</span>
             </div>
-            <div className="flex justify-between gap-2 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+            <div className="flex justify-between gap-2 pt-2" style={{ borderTop: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)' }}>
               <span className="font-semibold text-white">Should be in the drawer</span>
               <span className="font-bold text-white tabular-nums">{peso(summary.expected)}</span>
             </div>
           </div>
 
           {summary.closed && !redo ? (
-            <div className="rounded-xl p-3 text-[13px] space-y-1" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <div className="rounded-xl p-3 text-[13px] space-y-1" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.07)' }}>
               <p className="flex items-center gap-1.5 font-semibold text-white">
                 {summary.difference === 0
                   ? <CheckCircle2 size={15} style={{ color: '#C4B5FD' }} />
@@ -153,7 +153,7 @@ export default function CashCloseout({ refreshKey }: { refreshKey?: unknown }) {
                 <input value={counted} inputMode="decimal" placeholder="0.00" aria-label="Amount counted"
                   onChange={(e) => setCounted(e.target.value.replace(/[^\d.]/g, ''))}
                   className="h-10 flex-1 min-w-0 rounded-xl px-3 text-[15px] font-semibold text-white text-right tabular-nums outline-none"
-                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)' }} />
+                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)' }} />
               </label>
               {diff != null && (
                 <p className="text-[12.5px] font-semibold text-right" style={{ color: Math.abs(diff) < 0.001 ? '#C4B5FD' : '#FBBF24' }}>
@@ -164,7 +164,7 @@ export default function CashCloseout({ refreshKey }: { refreshKey?: unknown }) {
                 <input value={note} onChange={(e) => setNote(e.target.value)} aria-label="Note"
                   placeholder={redo ? 'Why are you redoing this count?' : 'Why is it different? (required)'}
                   className="h-10 w-full rounded-xl px-3 text-[13px] text-white outline-none"
-                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)' }} />
+                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)' }} />
               )}
               <div className="flex gap-2">
                 <RdButton size="sm" variant="amber" className="flex-1" disabled={busy || countedNum == null || (needsNote && !note.trim())} onClick={() => void submit()}>
@@ -177,7 +177,7 @@ export default function CashCloseout({ refreshKey }: { refreshKey?: unknown }) {
         </div>
       )}
 
-      <div className="mt-auto pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+      <div className="mt-auto pt-3" style={{ borderTop: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)' }}>
           <p className="text-[12.5px] font-medium mb-1.5" style={{ color: 'var(--color-text-muted)' }}>Recent closes</p>
           {history.length === 0 && <p className="text-[12.5px]" style={{ color: 'var(--color-text-muted)' }}>None yet — each day you close shows here, with any difference.</p>}
           <div className="space-y-1">

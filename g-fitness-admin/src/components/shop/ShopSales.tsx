@@ -9,7 +9,7 @@ import { useGymFirstDay } from '../../hooks/useGymFirstDay';
 import { salesBetween, shopReport, type ReportRow, type Sale } from '../../lib/api/shop';
 
 const MUTED = 'var(--color-text-muted)';
-const LINE = '1px solid rgba(255,255,255,0.06)';
+const LINE = '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.06)';
 
 type Preset = 'today' | 'week' | 'month' | 'last' | 'custom';
 function rangeFor(p: Preset): { from: string; to: string } {
@@ -112,7 +112,7 @@ export default function ShopSales({ refresh, onReceipt }: { refresh: number; onR
             {sales === null ? <p className="text-[13px] py-4" style={{ color: MUTED }}>Loading…</p> : sales.length === 0 ? (
               <EmptyBlock compact icon={Receipt} title="No sales in these dates" />
             ) : paged.visible.map((s) => (
-              <div key={s.id} className="flex items-center gap-3 py-2.5 text-[13px]" style={{ borderBottom: '1px solid rgba(255,255,255,0.045)', opacity: s.voidedAt ? 0.55 : 1 }}>
+              <div key={s.id} className="flex items-center gap-3 py-2.5 text-[13px]" style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.045)', opacity: s.voidedAt ? 0.55 : 1 }}>
                 <span className="w-28 tabular-nums" style={{ color: MUTED }}>
                   {new Date(s.createdAt).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                 </span>

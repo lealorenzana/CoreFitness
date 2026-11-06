@@ -889,7 +889,7 @@ export default function Members() {
                 className="w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[86vh]" data-pending-dialog
                 style={{ background: 'radial-gradient(120% 70% at 0% 0%, rgba(124,58,237,0.20), transparent 55%), var(--color-surface)', border: '1px solid rgba(139,92,246,0.3)' }}
                 onClick={(e) => e.stopPropagation()}>
-                <div className="px-6 pt-6 pb-4 flex items-start justify-between gap-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                <div className="px-6 pt-6 pb-4 flex items-start justify-between gap-4" style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.07)' }}>
                   <div className="flex items-center gap-4">
                     <IconTile icon={Clock} size={52} />
                     <div>
@@ -900,7 +900,7 @@ export default function Members() {
                       <p className="text-[14px] mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>People who signed up in the app and are waiting for you. Approving lets them in on the free plan.</p>
                     </div>
                   </div>
-                  <button aria-label="Close" onClick={closePendingPanel} className="w-10 h-10 grid place-items-center rounded-xl hover:bg-white/5 flex-none" style={{ color: 'var(--color-text-secondary)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  <button aria-label="Close" onClick={closePendingPanel} className="w-10 h-10 grid place-items-center rounded-xl hover:bg-white/5 flex-none" style={{ color: 'var(--color-text-secondary)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)' }}>
                     <X size={18} />
                   </button>
                 </div>
@@ -1208,7 +1208,7 @@ function PendingRegistrationsList({
           return (
             <motion.div key={reg.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.04 }}
               className="flex items-center gap-4 p-4 rounded-2xl" data-pending-row
-              style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}>
+              style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.07)' }}>
               <Initials name={name} size={48} />
               <div className="flex-1 min-w-0">
                 <p className="text-[16px] font-semibold text-white truncate">{name}</p>

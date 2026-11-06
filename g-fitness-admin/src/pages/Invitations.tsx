@@ -153,7 +153,7 @@ export default function Invitations() {
   const labelCls = 'block text-[14.5px] mb-2 font-medium';
   const labelSt = { color: 'var(--color-text-primary)' };
   const input = 'w-full h-12 rounded-xl px-4 text-[15px] text-white outline-none';
-  const inputSt = { background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.1)' };
+  const inputSt = { background: 'rgba(255,255,255,0.025)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)' };
   const muted = { color: 'var(--color-text-secondary)' };
   const roleWord = role === 'member' ? 'members' : role === 'trainer' ? 'coaches' : 'front desk';
 
@@ -172,7 +172,7 @@ export default function Invitations() {
 
       <div className="rd-fit-split">
         <RdCard className="flex flex-col min-h-0 overflow-hidden" data-invite-ways>
-          <div className="flex gap-2 p-3" role="tablist" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="flex gap-2 p-3" role="tablist" style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.06)' }}>
             {([['one', 'Invite one person', UserPlus], ['group', 'Invite a group', FileText]] as const).map(([k, label, Icon]) => (
               <button key={k} type="button" role="tab" aria-selected={way === k} onClick={() => setWay(k)} data-way={k}
                 className="flex-1 h-11 rounded-xl inline-flex items-center justify-center gap-2 text-[14.5px] font-semibold transition-colors"
@@ -192,7 +192,7 @@ export default function Invitations() {
                 <button key={key} type="button" role="radio" aria-checked={role === key} onClick={() => setRole(key)} data-role={key}
                   className="h-12 rounded-xl inline-flex items-center justify-center gap-2 text-[14.5px] font-semibold transition-colors"
                   style={role === key ? { background: 'rgba(124,58,237,0.2)', border: '1px solid rgba(139,92,246,0.7)', color: '#EDE9FE' }
-                    : { background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--color-text-secondary)' }}>
+                    : { background: 'rgba(255,255,255,0.025)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)', color: 'var(--color-text-secondary)' }}>
                   <Icon size={16} />{label}
                 </button>
               ))}
@@ -234,7 +234,7 @@ export default function Invitations() {
             <Info size={15} className="flex-none mt-0.5" /> Paste a spreadsheet or choose a CSV file. You&rsquo;ll review every invitation, joining as {roleWord}, before any is sent.
           </p>
           {/* A worked example (the owner asked, 2026-10-18): what the desk actually does, step by step. */}
-          <details className="mt-2 rounded-xl px-3 py-2 text-[13px]" style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)' }} data-invite-howto>
+          <details className="mt-2 rounded-xl px-3 py-2 text-[13px]" style={{ border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)', background: 'rgba(255,255,255,0.02)' }} data-invite-howto>
             <summary className="cursor-pointer font-semibold text-white">How to — an example</summary>
             <ol className="mt-2 ml-4 list-decimal space-y-1.5" style={muted}>
               <li>Keep one person per line: <b className="text-white">email, first name, last name, mobile</b>. Only the email is required; the mobile is optional.</li>
@@ -282,7 +282,7 @@ export default function Invitations() {
           </div>
 
           {reviewing && parsed.length > 0 && (
-            <div className="mt-4 rounded-xl p-4" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)' }} data-invite-review>
+            <div className="mt-4 rounded-xl p-4" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.07)' }} data-invite-review>
               <p className="text-[14.5px] text-white">
                 {usable.length} to invite as {roleWord}{broken.length > 0 && `, ${broken.length} that cannot be used`}
               </p>
@@ -391,7 +391,7 @@ function IconAct({ label, icon: Icon, onClick, disabled, danger }: { label: stri
   return (
     <button type="button" aria-label={label} data-tip={label} onClick={onClick} disabled={disabled}
       className="w-10 h-10 rounded-xl grid place-items-center transition-colors hover:bg-white/5 disabled:opacity-40"
-      style={{ border: '1px solid rgba(255,255,255,0.08)', color: danger ? '#F87171' : '#C4B5FD' }}>
+      style={{ border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)', color: danger ? '#F87171' : '#C4B5FD' }}>
       <Icon size={17} />
     </button>
   );

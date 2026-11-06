@@ -200,7 +200,7 @@ export default function CheckInSheet({ open, onClose }: { open: boolean; onClose
               maxHeight: '100%', overflowY: 'auto',
             }}
           >
-            <div aria-hidden style={{ width: 42, height: 4, borderRadius: 2, background: 'rgba(233, 233, 237, 0.25)' }} />
+            <div aria-hidden style={{ width: 42, height: 4, borderRadius: 2, background: 'rgb(var(--hair-rgb, 233 233 237) / 0.25)' }} />
 
             {loading || !home ? (
               <>

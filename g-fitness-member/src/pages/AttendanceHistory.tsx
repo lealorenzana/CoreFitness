@@ -203,7 +203,7 @@ export default function AttendanceHistory() {
             <div className="flex items-center justify-between" style={{ gap: 12 }}>
               <button onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))}
                 disabled={!canGoBack} aria-label="Previous month" className="grid place-items-center disabled:opacity-30"
-                style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid rgba(233, 233, 237, 0.14)', color: 'var(--color-text-secondary)' }}>
+                style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid rgb(var(--hair-rgb, 233 233 237) / 0.14)', color: 'var(--color-text-secondary)' }}>
                 <CaretLeft size={15} />
               </button>
               <div className="text-center">
@@ -220,7 +220,7 @@ export default function AttendanceHistory() {
               </div>
               <button onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))}
                 disabled={!canGoForward} aria-label="Next month" className="grid place-items-center disabled:opacity-30"
-                style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid rgba(233, 233, 237, 0.14)', color: 'var(--color-text-secondary)' }}>
+                style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid rgb(var(--hair-rgb, 233 233 237) / 0.14)', color: 'var(--color-text-secondary)' }}>
                 <CaretRight size={15} />
               </button>
             </div>

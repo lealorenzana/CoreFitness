@@ -205,7 +205,7 @@ export default function ChatbotPopup({ isOpen, onClose }: ChatbotPopupProps) {
                 <button
                   onClick={onClose}
                   className="w-9 h-9 rounded-full grid place-items-center noc-press"
-                  style={{ color: 'var(--color-text-secondary)', border: '1px solid rgba(233, 233, 237, 0.14)' }}
+                  style={{ color: 'var(--color-text-secondary)', border: '1px solid rgb(var(--hair-rgb, 233 233 237) / 0.14)' }}
                   aria-label="Close"
                 >
                   <X size={16} />
@@ -278,7 +278,7 @@ export default function ChatbotPopup({ isOpen, onClose }: ChatbotPopupProps) {
             )}
 
             {/* Input */}
-            <div className="p-3 flex-shrink-0" style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom))', borderTop: '1px solid rgba(255, 255, 255, 0.08)', background: 'rgba(8, 8, 14, 0.35)' }}>
+            <div className="p-3 flex-shrink-0" style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom))', borderTop: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)', background: 'rgba(8, 8, 14, 0.35)' }}>
               <div className="flex gap-2 items-center">
                 <input
                   value={input}

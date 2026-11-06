@@ -58,6 +58,10 @@
       "app": "member"
     },
     {
+      "file": "member-light-session-check.js",
+      "app": "member"
+    },
+    {
       "file": "admin-light-check.js",
       "app": "admin"
     },

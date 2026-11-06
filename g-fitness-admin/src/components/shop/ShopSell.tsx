@@ -5,9 +5,9 @@ import { formatCurrency } from '../../utils/formatters';
 import { findMembers, type MemberHit, type Product, type Sale } from '../../lib/api/shop';
 
 const MUTED = 'var(--color-text-muted)';
-const FIELD = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)' };
-const PANEL = { background: 'var(--color-surface)', border: '1px solid rgba(255,255,255,0.1)' };
-const LINE = '1px solid rgba(255,255,255,0.06)';
+const FIELD = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)' };
+const PANEL = { background: 'var(--color-surface)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)' };
+const LINE = '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.06)';
 const initialsOf = (name: string) => (name.split(/\s+/).filter((w) => /^\p{L}/u.test(w)).map((w) => w[0]).join('') || name).slice(0, 2).toUpperCase();
 
 /** A product's tile picture: its photo, or its initials on a tint — never a stock image. */
@@ -119,7 +119,7 @@ export default function ShopSell({ products, today, owner, busy, onRecord, onRec
                   <button key={c} type="button" onClick={() => setCat(c)} aria-pressed={cat === c}
                     className="h-9 px-3.5 rounded-full text-[13px] font-semibold transition-colors"
                     style={cat === c ? { background: 'rgba(124,58,237,0.22)', color: '#EDE9FE', border: '1px solid rgba(139,92,246,0.7)' }
-                      : { background: 'rgba(255,255,255,0.02)', color: 'var(--color-text-secondary)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                      : { background: 'rgba(255,255,255,0.02)', color: 'var(--color-text-secondary)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)' }}>
                     {c}
                   </button>
                 ))}
@@ -175,7 +175,7 @@ export default function ShopSell({ products, today, owner, busy, onRecord, onRec
           </div>
           <div className="rd-fit-scroll px-4">
             {today.length === 0 ? <p className="text-[13px] py-4" style={{ color: MUTED }}>No sales yet today.</p> : today.map((s) => (
-              <div key={s.id} className="py-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.045)' }}>
+              <div key={s.id} className="py-2" style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.045)' }}>
                 <div className="flex items-center gap-3 text-[13px]" style={{ opacity: s.voidedAt ? 0.55 : 1 }}>
                   <span className="w-16 tabular-nums" style={{ color: MUTED }}>{new Date(s.createdAt).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}</span>
                   <span className="flex-1 min-w-0 text-white truncate">
@@ -256,7 +256,7 @@ export default function ShopSell({ products, today, owner, busy, onRecord, onRec
             ) : (
               <div className="relative mt-2">
                 <input value={memberQ} onChange={(e) => setMemberQ(e.target.value)} placeholder="Type a member's name or email" aria-label="Who is buying"
-                  className="w-full h-10 px-3 rounded-lg text-[13px] text-white outline-none" style={{ background: 'var(--color-surface)', border: '1px solid rgba(255,255,255,0.1)' }} />
+                  className="w-full h-10 px-3 rounded-lg text-[13px] text-white outline-none" style={{ background: 'var(--color-surface)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)' }} />
                 {hits.length > 0 && memberQ.trim().length >= 2 && (
                   <div className="absolute left-0 right-0 top-11 z-10 rounded-lg overflow-hidden shadow-xl" style={PANEL} role="listbox">
                     {hits.map((m) => (

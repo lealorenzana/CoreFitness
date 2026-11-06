@@ -630,7 +630,7 @@ function WorkoutRun() {
             <button key={keyOf(e) + i} role="listitem" onClick={() => go(i)} className="flex-1 grid items-center"
               aria-label={`${e.name}: ${n} of ${e.targetSets} sets${i === idx ? ', current' : ''}`} style={{ height: 20 }}>
               <span className="relative block overflow-hidden" style={{
-                height: i === idx ? 6 : 4, borderRadius: 3, background: 'rgba(233, 233, 237, 0.12)',
+                height: i === idx ? 6 : 4, borderRadius: 3, background: 'rgb(var(--hair-rgb, 233 233 237) / 0.12)',
                 boxShadow: i === idx ? '0 0 0 1px color-mix(in srgb, var(--color-primary-300) 45%, transparent)' : undefined, transition: 'height 0.25s ease',
               }}>
                 <span className="absolute inset-y-0 left-0" style={{
@@ -806,14 +806,14 @@ function WorkoutRun() {
       {/* ── Moving on ── */}
       <footer className="relative flex flex-col" style={{
         gap: 8, padding: '10px var(--gutter) 12px',
-        background: 'linear-gradient(180deg, rgba(8, 8, 14, 0) 0%, rgba(8, 8, 14, 0.88) 38%)',
+        background: 'var(--gw-dock, linear-gradient(180deg, rgba(8, 8, 14, 0) 0%, rgba(8, 8, 14, 0.88) 38%))',
       }}>
         {restEnd != null && restMin && (
           <button onClick={() => setRestMin(false)} className="flex items-center noc-press noc-gw-zoom"
             style={{ ...glassCard, borderRadius: 14, padding: '10px 14px', gap: 12 }}>
             <Timer size={17} style={{ color: 'var(--color-primary-300)' }} />
             <span className="tabular-nums" style={{ fontSize: 17, fontWeight: 700, color: 'var(--color-text-primary)' }}>{clock(restLeft)}</span>
-            <span className="flex-1 overflow-hidden" style={{ height: 4, borderRadius: 2, background: 'rgba(233, 233, 237, 0.12)' }}>
+            <span className="flex-1 overflow-hidden" style={{ height: 4, borderRadius: 2, background: 'rgb(var(--hair-rgb, 233 233 237) / 0.12)' }}>
               <span className="block" style={{ height: '100%', width: `${restTotal > 0 ? (restLeft / restTotal) * 100 : 0}%`, background: 'var(--color-primary-lift)', transition: 'width 0.3s linear' }} />
             </span>
             <span style={{ fontSize: 12.5, color: 'var(--color-text-secondary)' }}>Rest</span>
@@ -871,8 +871,8 @@ function WorkoutRun() {
                 className="flex items-center text-left noc-press-soft"
                 style={{
                   gap: 12, padding: '10px 12px', borderRadius: 14,
-                  background: i === idx ? 'color-mix(in srgb, var(--color-primary) 16%, transparent)' : 'rgba(255, 255, 255, 0.03)',
-                  border: `1px solid ${i === idx ? 'color-mix(in srgb, var(--color-primary-300) 40%, transparent)' : 'rgba(233, 233, 237, 0.08)'}`,
+                  background: i === idx ? 'color-mix(in srgb, var(--color-primary) 16%, transparent)' : 'var(--gw-pill, rgba(255, 255, 255, 0.03))',
+                  border: `1px solid ${i === idx ? 'color-mix(in srgb, var(--color-primary-300) 40%, transparent)' : 'rgb(var(--hair-rgb, 233 233 237) / 0.08)'}`,
                 }}>
                 <span className="grid place-items-center" style={{ width: 38, height: 38, borderRadius: 12, flex: 'none', background: 'color-mix(in srgb, var(--color-primary) 18%, transparent)', color: 'var(--color-primary-300)' }}>
                   <Glyph size={19} weight="duotone" />
@@ -916,7 +916,7 @@ function RoundButton({
       className="grid place-items-center noc-press disabled:opacity-30"
       style={{
         width: size, height: size, borderRadius: 999, flex: 'none',
-        background: 'rgba(255, 255, 255, 0.06)', border: '1px solid rgba(233, 233, 237, 0.12)',
+        background: 'var(--gw-pill, rgba(255, 255, 255, 0.06))', border: '1px solid rgb(var(--hair-rgb, 233 233 237) / 0.12)',
         backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', color: 'var(--color-text-primary)',
       }}>
       {children}
@@ -960,8 +960,8 @@ function SetRow({
   return (
     <div className={`flex items-center ${flashing ? 'noc-gw-ring-out' : ''}`} style={{
       gap: 10, padding: '8px 8px 8px 10px', borderRadius: 16,
-      background: logged ? 'color-mix(in srgb, var(--color-primary) 14%, transparent)' : 'rgba(18, 17, 28, 0.55)',
-      border: `1px solid ${focused ? 'color-mix(in srgb, var(--color-secondary) 55%, transparent)' : logged ? 'color-mix(in srgb, var(--color-primary-300) 28%, transparent)' : 'rgba(233, 233, 237, 0.08)'}`,
+      background: logged ? 'var(--gw-row-done, color-mix(in srgb, var(--color-primary) 14%, transparent))' : 'var(--gw-row, rgba(18, 17, 28, 0.55))',
+      border: `1px solid ${focused ? 'color-mix(in srgb, var(--color-secondary) 55%, transparent)' : logged ? 'color-mix(in srgb, var(--color-primary-300) 28%, transparent)' : 'rgb(var(--hair-rgb, 233 233 237) / 0.08)'}`,
       backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
       transition: 'border-color 0.25s ease, background-color 0.25s ease',
     }}>
@@ -969,7 +969,7 @@ function SetRow({
         className="flex-1 min-w-0 flex items-center justify-start text-left" style={{ gap: 12 }}>
         <span className="grid place-items-center tabular-nums" style={{
           width: 30, height: 30, borderRadius: 999, flex: 'none', fontSize: 13, fontWeight: 700,
-          background: logged ? 'linear-gradient(135deg, var(--color-primary), var(--color-primary-400))' : 'rgba(255, 255, 255, 0.06)',
+          background: logged ? 'var(--gw-fill, linear-gradient(135deg, var(--color-primary), var(--color-primary-400)))' : 'var(--gw-chip, rgba(255, 255, 255, 0.06))',
           color: logged ? '#fff' : focused ? 'var(--color-secondary)' : 'var(--color-text-secondary)',
         }}>{n}</span>
         <span className="min-w-0">
@@ -993,8 +993,8 @@ function SetRow({
         className="grid place-items-center noc-press disabled:opacity-50"
         style={{
           width: 44, height: 44, borderRadius: 13, flex: 'none',
-          background: logged ? 'linear-gradient(135deg, var(--color-primary), var(--color-primary-lift))' : 'transparent',
-          border: logged ? '1px solid color-mix(in srgb, var(--color-primary-300) 50%, transparent)' : '1px dashed rgba(233, 233, 237, 0.14)',
+          background: logged ? 'var(--gw-fill, linear-gradient(135deg, var(--color-primary), var(--color-primary-lift)))' : 'transparent',
+          border: logged ? '1px solid color-mix(in srgb, var(--color-primary-300) 50%, transparent)' : '1px dashed rgb(var(--hair-rgb, 233 233 237) / 0.14)',
           boxShadow: logged ? '0 0 18px -4px color-mix(in srgb, var(--color-primary) 80%, transparent)' : undefined,
           color: logged ? '#fff' : 'var(--color-text-muted)',
         }}>
@@ -1017,11 +1017,11 @@ function RestTakeover({
   const urgent = left <= 3.05;
   const pill = {
     height: 40, padding: '0 18px', borderRadius: 999, fontSize: 14, fontWeight: 600,
-    background: 'rgba(255, 255, 255, 0.06)', border: '1px solid rgba(233, 233, 237, 0.14)', color: 'var(--color-text-primary)',
+    background: 'var(--gw-pill, rgba(255, 255, 255, 0.06))', border: '1px solid rgb(var(--hair-rgb, 233 233 237) / 0.14)', color: 'var(--color-text-primary)',
   } as const;
   return (
     <div role="dialog" aria-label="Rest" className="absolute inset-0 flex flex-col" style={{
-      zIndex: 30, background: 'rgba(8, 8, 14, 0.62)', backdropFilter: 'blur(22px) saturate(140%)', WebkitBackdropFilter: 'blur(22px) saturate(140%)',
+      zIndex: 30, background: 'var(--gw-veil, rgba(8, 8, 14, 0.62))', backdropFilter: 'blur(22px) saturate(140%)', WebkitBackdropFilter: 'blur(22px) saturate(140%)',
     }}>
       <div className="flex items-center" style={{ padding: '10px var(--gutter) 0', gap: 10 }}>
         <RoundButton label="Hide the rest timer" onClick={onHide}><CaretDown size={18} weight="bold" /></RoundButton>
@@ -1194,7 +1194,7 @@ function FinishView({
           const prev = e.exerciseId ? last.get(e.exerciseId) ?? [] : [];
           const beat = mine.filter((s) => beatLast(s, prev.find((l) => l.setNumber === s.setNumber))).length;
           return (
-            <div key={keyOf(e) + i} className="flex items-start" style={{ gap: 10, padding: '11px 0', borderTop: i ? '1px solid rgba(233, 233, 237, 0.07)' : undefined }}>
+            <div key={keyOf(e) + i} className="flex items-start" style={{ gap: 10, padding: '11px 0', borderTop: i ? '1px solid rgb(var(--hair-rgb, 233 233 237) / 0.07)' : undefined }}>
               <div className="flex-1 min-w-0">
                 <p className="truncate" style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{e.name}</p>
                 <p style={{ fontSize: 12.5, marginTop: 2, lineHeight: 1.45, color: 'var(--color-text-muted)' }}>
@@ -1221,7 +1221,7 @@ function FinishView({
 
 function BigStat({ value, label, highlight = false }: { value: ReactNode; label: string; highlight?: boolean }) {
   return (
-    <div style={{ ...glassCard, padding: '14px 16px', border: `1px solid ${highlight ? 'color-mix(in srgb, var(--color-primary-300) 40%, transparent)' : 'rgba(233, 233, 237, 0.10)'}` }}>
+    <div style={{ ...glassCard, padding: '14px 16px', border: `1px solid ${highlight ? 'color-mix(in srgb, var(--color-primary-300) 40%, transparent)' : 'rgb(var(--hair-rgb, 233 233 237) / 0.10)'}` }}>
       <p className="tabular-nums" style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.02em', color: highlight ? 'var(--color-primary-300)' : 'var(--color-text-primary)' }}>
         {value}
       </p>

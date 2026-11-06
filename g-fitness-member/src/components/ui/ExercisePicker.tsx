@@ -110,12 +110,12 @@ export default function ExercisePicker({
                     paddingBottom: 'env(safe-area-inset-bottom)',
                   }}
                 >
-                  <div aria-hidden className="mx-auto" style={{ width: 42, height: 4, borderRadius: 2, marginTop: 10, background: 'rgba(233, 233, 237, 0.25)' }} />
+                  <div aria-hidden className="mx-auto" style={{ width: 42, height: 4, borderRadius: 2, marginTop: 10, background: 'rgb(var(--hair-rgb, 233 233 237) / 0.25)' }} />
 
                   <div className="flex items-center justify-between flex-none" style={{ padding: '12px var(--gutter) 10px', gap: 12 }}>
                     <h2 style={{ fontSize: 'var(--text-title)', fontWeight: 700, color: 'var(--color-text-primary)' }}>Choose an exercise</h2>
                     <button type="button" onClick={close} aria-label="Close" className="grid place-items-center noc-press"
-                      style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid rgba(233, 233, 237, 0.14)', color: 'var(--color-text-secondary)' }}>
+                      style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid rgb(var(--hair-rgb, 233 233 237) / 0.14)', color: 'var(--color-text-secondary)' }}>
                       <X size={16} />
                     </button>
                   </div>

@@ -57,7 +57,7 @@ export default function GymTermsBanner() {
       </div>
       <button type="button" onClick={() => void agree()} disabled={state === 'saving'}
         className="flex-none rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-60"
-        style={{ background: 'var(--color-secondary)', color: '#1a1205' }}>
+        style={{ background: 'var(--color-secondary)', color: 'var(--on-secondary, #1a1205)' }}>
         {state === 'saving' ? 'Saving…' : 'I agree for my gym'}
       </button>
     </div>

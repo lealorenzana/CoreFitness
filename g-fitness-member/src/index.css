@@ -1599,3 +1599,43 @@ img { -webkit-user-drag: none; user-select: none; }
   box-shadow: 0 6px 14px -8px color-mix(in srgb, var(--color-primary) 70%, transparent);
 }
 :root[data-mode="light"] .td-strip { background: var(--color-primary-light); }
+
+/* Dark mode's hairlines and ring tracks are see-through white; written as rgb(var(--hair-rgb, …) / a)
+   they draw in a dark ink in light, at the same strength, so every line dark mode has, light has. */
+:root[data-mode="light"] { --hair-rgb: 22 22 38; }
+
+/* The workout run screen (GuidedWorkout) in light (owner, 2026-11-06): dark keeps its glow and blur;
+   light is the same screen on a clean solid ground — the exercise's glyph as a crisp quiet watermark,
+   white cards that lift with a soft shadow, and the gym's solid colour (white words) for what is done. */
+:root[data-mode="light"] {
+  --gw-row: #FFFFFF;
+  --gw-row-done: color-mix(in srgb, var(--color-primary) 9%, #FFFFFF);
+  --gw-chip: #EFEFF4;
+  --gw-fill: var(--color-primary);
+  --gw-dock: var(--color-bg);
+  --gw-veil: color-mix(in srgb, var(--color-bg) 94%, transparent);
+  --gw-pill: #FFFFFF;
+  --gw-card: #FFFFFF;
+  --gw-card-shadow: 0 1px 2px rgba(22, 22, 38, 0.06), 0 8px 24px -14px rgba(22, 22, 38, 0.22);
+}
+:root[data-mode="light"] .gw-wash { background: var(--color-bg) !important; }
+:root[data-mode="light"] .gw-blur, :root[data-mode="light"] .gw-scrim { display: none; }
+:root[data-mode="light"] .gw-glyph { filter: none !important; opacity: 0.1 !important; color: var(--color-primary) !important; }
+:root[data-mode="light"] [style*="var(--gw-dock"] { border-top: 1px solid rgb(var(--hair-rgb) / 0.08); }
+:root[data-mode="light"] [style*="var(--gw-row-done"] { box-shadow: 0 1px 2px rgba(22, 22, 38, 0.05), 0 6px 16px -12px rgba(22, 22, 38, 0.25); }
+
+/* Row icon tiles (LineRow, data-row-icon) in light: on white a pale tint reads as washed out, so the
+   kind is said with a solid tile — yours in the gym's colour, something to do in deep amber, both with
+   a white icon — and information as a white tile with a hairline. Dark keeps its tinted glass tiles. */
+:root[data-mode="light"] [data-row-icon="mine"] {
+  background: var(--color-primary-700) !important; border-color: var(--color-primary-700) !important; color: #FFFFFF !important;
+  box-shadow: 0 4px 10px -6px color-mix(in srgb, var(--color-primary-700) 80%, transparent);
+}
+:root[data-mode="light"] [data-row-icon="act"] {
+  background: var(--color-secondary) !important; border-color: var(--color-secondary) !important; color: #FFFFFF !important;
+  box-shadow: 0 4px 10px -6px color-mix(in srgb, var(--color-secondary) 80%, transparent);
+}
+:root[data-mode="light"] [data-row-icon="info"] {
+  background: #FFFFFF !important; border-color: rgb(var(--hair-rgb) / 0.12) !important; color: var(--color-text-secondary) !important;
+  box-shadow: 0 1px 2px rgba(22, 22, 38, 0.06);
+}

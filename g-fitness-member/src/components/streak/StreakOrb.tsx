@@ -48,7 +48,7 @@ export default function StreakOrb({
         </defs>
         {continuous && (
           <>
-            <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} stroke="rgba(233,233,237,0.10)" />
+            <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} style={{ stroke: 'rgb(var(--hair-rgb, 233 233 237) / 0.10)' }} />
             <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} strokeLinecap="round"
               className="streak-seg streak-seg--on" stroke="url(#streak-seg)"
               strokeDasharray={`${Math.max(0.01, c * Math.min(1, days / Math.max(1, target)))} ${c}`} />
@@ -60,7 +60,7 @@ export default function StreakOrb({
             <circle key={i} cx={size / 2} cy={size / 2} r={r} fill="none"
               className={`streak-seg streak-seg--${state}`}
               strokeWidth={stroke} strokeLinecap="round"
-              stroke={state === 'on' ? 'url(#streak-seg)' : state === 'next' ? 'var(--color-secondary)' : 'rgba(233,233,237,0.10)'}
+              stroke={state === 'on' ? 'url(#streak-seg)' : state === 'next' ? 'var(--color-secondary)' : 'rgb(var(--hair-rgb, 233 233 237) / 0.10)'}
               strokeDasharray={`${Math.max(0.01, seg)} ${c}`}
               strokeDashoffset={-(i * (c / n)) - gap / 2} />
           );

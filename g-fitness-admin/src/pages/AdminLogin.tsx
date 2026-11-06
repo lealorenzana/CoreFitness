@@ -294,7 +294,7 @@ export default function AdminLogin() {
 
             {/* Glass card */}
             <div className="relative rounded-2xl p-7 overflow-hidden"
-              style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.05)', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' }}>
+              style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(20px)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.05)', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' }}>
               <div className="absolute inset-0 opacity-[0.03]"
                 style={{ backgroundImage: 'linear-gradient(135deg, white 0.5px, transparent 0.5px), linear-gradient(45deg, white 0.5px, transparent 0.5px)', backgroundSize: '30px 30px' }} />
 
@@ -303,7 +303,7 @@ export default function AdminLogin() {
                 <motion.div initial={{ scale: 0, opacity: 0, rotate: -180 }} animate={{ scale: 1, opacity: 1, rotate: 0 }}
                   transition={{ type: 'spring', duration: 1, delay: 0.6 }}
                   className="mx-auto w-12 h-12 rounded-full overflow-hidden relative"
-                  style={{ border: '1px solid rgba(255,255,255,0.1)' }}>
+                  style={{ border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)' }}>
                   <img src="/core-fitness-logo.png" alt="Core Fitness" className="w-full h-full object-cover" />
                   <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom right, rgba(255,255,255,0.1), transparent)' }} />
                 </motion.div>

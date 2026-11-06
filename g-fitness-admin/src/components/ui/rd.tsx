@@ -91,7 +91,7 @@ export function RdCard({ children, className = '', style, glow, ...rest }: React
 export function IconTile({ icon: Icon, tone = 'violet', size = 56 }: { icon: LucideIcon; tone?: Tone; size?: number }) {
   const t = TONE[tone];
   return (
-    <span className="grid place-items-center flex-none" style={{
+    <span data-tile={tone} className="grid place-items-center flex-none" style={{
       width: size, height: size, borderRadius: Math.round(size * 0.3), background: t.bg, border: `1px solid ${t.line}`,
       boxShadow: `inset 0 1px 0 rgba(255,255,255,0.06), 0 10px 30px -14px ${t.dot}`,
     }}>
@@ -209,7 +209,7 @@ export function SearchField({ value, onChange, placeholder, autoFocus, onEnter, 
       <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} autoFocus={autoFocus}
         aria-label={label ?? placeholder} onKeyDown={(e) => { if (e.key === 'Enter' && onEnter) onEnter(); }}
         className="w-full h-12 pl-11 pr-4 rounded-xl text-[15px] text-white outline-none focus:ring-2"
-        style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.08)' }} />
+        style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)' }} />
     </label>
   );
 }
@@ -293,12 +293,12 @@ export function RdSelect({ value, onChange, children, label, className = '' }: {
       <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} width={Math.max(anchor?.offsetWidth ?? 200, 200)}>
         <div style={{ background: '#1A1530', boxShadow: 'inset 0 0 0 1px rgba(139,92,246,0.3)', borderRadius: 12 }}>
           {searchable && (
-            <div className="p-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+            <div className="p-2" style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.07)' }}>
               <label className="relative block">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: MUTED }} />
                 <input autoFocus value={q} onChange={(e) => { setQ(e.target.value); setHi(0); }} onKeyDown={onKey} placeholder={`Find ${label.toLowerCase()}`}
                   aria-label={`Find ${label.toLowerCase()}`}
-                  className="w-full h-9 pl-8 pr-3 rounded-lg text-[13.5px] text-white outline-none" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }} />
+                  className="w-full h-9 pl-8 pr-3 rounded-lg text-[13.5px] text-white outline-none" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)' }} />
               </label>
             </div>
           )}
@@ -374,7 +374,7 @@ export function DotMenu({ items, label = 'More actions' }: { items: MenuItem[]; 
     <>
       <button type="button" aria-label={label} onClick={(e) => { e.stopPropagation(); setAnchor(anchor ? null : e.currentTarget); }} data-dot-menu
         className="w-10 h-10 rounded-xl grid place-items-center transition-colors hover:bg-white/5"
-        style={{ border: '1px solid rgba(255,255,255,0.08)', color: 'var(--color-text-primary)' }}>
+        style={{ border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)', color: 'var(--color-text-primary)' }}>
         <MoreHorizontal size={18} />
       </button>
       <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} width={220}>
@@ -412,7 +412,7 @@ export function RdTable({ head, children, empty, boxRef }: {
               const cell = typeof h === 'string' ? { label: h } : h;
               return (
                 <th key={i} className={`text-[12.5px] font-semibold uppercase tracking-wider py-4 px-4 whitespace-nowrap ${cell.className ?? ''}`}
-                  style={{ color: SECOND, textAlign: cell.align ?? 'left', borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.015)' }}>
+                  style={{ color: SECOND, textAlign: cell.align ?? 'left', borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.06)', background: 'rgba(255,255,255,0.015)' }}>
                   {cell.label}
                 </th>
               );
@@ -435,7 +435,7 @@ export function Tr({ children, onClick, ...rest }: React.HTMLAttributes<HTMLTabl
 export function Td({ children, className = '', align, ...rest }: React.TdHTMLAttributes<HTMLTableCellElement> & { align?: 'right' | 'center' }) {
   return (
     <td {...rest} className={`py-3.5 px-4 align-middle text-[14.5px] ${className}`}
-      style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', textAlign: align, color: 'var(--color-text-primary)', ...rest.style }}>
+      style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.05)', textAlign: align, color: 'var(--color-text-primary)', ...rest.style }}>
       {children}
     </td>
   );
@@ -509,7 +509,7 @@ export function RailCard({ icon, tone = 'violet', title, sub, children, ...rest 
 
 export function RailAction({ icon: Icon, label, onClick, href }: { icon: LucideIcon; label: string; onClick?: () => void; href?: string }) {
   const cls = 'h-14 px-4 rounded-xl flex items-center gap-3.5 text-[15.5px] font-semibold text-white transition-colors hover:bg-white/[0.04]';
-  const st: React.CSSProperties = { border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.015)' };
+  const st: React.CSSProperties = { border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)', background: 'rgba(255,255,255,0.015)' };
   return href
     ? <a href={href} className={cls} style={st}><Icon size={20} />{label}</a>
     : <button type="button" onClick={onClick} className={cls} style={st}><Icon size={20} />{label}</button>;
@@ -525,7 +525,7 @@ export function RailRow({ tone, label, count, onClick }: { tone: Tone; label: st
     </>
   );
   const cls = 'h-14 px-4 rounded-xl flex items-center gap-3 text-[15.5px] text-white';
-  const st: React.CSSProperties = { border: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.015)' };
+  const st: React.CSSProperties = { border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.07)', background: 'rgba(255,255,255,0.015)' };
   // A row with nothing to open is a row, not a disabled button.
   return onClick
     ? <button type="button" onClick={onClick} className={`${cls} transition-colors hover:bg-white/[0.04]`} style={st}>{inner}</button>
@@ -563,7 +563,7 @@ export function Initials({ name, photo, size = 44, tone }: { name: string; photo
   const bg = tone === 'amber' ? '#F59E0B' : tone === 'violet' ? '#7C3AED' : AVATAR_TONES[(name.charCodeAt(0) || 0) % AVATAR_TONES.length];
   return (
     <span className="rounded-full grid place-items-center font-bold flex-none" style={{ width: size, height: size, fontSize: Math.round(size * 0.36),
-      background: bg, color: bg === '#F59E0B' ? '#1A1205' : '#fff' }}>{init}</span>
+      background: bg === '#F59E0B' ? 'var(--amber-solid, #F59E0B)' : bg, color: bg === '#F59E0B' ? 'var(--on-amber, #1A1205)' : '#fff' }}>{init}</span>
   );
 }
 

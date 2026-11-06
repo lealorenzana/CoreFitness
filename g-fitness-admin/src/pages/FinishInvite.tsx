@@ -72,7 +72,7 @@ export default function FinishInvite() {
   };
 
   const input = 'w-full h-12 rounded-xl px-4 text-[15px] text-white outline-none';
-  const inputSt = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)' };
+  const inputSt = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)' };
   const label = 'block text-[13px] font-semibold mb-1.5';
   const muted = { color: 'var(--color-text-secondary)' };
 

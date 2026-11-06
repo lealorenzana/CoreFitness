@@ -331,7 +331,7 @@ function Viewer({ row, signed, broken, busy, position, startRejecting,
   const navButton = (side: 'left' | 'right', go: (() => void) | null) => go && (
     <button onClick={go} aria-label={side === 'left' ? 'Previous credential' : 'Next credential'}
       className={`absolute top-1/2 -translate-y-1/2 ${side === 'left' ? 'left-3' : 'right-3'} w-10 h-10 rounded-full flex items-center justify-center`}
-      style={{ background: 'rgba(0,0,0,0.6)', color: '#fff', border: '1px solid rgba(255,255,255,0.15)' }}>
+      style={{ background: 'rgba(0,0,0,0.6)', color: '#fff', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.15)' }}>
       {side === 'left' ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
     </button>
   );

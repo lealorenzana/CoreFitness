@@ -66,7 +66,7 @@ export default function TabBar() {
         style={{
           height: 'var(--bar-height)',
           background: 'var(--color-bg)',
-          borderTop: '1px solid rgba(233, 233, 237, 0.12)',
+          borderTop: '1px solid rgb(var(--hair-rgb, 233 233 237) / 0.12)',
           padding: '0 14px 8px',
         }}
       >
@@ -119,7 +119,7 @@ export default function TabBar() {
           <span style={{ fontSize: 12, letterSpacing: '0.02em' }}>{t('More')}</span>
         </button>
 
-        {scans && <span aria-hidden style={{ width: 1, margin: '14px 10px 6px', background: 'rgba(233, 233, 237, 0.12)' }} />}
+        {scans && <span aria-hidden style={{ width: 1, margin: '14px 10px 6px', background: 'rgb(var(--hair-rgb, 233 233 237) / 0.12)' }} />}
 
         {scans && <button
           onClick={checkInSheet.show}

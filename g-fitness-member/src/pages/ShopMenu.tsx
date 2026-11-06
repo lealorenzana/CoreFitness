@@ -67,7 +67,7 @@ export default function ShopMenu() {
                     ? <span data-product-photo><ZoomImg src={i.photoUrl} alt="" label={i.name} loading="lazy"
                         style={{ width: 56, height: 56, borderRadius: 12, objectFit: 'cover', display: 'block' }} /></span>
                     : <span aria-hidden className="grid place-items-center"
-                        style={{ width: 56, height: 56, borderRadius: 12, background: 'rgba(233,233,237,0.05)', color: 'var(--color-text-muted)' }}>
+                        style={{ width: 56, height: 56, borderRadius: 12, background: 'rgb(var(--hair-rgb, 233 233 237) / 0.05)', color: 'var(--color-text-muted)' }}>
                         <Storefront size={20} />
                       </span>}
                   meta={`${peso(i.price)}${i.description ? ` · ${i.description}` : ''}`}

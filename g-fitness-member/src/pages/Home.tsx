@@ -410,14 +410,14 @@ export default function Home() {
                 {head ? e.gutter : ''}
               </span>
               <div className="relative flex-1 min-w-0" style={{
-                borderLeft: '1px solid rgba(233, 233, 237, 0.12)',
+                borderLeft: '1px solid rgb(var(--hair-rgb, 233 233 237) / 0.12)',
                 paddingLeft: 16,
                 paddingBottom: i === entries.length - 1 ? 0 : 20,
               }}>
                 <span aria-hidden className="absolute rounded-full" style={{
                   left: -4, top: 6, width: 7, height: 7,
                   background: e.live ? 'var(--color-primary)' : 'var(--color-surface-high)',
-                  boxShadow: e.live ? '0 0 9px var(--color-primary)' : '0 0 0 1px rgba(233, 233, 237, 0.18)',
+                  boxShadow: e.live ? '0 0 9px var(--color-primary)' : '0 0 0 1px rgb(var(--hair-rgb, 233 233 237) / 0.18)',
                 }} />
                 {e.card ? (
                   <div data-today-workout style={{ border: '1px solid var(--color-hairline)', borderRadius: 14,

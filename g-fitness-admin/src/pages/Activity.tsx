@@ -34,7 +34,7 @@ import type { ActivityFeedRow, UserRole } from '../types/db';
  */
 
 const SURFACE        = 'var(--color-surface)';
-const LINE           = 'rgba(255,255,255,0.06)';
+const LINE           = 'rgb(var(--hair-rgb, 255 255 255) / 0.06)';
 const TEXT_SECOND    = 'var(--color-text-secondary)';
 const TEXT_MUTED     = 'var(--color-text-muted)';
 
@@ -447,7 +447,7 @@ export default function Activity() {
                             tabIndex={href ? 0 : undefined}
                             onKeyDown={(e) => { if (href && e.key === 'Enter') navigate(href); }}
                             className="flex items-center gap-3 py-2.5 px-1 -mx-1 rounded-lg group transition-colors hover:bg-white/[0.02]"
-                            style={{ borderBottom: `1px solid rgba(255,255,255,0.04)`, cursor: href ? 'pointer' : 'default' }}
+                            style={{ borderBottom: `1px solid rgb(var(--hair-rgb, 255 255 255) / 0.04)`, cursor: href ? 'pointer' : 'default' }}
                           >
                             <IconTile icon={notable ? AlertTriangle : Icon} tone={notable ? 'amber' : 'violet'} size={32} />
                             <div className="flex-1 min-w-0">

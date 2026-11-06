@@ -96,7 +96,7 @@ export default function LandingFooter() {
                   className="rounded-2xl p-6 group cursor-default"
                   style={{
                     background: 'rgba(255,255,255,0.02)',
-                    border: '1px solid rgba(255,255,255,0.06)',
+                    border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.06)',
                     backdropFilter: 'blur(10px)',
                   }}
                 >
@@ -148,7 +148,7 @@ export default function LandingFooter() {
 
           {/* Marquee */}
           <div className="absolute top-12 left-0 w-full overflow-hidden py-4 z-10 -rotate-2 scale-110"
-            style={{ borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}>
+            style={{ borderTop: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.05)', borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.05)', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}>
             <div className="flex w-max text-xs tracking-[0.2em] uppercase" style={{ animation: 'footer-scroll-marquee 40s linear infinite' }}>
               <MarqueeContent />
               <MarqueeContent />
@@ -215,7 +215,7 @@ export default function LandingFooter() {
         .footer-glass-pill {
           background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%);
           box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.08), inset 0 -1px 2px rgba(0,0,0,0.3);
-          border: 1px solid rgba(255,255,255,0.08);
+          border: 1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08);
           backdrop-filter: blur(16px);
           -webkit-backdrop-filter: blur(16px);
           transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);

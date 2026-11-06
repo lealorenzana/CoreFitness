@@ -382,8 +382,8 @@ export default function Dashboard() {
             <QrCode size={14} /> Check in
           </button>
           <button onClick={() => navigate('/payments?record=new')}
-            className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg font-semibold text-[12px] text-black"
-            style={{ background: '#F59E0B' }}>
+            className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg font-semibold text-[12px]"
+            style={{ background: 'var(--amber-solid, #F59E0B)', color: 'var(--on-amber, #000000)' }}>
             <Banknote size={14} /> Record payment
           </button>
         </div>

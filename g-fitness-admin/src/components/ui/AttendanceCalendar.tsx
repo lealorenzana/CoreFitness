@@ -85,7 +85,7 @@ export default function AttendanceCalendar({
   };
   const h = compact ? 40 : 56;
   const btn = 'w-11 h-11 rounded-xl grid place-items-center transition-colors hover:bg-white/5';
-  const btnSt = { border: '1px solid rgba(255,255,255,0.1)', color: 'var(--color-text-primary)' };
+  const btnSt = { border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)', color: 'var(--color-text-primary)' };
 
   return (
     <div data-attendance-calendar>
@@ -104,7 +104,7 @@ export default function AttendanceCalendar({
         </div>
         {navigable && today.slice(0, 7) !== month && (
           <button type="button" onClick={() => onMonthChange?.(today.slice(0, 7))} className="ml-auto h-11 px-4 rounded-xl text-[14.5px] font-semibold text-white hover:bg-white/5"
-            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>Today</button>
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)' }}>Today</button>
         )}
       </div>
 

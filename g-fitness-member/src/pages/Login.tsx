@@ -300,7 +300,7 @@ export default function Login() {
                 // still shows through it and the bright pill has something dark
                 // to sit against.
                 background: 'rgba(0,0,0,0.30)',
-                border: '1px solid rgba(255,255,255,0.10)',
+                border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.10)',
                 boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.45)',
               }}
               role="tablist"

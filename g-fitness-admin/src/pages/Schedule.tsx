@@ -726,7 +726,7 @@ export default function Schedule() {
                 <button key={d} type="button" onClick={() => setTemplateForm({ ...templateForm, dayOfWeek: String(i) })} aria-pressed={templateForm.dayOfWeek === String(i)}
                   className="h-10 px-3 rounded-xl text-[13.5px] font-semibold"
                   style={templateForm.dayOfWeek === String(i) ? { background: 'rgba(124,58,237,0.22)', color: '#EDE9FE', border: '1px solid rgba(139,92,246,0.7)' }
-                    : { color: 'var(--color-text-secondary)', border: '1px solid rgba(255,255,255,0.1)' }}>{d.slice(0, 3)}</button>
+                    : { color: 'var(--color-text-secondary)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)' }}>{d.slice(0, 3)}</button>
               ))}
             </div>
           </div>

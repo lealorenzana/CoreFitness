@@ -86,7 +86,7 @@ function Ring({ pct, size = 96, children }: { pct: number | null; size?: number;
             <stop offset="100%" style={{ stopColor: 'var(--color-secondary)' }} />
           </linearGradient>
         </defs>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(233,233,237,0.08)" strokeWidth={8} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" style={{ stroke: 'rgb(var(--hair-rgb, 233 233 237) / 0.08)' }} strokeWidth={8} />
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="url(#goal-ring)" strokeWidth={8}
           strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - f)}
           className="goal-ring-arc" style={{ ['--ring-len' as string]: c }} />

@@ -53,7 +53,7 @@ interface MemberGroup {
 
 const SECOND = 'var(--color-text-secondary)';
 const MUTED = 'var(--color-text-muted)';
-const LINE = '1px solid rgba(255,255,255,0.06)';
+const LINE = '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.06)';
 const peso = (n: number) => `₱${n.toLocaleString('en-PH', { maximumFractionDigits: 2 })}`;
 
 /**
@@ -400,7 +400,7 @@ export default function Payments() {
                         {p.status === 'pending' && <RdButton size="sm" variant="primary" onClick={() => confirmPayment(p.id)}>Confirm</RdButton>}
                         <button type="button" aria-label={`Receipt ${p.invoiceNumber}`} data-tip={`Receipt ${p.invoiceNumber}`}
                           onClick={() => { setSelectedPayment(p); setIsReceiptModalOpen(true); }}
-                          className="w-9 h-9 rounded-xl grid place-items-center hover:bg-white/[0.06]" style={{ color: SECOND, border: '1px solid rgba(255,255,255,0.1)' }}><ReceiptIcon size={15} /></button>
+                          className="w-9 h-9 rounded-xl grid place-items-center hover:bg-white/[0.06]" style={{ color: SECOND, border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)' }}><ReceiptIcon size={15} /></button>
                       </span>
                     </Td>
                   </Tr>
@@ -490,7 +490,7 @@ export default function Payments() {
       >
         <div className="space-y-2">
           {openGroup?.payments.map((p) => (
-            <div key={p.id} className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <div key={p.id} className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)' }}>
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="text-[17px] font-bold text-white tabular-nums">{peso(p.amount)}</p>

@@ -37,18 +37,18 @@ export default function PhotoPicker({ value, onChange, label = 'Photo', aspect =
         onDragLeave={() => setOver(false)}
         onDrop={(e) => { e.preventDefault(); setOver(false); void take(e.dataTransfer.files?.[0]); }}
         className="relative w-full rounded-2xl overflow-hidden"
-        style={{ aspectRatio: aspect, border: `1.5px ${value ? 'solid' : 'dashed'} ${over ? 'rgba(167,139,250,0.9)' : 'rgba(255,255,255,0.14)'}`,
+        style={{ aspectRatio: aspect, border: `1.5px ${value ? 'solid' : 'dashed'} ${over ? 'rgba(167,139,250,0.9)' : 'rgb(var(--hair-rgb, 255 255 255) / 0.14)'}`,
           background: over ? 'rgba(124,58,237,0.12)' : 'rgba(255,255,255,0.02)' }}>
         {value ? (
           <>
             <img src={value} alt="" className="absolute inset-0 w-full h-full object-cover" />
             <div className="absolute inset-x-0 bottom-0 flex gap-2 p-2.5 justify-end" style={{ background: 'linear-gradient(transparent, rgba(0,0,0,0.65))' }}>
               <button type="button" onClick={() => file.current?.click()} disabled={busy}
-                className="h-8 px-3 rounded-lg text-[12.5px] font-semibold inline-flex items-center gap-1.5 text-white" style={{ background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.2)' }}>
+                className="h-8 px-3 rounded-lg text-[12.5px] font-semibold inline-flex items-center gap-1.5 text-white" style={{ background: 'rgba(0,0,0,0.55)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.2)' }}>
                 <RefreshCw size={13} /> {busy ? 'Uploading…' : 'Change'}
               </button>
               <button type="button" onClick={() => onChange(null)} disabled={busy} aria-label="Remove the photo"
-                className="h-8 w-8 rounded-lg grid place-items-center text-white" style={{ background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.2)' }}>
+                className="h-8 w-8 rounded-lg grid place-items-center text-white" style={{ background: 'rgba(0,0,0,0.55)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.2)' }}>
                 <Trash2 size={13} />
               </button>
             </div>

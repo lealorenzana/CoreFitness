@@ -161,7 +161,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             {brand.logoUrl ? (
               <img src={brand.logoUrl} alt="" className="w-full h-full object-cover" />
             ) : (
-              <span className="text-white font-bold text-[12px]">{brand.initials}</span>
+              <span className="on-fill text-white font-bold text-[12px]">{brand.initials}</span>
             )}
           </button>
 
@@ -237,7 +237,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               className="w-10 h-10 rounded-full object-cover flex-shrink-0"
               style={{ background: 'var(--color-surface-high)' }} />
           ) : (
-            <span className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-white font-bold text-[13px]"
+            <span className="on-fill w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-white font-bold text-[13px]"
               style={{ background: PRIMARY }}>
               {brand.initials}
             </span>

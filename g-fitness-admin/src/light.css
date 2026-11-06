@@ -45,7 +45,8 @@
 
 /* Text written as white meant "the strongest text". Kept white where the element paints its own fill,
    and on the sign-in page, which is a dark branded page in both modes (.keep-dark). */
-:root[data-mode="light"] .text-white:not([class^="bg-"]):not([class*=" bg-"]):not(.keep-dark *) { color: var(--color-text-primary); }
+/* .on-fill marks words that sit on their own solid colour (a logo circle, initials): they stay white. */
+:root[data-mode="light"] .text-white:not([class^="bg-"]):not([class*=" bg-"]):not(.keep-dark *):not(.on-fill):not(.on-fill *) { color: var(--color-text-primary); }
 :root[data-mode="light"] [style*="color: rgb(255, 255, 255)"]:not([style*="background"]):not(.keep-dark *),
 :root[data-mode="light"] [style*="color: rgb(255, 255, 255)"][style*="background: rgba(255, 255, 255"]:not(.keep-dark *) { color: var(--color-text-primary) !important; }
 /* Faint white lines and fills written into an element read as nothing on white: the light equivalents. */
@@ -62,7 +63,7 @@
 
 /* ── The redesigned pages (pages/attendance/att.css) ─────────────────────────── */
 :root[data-mode="light"] .att {
-  --a-surface: #FFFFFF; --a-raised: #F3F3F7; --a-high: #E8E8EF; --a-border: #E6E6ED; --a-line: #DCDCE5;
+  --a-surface: #FFFFFF; --a-raised: #F3F3F7; --a-high: #E8E8EF; --a-border: rgb(22 22 38 / 0.10); --a-line: rgb(22 22 38 / 0.14); /* see-through ink: a line shows on white, grey or a tint */
   --a-primary: #7C3AED; --a-p300: #6D28D9; --a-p400: #7C3AED; --a-plight: #EFE8FD;
   --a-amber: #E08A0B; --a-a300: #B45309; --a-alight: #FDF3E1;
   --a-text2: #4A4D5E; --a-muted: #6B6E80;
@@ -200,3 +201,36 @@
 :root[data-mode="light"] :is([style^="color: rgb(251, 191, 36)"], [style*="; color: rgb(251, 191, 36)"], [style^="color: rgb(245, 158, 11)"], [style*="; color: rgb(245, 158, 11)"], [style^="color: rgb(252, 211, 77)"], [style*="; color: rgb(252, 211, 77)"]):not(.keep-dark *) { color: var(--a-a300, #B45309) !important; }
 :root[data-mode="light"] :is([style^="color: rgb(167, 139, 250)"], [style*="; color: rgb(167, 139, 250)"], [style^="color: rgb(139, 92, 246)"], [style*="; color: rgb(139, 92, 246)"]):not(.keep-dark *) { color: var(--tone-violet-fg) !important; }
 :root[data-mode="light"] { --hx-1: var(--color-primary); --hx-2: color-mix(in srgb, var(--color-primary) 55%, #FFFFFF); --hx-3: color-mix(in srgb, var(--color-primary) 25%, #FFFFFF); }
+
+/* Dark mode's hairlines are see-through white; written as rgb(var(--hair-rgb, 255 255 255) / a)
+   they draw in a dark ink here, at the same strength, so every line dark mode has, light has. */
+:root[data-mode="light"] { --hair-rgb: 22 22 38; }
+:root[data-mode="light"] .keep-dark { --hair-rgb: 255 255 255; }
+/* Amber that is amber in both modes (Record payment, amber initials): dark's bright amber carries black
+   words; light's is a solid deep amber carrying white ones. --on-secondary does the same for the gym's
+   own action colour (Avatar's second tone). */
+:root[data-mode="light"] { --amber-solid: #B45309; --on-amber: #FFFFFF; --on-secondary: #FFFFFF; }
+
+/* Icon tiles (rd.tsx IconTile, data-tile) in light: a pale tint on white reads washed out, so a coloured
+   tile is solid with a white icon — violet in the gym's own deep shade, the others in theirs — and a grey
+   one is a white tile with a hairline. Dark keeps its tinted glass. */
+:root[data-mode="light"] [data-tile]:not([data-tile="gray"]) { border-color: transparent !important; }
+:root[data-mode="light"] [data-tile]:not([data-tile="gray"]) svg { color: #FFFFFF !important; }
+:root[data-mode="light"] [data-tile="violet"] { background: var(--fill-primary) !important; box-shadow: 0 8px 18px -10px var(--fill-primary) !important; }
+:root[data-mode="light"] [data-tile="amber"] { background: var(--amber-solid) !important; box-shadow: 0 8px 18px -10px var(--amber-solid) !important; }
+:root[data-mode="light"] [data-tile="green"] { background: #15803D !important; box-shadow: 0 8px 18px -10px #15803D !important; }
+:root[data-mode="light"] [data-tile="red"] { background: #B91C1C !important; box-shadow: 0 8px 18px -10px #B91C1C !important; }
+:root[data-mode="light"] [data-tile="blue"] { background: #1D4ED8 !important; box-shadow: 0 8px 18px -10px #1D4ED8 !important; }
+:root[data-mode="light"] [data-tile="gray"] { background: #FFFFFF !important; border-color: rgb(var(--hair-rgb) / 0.12) !important; box-shadow: 0 1px 2px rgba(22, 22, 38, 0.06) !important; }
+
+/* Chosen, in light (owner, 2026-11-06): what dark marks with a violet glass (rgba(124,58,237,.2x) — a
+   chosen tab, filter, category, menu option, an avatar or icon circle) is the gym's solid colour with white
+   words here, like the page tabs. Later than the pale-violet word rule above, so white wins on these. */
+:root[data-mode="light"] [style*="background: rgba(124, 58, 237, 0.2"]:not(.keep-dark *) {
+  background: var(--fill-primary) !important; border-color: var(--fill-primary) !important; color: #FFFFFF !important;
+}
+/* …and what sits inside it: a label or count that sets its own colour (pale violet, .text-white) is
+   white too — otherwise the label turns the same deep violet as the fill (FilterChips' "All", 1.0:1). */
+:root[data-mode="light"] [style*="background: rgba(124, 58, 237, 0.2"]:not(.keep-dark *) :is([style*="color"], .text-white) {
+  color: #FFFFFF !important;
+}

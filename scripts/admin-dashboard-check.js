@@ -59,7 +59,9 @@ async (page) => {
       { id: 'pr3', first_name: 'Dan', last_name: 'Ocampo', created_at: at(today, '07:00') },
     ],
     classes: [
-      { id: 'c1', name: 'Morning HIIT', scheduled_at: at(today, '06:30'), duration_minutes: 45, capacity: 16, location: 'Studio', trainer_id: 't2', created_at: at(today, '00:00') },
+      // The "done" class starts at midnight for 15 minutes: at 6:30 it was not yet done before 7:15 am
+      // Manila, so the check failed every early morning (it did at 00:44, 2026-11-07).
+      { id: 'c1', name: 'Morning HIIT', scheduled_at: at(today, '00:00'), duration_minutes: 15, capacity: 16, location: 'Studio', trainer_id: 't2', created_at: at(today, '00:00') },
       { id: 'c2', name: 'Spin 45', scheduled_at: at(today, '23:00'), duration_minutes: 45, capacity: 12, location: 'Studio', trainer_id: 't1', created_at: at(today, '00:00') },
       { id: 'c3', name: 'Strength Basics', scheduled_at: at(today, '23:15'), duration_minutes: 60, capacity: 10, location: 'Gym floor', trainer_id: 't2', created_at: at(today, '00:00') },
     ],

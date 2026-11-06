@@ -113,7 +113,7 @@ const MESSAGE_MAX = 240;
 
 const SECOND = 'var(--color-text-secondary)';
 const MUTED = 'var(--color-text-muted)';
-const LINE = '1px solid rgba(255,255,255,0.06)';
+const LINE = '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.06)';
 
 /** Starting points for the message — every bracket is for the owner to fill, so none is sent as a claim. */
 const TEMPLATES: { label: string; type: NotificationType; title: string; message: string; actionUrl: string }[] = [
@@ -372,7 +372,7 @@ export default function Notifications() {
   /** The member's phone, live: the alert on the lock screen, and the message in their inbox. */
   const phone = (
     <div className="rounded-[28px] p-3 mx-auto w-full max-w-[290px]" data-phone-preview
-      style={{ background: 'linear-gradient(180deg, #1B1633, #0F0C1E)', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 30px 60px -30px rgba(0,0,0,0.9)' }}>
+      style={{ background: 'linear-gradient(180deg, #1B1633, #0F0C1E)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)', boxShadow: '0 30px 60px -30px rgba(0,0,0,0.9)' }}>
       <p className="text-center text-[22px] font-semibold text-white mt-2 tabular-nums">9:41</p>
       <p className="text-center text-[11.5px]" style={{ color: MUTED }}>On their lock screen</p>
       <div className="rounded-2xl p-2.5 mt-3 flex items-start gap-2.5" style={{ background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(8px)' }}>
@@ -383,7 +383,7 @@ export default function Notifications() {
         </div>
       </div>
       <p className="text-center text-[11.5px] mt-4" style={{ color: MUTED }}>In their inbox</p>
-      <div className="rounded-2xl overflow-hidden mt-2" style={{ background: '#15112A', border: '1px solid rgba(255,255,255,0.08)' }}>
+      <div className="rounded-2xl overflow-hidden mt-2" style={{ background: '#15112A', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)' }}>
         {form.imageUrl && <img src={form.imageUrl} alt="" className="w-full object-cover" style={{ aspectRatio: '16 / 9' }} />}
         <div className="p-3">
           <p className="text-[13px] font-semibold text-white">{form.title || 'Your title'}</p>
@@ -409,7 +409,7 @@ export default function Notifications() {
           return (
             <button key={t.label} type="button" onClick={() => openComposer(t)} aria-label={`Quick send: ${t.label}`}
               className="h-12 px-3 rounded-xl flex items-center gap-3 text-left text-[14px] text-white transition-colors hover:bg-white/[0.04]"
-              style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.015)' }} data-quick-send={t.label}>
+              style={{ border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)', background: 'rgba(255,255,255,0.015)' }} data-quick-send={t.label}>
               <Icon size={17} style={{ color: '#C4B5FD' }} className="flex-none" />
               <span className="flex-1 truncate">{t.label}</span>
             </button>
@@ -509,7 +509,7 @@ export default function Notifications() {
                   <Td align="right">
                     {/* Recall clears it from every inbox; a push that already arrived stays, and the dialog says so. */}
                     <button type="button" onClick={() => setToRecall(notif)} aria-label={`Recall ${notif.title}`} data-tip="Recall — clears it from every inbox"
-                      className="w-9 h-9 rounded-xl grid place-items-center hover:bg-white/[0.06]" style={{ color: TONE.amber.fg, border: '1px solid rgba(255,255,255,0.1)' }}>
+                      className="w-9 h-9 rounded-xl grid place-items-center hover:bg-white/[0.06]" style={{ color: TONE.amber.fg, border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)' }}>
                       <Undo2 size={15} />
                     </button>
                   </Td>
@@ -527,7 +527,7 @@ export default function Notifications() {
                     const p = names[id];
                     const opened = whoFor.readIds.includes(id);
                     return (
-                      <div key={id} className="flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }} data-recipient>
+                      <div key={id} className="flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.07)' }} data-recipient>
                         <span className="w-8 h-8 rounded-full grid place-items-center text-[11px] font-bold flex-none" style={{ background: TONE.violet.bg, color: TONE.violet.fg }}>
                           {(p?.name ?? '?').split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
                         </span>
@@ -584,7 +584,7 @@ export default function Notifications() {
                       <button key={type} type="button" onClick={() => setForm({ ...form, recipientType: type })} aria-pressed={isActive}
                         className="p-3 rounded-xl text-left transition-colors flex flex-col gap-1"
                         style={isActive ? { background: 'rgba(124,58,237,0.22)', border: '1px solid rgba(139,92,246,0.7)', color: '#EDE9FE' }
-                          : { background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', color: SECOND }}>
+                          : { background: 'rgba(255,255,255,0.02)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)', color: SECOND }}>
                         <Icon size={17} />
                         <span className="text-[13px] font-semibold">{AUDIENCE_LABEL[type]}</span>
                         {/* The count you used to only discover after sending. */}
@@ -606,7 +606,7 @@ export default function Notifications() {
                       <button key={p.id} type="button" aria-pressed={on}
                         onClick={() => setForm({ ...form, planIds: on ? form.planIds.filter((x) => x !== p.id) : [...form.planIds, p.id] })}
                         className="text-[12.5px] font-semibold rounded-full px-3 h-8"
-                        style={on ? { background: 'rgba(124,58,237,0.22)', color: '#EDE9FE', border: '1px solid rgba(139,92,246,0.7)' } : { color: SECOND, border: '1px solid rgba(255,255,255,0.1)' }}>
+                        style={on ? { background: 'rgba(124,58,237,0.22)', color: '#EDE9FE', border: '1px solid rgba(139,92,246,0.7)' } : { color: SECOND, border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)' }}>
                         {p.name}
                       </button>
                     );
@@ -617,7 +617,7 @@ export default function Notifications() {
               {form.recipientType === 'specific' && (
                 <div>
                   <SearchField value={peopleSearch} onChange={setPeopleSearch} placeholder="Search people" />
-                  <div className="rounded-xl max-h-48 overflow-y-auto mt-2" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
+                  <div className="rounded-xl max-h-48 overflow-y-auto mt-2" style={{ border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)' }}>
                     {filteredPeople.length === 0 ? (
                       <p className="text-[12.5px] p-3 text-center" style={{ color: MUTED }}>{people.length === 0 ? 'No active members or coaches yet.' : 'Nobody matches that.'}</p>
                     ) : filteredPeople.map((p) => {
@@ -646,7 +646,7 @@ export default function Notifications() {
                     <button key={t.label} type="button"
                       onClick={() => setForm({ ...form, notificationType: t.type, title: t.title, message: t.message, actionUrl: t.actionUrl })}
                       className="h-8 px-3 rounded-full text-[12.5px] font-semibold"
-                      style={form.title === t.title ? { background: 'rgba(124,58,237,0.22)', color: '#EDE9FE', border: '1px solid rgba(139,92,246,0.7)' } : { color: SECOND, border: '1px solid rgba(255,255,255,0.1)' }}>
+                      style={form.title === t.title ? { background: 'rgba(124,58,237,0.22)', color: '#EDE9FE', border: '1px solid rgba(139,92,246,0.7)' } : { color: SECOND, border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)' }}>
                       {t.label}
                     </button>
                   ))}

@@ -82,7 +82,7 @@ export function Toaster() {
             style={{
               gap: 10, padding: '12px 14px', borderRadius: 10,
               background: 'var(--color-surface)',
-              boxShadow: '0 0 0 1px rgba(233, 233, 237, 0.18), 0 10px 30px rgba(0, 0, 0, 0.6)',
+              boxShadow: '0 0 0 1px rgb(var(--hair-rgb, 233 233 237) / 0.18), 0 10px 30px rgba(0, 0, 0, 0.6)',
               fontSize: 13, color: 'var(--color-text-primary)',
             }}
           >

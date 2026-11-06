@@ -248,10 +248,10 @@ export default function TodayPanel({ trainerId, classes, queue, onRequests, arri
               <span className="flex-none" style={{ width: 52, paddingTop: 2, fontSize: 12, fontWeight: s.live ? 700 : 400,
                 color: s.live ? 'var(--color-primary-300)' : 'var(--color-text-muted)' }}>{time(s.at)}</span>
               <button type="button" onClick={s.open} className="relative flex-1 min-w-0 text-left" style={{
-                borderLeft: '1px solid rgba(233, 233, 237, 0.12)', paddingLeft: 14, paddingBottom: i === slots.length - 1 ? 0 : 16 }}>
+                borderLeft: '1px solid rgb(var(--hair-rgb, 233 233 237) / 0.12)', paddingLeft: 14, paddingBottom: i === slots.length - 1 ? 0 : 16 }}>
                 <span aria-hidden className="absolute rounded-full" style={{ left: -4, top: 6, width: 7, height: 7,
                   background: s.live ? 'var(--color-primary)' : 'var(--color-surface-high)',
-                  boxShadow: s.live ? '0 0 9px var(--color-primary)' : '0 0 0 1px rgba(233, 233, 237, 0.18)' }} />
+                  boxShadow: s.live ? '0 0 9px var(--color-primary)' : '0 0 0 1px rgb(var(--hair-rgb, 233 233 237) / 0.18)' }} />
                 <span className="block truncate" style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{s.title}</span>
                 {s.meta && <span className="block" style={{ fontSize: 12.5, marginTop: 2, color: 'var(--color-text-muted)' }}>{s.meta}</span>}
               </button>

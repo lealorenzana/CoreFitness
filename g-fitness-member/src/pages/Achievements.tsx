@@ -347,7 +347,7 @@ function Medallion({ def, have, size, shine = false }: { def: AchievementDef; ha
         : 'var(--color-surface-high)',
       boxShadow: have
         ? `inset 0 0 0 1.5px ${ring}, 0 0 ${Math.round(size / 2.4)}px -${Math.round(size / 6)}px ${ring}, inset 0 1px 0 rgba(255,255,255,0.25)`
-        : 'inset 0 0 0 1px rgba(233, 233, 237, 0.14)',
+        : 'inset 0 0 0 1px rgb(var(--hair-rgb, 233 233 237) / 0.14)',
     }}>
       {!have && def.secret ? (
         <span style={{ fontSize: Math.round(size * 0.42), fontWeight: 800, color: 'var(--color-text-muted)', lineHeight: 1 }}>?</span>
@@ -358,7 +358,7 @@ function Medallion({ def, have, size, shine = false }: { def: AchievementDef; ha
       {!have && (
         <span className="absolute grid place-items-center rounded-full" style={{
           right: -2, bottom: -2, width: Math.max(16, size * 0.34), height: Math.max(16, size * 0.34),
-          background: 'var(--color-bg)', boxShadow: 'inset 0 0 0 1px rgba(233, 233, 237, 0.16)',
+          background: 'var(--color-bg)', boxShadow: 'inset 0 0 0 1px rgb(var(--hair-rgb, 233 233 237) / 0.16)',
         }}>
           <Lock size={Math.max(9, size * 0.18)} weight="bold" style={{ color: 'var(--color-text-muted)' }} />
         </span>
@@ -417,7 +417,7 @@ function AchievementDetail({
               <HandHeart size={14} /> Given by the gym, not counted automatically.
             </p>
           ) : line && (
-            <div className="w-full text-left" style={{ marginTop: 16, padding: 14, borderRadius: 14, background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(233, 233, 237, 0.08)' }}>
+            <div className="w-full text-left" style={{ marginTop: 16, padding: 14, borderRadius: 14, background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgb(var(--hair-rgb, 233 233 237) / 0.08)' }}>
               <div className="flex items-baseline justify-between" style={{ gap: 10 }}>
                 <span style={{ fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>Your progress</span>
                 {fraction != null && (

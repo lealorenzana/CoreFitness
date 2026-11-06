@@ -61,7 +61,7 @@ export default function GlassSheet({
         }}
       >
         <span aria-hidden className="self-center" style={{
-          width: 36, height: 4, borderRadius: 2, marginTop: 8, background: 'rgba(233, 233, 237, 0.18)',
+          width: 36, height: 4, borderRadius: 2, marginTop: 8, background: 'rgb(var(--hair-rgb, 233 233 237) / 0.18)',
         }} />
         <div className="flex-none flex items-center" style={{ gap: 12, padding: '12px var(--gutter) 12px' }}>
           {leading}
@@ -77,7 +77,7 @@ export default function GlassSheet({
             className="flex-none grid place-items-center noc-press"
             style={{
               width: 34, height: 34, borderRadius: 8,
-              border: '1px solid rgba(233, 233, 237, 0.14)',
+              border: '1px solid rgb(var(--hair-rgb, 233 233 237) / 0.14)',
               color: 'var(--color-text-secondary)',
             }}
           >
@@ -92,7 +92,7 @@ export default function GlassSheet({
           {children}
         </div>
         {footer && (
-          <div className="flex-none" style={{ padding: '10px var(--gutter) 16px', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+          <div className="flex-none" style={{ padding: '10px var(--gutter) 16px', borderTop: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)' }}>
             {footer}
           </div>
         )}

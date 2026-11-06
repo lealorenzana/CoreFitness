@@ -41,7 +41,7 @@ import { recordReason } from '../lib/api/reasons';
 
 const MUTED = 'var(--color-text-muted)';
 const SECOND = 'var(--color-text-secondary)';
-const LINE = '1px solid rgba(255,255,255,0.06)';
+const LINE = '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.06)';
 
 const emptyForm = {
   title: '', description: '', date: '', time: '', location: '', capacity: '30', duration: '60',
@@ -283,7 +283,7 @@ export default function Events() {
       <RailCard icon={CalendarDays} title="Next up" sub={next ? `${fmtDay(next.starts_at)}, ${fmtTime(next.starts_at)}` : 'Nothing coming up'}>
         {next ? (
           <button type="button" onClick={() => void openAttendees(next)} className="text-left rounded-xl px-3 py-2.5"
-            style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.015)' }}>
+            style={{ border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)', background: 'rgba(255,255,255,0.015)' }}>
             <span className="block font-semibold text-white truncate">{next.title}</span>
             <span className="block text-[12.5px]" style={{ color: MUTED }}>{counts[next.id] ?? 0} of {next.capacity} signed up</span>
           </button>
@@ -535,7 +535,7 @@ export default function Events() {
               </span>
             </label>
             <p className="text-[12.5px] font-semibold" style={{ color: MUTED }}>How members will see it</p>
-            <div className="rounded-2xl overflow-hidden" style={{ background: '#15112A', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <div className="rounded-2xl overflow-hidden" style={{ background: '#15112A', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)' }}>
               {form.imageUrl && <img src={form.imageUrl} alt="" className="w-full object-cover" style={{ aspectRatio: '16 / 9' }} />}
               <div className="p-3 space-y-1">
                 {form.isFeatured && <span className="text-[12px] font-bold" style={{ color: '#FBBF24' }}>Featured</span>}
@@ -564,7 +564,7 @@ export default function Events() {
           ) : attendees.length === 0 ? (
             <p className="text-[13px] py-6 text-center" style={{ color: MUTED }}>Nobody has signed up yet.</p>
           ) : attendees.map((a) => (
-            <div key={a.id} className="flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <div key={a.id} className="flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.07)' }}>
               <Initials name={a.name} size={32} />
               <span className="min-w-0 flex-1">
                 <span className="block font-semibold text-white truncate">{a.name}</span>

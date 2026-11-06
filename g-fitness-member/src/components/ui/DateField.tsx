@@ -133,7 +133,7 @@ export default function DateField({
                     setYears(false);
                   }}
                   style={{ height: 44, borderRadius: 10, fontSize: 14, fontWeight: 600,
-                    background: y === view.y ? 'var(--color-primary)' : 'rgba(233,233,237,0.05)',
+                    background: y === view.y ? 'var(--color-primary)' : 'rgb(var(--hair-rgb, 233 233 237) / 0.05)',
                     color: y === view.y ? '#fff' : 'var(--color-text-secondary)' }}>
                   {y}
                 </button>
@@ -187,7 +187,7 @@ function NavBtn({ label, disabled, onClick, children }: { label: string; disable
   return (
     <button type="button" aria-label={label} disabled={disabled} onClick={onClick}
       className="grid place-items-center noc-press"
-      style={{ width: 40, height: 40, borderRadius: 10, border: '1px solid rgba(233,233,237,0.14)',
+      style={{ width: 40, height: 40, borderRadius: 10, border: '1px solid rgb(var(--hair-rgb, 233 233 237) / 0.14)',
         color: 'var(--color-text-secondary)', opacity: disabled ? 0.3 : 1 }}>
       {children}
     </button>

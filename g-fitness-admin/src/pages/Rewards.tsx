@@ -102,7 +102,7 @@ const OLD_COLUMNS = 'id, name, description, cost_points, stock, is_active';
 const NEW_COLUMNS = `${OLD_COLUMNS}, image_url, category, featured, available_until, per_member_monthly`;
 const SECOND = 'var(--color-text-secondary)';
 const MUTED = 'var(--color-text-muted)';
-const LINE = '1px solid rgba(255,255,255,0.06)';
+const LINE = '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.06)';
 
 type CatalogueFilter = 'all' | 'live' | 'hidden' | 'out' | 'featured';
 type Tab = 'requests' | 'catalogue' | 'earning' | 'season' | 'referrals' | 'history';
@@ -512,7 +512,7 @@ export default function Rewards() {
     const rw = rewardOf(row);
     const out = kind === 'pending' && !!rw && outOf(rw);
     return (
-      <div key={row.id} className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.045)' }} data-request-row>
+      <div key={row.id} className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.045)' }} data-request-row>
         {rw ? <RewardArt r={rw} size={52} /> : <Initials name={memberName(row)} size={52} />}
         <div className="min-w-0 flex-1">
           <p className="text-[14.5px] font-semibold text-white truncate">{row.rewards?.name ?? 'Reward'}</p>
@@ -648,7 +648,7 @@ export default function Rewards() {
                 const tone = row.status === 'rejected' ? 'amber' : row.status === 'fulfilled' ? 'green' : 'violet';
                 const rw = rewardOf(row);
                 return (
-                  <div key={row.id} className="flex items-center gap-3 px-4 py-2.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.045)' }}>
+                  <div key={row.id} className="flex items-center gap-3 px-4 py-2.5" style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.045)' }}>
                     {rw ? <RewardArt r={rw} size={36} /> : <Gift size={18} style={{ color: MUTED }} />}
                     <div className="min-w-0 flex-1">
                       <p className="text-[14px] text-white truncate">{memberName(row)} — {row.rewards?.name ?? 'Reward'}</p>

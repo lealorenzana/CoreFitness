@@ -60,7 +60,7 @@ export default function NotificationDetail({
               onClick={(e) => e.stopPropagation()}
               role="dialog" aria-modal="true" aria-label={notification.title}
             >
-              <div aria-hidden className="mx-auto" style={{ width: 42, height: 4, borderRadius: 2, marginTop: 12, background: 'rgba(233, 233, 237, 0.25)' }} />
+              <div aria-hidden className="mx-auto" style={{ width: 42, height: 4, borderRadius: 2, marginTop: 12, background: 'rgb(var(--hair-rgb, 233 233 237) / 0.25)' }} />
               <div className="flex items-start shrink-0" style={{ gap: 12, padding: '14px var(--gutter) 12px' }}>
                 <div className="flex-1 min-w-0">
                   <h2 style={{ fontSize: 18, fontWeight: 600, lineHeight: 1.3, color: 'var(--color-text-primary)' }}>{notification.title}</h2>
@@ -69,7 +69,7 @@ export default function NotificationDetail({
                 <button
                   onClick={onClose}
                   className="grid place-items-center shrink-0"
-                  style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid rgba(233, 233, 237, 0.14)', color: 'var(--color-text-secondary)' }}
+                  style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid rgb(var(--hair-rgb, 233 233 237) / 0.14)', color: 'var(--color-text-secondary)' }}
                   aria-label="Close"
                 >
                   <X size={16} />

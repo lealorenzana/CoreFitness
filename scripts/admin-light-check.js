@@ -117,31 +117,52 @@ async (page) => {
   await page.route('**/rest/v1/rpc/my_color_mode', (r) => r.fulfill({ status: 200, contentType: 'application/json', headers: H2, body: JSON.stringify(saved) }));
   await page.route('**/rest/v1/rpc/set_color_mode', (r) => { setCalls.push(JSON.parse(r.request().postData() || '{}')); r.fulfill({ status: 200, contentType: 'application/json', headers: H2, body: 'null' }); });
   await page.emulateMedia({ colorScheme: 'light' });
-  // What the owner asked for (2026-11-03): in light every word is plainly seen, fills are solid, and
-  // nothing dark is left behind. Three findings, each walked up to the first painted background:
+  // What the owner asked for (2026-11-03, 2026-11-06): in light every word is plainly seen, fills are
+  // solid with white words, the lines dark mode draws are drawn too, and nothing dark is left behind.
+  // Each finding is walked up to the first painted background:
   //   words (or a field's typed value) under 3:1 against what is behind them;
   //   a gradient behind words — light mode's fills are solid (a photo's scrim is exempt);
+  //   dark words on a coloured fill — a filled thing carries white words;
+  //   a line that disappears into what is behind it (dark mode's white hairlines on white);
   //   a near-black block bigger than a dot — a dark-mode fill that never turned light.
   const faint = () => page.evaluate(() => {
     const rgb = (s) => { const m = /rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)/.exec(s); return m ? [+m[1], +m[2], +m[3], m[4] === undefined ? 1 : +m[4]] : null; };
     const lum = ([r, g, b]) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
     const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
-    const kept = (el) => !!el.closest('.keep-dark, img, video, canvas, svg, [data-photo-viewer], [data-tv-preview]');
-    // Returns a colour, or 'gradient' when words sit on one, or 'photo' when a picture is behind them.
+    const over = (top, under) => [0, 1, 2].map((i) => top[i] * top[3] + under[i] * (1 - top[3])).concat(1);
+    const sat = ([r, g, b]) => { const mx = Math.max(r, g, b), mn = Math.min(r, g, b); return mx === 0 ? 0 : (mx - mn) / mx; };
+    const kept = (el) => !!el.closest('.keep-dark, img, video, canvas, svg, [data-photo-viewer], [data-tv-preview], [data-light-exempt]');
+    // A colour, or { grad } when words sit on a gradient, or 'photo' when a picture is behind them.
     const bgOf = (el, ignoreImage) => {
+      const layers = [];
       for (let n = el; n; n = n.parentElement) {
         const cs = getComputedStyle(n);
         const img = cs.backgroundImage;
         if (!ignoreImage && img && img !== 'none') return img.includes('url(') ? 'photo' : { grad: `${n.tagName.toLowerCase()}.${String(n.className).split(' ').slice(0, 2).join('.')} ${img.slice(0, 70)}` };
-        const c = rgb(cs.backgroundColor); if (c && c[3] > 0.6) return c;
+        const c = rgb(cs.backgroundColor);
+        if (c && c[3] > 0.6) return layers.reduceRight((under, top) => over(top, under), c);
+        // A see-through fill is blended with what is behind it, never skipped — a 55% near-black
+        // row read as "the page" and passed while it showed grey.
+        if (c && c[3] >= 0.12) layers.push(c);
       }
-      return [246, 246, 249, 1];
+      return layers.reduceRight((under, top) => over(top, under), [246, 246, 249, 1]);
     };
+    const tag = (el) => `<${el.tagName.toLowerCase()}${el.className && typeof el.className === 'string' ? '.' + el.className.split(' ').filter(Boolean).slice(0, 2).join('.') : ''}>`;
     const label = (el) => `"${String(/^(INPUT|TEXTAREA)$/.test(el.tagName) ? el.value : el.textContent ?? '').trim().slice(0, 24)}"`;
     const bad = [];
     for (const el of document.querySelectorAll('body *')) {
       const r = el.getBoundingClientRect(); if (!r.width || !r.height) continue;
       const cs = getComputedStyle(el); if (cs.visibility === 'hidden' || +cs.opacity < 0.5 || kept(el)) continue;
+      // Lines: a drawn border must stand off what is behind it.
+      for (const side of ['Top', 'Bottom', 'Left', 'Right']) {
+        if (parseFloat(cs[`border${side}Width`]) < 1 || cs[`border${side}Style`] === 'none') continue;
+        const bc = rgb(cs[`border${side}Color`]); if (!bc || bc[3] < 0.02) continue; // transparent on purpose
+        const behind = bgOf(el.parentElement ?? el, true);
+        if (!Array.isArray(behind)) continue;
+        const own = rgb(cs.backgroundColor);
+        const ground = own && own[3] > 0.6 ? own : behind;
+        if (ratio(over(bc, ground), ground) < 1.06 && ratio(over(bc, behind), behind) < 1.06) { bad.push(`invisible line ${tag(el)} ${side.toLowerCase()} (${cs[`border${side}Color`]} on rgb(${ground.slice(0, 3).map(Math.round).join(', ')}))`); break; }
+      }
       const field = /^(INPUT|TEXTAREA)$/.test(el.tagName) && !/checkbox|radio|range|color|file|hidden/.test(el.type) && el.value?.trim();
       const words = el.childNodes.length && [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim().length > 1);
       if (field || words) {
@@ -149,13 +170,15 @@ async (page) => {
         if (bg && bg.grad) { bad.push(`gradient behind ${label(el)} [${bg.grad}]`); continue; }
         if (!fg || !Array.isArray(bg) || fg[3] < 0.5) continue;
         const c = ratio(fg, bg);
-        if (c < 3) bad.push(`${label(el)} ${c.toFixed(1)}:1`);
+        if (c < 3) { bad.push(`${label(el)} ${c.toFixed(1)}:1`); continue; }
+        // A coloured fill (saturated, not a pale tint) or a dark one carries light words.
+        if (!field && ((sat(bg) > 0.45 && lum(bg) < 0.5) || lum(bg) < 0.2) && lum(fg) < lum(bg)) bad.push(`dark words on a fill ${label(el)}`);
         continue;
       }
       const c = rgb(cs.backgroundColor);
-      if (c && c[3] > 0.8 && lum(c) < 0.05 && r.width * r.height > 900) bad.push(`dark block <${el.tagName.toLowerCase()}${el.className && typeof el.className === 'string' ? '.' + el.className.split(' ')[0] : ''}> ${Math.round(r.width)}x${Math.round(r.height)}`);
+      if (c && c[3] > 0.8 && lum(c) < 0.05 && r.width * r.height > 900) bad.push(`dark block ${tag(el)} ${Math.round(r.width)}x${Math.round(r.height)}`);
     }
-    return [...new Set(bad)].slice(0, 8);
+    return [...new Set(bad)].slice(0, 10);
   });
 
   // Every page a route leads to (App.tsx), not a sample of them.

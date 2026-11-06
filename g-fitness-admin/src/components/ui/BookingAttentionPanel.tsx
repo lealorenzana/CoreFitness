@@ -170,7 +170,7 @@ export default function BookingAttentionPanel({ onChanged }: { onChanged: () => 
             const working = busy === row.id;
             return (
               <div key={`${row.kind}:${row.id}`} className="rounded-xl p-3"
-                style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.07)' }}>
                 <span className="inline-block px-2 py-0.5 rounded-full text-[11.5px] font-semibold" style={{ background: u.bg, color: u.tone }}>{u.label}</span>
                 <p className="text-[13.5px] font-semibold text-white truncate mt-1.5">{row.member_name} — {row.what}</p>
                 <p className="text-[12px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>

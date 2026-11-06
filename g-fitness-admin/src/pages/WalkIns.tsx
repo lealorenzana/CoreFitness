@@ -349,7 +349,7 @@ export default function WalkIns() {
                   className="h-10 px-3.5 rounded-xl text-[13.5px] font-semibold"
                   style={histRange === r
                     ? { background: TONE.amber.bg, color: TONE.amber.fg, border: `1px solid ${TONE.amber.line}` }
-                    : { background: 'rgba(255,255,255,0.03)', color: 'var(--color-text-secondary)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    : { background: 'rgba(255,255,255,0.03)', color: 'var(--color-text-secondary)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)' }}>
                   {RANGE_LABEL[r]}
                 </button>
               ))}
