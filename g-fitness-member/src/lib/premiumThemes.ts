@@ -58,7 +58,14 @@ export function applyPremiumTheme(key: string | null | undefined, mode?: 'dark' 
   root.style.setProperty('--color-surface', roles.surface);
   root.style.setProperty('--color-surface-raised', roles.raised);
   root.style.setProperty('--color-surface-high', roles.high);
-  root.style.setProperty('--grad-primary', `linear-gradient(90deg, ${roles.grad[0]}, ${roles.grad[1]})`);
-  root.style.setProperty('--grad-action', `linear-gradient(135deg, ${roles.grad[0]}, ${roles.grad[1]})`);
+  // Light mode is solid fills only (the owner, 2026-11-03): no gradient — buttons and bars fall back
+  // to the theme's own solid colours. Dark keeps the theme's two-colour gradient.
+  if (mode === 'light') {
+    root.style.removeProperty('--grad-primary');
+    root.style.removeProperty('--grad-action');
+  } else {
+    root.style.setProperty('--grad-primary', `linear-gradient(90deg, ${roles.grad[0]}, ${roles.grad[1]})`);
+    root.style.setProperty('--grad-action', `linear-gradient(135deg, ${roles.grad[0]}, ${roles.grad[1]})`);
+  }
   root.dataset.premiumTheme = t!.key;
 }

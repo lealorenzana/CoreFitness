@@ -58,7 +58,8 @@ const hourOf = (iso: string) => new Date(new Date(iso).getTime() + 8 * 3600_000)
 const weekdayOf = (key: string) => (new Date(`${key}T00:00:00Z`).getUTCDay() + 6) % 7;
 const WD = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const WD_LONG = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-const STACK = ['#9578fb', '#6447c7', '#3b3560'];
+// Dark shades by default; light.css gives the light ones (--hx-*), in the gym's own colour.
+const STACK = ['var(--hx-1, #9578fb)', 'var(--hx-2, #6447c7)', 'var(--hx-3, #3b3560)'];
 
 type Preset = '7' | '30' | '90' | 'year' | 'all' | 'custom';
 const PRESETS: [Preset, string][] = [['7', 'Last 7 days'], ['30', 'Last 30 days'], ['90', 'Last 90 days'], ['year', 'This year'], ['all', 'All time']];
@@ -296,7 +297,7 @@ export default function AttendanceHistory() {
               {stats.wdAvg.map((v, i) => (
                 <div key={i} style={{ flex: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
                   <div className="a-sub" style={{ fontSize: 10, marginBottom: 3 }}>{v >= 10 ? Math.round(v) : v.toFixed(1).replace(/\.0$/, '')}</div>
-                  <div style={{ height: `${Math.max(2, (v / maxWd) * 75)}%`, background: i === stats.busiestWd ? '#9578fb' : v / maxWd < 0.7 ? '#2a2250' : '#41317f', borderRadius: '5px 5px 2px 2px' }} />
+                  <div style={{ height: `${Math.max(2, (v / maxWd) * 75)}%`, background: i === stats.busiestWd ? 'var(--hx-1, #9578fb)' : v / maxWd < 0.7 ? 'var(--hx-3, #2a2250)' : 'var(--hx-2, #41317f)', borderRadius: '5px 5px 2px 2px' }} />
                   <div className="a-sub" style={{ fontSize: 10, marginTop: 3, color: i === stats.busiestWd ? '#fff' : undefined }}>{WD[i]}</div>
                 </div>
               ))}

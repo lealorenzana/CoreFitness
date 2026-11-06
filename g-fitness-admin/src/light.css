@@ -137,7 +137,7 @@
 :root[data-mode="light"] .att .a-wkg .d.t5, :root[data-mode="light"] .att .a-ev.c5 { background: #ECF6D6; color: #3F6212; }
 :root[data-mode="light"] .att .a-ev small { color: inherit; opacity: .8; }
 :root[data-mode="light"] .att .a-wk .col.today { background: repeating-linear-gradient(180deg, #F7F4FE 0 35px, #EDE7FB 35px 36px); }
-:root[data-mode="light"] .att .a-bubble { background: #F3EFFD; border-color: #E1D8F8; }
+:root[data-mode="light"] .att .a-bubble { background: #F3EFFD; border-color: #E1D8F8; color: var(--color-text-primary); }
 :root[data-mode="light"] .att .a-msg.me { background: #EFE8FD; }
 :root[data-mode="light"] .att .a-medal.locked { border-color: #D9D9E3; color: #9A9DB0; }
 :root[data-mode="light"] .att .a-av.v, :root[data-mode="light"] .att .a-av.a { color: inherit; }
@@ -161,3 +161,42 @@
    Payment method select and the older forms read white on white without this. */
 :root[data-mode="light"] :is(.bg-dark, .bg-dark-lighter, .bg-dark-surface).text-white,
 :root[data-mode="light"] :is(.bg-dark, .bg-dark-lighter, .bg-dark-surface) option { color: var(--color-text-primary); }
+
+/* ── Solid light (the owner, 2026-11-03): "specific solid colors with white text … no gradient colors".
+   Dark mode keeps its glow and gradients; light gets flat fills strong enough for white words, and every
+   tinted panel is one even colour. --fill-action / --fill-primary are the gym's deep shades (lib/gymLook.ts),
+   falling back to Core Fitness amber and violet. */
+:root[data-mode="light"] { --fill-action: var(--fill-action-gym, #B45309); --fill-primary: var(--fill-primary-gym, #6D28D9); }
+:root[data-mode="light"] .att .a-btn.amber { background: var(--fill-action); color: #FFFFFF; border-color: var(--fill-action); box-shadow: 0 6px 14px -8px color-mix(in srgb, var(--fill-action) 70%, transparent); }
+:root[data-mode="light"] .att .a-btn.violet { background: var(--fill-primary); color: #FFFFFF; border-color: var(--fill-primary); box-shadow: 0 6px 14px -8px color-mix(in srgb, var(--fill-primary) 70%, transparent); }
+:root[data-mode="light"] .att .a-btn.amber *, :root[data-mode="light"] .att .a-btn.violet * { color: inherit; }
+:root[data-mode="light"] .att .a-bar i, :root[data-mode="light"] .att .a-big i, :root[data-mode="light"] .att .a-meter i { background: var(--fill-primary); }
+:root[data-mode="light"] .att { --a-bar-dim: color-mix(in srgb, var(--a-primary) 30%, #FFFFFF); }
+:root[data-mode="light"] .att .a-card.glow { background: var(--a-surface); }
+:root[data-mode="light"] .att .a-door, :root[data-mode="light"] .att .a-prev { background: #FFFFFF; border-color: var(--a-line); }
+:root[data-mode="light"] .att .a-toast { background: var(--a-plight); border-color: color-mix(in srgb, var(--a-primary) 25%, transparent); }
+:root[data-mode="light"] .att .a-toast.amber { background: var(--a-alight); border-color: color-mix(in srgb, var(--a-amber) 30%, transparent); }
+:root[data-mode="light"] .att .a-opt.on { background: var(--a-alight); }
+:root[data-mode="light"] .att .a-what.on, :root[data-mode="light"] .att .a-plan.on, :root[data-mode="light"] .att .a-door2.on { background: var(--a-plight); border-color: var(--a-primary); }
+:root[data-mode="light"] .att .a-thumb { background: var(--a-plight); color: var(--a-p300); }
+:root[data-mode="light"] .att .a-stage { background: #EEF0F5; }
+:root[data-mode="light"] .att .a-medal { background: #FFFFFF; }
+:root[data-mode="light"] .att .a-wk .col { background: repeating-linear-gradient(180deg, transparent 0 35px, #ECEDF2 35px 36px); }
+:root[data-mode="light"] .att .a-wk .col.today { background-color: var(--a-plight); }
+/* The kit's fills (components/ui/rd.tsx, Dashboard): one even colour each in light. */
+:root[data-mode="light"] {
+  --rd-card-bg: var(--color-surface);
+  /* Dark's glow is a corner wash fading into the card; its flat light twin is a faint tint, not a block. */
+  --rd-glow-bg: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
+  --rd-active-bg: color-mix(in srgb, var(--color-primary) 9%, var(--color-surface));
+  --glow-bg: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
+}
+:root[data-mode="light"] { --gs-panel-bg: var(--color-surface); }
+:root[data-mode="light"] .att .a-wk { background: #FFFFFF; }
+:root[data-mode="light"] .att .a-wk .dh { background: #F7F7FA; color: var(--a-text2); }
+:root[data-mode="light"] .att .a-wk .dh.today { background: var(--a-plight); }
+/* Pale amber and violet written as words (37 inline uses) read at under 3:1 on white — the deep shades in light.
+   Matched only as `color:`, never `background-color:` (amber is also a fill). */
+:root[data-mode="light"] :is([style^="color: rgb(251, 191, 36)"], [style*="; color: rgb(251, 191, 36)"], [style^="color: rgb(245, 158, 11)"], [style*="; color: rgb(245, 158, 11)"], [style^="color: rgb(252, 211, 77)"], [style*="; color: rgb(252, 211, 77)"]):not(.keep-dark *) { color: var(--a-a300, #B45309) !important; }
+:root[data-mode="light"] :is([style^="color: rgb(167, 139, 250)"], [style*="; color: rgb(167, 139, 250)"], [style^="color: rgb(139, 92, 246)"], [style*="; color: rgb(139, 92, 246)"]):not(.keep-dark *) { color: var(--tone-violet-fg) !important; }
+:root[data-mode="light"] { --hx-1: var(--color-primary); --hx-2: color-mix(in srgb, var(--color-primary) 55%, #FFFFFF); --hx-3: color-mix(in srgb, var(--color-primary) 25%, #FFFFFF); }

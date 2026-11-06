@@ -1530,7 +1530,7 @@ img { -webkit-user-drag: none; user-select: none; }
   --glass-scrim: rgba(4, 4, 8, 0.6);
 }
 :root[data-mode="light"] {
-  --glass-bg: linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 6%, rgba(255, 255, 255, 0.97)) 0%, rgba(250, 250, 252, 0.98) 100%);
+  --glass-bg: #FFFFFF; /* solid in light (the owner, 2026-11-03) */
   --glass-line: rgba(20, 20, 32, 0.10);
   --glass-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 24px 60px -24px rgba(20, 20, 40, 0.35);
   --glass-scrim: rgba(20, 20, 32, 0.35);
@@ -1585,3 +1585,17 @@ img { -webkit-user-drag: none; user-select: none; }
   background: color-mix(in srgb, var(--color-primary) 10%, #ffffff);
 }
 :root[data-mode="light"] .orb-cell--planned { border-color: color-mix(in srgb, var(--color-primary) 40%, transparent); }
+
+/* ── Solid light (the owner, 2026-11-03): "specific solid colors with white text … no gradient colors".
+   Dark keeps its glows; in light every fill is one even colour and a chosen thing is the gym's solid
+   colour with white words. */
+:root[data-mode="light"] {
+  --panel-glow-primary: color-mix(in srgb, var(--color-primary) 7%, var(--color-surface));
+  --panel-glow-action: color-mix(in srgb, var(--color-secondary) 8%, var(--color-surface));
+}
+:root[data-mode="light"] .orb-cell--on {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  box-shadow: 0 6px 14px -8px color-mix(in srgb, var(--color-primary) 70%, transparent);
+}
+:root[data-mode="light"] .td-strip { background: var(--color-primary-light); }

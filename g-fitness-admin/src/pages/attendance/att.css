@@ -8,7 +8,7 @@
  */
 .att {
   --a-surface: #14141F; --a-raised: #1B1A2A; --a-high: #24223A; --a-border: #1E1D2D; --a-line: #2A2842;
-  --a-primary: #7C3AED; --a-p300: #C4B5FD; --a-p400: #A78BFA; --a-plight: #1E1333;
+  --a-primary: #7C3AED; --a-p300: #C4B5FD; --a-p400: #A78BFA; --a-plight: #1E1333; --a-bar-dim: #2e2552;
   --a-amber: #F59E0B; --a-a300: #FCD34D; --a-alight: #211A08;
   --a-text2: #A1A1B5; --a-muted: #6E6E85;
   /* Named so light mode can turn them (0234): the strongest text, and the sunken fill of inputs. */

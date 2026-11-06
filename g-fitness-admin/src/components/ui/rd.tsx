@@ -19,7 +19,8 @@ import Popover from './Popover';
 
 import { TONE, type Tone } from './rdTokens';
 
-const CARD_BG = 'linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0) 60%), var(--color-surface)';
+// Each fill is a variable whose fallback is the dark look; light.css gives the solid light value.
+const CARD_BG = 'var(--rd-card-bg, linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0) 60%), var(--color-surface))';
 const CARD_LINE = '1px solid var(--rd-card-line, rgba(255, 255, 255, 0.06))';
 const MUTED = 'var(--color-text-muted)';
 const SECOND = 'var(--color-text-secondary)';
@@ -77,7 +78,7 @@ export function RdCard({ children, className = '', style, glow, ...rest }: React
     <div {...rest} className={`rounded-2xl ${className}`}
       style={{
         background: glow
-          ? 'radial-gradient(120% 160% at 0% 0%, rgba(124, 58, 237, 0.30), rgba(124, 58, 237, 0) 55%), radial-gradient(80% 120% at 100% 100%, rgba(124, 58, 237, 0.10), transparent 60%), var(--color-surface)'
+          ? 'var(--rd-glow-bg, radial-gradient(120% 160% at 0% 0%, rgba(124, 58, 237, 0.30), rgba(124, 58, 237, 0) 55%), radial-gradient(80% 120% at 100% 100%, rgba(124, 58, 237, 0.10), transparent 60%), var(--color-surface))'
           : CARD_BG,
         border: glow ? '1px solid rgba(139, 92, 246, 0.28)' : CARD_LINE,
         ...style,
@@ -137,7 +138,7 @@ export function Bar({ value, tone = 'violet' }: { value: number | null; tone?: T
   return (
     <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
       <div className="h-full rounded-full" style={{ width: `${Math.max(0, Math.min(1, value)) * 100}%`,
-        background: tone === 'amber' ? 'linear-gradient(90deg,#F59E0B,#FBBF24)' : 'linear-gradient(90deg,#6D28D9,#8B5CF6)' }} />
+        background: tone === 'amber' ? 'var(--fill-action, linear-gradient(90deg,#F59E0B,#FBBF24))' : 'var(--fill-primary, linear-gradient(90deg,#6D28D9,#8B5CF6))' }} />
     </div>
   );
 }
@@ -160,7 +161,7 @@ export function StatTile({ icon, tone = 'violet', label, value, sub, onClick, ti
     </>
   );
   const style: React.CSSProperties = {
-    background: active ? 'radial-gradient(120% 140% at 0% 0%, rgba(124,58,237,0.22), transparent 60%), var(--color-surface)' : CARD_BG,
+    background: active ? 'var(--rd-active-bg, radial-gradient(120% 140% at 0% 0%, rgba(124,58,237,0.22), transparent 60%), var(--color-surface))' : CARD_BG,
     border: active ? '1px solid rgba(139, 92, 246, 0.55)' : CARD_LINE,
   };
   return onClick ? (
@@ -326,7 +327,7 @@ export function RdSelect({ value, onChange, children, label, className = '' }: {
 
 type BtnVariant = 'primary' | 'secondary' | 'amber' | 'ghost' | 'danger' | 'soft';
 const BTN: Record<BtnVariant, React.CSSProperties> = {
-  primary: { background: 'linear-gradient(180deg, #8B5CF6, #7C3AED)', color: '#fff', border: '1px solid rgba(167,139,250,0.6)', boxShadow: '0 10px 30px -12px rgba(124,58,237,0.8)' },
+  primary: { background: 'var(--fill-primary, linear-gradient(180deg, #8B5CF6, #7C3AED))', color: '#fff', border: '1px solid rgba(167,139,250,0.6)', boxShadow: '0 10px 30px -12px rgba(124,58,237,0.8)' },
   secondary: { background: 'var(--rd-soft-bg, rgba(255,255,255,0.025))', color: 'var(--color-text-primary)', border: '1px solid var(--rd-input-line, rgba(255,255,255,0.12))' },
   amber: { background: TONE.amber.bg, color: TONE.amber.fg, border: `1px solid ${TONE.amber.line}` },
   ghost: { background: 'transparent', color: SECOND, border: '1px solid transparent' },
@@ -455,7 +456,7 @@ export function TableFooter({ page, perPage, total, noun, onPage }: { page: numb
     nums.push(pages);
   }
   const btn = (on: boolean): React.CSSProperties => ({
-    background: on ? 'linear-gradient(180deg,#8B5CF6,#7C3AED)' : 'rgba(255,255,255,0.03)',
+    background: on ? 'var(--fill-primary, linear-gradient(180deg,#8B5CF6,#7C3AED))' : 'rgba(255,255,255,0.03)',
     border: `1px solid ${on ? 'rgba(167,139,250,0.6)' : 'var(--rd-input-line, rgba(255,255,255,0.08))'}`, color: on ? '#fff' : 'var(--color-text-primary)',
   });
   return (

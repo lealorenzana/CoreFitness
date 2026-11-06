@@ -117,33 +117,52 @@ async (page) => {
   await page.route('**/rest/v1/rpc/my_color_mode', (r) => r.fulfill({ status: 200, contentType: 'application/json', headers: H2, body: JSON.stringify(saved) }));
   await page.route('**/rest/v1/rpc/set_color_mode', (r) => { setCalls.push(JSON.parse(r.request().postData() || '{}')); r.fulfill({ status: 200, contentType: 'application/json', headers: H2, body: 'null' }); });
   await page.emulateMedia({ colorScheme: 'light' });
-  // Text whose colour is too close to what is behind it — walked up to the first painted background.
+  // What the owner asked for (2026-11-03): in light every word is plainly seen, fills are solid, and
+  // nothing dark is left behind. Three findings, each walked up to the first painted background:
+  //   words (or a field's typed value) under 3:1 against what is behind them;
+  //   a gradient behind words — light mode's fills are solid (a photo's scrim is exempt);
+  //   a near-black block bigger than a dot — a dark-mode fill that never turned light.
   const faint = () => page.evaluate(() => {
     const rgb = (s) => { const m = /rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)/.exec(s); return m ? [+m[1], +m[2], +m[3], m[4] === undefined ? 1 : +m[4]] : null; };
     const lum = ([r, g, b]) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
     const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
-    const bgOf = (el) => {
+    const kept = (el) => !!el.closest('.keep-dark, img, video, canvas, svg, [data-photo-viewer], [data-tv-preview]');
+    // Returns a colour, or 'gradient' when words sit on one, or 'photo' when a picture is behind them.
+    const bgOf = (el, ignoreImage) => {
       for (let n = el; n; n = n.parentElement) {
         const cs = getComputedStyle(n);
-        if (cs.backgroundImage && cs.backgroundImage !== 'none') return null; // a gradient or photo: not judged here
+        const img = cs.backgroundImage;
+        if (!ignoreImage && img && img !== 'none') return img.includes('url(') ? 'photo' : { grad: `${n.tagName.toLowerCase()}.${String(n.className).split(' ').slice(0, 2).join('.')} ${img.slice(0, 70)}` };
         const c = rgb(cs.backgroundColor); if (c && c[3] > 0.6) return c;
       }
       return [246, 246, 249, 1];
     };
+    const label = (el) => `"${String(/^(INPUT|TEXTAREA)$/.test(el.tagName) ? el.value : el.textContent ?? '').trim().slice(0, 24)}"`;
     const bad = [];
     for (const el of document.querySelectorAll('body *')) {
-      if (!el.childNodes.length || ![...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim().length > 1)) continue;
       const r = el.getBoundingClientRect(); if (!r.width || !r.height) continue;
-      const cs = getComputedStyle(el); if (cs.visibility === 'hidden' || +cs.opacity < 0.5) continue;
-      const fg = rgb(cs.color); const bg = bgOf(el); if (!fg || !bg || fg[3] < 0.5) continue;
-      const c = ratio(fg, bg);
-      if (c < 3) bad.push(`"${el.textContent.trim().slice(0, 24)}" ${c.toFixed(1)}:1`);
+      const cs = getComputedStyle(el); if (cs.visibility === 'hidden' || +cs.opacity < 0.5 || kept(el)) continue;
+      const field = /^(INPUT|TEXTAREA)$/.test(el.tagName) && !/checkbox|radio|range|color|file|hidden/.test(el.type) && el.value?.trim();
+      const words = el.childNodes.length && [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim().length > 1);
+      if (field || words) {
+        const fg = rgb(cs.color); const bg = bgOf(el, !!field);
+        if (bg && bg.grad) { bad.push(`gradient behind ${label(el)} [${bg.grad}]`); continue; }
+        if (!fg || !Array.isArray(bg) || fg[3] < 0.5) continue;
+        const c = ratio(fg, bg);
+        if (c < 3) bad.push(`${label(el)} ${c.toFixed(1)}:1`);
+        continue;
+      }
+      const c = rgb(cs.backgroundColor);
+      if (c && c[3] > 0.8 && lum(c) < 0.05 && r.width * r.height > 900) bad.push(`dark block <${el.tagName.toLowerCase()}${el.className && typeof el.className === 'string' ? '.' + el.className.split(' ')[0] : ''}> ${Math.round(r.width)}x${Math.round(r.height)}`);
     }
-    return bad.slice(0, 6);
+    return [...new Set(bad)].slice(0, 8);
   });
 
-  const pages = ['/dashboard', '/attendance', '/members', '/invitations', '/trainers', '/personal-training', '/payments', '/shop', '/plans',
-    '/notifications', '/challenges', '/rewards', '/achievements', '/activity', '/gym-app', '/settings', '/subscription', '/help'];
+  // Every page a route leads to (App.tsx), not a sample of them.
+  const pages = ['/dashboard', '/members', '/invitations', '/attendance', '/attendance/walk-ins', '/attendance-history', '/analytics', '/retention',
+    '/retention/messages', '/revenue', '/payments', '/membership-plans', '/resources', '/trainers', '/gym-app', '/schedule', '/personal-training',
+    '/bookings/classes', '/equipment', '/events', '/notifications', '/activity', '/achievements', '/exercises', '/programs', '/rooms', '/shop',
+    '/help', '/inbox', '/subscription', '/rewards', '/challenges', '/credentials', '/settings', '/system'];
   const bad = [];
   for (const p of pages) {
     await page.goto('http://localhost:5174' + p, { waitUntil: 'domcontentloaded' });
@@ -189,8 +208,14 @@ async (page) => {
   }
   say('every pop-up readable in light (3:1 or better)', popBad.length === 0, popBad.join(' || '));
   say('every pop-up opened', unopened.length === 0, unopened.join(', '));
+  // The gym's own colours win in light too (2026-11-06): Core Fitness Lab's button colour is violet,
+  // and light.css's amber default was beating it — the terms notice, Review/View and links turned amber.
+  await page.route('**/rest/v1/rpc/my_gym_app', (r) => r.fulfill({ status: 200, contentType: 'application/json', headers: H2,
+    body: JSON.stringify([{ accent: 'violet', accent_action: 'violet' }]) }));
   await page.goto('http://localhost:5174/dashboard', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(3000);
+  const gymAction = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--color-secondary').trim().toLowerCase());
+  say("a gym's own button colour shows in light (not the default amber)", gymAction === '#6d28d9', gymAction);
   await page.screenshot({ path: 'shots/admin-light-dashboard-settled.png' });
   await page.locator('[data-mode-toggle]').click();
   await page.waitForTimeout(400);

@@ -280,7 +280,7 @@ export default function Retention() {
                   <div key={m.i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, justifyContent: 'flex-end', height: '100%' }}
                     data-tip={m.rate == null ? 'Nobody visited the month before' : `${m.kept} of ${m.of} came back (${m.rate}%)`}>
                     {m.rate != null && <small className="a-sub" style={{ fontSize: 10 }}>{m.rate}%</small>}
-                    <span style={{ width: '100%', height: `${m.rate ?? 0}%`, minHeight: m.rate ? 3 : 0, background: i === 3 ? 'var(--a-p400)' : '#2e2552', borderRadius: 5 }} />
+                    <span style={{ width: '100%', height: `${m.rate ?? 0}%`, minHeight: m.rate ? 3 : 0, background: i === 3 ? 'var(--a-p400)' : 'var(--a-bar-dim)', borderRadius: 5 }} />
                     <small className="a-sub" style={{ color: i === 3 ? 'var(--a-p300)' : undefined }}>{MONTH(m.i)}</small>
                   </div>
                 ))}
@@ -334,7 +334,7 @@ export default function Retention() {
         </>}>
         <label className="block text-[13px] mb-1.5" style={{ color: 'var(--color-text-secondary)' }} htmlFor="call-note">What they said <span style={{ color: 'var(--color-text-muted)' }}>— optional</span></label>
         <textarea id="call-note" rows={3} maxLength={200} value={callNote} onChange={(e) => setCallNote(e.target.value)} placeholder="e.g. Back on Thursday, was sick"
-          className="w-full px-3 py-2 rounded-lg text-[13px] text-white outline-none" style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }} />
+          className="w-full px-3 py-2 rounded-lg text-[13px] outline-none" style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }} />
       </Modal>
     </div>
   );

@@ -168,7 +168,7 @@ function Card({ children, onClick, tip, glow, className = '', style }: {
     <Tag onClick={onClick} data-tip={tip}
       className={`rounded-2xl p-4 text-left min-w-0 min-h-0 overflow-hidden flex flex-col items-stretch justify-start ${className}`}
       style={{
-        background: glow ? 'linear-gradient(160deg, var(--glow-from, #211a3a) 0%, var(--color-surface) 55%)' : SURFACE,
+        background: glow ? 'var(--glow-bg, linear-gradient(160deg, var(--glow-from, #211a3a) 0%, var(--color-surface) 55%))' : SURFACE,
         border: `1px solid ${glow ? 'var(--glow-line, #2f2752)' : BORDER}`,
         boxShadow: 'var(--shadow-card)',
         cursor: onClick ? 'pointer' : 'default',

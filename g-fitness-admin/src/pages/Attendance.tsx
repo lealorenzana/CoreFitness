@@ -399,7 +399,7 @@ export default function Attendance() {
           </div>
 
           {/* What the box found — members, and coaches when the owner has coach check-in on. A fixed box that scrolls itself. */}
-          <div className="a-scroll" data-quick-list style={{ marginTop: 10, borderRadius: 14, background: '#0f0f19', border: '1px solid var(--a-line)', padding: '4px 12px', height: 96 }}>
+          <div className="a-scroll" data-quick-list style={{ marginTop: 10, borderRadius: 14, background: 'var(--a-well, #0f0f19)', border: '1px solid var(--a-line)', padding: '4px 12px', height: 96 }}>
             {!q && shown ? (
             <div className="a-toast" style={{ margin: '-4px -12px', height: 'calc(100% + 8px)', borderRadius: 13, border: 0 }} data-last-checkin>
               <span className="ok"><Check size={16} /></span>
@@ -534,7 +534,7 @@ export default function Attendance() {
           <div className="a-lbl">How they came in</div>
           <div className="a-num">{scanned} <span style={{ fontSize: 15, color: 'var(--a-text2)', fontWeight: 600 }}>scanned</span></div>
           <div className="a-stack">
-            {today.length > 0 && <><i style={{ flex: byWay.kiosk, background: '#9578fb' }} /><i style={{ flex: byWay.desk, background: '#6447c7' }} /><i style={{ flex: byWay.typed, background: '#3b3560' }} /></>}
+            {today.length > 0 && <><i style={{ flex: byWay.kiosk, background: 'var(--hx-1, #9578fb)' }} /><i style={{ flex: byWay.desk, background: 'var(--hx-2, #6447c7)' }} /><i style={{ flex: byWay.typed, background: 'var(--hx-3, #3b3560)' }} /></>}
           </div>
           <div className="a-legend">
             {(['kiosk', 'desk', 'typed'] as const).map((k) => (

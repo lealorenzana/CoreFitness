@@ -32,18 +32,22 @@ export function renderGymLook(): void {
   const t = pt ? (light ? pt.light : pt.dark) : undefined;
   const ground = t ? `
   --color-bg: ${t.bg}; --color-surface: ${t.surface}; --color-surface-raised: ${t.raised}; --color-surface-high: ${t.high};
-  --grad-primary: linear-gradient(90deg, ${t.grad[0]}, ${t.grad[1]}); --grad-action: linear-gradient(135deg, ${t.grad[0]}, ${t.grad[1]});` : '';
+  ${light ? '' : `--grad-primary: linear-gradient(90deg, ${t.grad[0]}, ${t.grad[1]}); --grad-action: linear-gradient(135deg, ${t.grad[0]}, ${t.grad[1]});`}` : '';
   const att = t ? `--a-surface: ${t.surface}; --a-raised: ${t.raised}; --a-high: ${t.high};` : '';
   const pLight = light ? `color-mix(in srgb, ${p.base} 13%, #ffffff)` : p.light;
   const aLight = light ? `color-mix(in srgb, ${a.base} 15%, #ffffff)` : a.light;
   const aBase = light ? a.c700 : a.base;
+  // `:root[data-mode]` / `:root[data-mode] .att`: as specific as light.css's `:root[data-mode="light"]`
+  // rules, and later on the page, so the gym's own colours win in light too. With a bare `:root` the
+  // light defaults beat them — every gym's buttons, links and notices turned Core Fitness amber in light.
   const css = `
-:root {
+:root, :root[data-mode] {
   --color-primary: ${p.base}; --color-primary-hover: ${p.hover}; --color-primary-light: ${pLight};
-  --color-secondary: ${aBase}; --color-secondary-hover: ${light ? a.c800 : a.hover}; --color-secondary-light: ${aLight};${ground}
+  --color-secondary: ${aBase}; --color-secondary-hover: ${light ? a.c800 : a.hover}; --color-secondary-light: ${aLight};${ground}${light ? `
+  --fill-action-gym: ${a.c700}; --fill-primary-gym: ${p.c700};` : ''}
 }
 body { background: var(--color-bg); }
-.att {
+.att, :root[data-mode] .att {
   --a-primary: ${p.base}; --a-p300: ${light ? p.c700 : p.c300}; --a-p400: ${light ? p.c600 : p.c400}; --a-plight: ${pLight};
   --a-amber: ${aBase}; --a-a300: ${light ? a.c700 : a.c300}; --a-alight: ${aLight}; ${att}
 }`;

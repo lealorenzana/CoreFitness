@@ -412,8 +412,9 @@ export function Panel({
     borderRadius: 'var(--radius-card)',
     boxShadow: 'var(--shadow-panel)',
     padding: 'var(--card-pad)',
+    // Light mode gives each glow a flat tint instead (--panel-glow-*, index.css): solid fills only.
     background: glow
-      ? `radial-gradient(150% 120% at 8% 0%, color-mix(in srgb, ${hue} 22%, transparent) 0%, transparent 66%)${filled ? ', var(--color-surface)' : ''}`
+      ? `var(--panel-glow-${glow === 'action' ? 'action' : 'primary'}, radial-gradient(150% 120% at 8% 0%, color-mix(in srgb, ${hue} 22%, transparent) 0%, transparent 66%)${filled ? ', var(--color-surface)' : ''})`
       : filled ? 'var(--color-surface)' : 'transparent',
     ...style,
   };

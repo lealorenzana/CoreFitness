@@ -255,7 +255,7 @@ export default function GlobalSearch() {
       <div
         role="dialog" aria-modal="true" aria-label="Search"
         className="relative mt-[10vh] w-[min(720px,94vw)] rounded-2xl overflow-hidden gs-rise flex flex-col"
-        style={{ background: `radial-gradient(90% 60% at 0% 0%, rgba(124,58,237,0.16), transparent 60%), ${PANEL}`,
+        style={{ background: `var(--gs-panel-bg, radial-gradient(90% 60% at 0% 0%, rgba(124,58,237,0.16), transparent 60%), ${PANEL})`,
           border: '1px solid rgba(139,92,246,0.3)', boxShadow: '0 40px 100px -30px rgba(0,0,0,0.9)', maxHeight: '76vh' }}
       >
         <style>{'@keyframes gsFade{from{opacity:0}to{opacity:1}}@keyframes gsRise{from{opacity:0;transform:translateY(-10px) scale(.985)}to{opacity:1;transform:none}}.gs-fade{animation:gsFade .15s ease both}.gs-rise{animation:gsRise .18s ease both}@media (prefers-reduced-motion: reduce){.gs-fade,.gs-rise{animation:none}}'}</style>
