@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient';
+import { getHouseRules, type PauseRule } from './coachingRules';
 
 /**
  * What the Terms page needs to state the signed-in member's own gym's refund
@@ -33,6 +34,8 @@ export interface RefundTerms {
   fee: number;
   feeReason: string | null;
   maxFreezeDaysPerYear: number | null;
+  /** Does coaching pause when the membership freezes, at this gym (0235). Null before 0235 or unread. */
+  coachingPause: PauseRule | null;
 }
 
 export type RefundTermsState =
@@ -45,7 +48,7 @@ export async function getRefundTerms(): Promise<RefundTermsState> {
   const { data: session } = await supabase.auth.getSession();
   if (!session.session) return { kind: 'guest' };
 
-  const [rules, settings] = await Promise.all([
+  const [rules, settings, house] = await Promise.all([
     supabase.from('refund_rules')
       .select('priority, min_days, max_days, requires_visits, percent')
       .eq('is_active', true)
@@ -54,6 +57,7 @@ export async function getRefundTerms(): Promise<RefundTermsState> {
       .select('gym_name, refund_processing_fee, refund_fee_reason, max_freeze_days_per_year')
       .eq('id', true)
       .maybeSingle(),
+    getHouseRules().catch(() => null),
   ]);
   if (rules.error || settings.error || !settings.data) return { kind: 'failed' };
 
@@ -70,6 +74,7 @@ export async function getRefundTerms(): Promise<RefundTermsState> {
       fee: Number(s.refund_processing_fee ?? 0),
       feeReason: s.refund_fee_reason?.trim() || null,
       maxFreezeDaysPerYear: s.max_freeze_days_per_year,
+      coachingPause: house?.pause ?? null,
     },
   };
 }

@@ -318,7 +318,7 @@ export default function MembershipPlans() {
             <span className="a-sub">{conversion.tried ? `${conversion.became} of ${conversion.tried} whose trial ended` : 'no trial has ended yet'}</span>
           </div>
         </div>
-        <div className="a-card" style={{ padding: '12px 14px', borderColor: soon.length ? '#3e310f' : undefined }}>
+        <div className="a-card" style={{ padding: '12px 14px', borderColor: soon.length ? 'var(--a-warn-line, #3e310f)' : undefined }}>
           <div className="a-lbl" style={{ color: soon.length ? 'var(--a-a300)' : undefined }}>Renewing in 7 days</div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}><div className="a-num">{soon.length}</div><span className="a-sub">{soon.length ? `${peso(soonDue)} due` : 'nobody'}</span></div>
         </div>

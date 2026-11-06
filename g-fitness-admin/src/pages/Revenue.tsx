@@ -225,7 +225,7 @@ export default function Revenue() {
             </div>
           );
         })}
-        <div className="a-card" style={{ padding: '12px 14px', borderColor: '#3e310f' }}>
+        <div className="a-card" style={{ padding: '12px 14px', borderColor: 'var(--a-warn-line, #3e310f)' }}>
           <div className="a-lbl" style={{ color: 'var(--a-a300)' }}>Coming in 30 days</div>
           <div className="a-num" style={{ fontSize: 22 }}>{coming ? peso(coming.due) : '…'}</div>
           <div className="a-sub">{coming ? `${coming.n} renewal${coming.n === 1 ? '' : 's'}, if all renew` : ''}</div>
@@ -331,7 +331,7 @@ export default function Revenue() {
             </div>
           )}
           {pending.length > 0 && (
-            <div className="a-card" style={{ borderColor: '#3e310f' }} data-pending-money>
+            <div className="a-card" style={{ borderColor: 'var(--a-warn-line, #3e310f)' }} data-pending-money>
               <div className="a-row" style={{ padding: 0, borderTop: 0 }}>
                 <div className="a-ic" style={{ background: 'var(--a-alight)', color: 'var(--a-a300)' }}><Hourglass size={15} /></div>
                 <div className="t"><b style={{ whiteSpace: 'normal' }}>{peso(pending.reduce((s, p) => s + Number(p.amount), 0))} waiting to be confirmed</b><small style={{ whiteSpace: 'normal' }}>{pending.length} payment{pending.length === 1 ? '' : 's'} · not counted until confirmed</small></div>

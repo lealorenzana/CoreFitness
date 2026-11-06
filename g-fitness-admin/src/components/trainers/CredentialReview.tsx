@@ -727,7 +727,7 @@ export default function CredentialReview({ trainerId, compact = false, onChanged
           ['all', 'Coaches with nothing on file', nothingOnFile.length, coaches ? `of ${coaches.length} coach${coaches.length === 1 ? '' : 'es'}` : 'roster not loaded', nothingOnFile.length > 0],
         ] as const).map(([key, label, n, sub, warn]) => (
           <button key={label} type="button" className={`a-card press text-left ${filter === key && key !== 'all' ? 'on' : ''}`} data-credential-tile-count={key}
-            style={warn ? { borderColor: '#3e310f' } : undefined}
+            style={warn ? { borderColor: 'var(--a-warn-line, #3e310f)' } : undefined}
             onClick={() => { if (key !== 'all') setFilter(key as Filter); else { setFilter('all'); setCoachPick(null); } }}>
             <div className="a-lbl" style={warn ? { color: 'var(--a-a300)' } : undefined}>{label}</div>
             <div className="a-num">{loading ? '—' : n}</div>
@@ -782,7 +782,7 @@ export default function CredentialReview({ trainerId, compact = false, onChanged
           </div>
 
           {counts.expiring > 0 && (
-            <div className="a-card" style={{ borderColor: '#3e310f' }} data-expiring-panel>
+            <div className="a-card" style={{ borderColor: 'var(--a-warn-line, #3e310f)' }} data-expiring-panel>
               <div className="a-ct"><h3><Clock size={16} style={{ color: 'var(--a-a300)' }} />Running out</h3></div>
               {rows.filter(expiring).slice(0, 4).map((r) => {
                 const key = `renew:${r.trainer_id}:${r.title}`;

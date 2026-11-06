@@ -11,6 +11,8 @@ import {
   myMembershipRequest, refundQuote, requestMembershipChange, withdrawMembershipRequest,
   type MembershipRequest, type RefundQuote,
 } from '../lib/api/membershipRequests';
+import { myCoachings } from '../lib/api/coaching';
+import { freezeNoteFor, getHouseRules } from '../lib/api/coachingRules';
 
 const peso = (n: number) => '₱' + n.toLocaleString('en-PH', { maximumFractionDigits: 2 });
 
@@ -56,6 +58,8 @@ export default function PauseOrCancel() {
   const [reason, setReason] = useState('');
   const [days, setDays] = useState('14');
   const [busy, setBusy] = useState(false);
+  /** What a pause does to their coaching, in the gym's own rule (0235). Null without an active coaching. */
+  const [coachNote, setCoachNote] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -75,6 +79,9 @@ export default function PauseOrCancel() {
       const m = (data ?? [])[0] as { id: string; status: string } | undefined;
       setMembership(m ?? null);
       setQuote(m ? await refundQuote(m.id) : null);
+      const [rules, mineCoaching] = await Promise.all([getHouseRules(), myCoachings()]);
+      const active = (mineCoaching ?? []).find((c) => c.iAm === 'member' && c.status === 'active');
+      setCoachNote(rules && active ? freezeNoteFor(rules.pause, active) : null);
     } catch (e) {
       toast.error(errorMessage(e, 'Could not load your membership'));
     } finally {
@@ -237,6 +244,15 @@ export default function PauseOrCancel() {
                 While paused you cannot book or check in, and the days are added back to your
                 expiry date.
               </p>
+              {coachNote && (
+                <p data-coach-pause-note style={{
+                  fontSize: 13, lineHeight: 1.5, marginTop: 10, padding: '10px 12px', borderRadius: 12,
+                  color: 'var(--color-text-primary)', background: 'var(--color-primary-light)',
+                  border: '1px solid color-mix(in srgb, var(--color-primary) 30%, transparent)',
+                }}>
+                  {coachNote}
+                </p>
+              )}
             </div>
           )}
 

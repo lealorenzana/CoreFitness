@@ -241,7 +241,7 @@ export default function Achievements() {
           <div className="a-num truncate" style={{ fontSize: 20 }}>{most ? most.title : '—'}</div><div className="a-sub">{most ? `${holders(most.key)} ${audience === 'member' ? 'members' : 'coaches'} · ${pct(most.key)}%` : 'nobody has a badge yet'}</div></div>
         <div className="a-card" style={{ padding: '12px 14px' }}><div className="a-lbl">Rarest</div>
           <div className="a-num truncate" style={{ fontSize: 20 }}>{rarest && rarest !== most ? rarest.title : '—'}</div><div className="a-sub">{rarest && rarest !== most ? `${holders(rarest.key)} · ${pct(rarest.key)}%` : 'of the ones anybody has'}</div></div>
-        <button type="button" className="a-card" style={{ padding: '12px 14px', borderColor: never.length ? '#3e310f' : undefined, textAlign: 'left' }} onClick={() => setKind(kind === 'never' ? 'all' : 'never')} data-never>
+        <button type="button" className="a-card" style={{ padding: '12px 14px', borderColor: never.length ? 'var(--a-warn-line, #3e310f)' : undefined, textAlign: 'left' }} onClick={() => setKind(kind === 'never' ? 'all' : 'never')} data-never>
           <div className="a-lbl" style={{ color: never.length ? 'var(--a-a300)' : undefined }}>Nobody has these yet</div>
           <div className="a-num">{rarity ? never.length : '—'}</div><div className="a-sub">{never.length ? 'maybe too hard — check them' : live.length ? 'every live badge has been earned' : 'no badges yet'}</div></button>
       </div>

@@ -102,6 +102,15 @@ function freezeLine(state: RefundTermsState): string {
   return `The desk is shown how many frozen days you have used this year (${n !== null ? `${n} is your gym’s guideline` : 'your gym sets the guideline'}). Anything beyond the usual limits is an admin decision, made on the record.`;
 }
 
+/** Coaching on a freeze — the signed-in member's gym's own rule (0235); a reader with no session is told each gym sets its own. */
+function coachingPauseLine(state: RefundTermsState): string {
+  const rule = state.kind === 'ready' ? state.terms.coachingPause : null;
+  if (rule === 'with_membership') return 'At your gym, a coaching package pauses with your membership, and its end date moves by the days you were frozen.';
+  if (rule === 'coach_decides') return 'At your gym, your coach decides whether a coaching package pauses with your membership, and you are told. If they have not decided by the time you are back, it keeps running.';
+  if (rule === 'never') return 'At your gym, freezing does not pause a coaching package — it keeps running to its end date.';
+  return 'Whether a coaching package pauses with your membership is each gym’s own rule. The app tells you your gym’s before you ask to freeze.';
+}
+
 const buildSections = (state: RefundTermsState): LegalSection[] => [
   {
     id: 'membership',
@@ -116,6 +125,7 @@ const buildSections = (state: RefundTermsState): LegalSection[] => [
       'While frozen you cannot check in or book — a freeze pauses the membership, not attendance alone.',
       'Frozen days are added back to your expiry date, so you are not charged for days you were denied access.',
       freezeLine(state),
+      coachingPauseLine(state),
     ],
   },
   {

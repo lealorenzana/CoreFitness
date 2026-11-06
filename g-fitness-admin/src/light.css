@@ -234,3 +234,5 @@
 :root[data-mode="light"] [style*="background: rgba(124, 58, 237, 0.2"]:not(.keep-dark *) :is([style*="color"], .text-white) {
   color: #FFFFFF !important;
 }
+/* A warning card's edge (dark: #3e310f, a near-black amber) is a clear amber line in light. */
+:root[data-mode="light"] { --a-warn-line: color-mix(in srgb, var(--amber-solid) 45%, transparent); }

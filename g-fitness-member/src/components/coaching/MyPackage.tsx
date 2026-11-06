@@ -21,6 +21,7 @@ import {
   respondCoaching, setCoachingStandin, STATUS_WORDS, submitCoachingPayment, trainerPaymentMethods,
   type Coaching, type CoachingSettings, type TrainerPaymentMethod,
 } from '../../lib/api/coaching';
+import { coachingPauses, type CoachingPause } from '../../lib/api/coachingRules';
 
 const fmt = (ymd: string | null) => (ymd ? new Date(`${ymd}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : '');
 
@@ -55,6 +56,7 @@ export default function MyPackage() {
   /** Unread messages from the package's coach, for the chat row. */
   const [unread, setUnread] = useState(0);
 
+  const [pause, setPause] = useState<CoachingPause | null>(null);
   const load = useCallback(async () => {
     await coachingSweep();
     const [s, l, c] = await Promise.all([getCoachingSettings(), myCoachings(), listPublicTrainers().catch(() => [] as PublicTrainer[])]);
@@ -62,6 +64,8 @@ export default function MyPackage() {
     setList(l);
     setCoaches(c);
     const open = (l ?? []).find((x) => x.iAm === 'member' && x.status === 'active');
+    // A pause still open on it (0235): paused, kept running, or waiting for the coach to decide.
+    setPause(open ? (await coachingPauses()).find((p) => p.coachingId === open.id && !p.resumedOn) ?? null : null);
     const conv = open ? (await myConversations().catch(() => null))?.find((x) => x.otherId === open.trainerId) : undefined;
     setUnread(conv?.unread ?? 0);
   }, []);
@@ -184,6 +188,15 @@ export default function MyPackage() {
             <>
               <Panel>
                 <p style={{ fontSize: 13.5, color: 'var(--color-text-primary)' }}>Until {fmt(current.endsOn)}{current.roomId ? ' · Chat · Classwork' : ''}</p>
+                {pause && (
+                  <p data-coaching-paused={pause.decision} style={{ fontSize: 12.5, marginTop: 6, lineHeight: 1.5, color: 'var(--color-primary-300)' }}>
+                    {pause.decision === 'pause'
+                      ? `Paused with your membership since ${fmt(pause.frozenOn)} — the end date moves by the days you are away.`
+                      : pause.decision === 'pending'
+                        ? `Your membership is paused. ${current.trainerName} is deciding whether your coaching pauses too.`
+                        : 'Your membership is paused; your coaching keeps running.'}
+                  </p>
+                )}
                 {/* How far through the package: only with both dates, never a guessed bar. */}
                 {current.startsOn && current.endsOn && (
                   <ProgressBar style={{ marginTop: 8 }} fraction={(openedAt - new Date(`${current.startsOn}T00:00:00`).getTime())

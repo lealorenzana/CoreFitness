@@ -350,6 +350,16 @@ export default function Dashboard() {
         detail={`${first.fullName} in ${plural(first.daysLeft, 'day')}`}
         action="View" onClick={() => setPanel('expiring')} />) });
   }
+  // Coach dues (0235): a coach with an unpaid month before this one — the same rule as Trainers → Coach pay.
+  if (needs?.coachDues && needs.coachDues.count > 0) {
+    const d = needs.coachDues;
+    const rest = d.count - d.names.length;
+    tasks.push({ key: 'coachdues', count: d.count, node: (
+      <TaskRow key="coachdues" testId="coachdues" icon={Banknote}
+        title={`${plural(d.count, 'coach', 'coaches')} behind on dues`}
+        detail={`${d.names.join(', ')}${rest > 0 ? `, +${rest}` : ''}`}
+        action="View" onClick={() => navigate('/trainers?view=pay')} />) });
+  }
   const todo = tasks.reduce((s, t) => s + t.count, 0);
   const needsFailed = needs !== null && [needs.bookings, needs.signups, needs.payments, needs.requests, needs.expiring].some((x) => x === null);
 

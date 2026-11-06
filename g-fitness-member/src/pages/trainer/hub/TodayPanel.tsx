@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CaretRight, Check, ClipboardText, HandWaving, MagnifyingGlass, Receipt, UserCircleMinus, X } from '@phosphor-icons/react';
+import { CaretRight, Check, ClipboardText, HandWaving, MagnifyingGlass, PauseCircle, Receipt, UserCircleMinus, X } from '@phosphor-icons/react';
 import Avatar from '../../../components/ui/Avatar';
-import { LineRow } from '../../../components/ui/noc';
+import { LineRow, NocButton } from '../../../components/ui/noc';
 import { toast } from '../../../components/ui/Toast';
 import { useCountUp } from '../../../components/moments/momentHooks';
 import { listTrainerPtSessions, type PtSessionRow } from '../../../lib/api/ptSessions';
@@ -15,6 +15,7 @@ import { useGymApp } from '../../../hooks/useGymApp';
 import { moduleOn } from '../../../lib/gymApp';
 import { errorMessage } from '../../../utils/errorMessage';
 import { loadPackageAsks, monthsLabel, peso, type Coaching } from '../../../lib/api/coaching';
+import { coachingPauses, decidePause, type CoachingPause } from '../../../lib/api/coachingRules';
 import {
   coachDecides, decideRequest, decidedText, loadTrainerRequests, waitedLabel, type TrainerRequest,
 } from '../../../services/trainerRequests';
@@ -62,6 +63,8 @@ export default function TodayPanel({ trainerId, classes, queue, onRequests, arri
   const [busy, setBusy] = useState<string | null>(null);
   const [decided, setDecided] = useState<Record<string, 'approved' | 'rejected'>>({});
   const [q, setQ] = useState('');
+  // Trainees whose membership froze, waiting for this coach to say whether coaching pauses too (0235).
+  const [pauses, setPauses] = useState<CoachingPause[]>([]);
   // Read once when the panel opens (a clock read during render is not pure).
   const [now] = useState(() => Date.now());
 
@@ -81,7 +84,11 @@ export default function TodayPanel({ trainerId, classes, queue, onRequests, arri
         loadPackageAsks().catch(() => [] as Coaching[]),
         loadRequests(),
       ]);
-      if (alive) { setSessions(s); setRoster(r); setAsks(a); }
+      const p = await coachingPauses();
+      if (alive) {
+        setSessions(s); setRoster(r); setAsks(a);
+        setPauses(p.filter((x) => x.trainerId === trainerId && x.decision === 'pending' && !x.resumedOn));
+      }
     })();
     return () => { alive = false; };
   }, [trainerId, loadRequests]);
@@ -114,6 +121,19 @@ export default function TodayPanel({ trainerId, classes, queue, onRequests, arri
   const needYou = queue.length + quiet.length;
   const today = new Date().toLocaleDateString('en-PH', { weekday: 'long', day: 'numeric', month: 'long' });
   const found = q.trim().length >= 1 ? roster.filter((m) => m.name.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 6) : [];
+
+  const decidePauseFor = async (p: CoachingPause, pause: boolean) => {
+    setBusy(p.id);
+    try {
+      await decidePause(p.id, pause);
+      setPauses((list) => list.filter((x) => x.id !== p.id));
+      toast.success(pause ? `${p.memberName.split(' ')[0]}'s coaching is paused too` : `${p.memberName.split(' ')[0]}'s coaching keeps running`);
+    } catch (e) {
+      toast.error(errorMessage(e, 'Could not save that'));
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const decide = async (req: TrainerRequest, status: 'approved' | 'rejected') => {
     if (!trainerId) return;
@@ -231,6 +251,27 @@ export default function TodayPanel({ trainerId, classes, queue, onRequests, arri
                 meta={c.status === 'requested' ? 'Accept or decline on Packages' : 'Check it reached you, then the package starts'}
                 action={<CaretRight size={14} />} actionTone="muted"
                 onClick={() => navigate('/trainer/packages?tab=needs')} last={i === asks.length - 1} />
+            ))}
+          </section>
+        </>
+      )}
+
+      {/* A trainee froze their membership: the gym lets their coach decide whether coaching pauses too. */}
+      {pauses.length > 0 && (
+        <>
+          <p className="eyebrow" style={{ marginTop: 18 }}>Pause their coaching?</p>
+          <section aria-label="Coaching pauses to decide" data-coaching-pauses>
+            {pauses.map((p, i) => (
+              <div key={p.id} data-pause-ask={p.id}>
+                <LineRow icon={PauseCircle} tone="act"
+                  title={`${p.memberName} paused their membership`}
+                  meta={`Since ${new Date(`${p.frozenOn}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}${p.endsOn ? ` · coaching ends ${new Date(`${p.endsOn}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}` : ''}. Pausing moves the end by the days they are away.`}
+                  last />
+                <div className="flex" style={{ gap: 8, padding: '2px 0 12px 50px', borderBottom: i === pauses.length - 1 ? undefined : '1px solid var(--color-separator)' }}>
+                  <NocButton variant="fill" disabled={busy === p.id} onClick={() => void decidePauseFor(p, true)} style={{ height: 36, padding: '0 14px', fontSize: 13 }}>Pause too</NocButton>
+                  <NocButton variant="ghost" disabled={busy === p.id} onClick={() => void decidePauseFor(p, false)} style={{ height: 36, padding: '0 14px', fontSize: 13 }}>Keep running</NocButton>
+                </div>
+              </div>
             ))}
           </section>
         </>

@@ -203,7 +203,7 @@ export default function Retention() {
           <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}><div className="a-num">{visits ? everyWeek : '…'}</div>
             <span className="a-sub">{activeCount != null ? `of ${activeCount}` : ''}{visits && everyWeek !== everyWeekBefore ? <> · <span className={everyWeek > everyWeekBefore ? 'a-up' : 'a-dn'}>{everyWeek > everyWeekBefore ? '▲' : '▼'} {Math.abs(everyWeek - everyWeekBefore)}</span></> : ''} · each of the last 4 weeks</span></div>
         </div>
-        <div className="a-card" style={{ padding: '12px 14px', borderColor: slipping ? '#3e310f' : undefined }}>
+        <div className="a-card" style={{ padding: '12px 14px', borderColor: slipping ? 'var(--a-warn-line, #3e310f)' : undefined }}>
           <div className="a-lbl" style={{ color: slipping ? 'var(--a-a300)' : undefined }}>Slipping</div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}><div className="a-num">{radar ? slipping : '…'}</div><span className="a-sub">no visit in 14+ days</span></div>
         </div>

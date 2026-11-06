@@ -232,7 +232,7 @@ export default function Coaching({ embedded = false }: { embedded?: boolean } = 
           <div className="a-num">{counts.waiting}</div>
           <div className="a-sub" style={{ marginTop: 6 }}>{waitingFirst ? `${short(name(waitingFirst.member_id))} — ${STATUS_WORDS[waitingFirst.status].toLowerCase()}` : 'asked, offered or paying'}</div>
         </button>
-        <button type="button" className={`a-card press text-left ${filter === 'ending' ? 'on' : ''}`} style={counts.ending ? { borderColor: '#3e310f' } : undefined} onClick={() => setFilter('ending')}>
+        <button type="button" className={`a-card press text-left ${filter === 'ending' ? 'on' : ''}`} style={counts.ending ? { borderColor: 'var(--a-warn-line, #3e310f)' } : undefined} onClick={() => setFilter('ending')}>
           <div className="a-lbl" style={counts.ending ? { color: 'var(--a-a300)' } : undefined}>Ending in 14 days</div>
           <div className="a-num">{counts.ending}</div>
           <div className="a-sub" style={{ marginTop: 6 }}>{endingFirst ? `${short(name(endingFirst.member_id))} — time to talk renewal` : 'none this fortnight'}</div>
@@ -285,7 +285,7 @@ export default function Coaching({ embedded = false }: { embedded?: boolean } = 
 
         <div className="a-scroll coaching-side" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {toConfirm.length > 0 && (
-            <div className="a-card" style={{ borderColor: '#3e310f' }} data-coaching-confirm>
+            <div className="a-card" style={{ borderColor: 'var(--a-warn-line, #3e310f)' }} data-coaching-confirm>
               <div className="a-ct"><h3><Wallet size={16} style={{ color: 'var(--a-a300)' }} />Payments to confirm</h3></div>
               <div className="a-sub" style={{ marginBottom: 6 }}>Members paid the gym for coaching. Confirm, and the term starts.</div>
               {toConfirm.slice(0, 2).map(payOf)}

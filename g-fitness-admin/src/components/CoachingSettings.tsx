@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Check } from 'lucide-react';
 import { showToast } from '../utils/toast';
+import CoachingRules from './CoachingRules';
 import {
   coachingPrices, getCoachingSettings, MODE_WORDS, saveCoachingSettings, setCoachingPrice,
   type CoachingMode, type CoachingSettings as Settings, type FeeMode,
@@ -19,6 +20,7 @@ const FEES: { key: FeeMode; title: string; blurb: string }[] = [
  * How coaching works at this gym (0181): the ways members get a coach, the
  * lengths offered, and who is paid. Saved as it is changed, through
  * set_coaching_settings(). Shared by Settings → Coaching and the setup wizard.
+ * Then the gym's own rules (CoachingRules, 0235).
  * Renders nothing before 0181.
  */
 export default function CoachingSettings() {
@@ -140,6 +142,9 @@ export default function CoachingSettings() {
           </div>
         </div>
       )}
+
+      {/* The gym's own rules (0235): pause on a freeze, the gym's share, coach dues. */}
+      <CoachingRules feeMode={s.feeMode} />
     </div>
   );
 }

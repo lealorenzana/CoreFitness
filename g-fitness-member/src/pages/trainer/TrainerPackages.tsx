@@ -16,10 +16,12 @@ import {
   type Coaching, type CoachingSettings, type TrainerPaymentMethod,
 } from '../../lib/api/coaching';
 import { getCurrentTrainerId } from '../../services/trainerService';
+import { getHouseRules, type HouseRules } from '../../lib/api/coachingRules';
+import CoachMoney from '../../components/coaching/CoachMoney';
 
 const fmt = (ymd: string | null) => (ymd ? new Date(`${ymd}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }) : '');
 
-type Tab = 'needs' | 'training' | 'ended' | 'payments';
+type Tab = 'needs' | 'training' | 'ended' | 'payments' | 'pay';
 
 /**
  * Packages (simplify, 2026-10-28; was Coaching): a coach's monthly packages (0181) — who asked, who paid them (tap Received), who
@@ -37,6 +39,8 @@ export default function TrainerPackages() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [settings, setSettings] = useState<CoachingSettings | null | undefined>(undefined);
+  /** The gym's coaching money rules (0235) — the "Your pay" tab shows only when one is on. */
+  const [houseRules, setHouseRules] = useState<HouseRules | null>(null);
   const [list, setList] = useState<Coaching[] | null>(null);
   const [me, setMe] = useState<string | null>(null);
   const [methods, setMethods] = useState<TrainerPaymentMethod[]>([]);
@@ -50,8 +54,9 @@ export default function TrainerPackages() {
 
   const load = useCallback(async () => {
     await coachingSweep();
-    const [s, l, id] = await Promise.all([getCoachingSettings(), myCoachings(), getCurrentTrainerId()]);
+    const [s, l, id, hr] = await Promise.all([getCoachingSettings(), myCoachings(), getCurrentTrainerId(), getHouseRules()]);
     setSettings(s);
+    setHouseRules(hr);
     setList(l);
     setMe(id);
     if (id) setMethods(await trainerPaymentMethods(id));
@@ -85,6 +90,7 @@ export default function TrainerPackages() {
     { id: 'training', label: active.length ? `Training · ${active.length}` : 'Training' },
     { id: 'ended', label: 'Ended' },
     ...(direct && me ? [{ id: 'payments' as Tab, label: 'Payments' }] : []),
+    ...(houseRules && (houseRules.cutOn || houseRules.duesOn) ? [{ id: 'pay' as Tab, label: 'Your pay' }] : []),
   ];
   const asked = params.get('tab') as Tab | null;
   const tab: Tab = tabs.some((t) => t.id === asked) ? (asked as Tab) : needs === 0 && active.length > 0 ? 'training' : 'needs';
@@ -211,6 +217,8 @@ export default function TrainerPackages() {
           ))}
         </div>
       )}
+
+      {tab === 'pay' && houseRules && <CoachMoney rules={houseRules} />}
 
       {/* 0192: paid directly, a coach may take payments online into their own PayMongo account. */}
       {tab === 'payments' && direct && me && (

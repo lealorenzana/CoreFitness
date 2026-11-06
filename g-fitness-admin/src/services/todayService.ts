@@ -7,6 +7,7 @@ import { listOpenMembershipRequests } from '../lib/api/membershipRequests';
 import { cashDay } from '../lib/api/cash';
 import { retentionRadar, type AtRisk } from '../lib/api/retention';
 import { dashboardService, type ExpiringMember } from './dashboardService';
+import { behindOnDues, coachDues, getHouseRules } from '../lib/api/coachingRules';
 
 /**
  * The owner's morning (dashboard A1, 2026-10-18): what needs them, what is
@@ -42,6 +43,8 @@ export interface NeedsYou {
   payments: { count: number; total: number; methods: string[] } | null;
   requests: { count: number; freezes: number; cancels: number } | null;
   expiring: ExpiringMember[] | null;
+  /** Coaches with an unpaid month before this one (0235) — null when the gym charges no dues, or the read failed. */
+  coachDues: { count: number; names: string[] } | null;
 }
 
 const daysAgo = (iso: string) => Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86400000));
@@ -83,8 +86,16 @@ export async function loadNeedsYou(): Promise<NeedsYou> {
 
   const expiring = dashboardService.getExpiringSoon(7).catch(() => null);
 
-  const [b, s, p, r, e] = await Promise.all([bookings, signups, payments, requests, expiring]);
-  return { bookings: b, signups: s, payments: p, requests: r, expiring: e };
+  // The same rule Trainers → Coach pay shows (behindOnDues), so the count matches the page it opens.
+  const coachDuesBehind = (async () => {
+    const rules = await getHouseRules();
+    if (!rules?.duesOn) return null;
+    const late = behindOnDues(await coachDues(12), `${todayKey().slice(0, 7)}-01`);
+    return { count: late.length, names: late.slice(0, 2).map((x) => x.trainerName.split(' ')[0]) };
+  })().catch(() => null);
+
+  const [b, s, p, r, e, d] = await Promise.all([bookings, signups, payments, requests, expiring, coachDuesBehind]);
+  return { bookings: b, signups: s, payments: p, requests: r, expiring: e, coachDues: d };
 }
 
 // ── Today ─────────────────────────────────────────────────────────────────────

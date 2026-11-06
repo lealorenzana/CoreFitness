@@ -1,6 +1,7 @@
 import AddTrainerWizard from '../components/trainers/AddTrainerWizard';
 import EditTrainerModal from '../components/trainers/EditTrainerModal';
 import CredentialReview from '../components/trainers/CredentialReview';
+import CoachPay from '../components/trainers/CoachPay';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { addDays, todayKey } from '../utils/dates';
@@ -15,7 +16,7 @@ import { Av, Pager } from './attendance/parts';
 import './attendance/att.css';
 import { listCoachings } from '../lib/api/coaching';
 import { currentLockoutReason } from '../lib/api/accountEvents';
-import { CalendarRange, X, Archive, UserX, UserCheck, Users, ShieldCheck, Plus, Pencil, Eye, ChevronUp, ChevronDown, Search, SquareCheck, AlertTriangle } from 'lucide-react';
+import { CalendarRange, X, Archive, HandCoins, UserX, UserCheck, Users, ShieldCheck, Plus, Pencil, Eye, ChevronUp, ChevronDown, Search, SquareCheck, AlertTriangle } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import {
   listTrainers,
@@ -151,6 +152,9 @@ export default function Trainers() {
   const [params, setParams] = useSearchParams();
   const reviewing = params.get('view') === 'credentials';
   const setReviewing = (on: boolean) => setParams(on ? { view: 'credentials' } : {}, { replace: true });
+  // Coach pay (0235): the gym's share and coach dues — a view of this page too.
+  const paying = params.get('view') === 'pay';
+  const setPaying = (on: boolean) => setParams(on ? { view: 'pay' } : {}, { replace: true });
 
   const loadTrainers = useCallback(async () => {
     setLoading(true);
@@ -322,6 +326,25 @@ export default function Trainers() {
   const openEdit = (trainer: TrainerDisplay) => setEditing(trainer);
 
   const waitingTotal = [...pending.values()].reduce((a, b) => a + b, 0);
+  if (paying) {
+    return (
+      <div className="att" data-coach-pay-view>
+        <div className="a-head">
+          <div className="min-w-0">
+            <h1>Coach pay</h1>
+            <p>The gym&rsquo;s share of what members paid each coach, and each coach&rsquo;s dues — the rules you set in Settings → Personal training.</p>
+          </div>
+          <nav className="a-tabs" aria-label="Trainers views">
+            <a href="#" onClick={(e) => { e.preventDefault(); setPaying(false); setShowArchived(false); }}><Users size={14} />Coaches<em>{trainers.length}</em></a>
+            <a href="#" onClick={(e) => { e.preventDefault(); setReviewing(true); }}><ShieldCheck size={14} />Credentials{waitingTotal > 0 && <em>{waitingTotal}</em>}</a>
+            <a href="#" className="on" onClick={(e) => e.preventDefault()}><HandCoins size={14} />Coach pay</a>
+            <a href="#" onClick={(e) => { e.preventDefault(); setPaying(false); setShowArchived(true); }}><Archive size={14} />Archived</a>
+          </nav>
+        </div>
+        <CoachPay />
+      </div>
+    );
+  }
   if (reviewing) {
     return (
       <div className="att" data-credentials-view>
@@ -333,6 +356,7 @@ export default function Trainers() {
           <nav className="a-tabs" aria-label="Trainers views">
             <a href="#" onClick={(e) => { e.preventDefault(); setReviewing(false); setShowArchived(false); }}><Users size={14} />Coaches<em>{trainers.length}</em></a>
             <a href="#" className="on" onClick={(e) => e.preventDefault()}><ShieldCheck size={14} />Credentials{waitingTotal > 0 && <em>{waitingTotal}</em>}</a>
+            <a href="#" onClick={(e) => { e.preventDefault(); setPaying(true); }} data-pay-tab><HandCoins size={14} />Coach pay</a>
             <a href="#" onClick={(e) => { e.preventDefault(); setReviewing(false); setShowArchived(true); }}><Archive size={14} />Archived</a>
           </nav>
         </div>
@@ -375,6 +399,7 @@ export default function Trainers() {
         <nav className="a-tabs" aria-label="Trainers views">
           <a href="#" className={!showArchived ? 'on' : ''} onClick={(e) => { e.preventDefault(); setShowArchived(false); setPicked(new Set()); }}><Users size={14} />Coaches{!showArchived && <em>{trainers.length}</em>}</a>
           <a href="#" onClick={(e) => { e.preventDefault(); setReviewing(true); }}><ShieldCheck size={14} />Credentials{waitingTotal > 0 && <em>{waitingTotal}</em>}</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); setPaying(true); }} data-pay-tab><HandCoins size={14} />Coach pay</a>
           <a href="#" className={showArchived ? 'on' : ''} onClick={(e) => { e.preventDefault(); setShowArchived(true); setPicked(new Set()); }}><Archive size={14} />Archived</a>
         </nav>
         <button type="button" className="a-btn" onClick={() => setShowTotals(true)}><CalendarRange size={15} />Monthly totals</button>
@@ -393,7 +418,7 @@ export default function Trainers() {
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}><div className="a-num">{Math.round(weekHours)}</div><span className="a-sub">hours across {withHours} coach{withHours === 1 ? '' : 'es'}</span></div>
             {noHours.length > 0 && <div className="a-sub" style={{ marginTop: 6, color: 'var(--a-a300)' }}>{noHours.length === 1 ? `${noHours[0].name.split(' ')[0]} has no hours set` : `${noHours.length} coaches have no hours set`}</div>}
           </button>
-          <button type="button" className="a-card press text-left" style={waitingTotal ? { borderColor: '#3e310f' } : undefined} onClick={() => setReviewing(true)} data-review-card>
+          <button type="button" className="a-card press text-left" style={waitingTotal ? { borderColor: 'var(--a-warn-line, #3e310f)' } : undefined} onClick={() => setReviewing(true)} data-review-card>
             <div className="a-lbl" style={waitingTotal ? { color: 'var(--a-a300)' } : undefined}>Credentials to review</div>
             <div className="a-num">{waitingTotal}</div>
             <div className="a-sub" style={{ marginTop: 6 }}>{waitingTotal ? <>{firstWaitingName ?? 'A coach'}{waitingTotal > 1 ? ` and ${waitingTotal - 1} more` : ''} · <span style={{ color: 'var(--a-a300)' }}>review now</span></> : 'nothing waiting'}</div>

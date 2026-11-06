@@ -147,7 +147,7 @@ export default function Equipment() {
           <div className="a-sub">{list.reduce((n, i) => n + i.quantity, 0)} pieces{areas.filter((a) => a !== NOWHERE).length ? ` in ${areas.filter((a) => a !== NOWHERE).length} area${areas.filter((a) => a !== NOWHERE).length === 1 ? '' : 's'}` : ''}</div></div>
         <div className="a-card" style={{ padding: '12px 14px' }}><div className="a-lbl">Working</div><div className="a-num">{working}</div>
           <div className="a-sub">{list.length ? `${Math.round((working / list.length) * 100)}%` : 'nothing listed yet'}</div></div>
-        <div className="a-card" style={{ padding: '12px 14px', borderColor: reports.length ? '#3e310f' : undefined }}><div className="a-lbl" style={{ color: reports.length ? 'var(--a-a300)' : undefined }}>Reported by members</div>
+        <div className="a-card" style={{ padding: '12px 14px', borderColor: reports.length ? 'var(--a-warn-line, #3e310f)' : undefined }}><div className="a-lbl" style={{ color: reports.length ? 'var(--a-a300)' : undefined }}>Reported by members</div>
           <div className="a-num">{reports.length}</div><div className="a-sub">{newToday ? `${newToday} new today` : 'none new today'}</div></div>
         <div className="a-card" style={{ padding: '12px 14px' }}><div className="a-lbl">Under repair</div><div className="a-num">{repair.length}</div>
           <div className="a-sub">{list.filter((i) => i.status === 'soon').length ? `${list.filter((i) => i.status === 'soon').length} coming soon` : 'members see which'}</div></div>
@@ -191,7 +191,7 @@ export default function Equipment() {
           </div>
         </div>
 
-        <div className="a-card" style={{ borderColor: reports.length ? '#3e310f' : undefined }} data-equipment-reports>
+        <div className="a-card" style={{ borderColor: reports.length ? 'var(--a-warn-line, #3e310f)' : undefined }} data-equipment-reports>
           <div className="a-ct"><h3><AlertTriangle size={16} style={{ color: 'var(--a-a300)' }} />Reported by members</h3><small>{reports.length}</small></div>
           <div className="a-scroll grow" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {reports.length === 0 ? <p className="a-sub">Nothing reported. Members report a broken machine from Equipment in the app.</p> : reports.map((r) => (

@@ -394,7 +394,7 @@ export default function Bookings({ scope, embedded = false }: { scope?: 'pt' | '
       </div>
 
       <div className="a-grid flex-none" style={{ gridTemplateColumns: 'repeat(4,minmax(0,1fr))' }} data-booking-cards>
-        <button type="button" className="a-card press text-left" style={pendingCount ? { borderColor: '#3e310f', padding: '12px 14px' } : { padding: '12px 14px' }} onClick={() => { setView('waiting'); setFilter('pending'); }}>
+        <button type="button" className="a-card press text-left" style={pendingCount ? { borderColor: 'var(--a-warn-line, #3e310f)', padding: '12px 14px' } : { padding: '12px 14px' }} onClick={() => { setView('waiting'); setFilter('pending'); }}>
           <div className="a-lbl" style={pendingCount ? { color: 'var(--a-a300)' } : undefined}>Waiting for a decision</div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}><div className="a-num">{pendingCount}</div><span className="a-sub">{pendingCount - yours} with coaches · {yours} yours</span></div>
         </button>
@@ -402,7 +402,7 @@ export default function Bookings({ scope, embedded = false }: { scope?: 'pt' | '
           <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}><div className="a-num">{bookedToday.length}</div><span className="a-sub">{bookedToday.filter((r) => r.kind === 'class').length} in classes · {bookedToday.filter((r) => r.kind === 'pt').length} 1-on-1</span></div></div>
         <div className="a-card" style={{ padding: '12px 14px' }}><div className="a-lbl">Seats filled · next 7 days</div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}><div className="a-num">{seatC ? `${Math.round((seatT / seatC) * 100)}%` : '—'}</div><span className="a-sub">{seatC ? `${seatT} of ${seatC} in booked classes` : 'no class bookings yet'}</span></div></div>
-        <button type="button" className="a-card press text-left" style={flaggedCount ? { borderColor: '#3e310f', padding: '12px 14px' } : { padding: '12px 14px' }} onClick={() => { setView('waiting'); setFilter('pending'); }}>
+        <button type="button" className="a-card press text-left" style={flaggedCount ? { borderColor: 'var(--a-warn-line, #3e310f)', padding: '12px 14px' } : { padding: '12px 14px' }} onClick={() => { setView('waiting'); setFilter('pending'); }}>
           <div className="a-lbl" style={flaggedCount ? { color: 'var(--a-a300)' } : undefined}>Need checking</div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}><div className="a-num">{flaggedCount}</div><span className="a-sub">waiting with a warning</span></div>
         </button>

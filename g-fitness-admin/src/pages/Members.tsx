@@ -609,7 +609,7 @@ export default function Members() {
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}><div className="a-num">{activeCount}</div><span className="a-sub">of {members.length}{share !== null ? ` · ${Math.round(share * 100)}%` : ''}</span></div>
             {share !== null && <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}><div className="a-bar"><i style={{ width: `${share * 100}%` }} /></div></div>}
           </button>
-          <div className="a-card" style={expiringSoon ? { borderColor: '#3e310f' } : undefined} data-expiring-card>
+          <div className="a-card" style={expiringSoon ? { borderColor: 'var(--a-warn-line, #3e310f)' } : undefined} data-expiring-card>
             <div className="a-lbl" style={expiringSoon ? { color: 'var(--a-a300)' } : undefined}>Expiring in {EXPIRING_SOON_DAYS} days</div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}><div className="a-num">{expiringSoon}</div>{toRenew > 0 && <span className="a-sub">₱{toRenew.toLocaleString('en-PH')} to renew</span>}</div>
             <div className="a-sub" style={{ marginTop: 8 }}>

@@ -4,6 +4,7 @@ import {
 } from '../../lib/api/refunds';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Pause, Ban, X, AlertTriangle } from 'lucide-react';
+import { freezeCoachingNote } from '../../lib/api/coachingRules';
 import Button from './Button';
 import {
   freezeAllowance, freezesThisMonth,
@@ -124,6 +125,17 @@ export default function MembershipActionDialog({
     return () => { alive = false; };
   }, [kind, membershipId]);
 
+  // What a freeze does to their coaching, in the gym's own rule (0235) — said before, not after.
+  const [coachNote, setCoachNote] = useState<string | null>(null);
+  useEffect(() => {
+    if (kind !== 'freeze') return;
+    let alive = true;
+    freezeCoachingNote(memberId, memberName.split(' ')[0] || memberName)
+      .then((n) => { if (alive) setCoachNote(n); })
+      .catch(() => { if (alive) setCoachNote(null); });
+    return () => { alive = false; };
+  }, [kind, memberId, memberName]);
+
   const isFreeze = kind === 'freeze';
   const presets = isFreeze ? FREEZE_REASONS : CANCEL_REASONS;
   // "Other" on its own says nothing, so it has to be typed out.
@@ -215,6 +227,12 @@ export default function MembershipActionDialog({
               <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
                 {consequence}
               </p>
+              {isFreeze && coachNote && (
+                <p className="text-xs leading-relaxed px-3 py-2 rounded-lg" data-coach-pause-note
+                  style={{ color: 'var(--color-text-primary)', background: 'var(--color-primary-light)', border: '1px solid color-mix(in srgb, var(--color-primary) 30%, transparent)' }}>
+                  {coachNote}
+                </p>
+              )}
 
               {isFreeze && (
                 <div className="px-3 py-2 rounded-lg text-[11px] flex items-center justify-between"
