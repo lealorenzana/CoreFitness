@@ -1,5 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { Barbell, Bicycle, Armchair, Gear, PersonSimpleRun, type Icon } from '@phosphor-icons/react';
+
+/** A photo-less machine's tile icon, from its category (2026-11-07). */
+const kindIcon = (cat: string): Icon => {
+  const c = cat.toLowerCase();
+  if (/cardio|tread|bike|row/.test(c)) return /bike/.test(c) ? Bicycle : PersonSimpleRun;
+  if (/bench|rack/.test(c)) return Armchair;
+  if (/free|weight|dumb|barbell|plate/.test(c)) return Barbell;
+  return Gear;
+};
 import { SkeletonList } from '../components/ui/Skeleton';
 import { toast } from '../components/ui/Toast';
 import { Field, TextInput } from '../components/ui/Field';
@@ -63,8 +73,16 @@ export default function Equipment() {
             <SectionHead title={CATEGORY_WORDS[cat] ?? cat} meta={String(list.length)} />
             {list.map((i, n) => (
               <LineRow key={i.id} last={n === list.length - 1}
-                gutter={i.photoUrl ? <img src={i.photoUrl} alt="" width={40} height={40} style={{ width: 40, height: 40, borderRadius: 10, objectFit: 'cover' }} /> : undefined}
-                gutterWidth={i.photoUrl ? 52 : undefined}
+                // The owner's photo of the machine (admin Equipment → Photo), large; none yet, a tile with the kind's icon
+                // in the gym's colours (2026-11-07: "it should show the picture of the actual machine").
+                gutter={i.photoUrl
+                  ? <img src={i.photoUrl} alt="" width={64} height={64} data-equipment-photo style={{ width: 64, height: 64, borderRadius: 14, objectFit: 'cover', display: 'block' }} />
+                  : (() => { const K = kindIcon(i.category); return (
+                    <span aria-hidden className="more-tile shop-tile grid place-items-center" data-equipment-tile
+                      style={{ width: 64, height: 64, borderRadius: 14, ['--k' as string]: `${(n * 41) % 100}%`, animation: 'none' }}>
+                      <K size={28} weight="duotone" />
+                    </span>); })()}
+                gutterWidth={76}
                 title={i.quantity > 1 ? `${i.name} ×${i.quantity}` : i.name}
                 meta={[i.locationNote, i.exercises.length ? `${i.exercises.length} exercise${i.exercises.length === 1 ? '' : 's'}` : null].filter(Boolean).join(' · ') || undefined}
                 action={i.status === 'available' ? undefined : <StatusPill label={STATUS_WORDS[i.status]} tone="action" />}

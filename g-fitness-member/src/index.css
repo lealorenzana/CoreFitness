@@ -1919,3 +1919,16 @@ label:has(> .field-input[style*="border: none"]:focus) {
 .plan-day__name { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; font-weight: 700; color: var(--color-text-secondary); margin-bottom: 6px; }
 .plan-day__coach { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--color-primary) 18%, transparent); color: var(--color-primary-300); }
 .field-input.plan-day__select { min-height: 42px; height: 42px; font-size: 15px; font-weight: 600; padding-top: 0; padding-bottom: 0; }
+
+/* Calendar and week cells in light (the owner, 2026-11-07: "not visible when light mode"). The empty cell was a
+   3.5% grey wash — nothing on the glass page. Now a solid near-white tile with an edge in the gym's tint; days
+   still to come are dimmed to half, not a third, so the month still reads. */
+:root[data-mode="light"] .orb-cell:not(.orb-cell--on):not(.orb-cell--ring):not(.orb-cell--busy) {
+  background: color-mix(in srgb, var(--color-primary) 5%, #FFFFFF);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 22%, #D6D6E0);
+  box-shadow: 0 1px 2px rgba(22, 22, 38, 0.05);
+}
+:root[data-mode="light"] .cal-cell { color: #3E4154 !important; }
+:root[data-mode="light"] .cal-cell.orb-cell--on { color: #FFFFFF !important; }
+:root[data-mode="light"] .cal-cell.orb-cell--ring { color: var(--color-secondary) !important; }
+:root[data-mode="light"] .cal-cell:disabled { opacity: 0.5 !important; }
