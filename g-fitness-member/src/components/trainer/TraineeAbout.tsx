@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useUrlState } from '../../hooks/useUrlState';
 import { useNavigate } from 'react-router-dom';
 import { Barbell, CalendarCheck, ChatCircleText, EyeSlash, Lifebuoy, ListChecks, ListPlus, PaperPlaneRight, Ruler, Target, Trophy, X, type Icon } from '@phosphor-icons/react';
 import { leaveFeedback, listFeedbackByTrainer, type TrainerFeedbackRow } from '../../lib/api/trainerFeedback';
@@ -67,7 +68,8 @@ export default function TraineeAbout({ member, onChat, initialTab = 'progress' }
   initialTab?: AboutTab;
 }) {
   const navigate = useNavigate();
-  const [sheetTab, setSheetTab] = useState<AboutTab>(initialTab);
+  // In the address (`?about=`), so coming Back to a trainee lands on the same part (2026-11-07).
+  const [sheetTab, setSheetTab] = useUrlState<AboutTab>('about', initialTab, ['progress', 'training', 'notes', 'safety']);
   const [detail, setDetail] = useState<MemberDetailForTrainer | null>(null);
   const [detailLoading, setDetailLoading] = useState(true);
   /** Notes this coach has sent them, with whether they were seen / done (0088). */

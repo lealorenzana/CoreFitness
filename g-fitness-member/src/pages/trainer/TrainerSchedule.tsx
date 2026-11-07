@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabaseClient';
+import { useUrlState } from '../../hooks/useUrlState';
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ClockCountdown, MapPin, PencilSimple, Plus, Users, X } from '@phosphor-icons/react';
@@ -408,7 +409,8 @@ function ClassesTab() {
   const [waitingByClass, setWaitingByClass] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(cached === undefined);
   const [error, setError] = useState('');
-  const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
+  // In the address (`?classes=`), so Back returns to the same list (2026-11-07).
+  const [tab, setTab] = useUrlState<'upcoming' | 'past'>('classes', 'upcoming', ['upcoming', 'past']);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
   useEffect(() => {

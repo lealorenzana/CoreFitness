@@ -112,7 +112,7 @@ export default function BookingHistory() {
   const [visitDays, setVisitDays] = useState<Set<string>>(new Set());
   const [evaluate, setEvaluate] = useState<Set<string>>(new Set());
   const [tab, setTab] = useUrlState<Tab>('show', 'upcoming', ['upcoming', 'past', 'cancelled']);
-  const [kind, setKind] = useState<Kind>('all');
+  const [kind, setKind] = useUrlState<Kind>('kind', 'all', ['all', 'class', 'pt']);
   const [loading, setLoading] = useState(true);
   const [pendingCancel, setPendingCancel] = useState<MyBooking | null>(null);
   const [now, setNow] = useState(() => Date.now());

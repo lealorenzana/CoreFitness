@@ -704,6 +704,10 @@
     {
       "file": "trainer-hub-scroll-check.js",
       "app": "member"
+    },
+    {
+      "file": "member-navigation-check.js",
+      "app": "member"
     }
   ]
 }

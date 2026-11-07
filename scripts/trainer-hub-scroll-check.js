@@ -210,5 +210,17 @@ async (page) => {
       out.push(`[${mode}] tapping a person in the rail opens their place: ` + (/\/trainer\/pt\//.test(new URL(page.url()).pathname) ? 'yes' : 'MISSING ' + page.url()));
     }
   }
+
+  // ---- navigation (2026-11-07) ----
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await go('/trainer/home?view=pt');
+  await page.evaluate(() => { document.querySelector('[data-trainer-hub] > section').scrollTop = 600; });
+  await page.waitForTimeout(400);
+  const before = await page.evaluate(() => document.querySelector('[data-trainer-hub] > section').scrollTop);
+  await page.locator('[data-dm-row]').nth(8).click(); await page.waitForTimeout(1300);
+  const opened = /\/trainer\/pt\//.test(page.url());
+  await page.goBack(); await page.waitForTimeout(1800);
+  const after = await page.evaluate(() => document.querySelector('[data-trainer-hub] > section')?.scrollTop ?? -1);
+  out.push(`NAV the coach's list is where it was after a trainee and Back: ` + (opened && before > 300 && Math.abs(after - before) < 40 ? `yes (${before} → ${after})` : `MISSING opened=${opened} ${before} → ${after}`));
   return out.join('\n');
 }

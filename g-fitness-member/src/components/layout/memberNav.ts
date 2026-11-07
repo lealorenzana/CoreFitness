@@ -208,7 +208,16 @@ export function hubAt(pathname: string, search: string): { hub: HubId; tab: Dest
 const lastTab = new Map<HubId, string>();
 export function rememberHubTab(id: HubId, path: string): void { lastTab.set(id, path); }
 /** Forget the remembered tabs. Called from `logout()` with the other per-member memory. */
-export function clearHubMemory(): void { lastTab.clear(); }
+export function clearHubMemory(): void { lastTab.clear(); lastInBar.clear(); }
+
+/**
+ * The bottom bar remembers the last screen open under each of its tabs (the owner, 2026-11-07: "when going to
+ * a page and go back it should still be in that same area … not tapping many buttons"). Tapping a tab returns
+ * there; tapping the tab you are in goes to its main screen. Forgotten at sign-out (clearHubMemory).
+ */
+const lastInBar = new Map<TabId, string>();
+export function rememberBarPath(id: TabId, path: string): void { lastInBar.set(id, path); }
+export function lastBarPath(id: TabId): string | undefined { return lastInBar.get(id); }
 
 /** Where a section's pill lands: the tab last open there, else the first one this gym runs. */
 export function hubEntry(id: HubId, app: GymApp | null): string {

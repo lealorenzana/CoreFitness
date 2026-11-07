@@ -35,8 +35,11 @@ export function useHistorySheet(key: string) {
     if (open) navigate(-1);
   }, [open, navigate]);
 
+  // A destination opened from the sheet is pushed on top of it, not put in its place (the owner, 2026-11-07:
+  // going Back should land where you came from). Back from Inbox opened through More shows More again,
+  // instead of the page under it and a second tap on More.
   const go = useCallback((path: string) => {
-    navigate(path, { replace: true });
+    navigate(path);
   }, [navigate]);
 
   return { open, show, close, go };

@@ -1756,11 +1756,21 @@ img { -webkit-user-drag: none; user-select: none; }
   --panel-edge-action:  inset 0 0 0 1px color-mix(in srgb, var(--color-secondary) 38%, transparent), 0 14px 28px -18px color-mix(in srgb, var(--color-secondary) 75%, transparent);
 }
 
-/* The assistant's floating orb in light (2026-11-07): the near-black glass core was a dark blot on a light
-   screen — solid in the gym's colour, white sparkle, the spinning ring kept. */
-:root[data-mode="light"] .ai-orb__core { background: var(--color-primary-700); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35); }
-:root[data-mode="light"] .ai-orb [data-floating-chathead] svg, :root[data-mode="light"] .ai-orb > svg { color: #FFFFFF !important; filter: none !important; }
-:root[data-mode="light"] .ai-orb { filter: drop-shadow(0 8px 18px color-mix(in srgb, var(--color-primary) 40%, transparent)); }
+/* The assistant's floating orb in light (2026-11-07, second pass — the owner: "look at the dark mode version,
+   it's so good"). The same jewel as dark: a deep glowing core, the spinning gradient ring, a glowing sparkle.
+   Only the core is made opaque, so the light page behind cannot wash it grey. */
+:root[data-mode="light"] .ai-orb__core {
+  background: radial-gradient(120% 120% at 30% 20%, color-mix(in srgb, var(--color-primary) 70%, #E9D5FF) 0%, color-mix(in srgb, var(--color-primary) 45%, #1a1530) 32%, #16142A 66%);
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+:root[data-mode="light"] .ai-orb > svg {
+  color: color-mix(in srgb, var(--color-primary) 22%, #FFFFFF) !important;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--color-primary) 85%, transparent)) !important;
+}
+:root[data-mode="light"] .ai-orb__ring {
+  background: conic-gradient(from 0deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 45%, #FFFFFF), color-mix(in srgb, var(--color-secondary) 70%, #FFFFFF), var(--color-primary));
+}
+:root[data-mode="light"] .ai-orb { filter: drop-shadow(0 10px 22px color-mix(in srgb, var(--color-primary) 45%, transparent)); }
 
 /* More (the owner, 2026-11-07: "moving icons with colors", both modes). --k runs 0%→100% down the list: the
    tile's colour slides from the gym's main colour to its second. Dark: a soft two-shade glow; light: solid. */
@@ -1831,3 +1841,40 @@ img { -webkit-user-drag: none; user-select: none; }
 .about-day { flex: none; min-width: 44px; text-align: center; font-size: 12px; font-weight: 700; padding: 4px 8px; border-radius: 8px;
   background: color-mix(in srgb, var(--color-primary) 16%, transparent); color: var(--color-primary-300); }
 :root[data-mode="light"] .about-card__icon:not([data-off]), :root[data-mode="light"] .about-day { background: var(--color-primary-700); color: #FFFFFF; }
+
+/* Dropdowns (the owner, 2026-11-07: "that kind of UI of the dropdown box, enhance the design"). Tapping any
+   <select> opens this sheet instead of the phone's plain list (components/ui/SelectEnhancer.tsx). The closed
+   field wears one chevron, the same everywhere. */
+select.field-input, select:not([multiple]):not([size]) {
+  appearance: none; -webkit-appearance: none; padding-right: 2.4rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239a9cae' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 0.85rem center; background-size: 16px;
+}
+.cf-sel { position: fixed; inset: 0; z-index: 1000; background: var(--glass-scrim); display: flex; align-items: flex-end; justify-content: center;
+  -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+.cf-sel__panel { width: 100%; max-width: 560px; max-height: 76dvh; display: flex; flex-direction: column;
+  background: var(--surface-solid); border: 1px solid var(--glass-line); border-bottom: 0; border-radius: 26px 26px 0 0;
+  box-shadow: 0 -20px 50px -20px rgba(0, 0, 0, 0.55); padding: 8px 14px calc(env(safe-area-inset-bottom) + 12px); }
+.cf-sel__grab { width: 40px; height: 4px; border-radius: 4px; background: rgb(var(--hair-rgb, 233 233 237) / 0.25); margin: 2px auto 10px; flex: none; }
+.cf-sel__head { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 10px; flex: none; }
+.cf-sel__head b { font-size: 17px; font-weight: 700; color: var(--color-text-primary); }
+.cf-sel__x { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; color: var(--color-text-secondary);
+  border: 1px solid rgb(var(--hair-rgb, 233 233 237) / 0.14); }
+.cf-sel__search { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 12px; margin-bottom: 8px; flex: none; border-radius: 12px;
+  background: var(--raised-solid); border: 1px solid rgb(var(--hair-rgb, 233 233 237) / 0.12); color: var(--color-text-muted); }
+.cf-sel__search input { flex: 1; min-width: 0; background: transparent; outline: none; font-size: 15px; color: var(--color-text-primary); }
+.cf-sel__list { overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 4px; padding: 2px 0; }
+.cf-sel__group { font-size: 11.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-text-muted); padding: 10px 6px 4px; }
+.cf-sel__opt { width: 100%; min-height: 50px; padding: 0 14px; border-radius: 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  text-align: left; font-size: 15.5px; font-weight: 500; color: var(--color-text-primary); transition: background 0.15s; }
+.cf-sel__opt:active { background: color-mix(in srgb, var(--color-primary) 12%, transparent); }
+.cf-sel__opt.is-on { background: color-mix(in srgb, var(--color-primary) 18%, transparent); color: var(--color-primary-300); font-weight: 700;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 45%, transparent); }
+:root[data-mode="light"] .cf-sel__opt.is-on { background: var(--color-primary-700); color: #FFFFFF; box-shadow: none; }
+.cf-sel__opt:disabled { opacity: 0.4; }
+.cf-sel__none { font-size: 14px; color: var(--color-text-muted); padding: 16px 6px; }
+
+/* The coach rail's open view as the assistant's jewel (TrainerHub RailOrb, 2026-11-07). */
+.rail-orb__icon { color: color-mix(in srgb, var(--color-primary) 22%, #FFFFFF);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--color-primary) 85%, transparent)); }
+.rail-disc { background: var(--color-surface); color: var(--color-text-secondary); border: 1px solid rgb(var(--hair-rgb, 233 233 237) / 0.10); }

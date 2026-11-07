@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { useScrollMemory } from '../../hooks/useScrollMemory';
 import WhatsNew from '../../components/WhatsNew';
 import TodayPanel from './hub/TodayPanel';
 import YouSheet from './hub/YouSheet';
@@ -69,6 +70,8 @@ export default function TrainerHub() {
   const app = useGymApp();
   const classesOn = moduleOn(app, 'classes');
   const [params, setParams] = useSearchParams();
+  const railRef = useRef<HTMLElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
   const [rooms, setRooms] = useState<Room[] | null | undefined>(null);
   const [convs, setConvs] = useState<Conversation[]>([]);
   const [coachings, setCoachings] = useState<Coaching[]>([]);
@@ -200,6 +203,13 @@ export default function TrainerHub() {
     catch (e) { toast.error(errorMessage(e, 'Could not change your status')); }
   };
 
+  // Since the hub is pinned (2026-11-07) its rail and panel are the scrollers, not <main>: each keeps its place,
+  // the panel per view, so coming Back from a trainee lands where the coach left off. Keyed with "ready" so the
+  // restore runs once the columns exist, not against the loading skeleton.
+  const ready = rooms === null ? 'loading' : 'ready';
+  useScrollMemory(railRef, `hub-rail:${ready}`);
+  useScrollMemory(panelRef, `hub-panel:${view}:${ready}`);
+
   if (rooms === null) return <div style={{ padding: 'var(--gutter)' }}><SkeletonList /></div>;
 
   return (
@@ -210,19 +220,13 @@ export default function TrainerHub() {
       {/* What changed for coaches (0212), once. */}
       <WhatsNew app="trainer" />
       {/* ---- the rail ---- */}
-      <nav aria-label="Your trainees" className="flex flex-col items-center flex-none scrollbar-hide"
+      <nav ref={railRef} aria-label="Your trainees" className="flex flex-col items-center flex-none scrollbar-hide"
         style={{ width: 74, gap: 8, padding: `12px 0 ${PANEL_SPACE}px`, overflowY: 'auto', overscrollBehavior: 'contain', minHeight: 0 }}>
         <RailButton label="Today" on={view === 'today'} onClick={showToday} badge={requests + queue.length} dataAttr="today">
-          <span className="grid place-items-center" style={{ width: 46, height: 46, borderRadius: 'inherit',
-            background: view === 'today' ? 'var(--color-primary)' : 'var(--color-surface)', color: view === 'today' ? '#fff' : 'var(--color-text-secondary)' }}>
-            <Sun size={23} weight={view === 'today' ? 'fill' : 'regular'} />
-          </span>
+          <RailOrb on={view === 'today'}><Sun size={22} weight={view === 'today' ? 'fill' : 'regular'} /></RailOrb>
         </RailButton>
         <RailButton label="Personal training" on={view === 'pt'} onClick={showPt} badge={unreadAll} dataAttr="pt">
-          <span className="grid place-items-center" style={{ width: 46, height: 46, borderRadius: 'inherit',
-            background: view === 'pt' ? 'var(--color-primary)' : 'var(--color-surface)', color: view === 'pt' ? '#fff' : 'var(--color-text-secondary)' }}>
-            <ChatCircleDots size={24} weight={view === 'pt' ? 'fill' : 'regular'} />
-          </span>
+          <RailOrb on={view === 'pt'}><ChatCircleDots size={23} weight={view === 'pt' ? 'fill' : 'regular'} /></RailOrb>
         </RailButton>
         <span aria-hidden style={{ width: 28, height: 2, borderRadius: 2, background: 'var(--color-border)' }} />
         {/* One round photo per package trainee (simplify, 2026-10-28). */}
@@ -243,7 +247,7 @@ export default function TrainerHub() {
       </nav>
 
       {/* ---- the panel: Today, or Personal training ---- */}
-      <section className="flex-1 min-w-0 min-h-0 flex flex-col overflow-y-auto overscroll-contain scrollbar-hide"
+      <section ref={panelRef} className="flex-1 min-w-0 min-h-0 flex flex-col overflow-y-auto overscroll-contain scrollbar-hide"
         style={{ background: 'color-mix(in srgb, var(--color-bg) 55%, transparent)', borderTopLeftRadius: 18, padding: `14px 14px ${PANEL_SPACE}px`, borderLeft: '1px solid var(--color-separator)' }}>
         {view === 'today' ? (
           <TodayPanel trainerId={trainerId} classes={today} queue={queue} onRequests={setRequests} arriving={arriving} />
@@ -340,6 +344,25 @@ function Badge({ n }: { n: number }) {
   );
 }
 
+/**
+ * The rail's Today and Personal training buttons (the owner, 2026-11-07: "like the chat bubble design in the member
+ * app"): the open one is the assistant's jewel — a deep glowing core, the spinning gradient ring (.ai-orb in
+ * index.css, so it follows the gym's colours and is still under reduced motion), a glowing icon; the other is a
+ * quiet dark disc.
+ */
+function RailOrb({ on, children }: { on: boolean; children: React.ReactNode }) {
+  if (!on) {
+    return <span className="grid place-items-center rail-disc" style={{ width: 46, height: 46, borderRadius: '50%' }}>{children}</span>;
+  }
+  return (
+    <span className="ai-orb rail-orb relative grid place-items-center" style={{ width: 46, height: 46, borderRadius: '50%' }}>
+      <span aria-hidden className="ai-orb__ring absolute inset-0 rounded-full" />
+      <span aria-hidden className="ai-orb__core absolute rounded-full" style={{ inset: 2 }} />
+      <span className="relative rail-orb__icon grid place-items-center">{children}</span>
+    </span>
+  );
+}
+
 function RailButton({ label, on, onClick, onLong, badge, trainee, dataAttr, children }: {
   label: string; on: boolean; onClick: () => void; onLong?: () => void; badge?: number; trainee?: string; dataAttr?: string; children: React.ReactNode;
 }) {
@@ -355,7 +378,7 @@ function RailButton({ label, on, onClick, onLong, badge, trainee, dataAttr, chil
         {/* Discord's pill: a bar at the edge marks the open one. */}
         <span aria-hidden className="absolute" style={{ left: -12, top: on ? 8 : 19, width: 4, height: on ? 30 : 8, borderRadius: 4,
           background: on ? 'var(--color-text-primary)' : 'transparent', transition: 'all .15s' }} />
-        <span className="block overflow-hidden" style={{ width: 46, height: 46, borderRadius: on ? 15 : 23, transition: 'border-radius .15s' }}>{children}</span>
+        <span className="block" style={{ width: 46, height: 46, borderRadius: 23 }}>{children}</span>
         {badge ? <Badge n={badge} /> : null}
       </span>
       <span aria-hidden data-rail-label className="block" style={{ maxWidth: 68, fontSize: 12, lineHeight: 1.15, textAlign: 'center',

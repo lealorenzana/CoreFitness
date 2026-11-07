@@ -4,6 +4,7 @@ import { supabase } from './lib/supabaseClient';
 import { syncUserCache } from './utils/auth';
 import { getGymContext, homeFor, myGyms, usableGyms } from './lib/gymContext';
 import { PhotoViewerHost } from './components/ui/PhotoViewer';
+import SelectEnhancer from './components/ui/SelectEnhancer';
 import { PhotoCropperHost } from './components/ui/PhotoCropper';
 import { lazyPage } from './lib/lazyPage';
 import { Suspense } from 'react';
@@ -247,6 +248,8 @@ function App() {
     <BrowserRouter>
       {/* Tap a photo to see it big; frame a photo before it uploads (guides G1). */}
       <PhotoViewerHost />
+      {/* Every dropdown opens a designed sheet, not the phone's plain list (2026-11-07). */}
+      <SelectEnhancer />
       <PhotoCropperHost />
       {/* The first-visit tours (guides G4). */}
       <TourHost />
