@@ -10,8 +10,6 @@ import { useGymModules } from '../../hooks/useGymModules';
 import { NAV, NAV_TIPS, isGroup, navVisible, type Entry, type Leaf } from './nav';
 import { myStaffPermissions, type StaffArea } from '../../lib/api/staffPermissions';
 
-const BG           = 'var(--color-bg)';
-const SURFACE      = 'var(--color-surface)';
 const BORDER       = 'var(--color-border)';
 const PRIMARY      = 'var(--color-primary)';
 const PRIMARY_LIGHT = 'var(--color-primary-light)';
@@ -146,7 +144,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {collapsed && (
         <div
           className="h-full flex flex-col items-center py-4 gap-1 flex-shrink-0"
-          style={{ width: ICON_RAIL_W, background: BG, borderRight: `1px solid ${BORDER}` }}
+          style={{ width: ICON_RAIL_W, background: 'var(--sidebar-rail, var(--color-bg))', borderRight: `1px solid ${BORDER}` }}
         >
           {/* Logo */}
           {/* The rail showed a generic dumbbell for every gym. It shows this
@@ -185,7 +183,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   }}
                   className="w-10 h-10 mx-auto rounded-lg flex items-center justify-center transition-colors relative"
                   style={{
-                    background: isActive ? PRIMARY_LIGHT : 'transparent',
+                    background: isActive ? 'var(--sidebar-active, var(--color-primary-light))' : 'transparent',
                     color: isActive ? PRIMARY : TEXT_MUTED,
                   }}
                   data-tip={title}
@@ -222,7 +220,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           className="h-full flex flex-col overflow-hidden"
           style={{
             width: DETAIL_W,
-            background: SURFACE,
+            // Light mode: a solid light tint of the gym's own colour (light.css --sidebar-bg), never plain white.
+            background: 'var(--sidebar-bg, var(--color-surface))',
             borderRight: `1px solid ${BORDER}`,
           }}
         >
@@ -278,7 +277,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   data-tip={NAV_TIPS[entry.path]}
                   className="flex items-center gap-2.5 px-3 h-9 rounded-lg text-[13px] font-medium transition-colors"
                   style={{
-                    background: isActive ? PRIMARY_LIGHT : 'transparent',
+                    background: isActive ? 'var(--sidebar-active, var(--color-primary-light))' : 'transparent',
                     color: isActive ? PRIMARY : TEXT_SECOND,
                   }}
                 >
@@ -334,7 +333,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                           data-tip={NAV_TIPS[child.path]}
                           className="flex items-center gap-2 px-2.5 h-8 rounded-lg text-[12px] font-medium transition-colors"
                           style={{
-                            background: isActive ? PRIMARY_LIGHT : 'transparent',
+                            background: isActive ? 'var(--sidebar-active, var(--color-primary-light))' : 'transparent',
                             color: isActive ? PRIMARY : TEXT_SECOND,
                           }}
                         >

@@ -85,6 +85,15 @@ check('…the old gym is asked to cancel', await n(`select count(*) n from membe
 check('…and the new gym\'s desk is told someone is switching in', await n(`select count(*) n from notifications where user_id = '${DESK_C}' and title = 'Switching in from another gym'`) === 1);
 await as(DESK_C);
 check('…and sees the tag on their request', (await db.query(`select * from gym_switching_in()`)).rows.length === 1);
+// 0237: the Switches list — who is switching in, never where from.
+let sl = (await db.query(`select * from gym_switch_list()`)).rows;
+check('0237: the new gym’s list shows Mia switching IN, waiting, and names no other gym',
+  sl.length === 1 && sl[0].direction === 'in' && sl[0].status === 'pending' && sl[0].name === 'Mia Test'
+  && !JSON.stringify(sl[0]).includes('Gym A') && !('from_gym' in sl[0]) && !('to_gym' in sl[0]), JSON.stringify(sl));
+await as(MEM);
+check('0237: a member cannot read the list', /owner or front desk/.test((await tryExec(`select * from gym_switch_list()`)) ?? ''));
+await as(COACH);
+check('0237: nor can a coach', /owner or front desk/.test((await tryExec(`select * from gym_switch_list()`)) ?? ''));
 await owner();
 await db.exec(`update gym_roles set status = 'archived' where gym_id = '${C}' and user_id = '${MEM}'`);
 check('declined: nothing moved, the old role is untouched', await n(`select count(*) n from workout_logs where member_id = '${MEM}' and gym_id = '${A}'`) === 1
@@ -118,6 +127,9 @@ check('the old gym is told, and its cancellation request waits', await n(`select
   && await n(`select count(*) n from membership_requests where gym_id = '${A}' and member_id = '${MEM}' and status = 'open'`) === 1);
 await as(OWNER_A);
 check('…and sees them as switched out', (await db.query(`select * from gym_switched_out()`)).rows.length === 1);
+sl = (await db.query(`select * from gym_switch_list()`)).rows;
+check('0237: the old gym’s list shows Mia switched OUT, with the refund request still waiting',
+  sl.length === 1 && sl[0].direction === 'out' && sl[0].status === 'completed' && sl[0].refund_waiting === true, JSON.stringify(sl));
 await as(MEM);
 check('they read the new gym now', (await one(`select current_gym_id() g`)).g === B);
 

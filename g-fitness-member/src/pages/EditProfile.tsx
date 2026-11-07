@@ -14,6 +14,7 @@ import { Page, PageTitle } from '../components/ui/page';
 import { Chip, NocButton, Panel, ProgressBar, SectionHead } from '../components/ui/noc';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { cropPhoto } from '../components/ui/PhotoCropper';
+import PlacePicker from '../components/ui/PlacePicker';
 
 /**
  * Edit profile (reworked 2026-09-19).
@@ -290,8 +291,8 @@ export default function EditProfile() {
           </Field>
           {errors.phone && <FieldError>{errors.phone}</FieldError>}
         </div>
-        <Field label="Address" hint="Optional — Mamburao barangay is enough.">
-          <TextInput autoComplete="street-address" value={form.address} onChange={(e) => set('address', e.target.value)} />
+        <Field label="Address" hint="Optional." as="div">
+          <PlacePicker value={form.address} onChange={(v) => set('address', v)} />
         </Field>
       </section>
 

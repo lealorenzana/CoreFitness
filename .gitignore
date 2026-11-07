@@ -26,3 +26,6 @@ CoreFitness-System-Documentation.html
 .claude/skills/
 
 .superpowers/
+
+# Personal Claude Code settings
+.claude/settings.local.json

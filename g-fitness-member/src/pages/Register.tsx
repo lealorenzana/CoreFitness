@@ -25,6 +25,7 @@ import GoogleButton from '../components/ui/GoogleButton';
 import { PhotoPick } from '../components/account/LoginPieces';
 import { keepPhotoForLater } from '../lib/api/logins';
 import { uploadMyAvatar } from '../lib/api/avatars';
+import PlacePicker from '../components/ui/PlacePicker';
 
 /**
  * Member sign-up — direction B of the 2026-11-02 mock-ups: **the member card
@@ -585,9 +586,11 @@ export default function Register() {
                   <Field id="rg-rel" label="Relationship" icon={Users} value={formData.emergencyRelationship}
                     placeholder="Mother, spouse, friend…" autoComplete="off" hint="Optional."
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => update('emergencyRelationship', e.target.value)} />
-                  <Field id="rg-addr" label="Home address" icon={MapPin} value={formData.address}
-                    placeholder="Barangay, Mamburao" autoComplete="street-address" hint="Optional."
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => update('address', e.target.value)} />
+                  {/* The same address picker across the system (owner, 2026-11-07). */}
+                  <div data-rg-addr>
+                    <p className="text-xs font-semibold mb-2 flex items-center gap-1.5" style={{ color: 'var(--color-text-secondary)' }}><MapPin size={13} /> Home address <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>· optional</span></p>
+                    <PlacePicker value={formData.address} onChange={(v) => update('address', v)} />
+                  </div>
 
                   {google ? (
                     <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }} data-google-account>

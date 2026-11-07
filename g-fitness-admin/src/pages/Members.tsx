@@ -28,7 +28,7 @@ import DatePicker from '../components/ui/DatePicker';
 import { formatDate, formatPhoneNumber } from '../utils/formatters';
 import { formatCheckInCode } from '../utils/checkInCode';
 import { exportMembersToCSV } from '../utils/exportUtils';
-import { UserPlus, Edit2, Archive, Download, Users, Filter, X, CheckCircle, XCircle, Clock, Eye, Pause, Play, Ban, ArrowUp, ArrowDown, UserX, UserCheck, Link2, Search } from 'lucide-react';
+import { UserPlus, Edit2, Archive, Download, Users, Filter, X, CheckCircle, XCircle, Clock, Eye, Pause, Play, Ban, ArrowUp, ArrowDown, UserX, UserCheck, Link2, Search, ArrowLeftRight } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import {
   listMembers,
@@ -54,6 +54,9 @@ import type {
   MembershipRow,
 } from '../types/db';
 import { realEmail } from '../lib/api/logins';
+import PlacePicker from '../components/ui/PlacePicker';
+import SwitchesList from '../components/members/SwitchesList';
+import { gymSwitchList } from '../lib/api/gymSwitches';
 
 /** A member row joined with their current membership, for the roster table. */
 interface MemberRow {
@@ -145,6 +148,10 @@ export default function Members() {
   const [plans, setPlans] = useState<MembershipPlanRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [showArchived, setShowArchived] = useState(false);
+  /** 0237: the Switching window, and how many are waiting to switch in (the tab's count). */
+  const [switchesOpen, setSwitchesOpen] = useState(false);
+  const [switchMarks, setSwitchMarks] = useState({ in: 0 });
+  useEffect(() => { void gymSwitchList().then((l) => setSwitchMarks({ in: (l ?? []).filter((r) => r.direction === 'in' && r.status === 'pending').length })); }, []);
   /** 0226: people Core Fitness suspended — marked, never explained. */
   const [byPlatform, setByPlatform] = useState<Set<string>>(new Set());
   useEffect(() => { void (async () => { setByPlatform(await platformSuspendedIds()); })(); }, []);
@@ -597,6 +604,7 @@ export default function Members() {
         <nav className="a-tabs" data-rd-tabs aria-label="Members views">
           <a href="#" className={!showArchived ? 'on' : ''} onClick={(e) => { e.preventDefault(); setShowArchived(false); setCurrentPage(1); setChip('all'); }}><Users size={14} />Members{!showArchived && <em>{members.length}</em>}</a>
           <a href="#" onClick={(e) => { e.preventDefault(); setShowPendingPanel(true); }} data-open-signups><Clock size={14} />Sign-ups{pendingCount > 0 && <em>{pendingCount}</em>}</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); setSwitchesOpen(true); }} data-open-switches><ArrowLeftRight size={14} />Switching{switchMarks.in > 0 && <em>{switchMarks.in}</em>}</a>
           <a href="#" className={showArchived ? 'on' : ''} onClick={(e) => { e.preventDefault(); setShowArchived(true); setCurrentPage(1); setChip('all'); }}><Archive size={14} />Archived</a>
         </nav>
         <button type="button" className="a-btn" onClick={() => setShowInvite(true)}><Link2 size={15} />Invite link</button>
@@ -644,6 +652,15 @@ export default function Members() {
           {msRequests.slice(0, 1).map((r) => requestOf(r, msRequests.length - 1))}
         </div>
       )}
+      {/* 0237: members moving between gyms — who is switching in, who switched out, what to do. */}
+      <FloatingWindow open={switchesOpen} onClose={() => setSwitchesOpen(false)} title="Switching gyms" icon={ArrowLeftRight} data-switches-window>
+        {switchesOpen && (
+          <SwitchesList
+            onOpenSignups={() => { setSwitchesOpen(false); setShowPendingPanel(true); }}
+            onOpenRequests={() => { setSwitchesOpen(false); setRequestsOpen(true); }}
+            onOpenMember={(id) => { setSwitchesOpen(false); setViewingId(id); }} />
+        )}
+      </FloatingWindow>
       <FloatingWindow open={requestsOpen} onClose={() => setRequestsOpen(false)} title="Requests to pause or cancel" icon={Pause} count={msRequests?.length ?? 0} data-requests-window>
         <div className="att flex flex-col gap-2" style={{ height: 'auto', overflow: 'visible', padding: '12px 18px' }}>{(msRequests ?? []).map((r) => requestOf(r))}</div>
       </FloatingWindow>
@@ -1034,7 +1051,10 @@ function EditMemberForm({
           onChange={(v) => setForm({ ...form, dateOfBirth: v })} max={todayKey()} />
         <SelectField label="Gender" value={form.gender} onChange={(v) => setForm({ ...form, gender: v })} options={GENDERS} />
       </div>
-      <Field label="Address" value={form.address} onChange={(v) => setForm({ ...form, address: v })} />
+      <div>
+        <p className="text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>Address</p>
+        <PlacePicker value={form.address} onChange={(v) => setForm({ ...form, address: v })} />
+      </div>
 
       {/* The Account Status dropdown that used to sit here is gone.
           Suspending now requires a written reason (0069) and this form has

@@ -37,6 +37,7 @@ import type { ProfileRow, ProfileStatus } from '../types/db';
 import { cropPhoto } from '../components/ui/PhotoCropper';
 import { realEmail } from '../lib/api/logins';
 import MyUsernameBox from '../components/MyUsernameBox';
+import PlacePicker from '../components/ui/PlacePicker';
 
 /**
  * Admin settings — every tab here writes to the database.
@@ -427,8 +428,8 @@ export default function Settings() {
                       <input id="g-name" className="a-in" value={gymForm.gym_name} onChange={(e) => setGymForm({ ...gymForm, gym_name: e.target.value })} /></div>
                     <div className="a-fld"><label htmlFor="g-short">Short name <span style={{ fontWeight: 500 }}>· for small spaces</span></label>
                       <input id="g-short" className="a-in" value={gymForm.short_name} placeholder={DEFAULT_BRANDING.shortName} onChange={(e) => setGymForm({ ...gymForm, short_name: e.target.value })} /></div>
-                    <div className="a-fld" style={{ gridColumn: '1 / -1' }}><label htmlFor="g-address">Address</label>
-                      <input id="g-address" className={`a-in ${gymForm.address.trim() ? '' : 'warn'}`} value={gymForm.address} placeholder="Barangay, town, province" onChange={(e) => setGymForm({ ...gymForm, address: e.target.value })} /></div>
+                    <div className="a-fld" style={{ gridColumn: '1 / -1' }}><label>Address {!gymForm.address.trim() && <span style={{ color: 'var(--a-a300)' }}>· missing</span>}</label>
+                      <PlacePicker value={gymForm.address} inputClass="a-in" inputStyle={{}} onChange={(v) => setGymForm({ ...gymForm, address: v })} /></div>
                     <div className="a-fld"><label htmlFor="g-phone">Phone {!gymForm.phone.trim() && <span style={{ color: 'var(--a-a300)' }}>· missing</span>}</label>
                       <input id="g-phone" className={`a-in ${gymForm.phone.trim() ? '' : 'warn'}`} value={gymForm.phone} placeholder="+63 900 000 0000" onChange={(e) => setGymForm({ ...gymForm, phone: e.target.value })} /></div>
                     <div className="a-fld"><label htmlFor="g-email">Email for members {!gymForm.email.trim() && <span style={{ color: 'var(--a-a300)' }}>· missing</span>}</label>

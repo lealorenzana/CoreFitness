@@ -9,7 +9,7 @@ import { themeState, waitForPayment } from '../../lib/api/paymongo';
  * Your app → Look → Your themes (0212): a gym that bought its own colours
  * (0191's one-time unlock) keeps up to eight named colour pairs and switches
  * between them in one tap — this season's colours, an event's, the old ones.
- * Picking one fills the pickers; "Publish to members" is still what changes the
+ * Picking one fills the pickers; "Publish" is still what changes the
  * app. Without the unlock it says what saving needs; the database refuses too.
  */
 export default function SavedThemes({ accent, action, onPick }: { accent: string; action: string; onPick: (accent: string, action: string) => void }) {

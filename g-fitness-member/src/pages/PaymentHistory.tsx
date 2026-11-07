@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { usePaged } from '../hooks/usePaging';
 import Pager from '../components/ui/Pager';
 import { useNavigate } from 'react-router-dom';
-import { ArrowsClockwise, CaretRight, HourglassMedium, PaperPlaneTilt, Receipt } from '@phosphor-icons/react';
+import { ArrowsClockwise, CaretRight, DownloadSimple, HourglassMedium, PaperPlaneTilt, Receipt, ShareNetwork } from '@phosphor-icons/react';
+import { downloadReceiptPng, shareReceiptPng, type ReceiptDoc } from '../lib/receipt';
+import { supabase } from '../lib/supabaseClient';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { toast } from '../components/ui/Toast';
 import GlassSheet from '../components/ui/GlassSheet';
@@ -50,6 +52,9 @@ export default function PaymentHistory() {
   const [gym, setGym] = useState<GymSettingsRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState<PaymentRow | null>(null);
+  /** Their name, for the receipt image's "Billed to". */
+  const [myName, setMyName] = useState('');
+  const [saving, setSaving] = useState<'save' | 'share' | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -60,14 +65,24 @@ export default function PaymentHistory() {
           toast.error('Your session could not be verified. Please sign in again.');
           return;
         }
-        const [rows, current, reqs, settings] = await Promise.all([
+        const [rows, current, reqs, settings, me] = await Promise.all([
           listMemberPayments(id),
           getCurrentMembership(id).catch(() => null),
           listMyRenewalRequests(id),
           getGymSettings().catch(() => null),
+          supabase.from('profiles').select('first_name, last_name').eq('id', id).maybeSingle(),
         ]);
         if (cancelled) return;
         setPayments(rows);
+        const who = me.data as { first_name: string | null; last_name: string | null } | null;
+        setMyName([who?.first_name, who?.last_name].filter(Boolean).join(' '));
+        // ?receipt=<payment id> or ?receipt=latest (after paying online): open that receipt at once.
+        const want = new URLSearchParams(window.location.search).get('receipt');
+        if (want) {
+          const byDate = [...rows].sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''));
+          const hit = want === 'latest' ? byDate[0] : rows.find((r) => r.id === want);
+          if (hit) setOpen(hit);
+        }
         setMembership(current);
         setRequest(reqs?.find((r) => r.status === 'open') ?? null);
         setGym(settings);
@@ -111,6 +126,40 @@ export default function PaymentHistory() {
   /** The plan a payment bought: the 0091 snapshot, or — for older rows — the plan today, labelled as such. */
   const planOf = (p: PaymentRow): string =>
     p.plan_name ?? (currentPlanName ? `${currentPlanName} (current plan)` : 'Membership');
+
+  /** The receipt as the desk prints it — every line from this payment's own record. */
+  const receiptOf = (p: PaymentRow): ReceiptDoc => ({
+    gymName: gym?.gym_name ?? 'Your gym',
+    gymLines: [gym?.address, gym?.phone, gym?.email].filter((x): x is string => !!x && !!x.trim()),
+    logoUrl: null,
+    title: 'Official receipt',
+    number: p.invoice_number ?? '—',
+    date: longDate(p.paid_on),
+    status: { text: STATUS[p.status].label, tone: p.status === 'completed' ? 'done' : p.status === 'pending' ? 'waiting' : 'void' },
+    lines: [
+      ...(myName ? [{ label: 'Billed to', value: myName }] : []),
+      { label: 'For', value: planOf(p) },
+      { label: 'Method', value: p.method.replace(/^\w/, (c) => c.toUpperCase()) },
+      ...(p.notes ? [{ label: 'Note', value: p.notes }] : []),
+    ],
+    total: Number(p.amount),
+    footer: ['Thank you for training with us.', 'Keep this for your records.'],
+  });
+  const fileOf = (p: PaymentRow) => `receipt-${p.invoice_number ?? p.paid_on}`;
+  const saveReceipt = async (p: PaymentRow, how: 'save' | 'share') => {
+    setSaving(how);
+    try {
+      if (how === 'save') { await downloadReceiptPng(receiptOf(p), fileOf(p)); toast.success('Receipt saved'); }
+      else {
+        const out = await shareReceiptPng(receiptOf(p), fileOf(p));
+        if (out === 'saved') toast.success('Receipt saved — this phone could not share it directly');
+      }
+    } catch (e) {
+      toast.error(errorMessage(e, 'The receipt could not be made'));
+    } finally {
+      setSaving(null);
+    }
+  };
 
   return (
     <Page>
@@ -253,7 +302,16 @@ export default function PaymentHistory() {
                 Waiting for the desk to confirm it — it counts once confirmed.
               </p>
             )}
-            <NocButton variant="ghost" className="w-full" style={{ marginTop: 16 }} onClick={() => setOpen(null)}>Done</NocButton>
+            {/* Keep it: as an image in the phone's photos or files, or straight to Messenger/email. */}
+            <div className="grid grid-cols-2" style={{ gap: 8, marginTop: 16 }} data-receipt-actions>
+              <NocButton variant="action" disabled={saving !== null} onClick={() => void saveReceipt(open, 'save')} data-receipt-save>
+                <DownloadSimple size={16} weight="bold" /> {saving === 'save' ? 'Saving…' : 'Save receipt'}
+              </NocButton>
+              <NocButton variant="action" disabled={saving !== null} onClick={() => void saveReceipt(open, 'share')} data-receipt-share>
+                <ShareNetwork size={16} weight="bold" /> {saving === 'share' ? 'Opening…' : 'Share'}
+              </NocButton>
+            </div>
+            <NocButton variant="ghost" className="w-full" style={{ marginTop: 8 }} onClick={() => setOpen(null)}>Done</NocButton>
           </div>
         )}
       </GlassSheet>

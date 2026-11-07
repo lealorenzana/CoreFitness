@@ -688,6 +688,14 @@
     {
       "file": "member-logins-check.js",
       "app": "member"
+    },
+    {
+      "file": "admin-switches-address-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "member-receipts-address-check.js",
+      "app": "member"
     }
   ]
 }

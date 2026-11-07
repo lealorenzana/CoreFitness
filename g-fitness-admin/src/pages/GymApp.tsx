@@ -141,7 +141,7 @@ export default function GymApp() {
       // '' clears the logo, a URL sets it; this form always knows which it means.
       await saveGymLook({ accent: look.accent, accentAction: look.action || null, logoUrl: look.logo_url });
       await load();
-      showToast('Published. Your members see this next time they open the app.', 'success');
+      showToast('Published — this dashboard shows it now; members and coaches see it next time they open the app.', 'success');
     } catch (e) { showToast(e instanceof Error ? e.message : 'That could not be saved', 'error'); }
     finally { setSaving(false); }
   };
@@ -306,9 +306,13 @@ export default function GymApp() {
           <p className="a-sub" style={{ marginTop: 6 }}>Square works best — it shows in a circle. With none, members see the Core Fitness mark.</p>
           </>}
 
-          <button type="button" className="a-btn violet" style={{ marginTop: 'auto', alignSelf: 'flex-end' }} onClick={() => void saveLook()} disabled={saving || uploading}>
-            <Check size={15} />{saving ? 'Publishing…' : 'Publish to members'}
-          </button>
+          {/* The look is the members' and coaches' app AND this dashboard (owner, 2026-11-07) — not members alone. */}
+          <div style={{ marginTop: 'auto', alignSelf: 'flex-end', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <p className="a-sub" data-publish-scope>Changes your members’ and coaches’ app, and this dashboard.</p>
+            <button type="button" className="a-btn violet" onClick={() => void saveLook()} disabled={saving || uploading}>
+              <Check size={15} />{saving ? 'Publishing…' : 'Publish'}
+            </button>
+          </div>
         </Split>
       )}
 

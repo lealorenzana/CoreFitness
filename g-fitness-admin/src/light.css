@@ -292,3 +292,12 @@
 :root[data-mode="light"] .award-medal[data-tier="silver"]   { background: #64748B !important; border-color: #64748B !important; }
 :root[data-mode="light"] .award-medal[data-tier="gold"]     { background: #B45309 !important; border-color: #B45309 !important; }
 :root[data-mode="light"] .award-medal[data-tier="platinum"] { background: var(--fill-primary) !important; border-color: var(--fill-primary) !important; }
+
+/* The sidebar in light (owner, 2026-11-07): "solid light colour of what the theme of their gym is". Steps of the
+   gym's own colour — the icon rail a shade deeper than the panel, the page you are on deeper again — so it reads
+   as the gym's, not as white. Lines stay drawn. */
+:root[data-mode="light"] {
+  --sidebar-bg:     color-mix(in srgb, var(--color-primary) 9%, #F8F8FB);
+  --sidebar-rail:   color-mix(in srgb, var(--color-primary) 14%, #F1F1F6);
+  --sidebar-active: color-mix(in srgb, var(--color-primary) 20%, #FFFFFF);
+}

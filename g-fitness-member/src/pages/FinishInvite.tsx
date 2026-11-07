@@ -12,6 +12,7 @@ import { logout } from '../utils/auth';
 import { myLogin, realEmail, setMyUsername, usernameShape, type MyLogin } from '../lib/api/logins';
 import { uploadMyAvatar } from '../lib/api/avatars';
 import { PhotoPick, UsernameInput } from '../components/account/LoginPieces';
+import PlacePicker from '../components/ui/PlacePicker';
 
 interface Mine {
   gym_id: string; gym_name: string; logo_url: string | null;
@@ -220,7 +221,7 @@ export default function FinishInvite({ token }: { token: string }) {
             <Field label="Their phone"><TextInput type="tel" inputMode="tel" value={f.ePhone} onChange={(e) => set('ePhone', e.target.value)} placeholder="0917 …" /></Field>
             <Field label="Relationship"><TextInput value={f.eRel} onChange={(e) => set('eRel', e.target.value)} placeholder="Mother, friend…" /></Field>
           </div>
-          <Field label="Home address" hint="Optional."><TextInput value={f.address} onChange={(e) => set('address', e.target.value)} placeholder="Barangay, town" autoComplete="street-address" /></Field>
+          <Field label="Home address" hint="Optional." as="div"><PlacePicker value={f.address} onChange={(v) => set('address', v)} /></Field>
         </section>
       )}
 

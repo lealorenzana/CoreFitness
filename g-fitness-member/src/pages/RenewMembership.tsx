@@ -399,6 +399,7 @@ export default function RenewMembership() {
             <div className="flex items-center" style={{ gap: 10 }}>
               <Check size={18} weight="bold" style={{ color: 'var(--color-primary-300)' }} />
               <span className="flex-1" style={{ fontSize: 13.5, color: 'var(--color-text-primary)' }}>Payment received{paidLine ? ` — ${paidLine.replace(/^Paid /, '')}` : ''}.{/^Paid Day pass/.test(paidLine ?? '') ? '' : ' Your membership is renewed.'}</span>
+              <NocButton variant="ghost" onClick={() => navigate('/member/payments?receipt=latest')} data-see-receipt>Receipt</NocButton>
               <NocButton variant="ghost" onClick={() => navigate('/member/membership')}>See it</NocButton>
             </div>
           ) : (
