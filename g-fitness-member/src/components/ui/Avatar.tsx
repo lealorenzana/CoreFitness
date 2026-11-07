@@ -63,7 +63,11 @@ export default function Avatar({
   const edge = tone === 'secondary' ? 'var(--color-secondary)' : 'var(--color-primary)';
   const fg = tone === 'secondary' ? 'var(--color-secondary)' : 'var(--color-primary-300)';
   const viewable = zoom && showPhoto;
-  const view = (e: { stopPropagation: () => void; preventDefault: () => void }) => {
+  // Inside something tappable (a row, a rail button, a link) the tap belongs to that — the person opens, not the
+  // zoom (the owner, 2026-11-07: tapping Lea in the coach's rail showed her photo big). Alone, the photo zooms.
+  const insideTappable = (el: Element | null) => !!el?.parentElement?.closest('button, a, [role="button"], [role="link"], [data-row-click]');
+  const view = (e: { stopPropagation: () => void; preventDefault: () => void; currentTarget: EventTarget | null }) => {
+    if (insideTappable(e.currentTarget as Element | null)) return;
     e.stopPropagation(); e.preventDefault();
     openPhoto(photoUrl as string, name ? `${name}'s photo` : 'Photo');
   };
@@ -86,7 +90,7 @@ export default function Avatar({
       data-avatar-zoom={viewable ? '' : undefined}
       onClick={viewable ? view : undefined}
       onKeyDown={viewable ? (e) => { if (e.key === 'Enter' || e.key === ' ') view(e); } : undefined}
-      onPointerDown={viewable ? (e) => e.stopPropagation() : undefined}
+      onPointerDown={viewable ? (e) => { if (!insideTappable(e.currentTarget)) e.stopPropagation(); } : undefined}
     >
       {showPhoto ? (
         <img
