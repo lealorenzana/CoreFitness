@@ -1678,7 +1678,7 @@ img { -webkit-user-drag: none; user-select: none; }
 /* The coach's rail (TrainerHub) in light: a deeper step of the gym's tint, not the page mixed with black. */
 :root[data-mode="light"] {
   --rail-bg: color-mix(in srgb, var(--color-primary) 12%, #E2E2EA);
-  --rail-card: var(--color-surface);
+  --rail-card: var(--surface-solid); /* solid: it floats over the list (2026-11-07) */
   --rail-card-shadow: 0 8px 22px -10px rgba(22, 22, 38, 0.25);
 }
 
@@ -1810,3 +1810,24 @@ img { -webkit-user-drag: none; user-select: none; }
 /* The coach's hub: the rail and the panel are scrolling columns — their rows keep their size and scroll,
    never squeeze to fit (2026-11-07). */
 [data-trainer-hub] > nav > *, [data-trainer-hub] > section > * { flex-shrink: 0; }
+
+/* A trainee's About, for their coach (the owner, 2026-11-07: "clean this UI/UX"). Every section is a card with an
+   icon tile and a title — the blocks that live in their own components (streak, records, program, team, photos)
+   take the same card here — the stats are tiles, plan days are rows with a day chip. */
+.about-stack { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.about-card, .about-stack > :not([data-about-card]) {
+  background: var(--color-surface); border: 1px solid rgb(var(--hair-rgb, 233 233 237) / 0.10);
+  border-radius: 16px; padding: 13px 14px !important; border-bottom-width: 1px !important;
+}
+.about-stack > :empty { display: none; }
+.about-card__head { display: flex; align-items: center; gap: 9px; font-size: 14px; font-weight: 700; margin-bottom: 9px; }
+.about-card__icon { width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; flex: none;
+  background: color-mix(in srgb, var(--color-primary) 18%, transparent); color: var(--color-primary-300); }
+.about-card__icon[data-off] { background: var(--color-surface-high); color: var(--color-text-muted); }
+.about-card__empty { font-size: 13px; color: var(--color-text-muted); }
+.about-stat { padding: 11px 12px; border-radius: 14px; background: var(--color-surface); border: 1px solid rgb(var(--hair-rgb, 233 233 237) / 0.10); min-width: 0; }
+.about-stat small { display: block; font-size: 11.5px; font-weight: 600; color: var(--color-text-muted); }
+.about-stat b { display: block; margin-top: 3px; font-size: 17px; font-weight: 700; color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.about-day { flex: none; min-width: 44px; text-align: center; font-size: 12px; font-weight: 700; padding: 4px 8px; border-radius: 8px;
+  background: color-mix(in srgb, var(--color-primary) 16%, transparent); color: var(--color-primary-300); }
+:root[data-mode="light"] .about-card__icon:not([data-off]), :root[data-mode="light"] .about-day { background: var(--color-primary-700); color: #FFFFFF; }

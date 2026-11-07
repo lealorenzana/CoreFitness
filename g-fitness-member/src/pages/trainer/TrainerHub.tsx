@@ -274,7 +274,8 @@ export default function TrainerHub() {
       {me && (
         <div className="fixed flex items-center" data-user-panel data-presence={presence}
           style={{ left: 8, right: 8, bottom: 'calc(env(safe-area-inset-bottom) + 8px)', gap: 10, padding: '8px 10px', borderRadius: 18, zIndex: 30,
-            background: 'var(--rail-card, color-mix(in srgb, var(--color-surface) 92%, #000))', border: '1px solid var(--color-separator)', boxShadow: 'var(--rail-card-shadow, 0 8px 24px rgba(0,0,0,.35))' }}>
+            // Solid (the owner, 2026-11-07): it floats over the list, so glass let the rows show through it.
+            background: 'var(--rail-card, color-mix(in srgb, var(--surface-solid) 92%, #000))', border: '1px solid var(--color-separator)', boxShadow: 'var(--rail-card-shadow, 0 8px 24px rgba(0,0,0,.35))' }}>
           <button type="button" onClick={() => setYouOpen(true)} aria-label="You — your status and screens" data-you-button className="flex items-center min-w-0 flex-1 text-left noc-press" style={{ gap: 10 }}>
             <span className="relative flex-none">
               <Avatar name={me.name} photoUrl={me.photo} size={38} zoom={false} />

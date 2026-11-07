@@ -9,7 +9,7 @@ import TraineeSquad from './TraineeSquad';
 import TraineeStreak from './TraineeStreak';
 import TraineePhotos from './TraineePhotos';
 import { TextArea, TextInput } from '../ui/Field';
-import { InlineStat, NocButton, ProgressBar, StatusPill, TextTabs } from '../ui/noc';
+import { NocButton, ProgressBar, StatusPill, TextTabs } from '../ui/noc';
 import { supabase } from '../../lib/supabaseClient';
 import { listMyTrainerMembers } from '../../lib/api/trainerRoster';
 import { getCurrentTrainerId, getMemberDetailForTrainer, type MemberDetailForTrainer } from '../../services/trainerService';
@@ -34,22 +34,19 @@ function SharedBlock({
   emptyText: string;
   children?: ReactNode;
 }) {
+  // A card per block (the owner, 2026-11-07: "clean this UI/UX") — an icon tile and a title, then the content.
   return (
-    <div style={{ padding: '12px 0', borderBottom: '1px solid var(--color-separator)' }}>
-      <p className="flex items-center" style={{
-        gap: 7, fontSize: 12, fontWeight: 600, marginBottom: 6,
-        color: shared ? 'var(--color-primary-300)' : 'var(--color-text-muted)',
-      }}>
-        {shared ? <BlockIcon size={14} /> : <EyeSlash size={14} />} {label}
+    <div className="about-card" data-about-card>
+      <p className="about-card__head" style={{ color: shared ? 'var(--color-text-primary)' : 'var(--color-text-muted)' }}>
+        <span className="about-card__icon" data-off={!shared || undefined}>{shared ? <BlockIcon size={15} weight="bold" /> : <EyeSlash size={15} />}</span>
+        {label}
       </p>
       {!shared ? (
-        <p style={{ fontSize: 12.5, fontStyle: 'italic', color: 'var(--color-text-muted)' }}>
-          Not shared — this member keeps it private.
-        </p>
+        <p className="about-card__empty" style={{ fontStyle: 'italic' }}>Not shared — this member keeps it private.</p>
       ) : empty ? (
-        <p style={{ fontSize: 12.5, color: 'var(--color-text-muted)' }}>{emptyText}</p>
+        <p className="about-card__empty">{emptyText}</p>
       ) : (
-        <div className="flex flex-col" style={{ gap: 3 }}>{children}</div>
+        <div className="flex flex-col" style={{ gap: 6 }}>{children}</div>
       )}
     </div>
   );
@@ -227,10 +224,10 @@ export default function TraineeAbout({ member, onChat, initialTab = 'progress' }
           what the member declared and drives their class recommendations;
           "Earned" is what this gym has recorded. Labelling both "Level"
           made the member app's own screens contradict each other. */}
-      <div className="grid grid-cols-3" style={{ gap: 12, marginTop: 14 }}>
-        <InlineStat value={<span className="capitalize" style={{ fontSize: 17 }}>{row?.experienceLevel ?? '—'}</span>} label="Says" />
-        <InlineStat value={<span style={{ fontSize: 17 }}>{detail?.progression ? levelLabel(detail.progression.level) : '—'}</span>} label="Earned" />
-        <InlineStat value={<span style={{ fontSize: 17 }}>{row?.visitsLast30 ?? '—'}</span>} label="Visits (30d)" />
+      <div className="grid grid-cols-3" style={{ gap: 8, marginTop: 12 }} data-about-stats>
+        <div className="about-stat"><small>Self-rated</small><b className="capitalize">{row?.experienceLevel ?? '—'}</b></div>
+        <div className="about-stat"><small>Earned level</small><b>{detail?.progression ? levelLabel(detail.progression.level) : '—'}</b></div>
+        <div className="about-stat"><small>Visits · 30 days</small><b>{row?.visitsLast30 ?? '—'}</b></div>
       </div>
 
       <div style={{ marginTop: 14 }}>
@@ -239,7 +236,7 @@ export default function TraineeAbout({ member, onChat, initialTab = 'progress' }
       </div>
 
       {sheetTab === 'progress' && (
-        <div data-tab-progress>
+        <div data-tab-progress className="about-stack">
           <TraineeStreak memberId={member.id} firstName={member.name.split(' ')[0]} />
           {/* Their latest personal records (0123), when they share their workouts. */}
           <TraineeRecords memberId={member.id} />
@@ -255,12 +252,12 @@ export default function TraineeAbout({ member, onChat, initialTab = 'progress' }
               emptyText="No active goals."
             >
               {detail?.goals.map((g) => (
-                <p key={g.id} className="truncate" style={line}>
-                  {g.title}
+                <p key={g.id} className="flex items-baseline justify-between" style={{ ...line, gap: 10 }}>
+                  <span className="truncate">{g.title}</span>
                   {/* The same current value the member's Goals tab shows (0087). */}
                   {g.target_value != null && (
-                    <span style={muted}>
-                      {' '}— {detail.goalValues[g.id] != null ? `${detail.goalValues[g.id]} of ` : 'target '}{g.target_value}
+                    <span className="flex-none tabular-nums" style={muted}>
+                      {detail.goalValues[g.id] != null ? `${detail.goalValues[g.id]} of ` : 'target '}{g.target_value}
                     </span>
                   )}
                 </p>
@@ -318,7 +315,7 @@ export default function TraineeAbout({ member, onChat, initialTab = 'progress' }
       )}
 
       {sheetTab === 'training' && (
-        <div data-tab-training>
+        <div data-tab-training className="about-stack">
           {/* The gym program they follow, and assigning one (0122). */}
           <TraineeProgram memberId={member.id} firstName={member.name.split(' ')[0]} />
           {detailLoading ? (
@@ -343,9 +340,10 @@ export default function TraineeAbout({ member, onChat, initialTab = 'progress' }
                     const id = detail.plan!.routineByDay[d];
                     const r = id ? detail.routines.find((x) => x.id === id) : null;
                     return (
-                      <div key={d} className="flex items-center" style={{ gap: 8 }}>
-                        <p className="truncate min-w-0" style={muted}>
-                          {DAY_LABELS[d]}: {!id ? 'any workout' : r ? r.name : 'a routine (workouts not shared)'}
+                      <div key={d} className="flex items-center" style={{ gap: 10 }}>
+                        <span className="about-day">{DAY_LABELS[d]}</span>
+                        <p className="truncate min-w-0 flex-1" style={line}>
+                          {!id ? 'Any workout' : r ? r.name : 'A routine (workouts not shared)'}
                         </p>
                         {/* The member's AI coach set this day (0145). */}
                         {detail.plan!.coachDays.includes(d) && (
@@ -412,7 +410,7 @@ export default function TraineeAbout({ member, onChat, initialTab = 'progress' }
       )}
 
       {sheetTab === 'notes' && (
-        <div data-tab-notes>
+        <div data-tab-notes className="about-stack">
           {/* Notes already sent, newest first, with the member's side of it. */}
           {sentNotes && sentNotes.length > 0 && (
         <div style={{ marginTop: 14 }}>
@@ -483,7 +481,7 @@ export default function TraineeAbout({ member, onChat, initialTab = 'progress' }
       {/* Who to call if something happens mid-session — kept current by the
           member in Edit profile. Always shown: safety, not a log. */}
       {sheetTab === 'safety' && (
-        <div data-tab-safety>
+        <div data-tab-safety className="about-stack">
           {detailLoading ? (
           <p style={{ fontSize: 12.5, padding: '12px 0', color: 'var(--color-text-muted)' }}>Loading their details…</p>
         ) : (
