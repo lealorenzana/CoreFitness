@@ -209,13 +209,16 @@ export function NocButton({
     variant === 'fill'
       ? { background: 'var(--grad-action, var(--color-secondary))', color: 'var(--color-bg)', border: '1px solid var(--color-secondary)',
           boxShadow: '0 0 26px -8px var(--color-secondary)' }
+      // Light mode (the owner, 2026-11-07): a solid fill with white words, not a white
+      // inside with a glow — the --nb-* variables are set only under [data-mode="light"].
       : variant === 'action'
-        ? { color: 'var(--color-secondary)', border: '1px solid var(--color-secondary)',
-            background: 'color-mix(in srgb, var(--color-secondary) 8%, transparent)',
-            boxShadow: '0 0 26px -10px var(--color-secondary)' }
+        ? { color: 'var(--nb-action-fg, var(--color-secondary))', border: '1px solid var(--color-secondary)',
+            background: 'var(--nb-action-bg, color-mix(in srgb, var(--color-secondary) 8%, transparent))',
+            boxShadow: 'var(--nb-action-shadow, 0 0 26px -10px var(--color-secondary))' }
         : variant === 'structure'
-          ? { color: 'var(--color-primary-300)', border: '1px solid var(--color-primary)',
-              background: 'color-mix(in srgb, var(--color-primary) 12%, transparent)' }
+          ? { color: 'var(--nb-structure-fg, var(--color-primary-300))', border: '1px solid var(--nb-structure-line, var(--color-primary))',
+              background: 'var(--nb-structure-bg, color-mix(in srgb, var(--color-primary) 12%, transparent))',
+              boxShadow: 'var(--nb-structure-shadow, none)' }
           : { color: 'var(--color-text-secondary)', border: '1px solid var(--color-hairline)' };
 
   return (
@@ -410,7 +413,8 @@ export function Panel({
     position: 'relative',
     overflow: 'hidden',
     borderRadius: 'var(--radius-card)',
-    boxShadow: 'var(--shadow-panel)',
+    // Light gives a glow panel a tinted edge and a soft coloured shadow instead (--panel-edge-*, index.css).
+    boxShadow: glow ? `var(--panel-edge-${glow === 'action' ? 'action' : 'primary'}, var(--shadow-panel))` : 'var(--shadow-panel)',
     padding: 'var(--card-pad)',
     // Light mode gives each glow a flat tint instead (--panel-glow-*, index.css): solid fills only.
     background: glow

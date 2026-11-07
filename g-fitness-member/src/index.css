@@ -35,8 +35,8 @@
        for now because 114 call sites on unrebuilt screens nest one inside the
        other, and collapsing them would dissolve those cards into their parents.
        Collapse it once nothing nests. */
-    --color-surface:         #12121C;
-    --color-surface-raised:  #161522;
+    --surface-solid:         #12121C;
+    --raised-solid:          #161522;
     /* Inset tint only — a progress track, an empty matrix cell. Never a card. */
     --color-surface-high:    #1E1D2B;
 
@@ -1155,6 +1155,16 @@ html, body {
 .streak-road__stop.is-next .streak-road__dot { border: 2px solid var(--color-secondary); }
 .streak-road__label { margin-top: 4px; font-size: 12px; color: var(--color-text-muted); }
 .streak-road__stop.is-next .streak-road__label { color: var(--color-secondary); font-weight: 600; }
+/* Light (the owner, 2026-11-07): the road, its empty stops and the empty weeks were see-through
+   white — gone on a white sheet. Solid, tinted with the gym's colour, lines that can be seen. */
+:root[data-mode="light"] .streak-road__line { background: color-mix(in srgb, var(--color-primary) 18%, #D9D9E3); }
+:root[data-mode="light"] .streak-road__dot { background: #FFFFFF; border: 2px solid color-mix(in srgb, var(--color-primary) 30%, #B9BAC8); }
+:root[data-mode="light"] .streak-road__stop.is-done .streak-road__dot { background: var(--color-primary-700); border-color: var(--color-primary-700); }
+:root[data-mode="light"] .streak-road__stop.is-next .streak-road__dot { border: 2px solid var(--color-secondary); }
+:root[data-mode="light"] .streak-road__label { color: var(--color-text-secondary); }
+:root[data-mode="light"] .streak-week { background: color-mix(in srgb, var(--color-primary) 6%, #EEEEF3); border-color: color-mix(in srgb, var(--color-primary) 16%, #D5D6E0); }
+:root[data-mode="light"] .streak-week--hit { border-color: transparent; background: linear-gradient(160deg, var(--color-secondary), var(--color-primary-700)); }
+:root[data-mode="light"] .streak-week--current { background: transparent; border: 1.5px dashed var(--color-secondary); }
 
 @keyframes noc-streak-flicker {
   0%, 100% { transform: scale(1) rotate(0deg); }
@@ -1543,8 +1553,8 @@ img { -webkit-user-drag: none; user-select: none; }
    deep (gymTheme.applyAccent), so contrast holds on white. */
 :root[data-mode="light"] {
   --color-bg:              #F6F6F9;
-  --color-surface:         #FFFFFF;
-  --color-surface-raised:  #F1F1F6;
+  --surface-solid:         #FFFFFF;
+  --raised-solid:          #F1F1F6;
   --color-surface-high:    #E7E7EE;
   --color-primary-light:   #EFE8FD;
   --color-primary-200:     #4c1d95;
@@ -1561,6 +1571,16 @@ img { -webkit-user-drag: none; user-select: none; }
   --color-hairline:        rgba(20, 20, 32, 0.13);
   --color-separator:       rgba(20, 20, 32, 0.07);
   color-scheme: light;
+}
+/* NocButton in light (the owner, 2026-11-07): solid — the gym's deep accent, white words, a soft drop shadow. */
+:root[data-mode="light"] {
+  --nb-action-bg: var(--color-secondary);
+  --nb-action-fg: #FFFFFF;
+  --nb-action-shadow: 0 8px 18px -10px color-mix(in srgb, var(--color-secondary) 70%, transparent);
+  --nb-structure-bg: var(--color-primary-700);
+  --nb-structure-fg: #FFFFFF;
+  --nb-structure-line: var(--color-primary-700);
+  --nb-structure-shadow: 0 8px 18px -10px color-mix(in srgb, var(--color-primary) 70%, transparent);
 }
 /* Text written as "white" meant "the strongest text" — on light, that is near-black. */
 :root[data-mode="light"] .text-white { color: var(--color-text-primary); }
@@ -1646,8 +1666,8 @@ img { -webkit-user-drag: none; user-select: none; }
    separate; lines are drawn about twice as strongly. A premium theme still brings its own grounds. */
 :root[data-mode="light"] {
   --color-bg:             color-mix(in srgb, var(--color-primary) 6%, #ECECF2);
-  --color-surface:        color-mix(in srgb, var(--color-primary) 3%, #FAFAFC);
-  --color-surface-raised: color-mix(in srgb, var(--color-primary) 7%, #F0F0F5);
+  --surface-solid:        color-mix(in srgb, var(--color-primary) 3%, #FAFAFC);
+  --raised-solid:         color-mix(in srgb, var(--color-primary) 7%, #F0F0F5);
   --color-surface-high:   color-mix(in srgb, var(--color-primary) 11%, #E6E6EE);
   --glass-bg:             color-mix(in srgb, var(--color-primary) 3%, #FAFAFC);
   --glass-line:           rgba(20, 20, 32, 0.18);
@@ -1660,4 +1680,78 @@ img { -webkit-user-drag: none; user-select: none; }
   --rail-bg: color-mix(in srgb, var(--color-primary) 12%, #E2E2EA);
   --rail-card: var(--color-surface);
   --rail-card-shadow: 0 8px 22px -10px rgba(22, 22, 38, 0.25);
+}
+
+
+/* ── Glass (the owner, 2026-11-07: "glass morphism in the member app", both modes, a slow drift,
+   about 70% solid) ──────────────────────────────────────────────────────────────────────────────
+   Behind everything, .cf-ambient (components/layout/Ambient.tsx) — soft blobs of the gym's own two
+   colours, blurred, drifting over 22–34 s, still for anyone who asks for less motion. Every card and
+   field is then frosted glass: --color-surface / --color-surface-raised are the solid colours
+   (--surface-solid / --raised-solid, which a premium theme sets) mixed with transparency, so one
+   place decides how see-through the whole app is. Sheets keep their blur (glass.ts) over a lighter
+   tint. Words stay on the glass's tint, never straight on the colour. Toasts and menus stay solid
+   (--surface-solid). */
+:root {
+  /* About 70% solid — the owner's setting on the sample's slider, both modes (2026-11-07). */
+  --color-surface:        color-mix(in srgb, var(--surface-solid) 70%, transparent);
+  --color-surface-raised: color-mix(in srgb, var(--raised-solid) 64%, transparent);
+  --glass-bg:             color-mix(in srgb, var(--surface-solid) 88%, transparent);
+  --bar-glass:            color-mix(in srgb, var(--surface-solid) 80%, transparent);
+  /* Dark is quieter (the owner, 2026-11-07: "lessen the gradient background in the dark mode"). */
+  --amb-a: color-mix(in srgb, var(--color-primary) 40%, #000000);
+  --amb-b: color-mix(in srgb, var(--color-secondary) 24%, #000000);
+  --amb-c: color-mix(in srgb, var(--color-primary) 24%, #000000);
+  --amb-d: color-mix(in srgb, color-mix(in srgb, var(--color-secondary) 30%, var(--color-primary)) 45%, #000000);
+  --amb-strength: 0.32;
+}
+:root[data-mode="light"] {
+  --color-surface:        color-mix(in srgb, var(--surface-solid) 70%, transparent);
+  --color-surface-raised: color-mix(in srgb, var(--raised-solid) 64%, transparent);
+  --glass-bg:             color-mix(in srgb, var(--surface-solid) 88%, transparent);
+  --bar-glass:            color-mix(in srgb, var(--surface-solid) 80%, transparent);
+  --amb-a: color-mix(in srgb, var(--color-primary) 42%, #FFFFFF);
+  --amb-b: color-mix(in srgb, var(--color-secondary) 40%, #FFFFFF);
+  --amb-c: color-mix(in srgb, var(--color-primary) 26%, #FFFFFF);
+  --amb-d: color-mix(in srgb, var(--color-secondary) 22%, color-mix(in srgb, var(--color-primary) 30%, #FFFFFF));
+  --amb-strength: 0.8;
+}
+.cf-ambient { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+.cf-ambient__wash { position: absolute; inset: -25%; filter: blur(56px); opacity: var(--amb-strength); }
+.cf-ambient__wash span { position: absolute; border-radius: 50%; will-change: transform; }
+.cf-ambient__wash .a { background: var(--amb-a); width: 62%; height: 42%; top: 4%; left: -8%; animation: cf-amb-a 22s ease-in-out infinite alternate; }
+.cf-ambient__wash .b { background: var(--amb-b); width: 58%; height: 40%; top: 30%; right: -12%; animation: cf-amb-b 26s ease-in-out infinite alternate; }
+.cf-ambient__wash .c { background: var(--amb-c); width: 64%; height: 40%; bottom: 2%; left: 6%; animation: cf-amb-c 30s ease-in-out infinite alternate; }
+.cf-ambient__wash .d { background: var(--amb-d); width: 42%; height: 30%; top: 56%; left: 34%; opacity: 0.75; animation: cf-amb-a 34s ease-in-out infinite alternate-reverse; }
+@keyframes cf-amb-a { to { transform: translate(26%, 16%) scale(1.15); } }
+@keyframes cf-amb-b { to { transform: translate(-28%, 20%) scale(0.9); } }
+@keyframes cf-amb-c { to { transform: translate(22%, -24%) scale(1.2); } }
+@media (prefers-reduced-motion: reduce) { .cf-ambient__wash span { animation: none; } }
+
+/* Light, the earned level (the owner, 2026-11-07: "the light mode is still behind on the designs").
+   Dark gets its punch from a glow; light's equivalent is a solid tile — the gym's deep colour, white
+   words, the emblem in a frosted white well. */
+:root[data-mode="light"] [data-trophy-level] {
+  background: linear-gradient(0deg, var(--color-primary-700), var(--color-primary-700)) !important;
+  border-color: transparent !important;
+  box-shadow: 0 14px 30px -16px color-mix(in srgb, var(--color-primary) 80%, transparent);
+}
+:root[data-mode="light"] [data-trophy-level] [data-tl-emblem] {
+  background: rgba(255, 255, 255, 0.18) !important; border-color: rgba(255, 255, 255, 0.45) !important;
+  color: #FFFFFF !important; box-shadow: none !important;
+}
+:root[data-mode="light"] [data-trophy-level] [data-tl-eyebrow] { color: rgba(255, 255, 255, 0.85) !important; }
+:root[data-mode="light"] [data-trophy-level] [data-tl-name] { color: #FFFFFF !important; }
+:root[data-mode="light"] [data-trophy-level] [data-tl-sub],
+:root[data-mode="light"] [data-trophy-level] [data-tl-req] { color: rgba(255, 255, 255, 0.88) !important; }
+:root[data-mode="light"] [data-trophy-level] [data-tl-track] { background: rgba(255, 255, 255, 0.25) !important; }
+:root[data-mode="light"] [data-trophy-level] [data-tl-fill] { background: #FFFFFF !important; }
+
+/* Light, highlighted cards (2026-11-07): dark's glow becomes a tinted edge and a soft shadow in the
+   gym's colour over a slightly stronger tint — so a highlighted card still stands out in light. */
+:root[data-mode="light"] {
+  --panel-glow-primary: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
+  --panel-glow-action:  color-mix(in srgb, var(--color-secondary) 11%, var(--color-surface));
+  --panel-edge-primary: inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 34%, transparent), 0 14px 28px -18px color-mix(in srgb, var(--color-primary) 75%, transparent);
+  --panel-edge-action:  inset 0 0 0 1px color-mix(in srgb, var(--color-secondary) 38%, transparent), 0 14px 28px -18px color-mix(in srgb, var(--color-secondary) 75%, transparent);
 }

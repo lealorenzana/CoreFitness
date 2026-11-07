@@ -30,7 +30,7 @@ export const PREMIUM_THEMES: PremiumTheme[] = [
   { key: 'teal_graphite', name: 'Teal Graphite', blurb: 'Graphite, teal', dark: { bg: '#0A0D0E', surface: '#121719', raised: '#172022', high: '#1E292C', grad: ['#5EEAD4', '#0D9488'] } , light: { bg: '#F1F6F6', surface: '#FFFFFF', raised: '#E5EEEE', high: '#D5E4E4', grad: ['#14B8A6', '#0F766E'] } },
 ];
 
-const VARS = ['--color-bg', '--color-surface', '--color-surface-raised', '--color-surface-high', '--grad-primary', '--grad-action'] as const;
+const VARS = ['--color-bg', '--surface-solid', '--raised-solid', '--color-surface-high', '--grad-primary', '--grad-action'] as const;
 
 /**
  * Put a premium theme on the page (or take it off with null). `mode` is for
@@ -55,8 +55,9 @@ export function applyPremiumTheme(key: string | null | undefined, mode?: 'dark' 
     return;
   }
   root.style.setProperty('--color-bg', roles.bg);
-  root.style.setProperty('--color-surface', roles.surface);
-  root.style.setProperty('--color-surface-raised', roles.raised);
+  // The solid colours: the glass surfaces are mixed from them in index.css (2026-11-07).
+  root.style.setProperty('--surface-solid', roles.surface);
+  root.style.setProperty('--raised-solid', roles.raised);
   root.style.setProperty('--color-surface-high', roles.high);
   // Light mode is solid fills only (the owner, 2026-11-03): no gradient — buttons and bars fall back
   // to the theme's own solid colours. Dark keeps the theme's two-colour gradient.

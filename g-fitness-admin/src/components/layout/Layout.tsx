@@ -1,3 +1,4 @@
+import Ambient from './Ambient';
 import { Outlet, useLocation } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -34,7 +35,9 @@ export default function Layout() {
   if (ctx?.lockReason === 'trial_ended') return <TrialEnded ctx={ctx} />;
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: 'var(--color-bg)' }}>
+    <div className="flex h-screen overflow-hidden relative" style={{ background: 'var(--color-bg)', isolation: 'isolate' }}>
+      {/* The gym's colours drifting behind the glass (2026-11-07). */}
+      <Ambient />
       <Sidebar collapsed={collapsed} onToggle={toggle} />
       <div
         className="flex-1 flex flex-col overflow-hidden transition-all duration-200"
@@ -56,7 +59,7 @@ export default function Layout() {
         <main
           ref={mainRef}
           className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-dark-border scrollbar-track-dark"
-          style={{ background: 'var(--color-bg)' }}
+          style={{ background: 'transparent' }}
         >
           <AnimatePresence mode="wait">
             <motion.div

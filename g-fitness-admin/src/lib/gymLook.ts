@@ -41,9 +41,9 @@ export function renderGymLook(): void {
   const pt = PREMIUM_THEMES.find((x) => x.key === last!.theme);
   const t = pt ? (light ? pt.light : pt.dark) : undefined;
   const ground = t ? `
-  --color-bg: ${t.bg}; --color-surface: ${t.surface}; --color-surface-raised: ${t.raised}; --color-surface-high: ${t.high};
+  --color-bg: ${t.bg}; --surface-solid: ${t.surface}; --raised-solid: ${t.raised}; --color-surface-high: ${t.high};
   ${light ? '' : `--grad-primary: linear-gradient(90deg, ${t.grad[0]}, ${t.grad[1]}); --grad-action: linear-gradient(135deg, ${t.grad[0]}, ${t.grad[1]});`}` : '';
-  const att = t ? `--a-surface: ${t.surface}; --a-raised: ${t.raised}; --a-high: ${t.high};` : '';
+  const att = t ? `--a-surface-solid: ${t.surface}; --a-raised-solid: ${t.raised}; --a-high: ${t.high};` : '';
   const pLight = light ? `color-mix(in srgb, ${p.base} 13%, #ffffff)` : p.light;
   const aLight = light ? `color-mix(in srgb, ${a.base} 15%, #ffffff)` : a.light;
   const aBase = light ? a.c700 : a.base;

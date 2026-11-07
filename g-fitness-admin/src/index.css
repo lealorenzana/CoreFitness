@@ -12,8 +12,8 @@
 :root {
   /* ── Brand ── */
   --color-bg:              #0F0F1A;
-  --color-surface:         #161622;
-  --color-surface-raised:  #1E1B30;
+  --surface-solid:         #161622;
+  --raised-solid:          #1E1B30;
   /* One step above `raised`, for controls that sit *on* a raised card — inputs,
      selects, unselected chips. It was referenced by six screens before it was
      ever declared: an undefined custom property makes the whole declaration

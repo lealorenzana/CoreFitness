@@ -62,8 +62,8 @@ export default function TrainerLayout() {
       <main
         ref={mainRef}
         className="flex-1 min-h-0 overflow-y-auto scrollbar-hide relative"
-        style={hub ? { backgroundColor: 'var(--color-bg)' } : {
-          backgroundColor: 'var(--color-bg)',
+        style={hub ? { backgroundColor: 'transparent' } : {
+          backgroundColor: 'transparent',
           paddingLeft: 'var(--gutter)',
           paddingRight: 'var(--gutter)',
           paddingTop: root ? 4 : 'var(--gutter)',

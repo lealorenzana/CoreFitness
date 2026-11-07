@@ -211,7 +211,7 @@ export default function GymApp() {
       {/* ---- Look ---------------------------------------------------------------------- */}
       {tab === 'look' && (
         <Split preview={(
-          <Phone cap="Live preview · Today">
+          <Phone cap="Live preview · Today" colours={[a.base, b.base]}>
             <div className="flex items-center justify-between">
               <div><div className="a-sub">Good morning</div><b style={{ display: 'block', fontSize: 16 }}>{shortName}</b></div>{logo(32)}
             </div>
@@ -538,11 +538,19 @@ function Split({ children, preview }: { children: ReactNode; preview: ReactNode 
   );
 }
 
-function Phone({ cap, children, centre }: { cap: string; children: ReactNode; centre?: boolean }) {
+/**
+ * The members' app in miniature. Since the glass (2026-11-07) it shows what members see behind it: soft
+ * drifting colour from the gym's two colours — the ones being picked on Look, the saved ones elsewhere.
+ */
+function Phone({ cap, children, centre, colours }: { cap: string; children: ReactNode; centre?: boolean; colours?: [string, string] }) {
+  const [p, s] = colours ?? ['var(--color-primary)', 'var(--color-secondary)'];
   return (
     <div className="a-stage">
       <div className="cap"><Smartphone size={13} />{cap}</div>
       <div className="a-phone">
+        <div className="a-phamb" aria-hidden data-preview-ambient style={{ ['--pa' as string]: p, ['--pb' as string]: s }}>
+          <span className="a" /><span className="b" /><span className="c" />
+        </div>
         <div className="scr" style={centre ? { alignItems: 'center', textAlign: 'center' } : undefined}>{children}</div>
       </div>
       <span className="a-sub" style={{ position: 'absolute', bottom: 10, fontSize: 10 }}>Sample screen, in your colours and words</span>

@@ -10,8 +10,8 @@
 :root[data-mode="light"] {
   color-scheme: light;
   --color-bg:              #F6F6F9;
-  --color-surface:         #FFFFFF;
-  --color-surface-raised:  #F2F2F6;
+  --surface-solid:         #FFFFFF;
+  --raised-solid:          #F2F2F6;
   --color-surface-high:    #E8E8EF;
   --color-primary-light:   #EFE8FD;
   --color-secondary:       #B45309;
@@ -63,7 +63,7 @@
 
 /* ── The redesigned pages (pages/attendance/att.css) ─────────────────────────── */
 :root[data-mode="light"] .att {
-  --a-surface: #FFFFFF; --a-raised: #F3F3F7; --a-high: #E8E8EF; --a-border: rgb(22 22 38 / 0.10); --a-line: rgb(22 22 38 / 0.14); /* see-through ink: a line shows on white, grey or a tint */
+  --a-surface-solid: #FFFFFF; --a-raised-solid: #F3F3F7; --a-high: #E8E8EF; --a-border: rgb(22 22 38 / 0.10); --a-line: rgb(22 22 38 / 0.14); /* see-through ink: a line shows on white, grey or a tint */
   --a-primary: #7C3AED; --a-p300: #6D28D9; --a-p400: #7C3AED; --a-plight: #EFE8FD;
   --a-amber: #E08A0B; --a-a300: #B45309; --a-alight: #FDF3E1;
   --a-text2: #4A4D5E; --a-muted: #6B6E80;
@@ -91,7 +91,7 @@
 /* The sign-in page stays dark in both modes: its own dark roles, whatever <html> says. */
 :root[data-mode="light"] .keep-dark {
   color-scheme: dark;
-  --color-surface: #161622; --color-surface-raised: #1E1B30; --color-surface-high: #262238;
+  --surface-solid: #161622; --raised-solid: #1E1B30; --color-surface-high: #262238;
   --color-text-primary: #FFFFFF; --color-text-secondary: #9CA3AF; --color-text-muted: #6B7280; --color-border: #1F1F2E;
   --rd-input-bg: rgba(255,255,255,0.03); --rd-input-line: rgba(255,255,255,0.1);
 }
@@ -257,8 +257,8 @@
    Lines are drawn about twice as strongly as the first light pass. Last in the file, so it wins. */
 :root[data-mode="light"] {
   --color-bg:             color-mix(in srgb, var(--color-primary) 6%, #ECECF2);
-  --color-surface:        color-mix(in srgb, var(--color-primary) 3%, #FAFAFC);
-  --color-surface-raised: color-mix(in srgb, var(--color-primary) 7%, #F0F0F5);
+  --surface-solid:        color-mix(in srgb, var(--color-primary) 3%, #FAFAFC);
+  --raised-solid:         color-mix(in srgb, var(--color-primary) 7%, #F0F0F5);
   --color-surface-high:   color-mix(in srgb, var(--color-primary) 11%, #E6E6EE);
   --color-border:         color-mix(in srgb, var(--color-primary) 16%, #C9C9D5);
   --border:               240 12% 80%;
@@ -270,8 +270,8 @@
   --glow-line: color-mix(in srgb, var(--color-primary) 34%, #D6D6E0);
 }
 :root[data-mode="light"] .att {
-  --a-surface: var(--color-surface);
-  --a-raised:  var(--color-surface-raised);
+  --a-surface-solid: var(--surface-solid);
+  --a-raised-solid:  var(--raised-solid);
   --a-high:    var(--color-surface-high);
   --a-well:    color-mix(in srgb, var(--color-primary) 4%, #F3F3F7);
   --a-border:  rgb(22 22 38 / 0.18);
@@ -300,4 +300,62 @@
   --sidebar-bg:     color-mix(in srgb, var(--color-primary) 9%, #F8F8FB);
   --sidebar-rail:   color-mix(in srgb, var(--color-primary) 14%, #F1F1F6);
   --sidebar-active: color-mix(in srgb, var(--color-primary) 20%, #FFFFFF);
+}
+
+/* The Your app preview's glass in light (2026-11-07): pastel blobs of the gym's colours, frosted cards. */
+:root[data-mode="light"] .att .a-phone .a-phamb { opacity: 0.8; }
+:root[data-mode="light"] .att .a-phone .a-phamb .a { background: color-mix(in srgb, var(--pa) 42%, #FFFFFF); }
+:root[data-mode="light"] .att .a-phone .a-phamb .b { background: color-mix(in srgb, var(--pb) 40%, #FFFFFF); }
+:root[data-mode="light"] .att .a-phone .a-phamb .c { background: color-mix(in srgb, var(--pa) 26%, #FFFFFF); }
+:root[data-mode="light"] .att .a-phone .a-phcard { background: rgba(255, 255, 255, 0.7); }
+
+
+/* ── Glass (the owner, 2026-11-07: the admin "like the mockup", quiet in dark) ───────────────────────────
+   The gym's two colours drift behind the dashboard (components/layout/Ambient.tsx, .cf-ambient below), and
+   every panel is frosted: the surfaces are the solid colours (--surface-solid, --a-surface-solid — what
+   light.css, a premium theme and gymLook set) about 70% solid. One place decides how see-through the admin
+   is, as in the members' app. Menus, dialogs and dropdowns stay solid (--surface-solid). */
+:root, :root[data-mode] .keep-dark {
+  --color-surface:        color-mix(in srgb, var(--surface-solid) 72%, transparent);
+  --color-surface-raised: color-mix(in srgb, var(--raised-solid) 66%, transparent);
+}
+.att, :root[data-mode] .att {
+  --a-surface: color-mix(in srgb, var(--a-surface-solid) 72%, transparent);
+  --a-raised:  color-mix(in srgb, var(--a-raised-solid) 66%, transparent);
+}
+:root {
+  --amb-a: color-mix(in srgb, var(--color-primary) 40%, #000000);
+  --amb-b: color-mix(in srgb, var(--color-secondary, #F59E0B) 24%, #000000);
+  --amb-c: color-mix(in srgb, var(--color-primary) 24%, #000000);
+  --amb-strength: 0.34;
+}
+:root[data-mode="light"] {
+  --amb-a: color-mix(in srgb, var(--color-primary) 40%, #FFFFFF);
+  --amb-b: color-mix(in srgb, var(--color-secondary, #F59E0B) 38%, #FFFFFF);
+  --amb-c: color-mix(in srgb, var(--color-primary) 24%, #FFFFFF);
+  --amb-strength: 0.75;
+}
+.cf-ambient { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: -1; } /* under the page, inside Layout's isolated root */
+.cf-ambient__wash { position: absolute; inset: -20%; filter: blur(70px); opacity: var(--amb-strength); }
+.cf-ambient__wash span { position: absolute; border-radius: 50%; will-change: transform; }
+.cf-ambient__wash .a { background: var(--amb-a); width: 45%; height: 50%; top: 0; left: 10%; animation: cf-amb-a 26s ease-in-out infinite alternate; }
+.cf-ambient__wash .b { background: var(--amb-b); width: 40%; height: 45%; top: 30%; right: 0; animation: cf-amb-b 30s ease-in-out infinite alternate; }
+.cf-ambient__wash .c { background: var(--amb-c); width: 50%; height: 40%; bottom: 0; left: 30%; animation: cf-amb-a 34s ease-in-out infinite alternate-reverse; }
+@keyframes cf-amb-a { to { transform: translate(18%, 12%) scale(1.1); } }
+@keyframes cf-amb-b { to { transform: translate(-20%, 14%) scale(0.9); } }
+@media (prefers-reduced-motion: reduce) { .cf-ambient__wash span { animation: none; } }
+
+/* Floating things stay solid: they sit over the page's words, so frosted glass would let them show through.
+   Re-declaring the surfaces here makes the element and everything inside it solid again. */
+[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"], [role="tooltip"], [data-popover], [data-floating], .shadow-2xl, .shadow-xl {
+  --color-surface: var(--surface-solid);
+  --color-surface-raised: var(--raised-solid);
+  --a-surface: var(--a-surface-solid, var(--surface-solid));
+  --a-raised: var(--a-raised-solid, var(--raised-solid));
+}
+/* The sidebar and its rail are frosted too: the gym's colour, see-through to the glow behind. */
+:root { --sidebar-bg: color-mix(in srgb, var(--surface-solid) 70%, transparent); --sidebar-rail: color-mix(in srgb, var(--color-bg) 60%, transparent); }
+:root[data-mode="light"] {
+  --sidebar-bg:   color-mix(in srgb, color-mix(in srgb, var(--color-primary) 9%, #F8F8FB) 72%, transparent);
+  --sidebar-rail: color-mix(in srgb, color-mix(in srgb, var(--color-primary) 14%, #F1F1F6) 72%, transparent);
 }

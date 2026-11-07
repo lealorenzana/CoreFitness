@@ -240,7 +240,7 @@ export default function TrainerHub() {
 
       {/* ---- the panel: Today, or Personal training ---- */}
       <section className="flex-1 min-w-0 flex flex-col overflow-y-auto scrollbar-hide"
-        style={{ background: 'var(--color-bg)', borderTopLeftRadius: 18, padding: `14px 14px ${PANEL_SPACE}px`, borderLeft: '1px solid var(--color-separator)' }}>
+        style={{ background: 'color-mix(in srgb, var(--color-bg) 55%, transparent)', borderTopLeftRadius: 18, padding: `14px 14px ${PANEL_SPACE}px`, borderLeft: '1px solid var(--color-separator)' }}>
         {view === 'today' ? (
           <TodayPanel trainerId={trainerId} classes={today} queue={queue} onRequests={setRequests} arriving={arriving} />
         ) : (

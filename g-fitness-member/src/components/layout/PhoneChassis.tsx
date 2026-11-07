@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react';
 import OfflineBanner from '../ui/OfflineBanner';
+import Ambient from './Ambient';
 
 /**
  * The app always fills the viewport — there is no decorative phone chassis.
@@ -37,6 +38,7 @@ export default function PhoneChassis({ children }: { children: ReactNode }) {
       className="relative w-full overflow-hidden"
       style={{ height: '100dvh', backgroundColor: 'var(--color-bg)', overscrollBehavior: 'none' }}
     >
+      <Ambient />
       <div
         id="phone-toast-root"
         className="absolute left-0 right-0 z-[300] flex flex-col pointer-events-none"
@@ -49,7 +51,7 @@ export default function PhoneChassis({ children }: { children: ReactNode }) {
         id="phone-screen"
         className="relative h-full flex flex-col"
         style={{
-          backgroundColor: 'var(--color-bg)',
+          // See-through since the glass (2026-11-07): the ambient colours show behind every page.
           paddingTop: 'env(safe-area-inset-top)',
           paddingBottom: 'env(safe-area-inset-bottom)',
         }}

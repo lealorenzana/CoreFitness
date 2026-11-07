@@ -31,8 +31,8 @@ export default function StudioPreview({ name, shortName, logoUrl, accent, action
   }, [sig]);
 
   const c = dark
-    ? { bg: '#0B0B12', s1: '#15141F', s2: '#1C1B29', line: 'rgba(255,255,255,0.08)', ink: '#F4F4F8', sub: '#A1A1B5', mute: '#6E6E85', fillP: p.base, fillA: a.base, pText: p.c300, aText: a.c300, onA: '#120d02' }
-    : { bg: `color-mix(in srgb, ${p.base} 7%, #ECECF2)`, s1: `color-mix(in srgb, ${p.base} 3%, #FBFBFD)`, s2: `color-mix(in srgb, ${p.base} 8%, #F1F1F6)`,
+    ? { bg: '#0B0B12', s1: 'rgba(21, 20, 31, 0.7)', s2: '#1C1B29', line: 'rgba(255,255,255,0.08)', ink: '#F4F4F8', sub: '#A1A1B5', mute: '#6E6E85', fillP: p.base, fillA: a.base, pText: p.c300, aText: a.c300, onA: '#120d02' }
+    : { bg: `color-mix(in srgb, ${p.base} 7%, #ECECF2)`, s1: `color-mix(in srgb, color-mix(in srgb, ${p.base} 3%, #FBFBFD) 70%, transparent)`, s2: `color-mix(in srgb, ${p.base} 8%, #F1F1F6)`,
         line: 'rgba(22,22,38,0.16)', ink: '#15151C', sub: '#474A5C', mute: '#686B7E', fillP: p.c700, fillA: a.c700, pText: p.c700, aText: a.c700, onA: '#FFFFFF' };
   const tr = 'background 0.5s ease, color 0.5s ease, border-color 0.5s ease';
 
@@ -52,7 +52,13 @@ export default function StudioPreview({ name, shortName, logoUrl, accent, action
               // In light the handset is silver (no near-black block on a light page); in dark, the black one.
               background: dark ? '#050508' : 'linear-gradient(160deg, #E4E4EC, #C9C9D5)',
               boxShadow: dark ? `0 30px 70px -30px ${p.base}` : `0 0 0 1px rgba(22,22,38,0.18), 0 30px 60px -32px ${p.base}` }}>
-            <div style={{ height: '100%', borderRadius: 32, overflow: 'hidden', background: c.bg, display: 'flex', flexDirection: 'column', transition: tr }}>
+            <div style={{ height: '100%', borderRadius: 32, overflow: 'hidden', background: c.bg, display: 'flex', flexDirection: 'column', transition: tr, position: 'relative', isolation: 'isolate' }}>
+              {/* The members' glass background (2026-11-07): the gym's two colours drifting behind the cards. */}
+              <div className="ob-pv-amb" aria-hidden data-preview-ambient style={{
+                ['--pa' as string]: p.base, ['--pb' as string]: a.base, opacity: dark ? 0.5 : 0.8,
+                ['--mix' as string]: dark ? '#000000' : '#FFFFFF' }}>
+                <span className="a" /><span className="b" /><span className="c" />
+              </div>
               <div style={{ height: 26, display: 'grid', placeItems: 'center' }}><span style={{ width: 84, height: 18, borderRadius: 99, background: dark ? '#050508' : '#4A4A55' }} /></div>
               <div style={{ padding: '6px 14px 0', display: 'flex', alignItems: 'center', gap: 9 }}>
                 <PvLogo size={30} logoUrl={logoUrl} mono={mono} fill={c.fillP} />

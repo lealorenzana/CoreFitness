@@ -76,24 +76,24 @@ export default function TrophyRoom({ part }: { part: 'level' | 'shelf' }) {
           style={{ ['--i' as string]: 0, padding: 16, borderRadius: 20, border: '1px solid color-mix(in srgb, var(--color-primary) 45%, transparent)',
             background: 'linear-gradient(150deg, var(--color-primary-light), var(--color-surface) 70%)' }} data-trophy-level>
           <span className="flex items-center" style={{ gap: 14 }}>
-            <span className="grid place-items-center flex-none" style={{ width: 76, height: 76, borderRadius: 24, color: accent,
+            <span data-tl-emblem className="grid place-items-center flex-none" style={{ width: 76, height: 76, borderRadius: 24, color: accent,
               background: `radial-gradient(circle at 30% 25%, color-mix(in srgb, ${accent} 30%, transparent), var(--color-surface-raised) 70%)`,
               border: `1px solid color-mix(in srgb, ${accent} 50%, transparent)`, boxShadow: `0 0 30px color-mix(in srgb, ${accent} 25%, transparent)` }}>
               <Emblem size={36} className="lv-sway" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="eyebrow block" style={{ color: accent }}>Earned level</span>
-              <span className="block" style={{ fontSize: 22, fontWeight: 800, marginTop: 2, color: 'var(--color-text-primary)' }}>{levelLabel(prog.level)}</span>
-              <span className="block" style={{ fontSize: 12.5, color: 'var(--color-text-muted)' }}>
+              <span data-tl-eyebrow className="eyebrow block" style={{ color: accent }}>Earned level</span>
+              <span data-tl-name className="block" style={{ fontSize: 22, fontWeight: 800, marginTop: 2, color: 'var(--color-text-primary)' }}>{levelLabel(prog.level)}</span>
+              <span data-tl-sub className="block" style={{ fontSize: 12.5, color: 'var(--color-text-muted)' }}>
                 {prog.nextLevel ? `${levelLabel(prog.nextLevel)} needs both:` : 'The top level'}
               </span>
             </span>
           </span>
           {req.map((r, i) => (
-            <span key={r.label} className="block" style={{ marginTop: i ? 8 : 12, fontSize: 12.5, color: 'var(--color-text-secondary)' }}>
+            <span key={r.label} data-tl-req className="block" style={{ marginTop: i ? 8 : 12, fontSize: 12.5, color: 'var(--color-text-secondary)' }}>
               <span className="flex justify-between"><span>{r.label}</span><span className="tabular-nums">{r.have} / {r.need}</span></span>
-              <span className="block overflow-hidden" style={{ height: 8, borderRadius: 4, marginTop: 5, background: 'var(--color-surface-high)' }}>
-                <span className="block lv-fill" style={{ ['--i' as string]: i + 1, height: '100%', borderRadius: 4,
+              <span data-tl-track className="block overflow-hidden" style={{ height: 8, borderRadius: 4, marginTop: 5, background: 'var(--color-surface-high)' }}>
+                <span data-tl-fill className="block lv-fill" style={{ ['--i' as string]: i + 1, height: '100%', borderRadius: 4,
                   width: `${Math.min(100, Math.round((r.have / (r.need as number)) * 100))}%`, background: `linear-gradient(90deg, ${accent}, color-mix(in srgb, ${accent} 60%, #fff))` }} />
               </span>
             </span>

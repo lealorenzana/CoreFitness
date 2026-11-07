@@ -7,7 +7,7 @@
  * none can collide with Tailwind (the mock-up's `.grid` would have).
  */
 .att {
-  --a-surface: #14141F; --a-raised: #1B1A2A; --a-high: #24223A; --a-border: #1E1D2D; --a-line: #2A2842;
+  --a-surface-solid: #14141F; --a-raised-solid: #1B1A2A; --a-high: #24223A; --a-border: #1E1D2D; --a-line: #2A2842;
   --a-primary: #7C3AED; --a-p300: #C4B5FD; --a-p400: #A78BFA; --a-plight: #1E1333; --a-bar-dim: #2e2552;
   --a-amber: #F59E0B; --a-a300: #FCD34D; --a-alight: #211A08;
   --a-text2: #A1A1B5; --a-muted: #6E6E85;
@@ -316,3 +316,16 @@
 /* Your app (2026-10-25): the phone sits between the stage's caption and its footnote, never over them. */
 .att .a-stage { padding: 34px 0 28px; }
 .att .a-stage .a-phone { max-height: 100%; }
+
+/* The preview phone's ambient colour (2026-11-07) — the members' app's glass background in miniature
+   (member index.css .cf-ambient, its dark values): blobs of the gym's two colours, blurred, drifting. */
+.att .a-phone .a-phamb { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; filter: blur(30px); opacity: 0.5; }
+.att .a-phone .a-phamb span { position: absolute; border-radius: 50%; will-change: transform; }
+.att .a-phone .a-phamb .a { background: color-mix(in srgb, var(--pa) 45%, #000); width: 80%; height: 40%; top: -6%; left: -20%; animation: a-pamb-a 22s ease-in-out infinite alternate; }
+.att .a-phone .a-phamb .b { background: color-mix(in srgb, var(--pb) 30%, #000); width: 70%; height: 38%; top: 34%; right: -24%; animation: a-pamb-b 26s ease-in-out infinite alternate; }
+.att .a-phone .a-phamb .c { background: color-mix(in srgb, var(--pa) 30%, #000); width: 80%; height: 36%; bottom: -6%; left: -10%; animation: a-pamb-a 30s ease-in-out infinite alternate-reverse; }
+@keyframes a-pamb-a { to { transform: translate(24%, 14%) scale(1.15); } }
+@keyframes a-pamb-b { to { transform: translate(-26%, 18%) scale(0.9); } }
+@media (prefers-reduced-motion: reduce) { .att .a-phone .a-phamb span { animation: none; } }
+.att .a-phone .scr, .att .a-phone .a-tabbar { position: relative; z-index: 1; }
+.att .a-phone .a-phcard { background: rgba(23, 22, 42, 0.7); }

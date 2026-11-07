@@ -119,7 +119,7 @@ export default function Layout() {
         ref={mainRef}
         className={`flex-1 min-h-0 scrollbar-hide relative ${immersive || fills ? 'overflow-hidden' : 'overflow-y-auto'}`}
         style={{
-          backgroundColor: 'var(--color-bg)',
+          backgroundColor: 'transparent',
           paddingLeft: immersive ? 0 : 'var(--gutter)',
           paddingRight: immersive ? 0 : 'var(--gutter)',
           // A root's header already ends in the rail's own padding.

@@ -145,6 +145,7 @@ export default function Header() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -8, scale: 0.96 }}
                   transition={{ duration: 0.18 }}
+                  data-floating
                   className="absolute right-0 top-full mt-2 w-[400px] rounded-2xl shadow-2xl overflow-hidden z-50"
                   style={{ background: SURFACE_RAISED, border: `1px solid ${BORDER}` }}
                 >

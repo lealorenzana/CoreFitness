@@ -81,7 +81,7 @@ export function Toaster() {
             className="phone-toast pointer-events-auto flex items-center"
             style={{
               gap: 10, padding: '12px 14px', borderRadius: 10,
-              background: 'var(--color-surface)',
+              background: 'var(--surface-solid, var(--color-surface))', // solid: a toast is read over anything (glass, 2026-11-07)
               boxShadow: '0 0 0 1px rgb(var(--hair-rgb, 233 233 237) / 0.18), 0 10px 30px rgba(0, 0, 0, 0.6)',
               fontSize: 13, color: 'var(--color-text-primary)',
             }}

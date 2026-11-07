@@ -65,7 +65,10 @@ export default function TabBar() {
         className="flex-none flex items-stretch relative z-40"
         style={{
           height: 'var(--bar-height)',
-          background: 'var(--color-bg)',
+          // Frosted glass over the ambient colours (2026-11-07).
+          background: 'var(--bar-glass)',
+          backdropFilter: 'blur(20px) saturate(160%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(160%)',
           borderTop: '1px solid rgb(var(--hair-rgb, 233 233 237) / 0.12)',
           padding: '0 14px 8px',
         }}
