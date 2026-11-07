@@ -4,6 +4,8 @@ import { Eye, EyeOff, KeyRound, LogOut, Monitor } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { clearGymContext } from '../lib/gymContext';
 import { clearAdminCaches } from '../lib/adminCaches';
+import { myLogin, realEmail, setMyUsername, usernameShape, type MyLogin } from '../lib/api/logins';
+import UsernameField from '../components/UsernameField';
 
 interface Mine {
   gym_id: string; gym_name: string; logo_url: string | null;
@@ -28,12 +30,18 @@ export default function FinishInvite() {
   const [shown, setShown] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /** 0236: their login, so they can choose a username (needed when there is no email). Null before 0236. */
+  const [login, setLogin] = useState<MyLogin | null>(null);
+  const [username, setUsername] = useState('');
 
   useEffect(() => {
     void (async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { navigate('/admin/login', { replace: true }); return; }
       setMustChange(session.user.user_metadata?.must_change_password === true);
+      const l = await myLogin();
+      setLogin(l);
+      setUsername(l?.username ?? '');
       const { data } = await supabase.rpc('my_invitation', { p_token: token });
       const row = (Array.isArray(data) ? data[0] : null) as Mine | null;
       setMine(row);
@@ -48,6 +56,8 @@ export default function FinishInvite() {
     if (!f.first.trim() || !f.last.trim()) { setError('Please enter your first and last name.'); return; }
     if (mustChange && f.password.length < 8) { setError('Choose a password of at least 8 characters.'); return; }
     if (mustChange && f.password !== f.confirm) { setError('The two passwords do not match.'); return; }
+    if (login && !login.hasEmail && !username.trim()) { setError('Keep a username — with no email, it is how you sign in.'); return; }
+    if (login && username.trim() && usernameShape(username)) { setError(`Username: ${usernameShape(username)}`); return; }
     setBusy(true);
     setError(null);
     try {
@@ -56,6 +66,8 @@ export default function FinishInvite() {
         if (pwError) throw new Error(pwError.message);
         setMustChange(false);
       }
+      // 0236: the username they chose (or cleared), before the acceptance — a taken one stops here, fixable.
+      if (login && username.trim() !== (login.username ?? '')) await setMyUsername(username.trim() || null);
       const { error: rpcError } = await supabase.rpc('complete_invitation', {
         p_token: token, p_first: f.first.trim(), p_last: f.last.trim(), p_phone: f.phone.trim() || null,
       });
@@ -108,7 +120,7 @@ export default function FinishInvite() {
   if (mine.role !== 'staff') {
     return shell(<>
       <h1 className="text-xl font-semibold text-white">This login is for the phone app</h1>
-      <p className="mt-2 text-sm" style={muted}>{mine.gym_name} invited you as {mine.role === 'trainer' ? 'a coach' : 'a member'}. Sign in to the Core Fitness app on your phone with the same email and password.</p>
+      <p className="mt-2 text-sm" style={muted}>{mine.gym_name} invited you as {mine.role === 'trainer' ? 'a coach' : 'a member'}. Sign in to the Core Fitness app on your phone with the same login and password.</p>
       <a href={`https://corefitness-gym.vercel.app/login${mine.role === 'trainer' ? '?as=trainer' : ''}`} className="mt-5 w-full h-12 rounded-xl font-semibold text-white grid place-items-center" style={{ background: '#7C3AED' }}>Open the app</a>
       <button type="button" onClick={() => void signOut()} className="mt-2 w-full h-10 text-sm" style={muted}>Sign out</button>
     </>);
@@ -137,12 +149,19 @@ export default function FinishInvite() {
       {mustChange && (
         <div className="mt-5 rounded-xl p-4" style={{ background: 'rgba(124,58,237,0.07)', border: '1px solid rgba(139,92,246,0.3)' }}>
           <p className="text-[13px] font-semibold text-white flex items-center gap-2"><KeyRound size={14} /> Your password</p>
-          <p className="text-[12.5px] mt-0.5" style={muted}>The one in the email worked once. Choose your own for {mine.email}.</p>
+          <p className="text-[12.5px] mt-0.5" style={muted}>The one-time password worked once. Choose your own{realEmail(mine.email) ? ` for ${realEmail(mine.email)}` : ''}.</p>
           <div className="relative mt-3">
             <input className={input} style={{ ...inputSt, paddingRight: 46 }} type={shown ? 'text' : 'password'} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} placeholder="New password (8 or more)" autoComplete="new-password" aria-label="New password" />
             <button type="button" onClick={() => setShown((s) => !s)} aria-label={shown ? 'Hide password' : 'Show password'} className="absolute right-0 top-0 h-12 w-12 grid place-items-center" style={muted}>{shown ? <EyeOff size={17} /> : <Eye size={17} />}</button>
           </div>
           <input className={`${input} mt-2`} style={inputSt} type={shown ? 'text' : 'password'} value={f.confirm} onChange={(e) => setF({ ...f, confirm: e.target.value })} placeholder="Type it again" autoComplete="new-password" aria-label="Confirm password" />
+        </div>
+      )}
+
+      {login && (
+        <div className="mt-4">
+          <UsernameField value={username} onChange={setUsername} required={!login.hasEmail}
+            inputClass={input} inputStyle={inputSt} labelClass={label} labelStyle={muted} />
         </div>
       )}
 

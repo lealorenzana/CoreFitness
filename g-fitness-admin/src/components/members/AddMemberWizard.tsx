@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, Copy, Eye, EyeOff, RefreshCw, UserPlus } from 'lucide-react';
+import { Check, KeyRound, UserPlus } from 'lucide-react';
 import StepModal, { ChipPick, StepField } from '../ui/StepModal';
 import { STEP_INPUT, STEP_INPUT_STYLE } from '../ui/stepStyles';
 import PlacePicker from '../ui/PlacePicker';
@@ -9,6 +9,8 @@ import Button from '../ui/Button';
 import { createMember, isEmailTaken, isPhoneTaken, updateMemberProfile } from '../../lib/api/members';
 import { formatCheckInCode } from '../../utils/checkInCode';
 import { showToast } from '../../utils/toast';
+import { myLogin, suggestUsername, usernameAvailable, usernameShape, USERNAME_HINT } from '../../lib/api/logins';
+import LoginSlip from '../LoginSlip';
 import type { MembershipPlanRow } from '../../types/db';
 
 const STEPS = ['Who they are', 'Their login', 'Training and safety', 'Membership'];
@@ -16,19 +18,13 @@ const GENDERS = [{ value: '', label: 'Not said' }, { value: 'female', label: 'Fe
 const LEVELS = [{ value: '', label: 'Not said' }, { value: 'beginner', label: 'Beginner' }, { value: 'intermediate', label: 'Intermediate' }, { value: 'advanced', label: 'Advanced' }];
 const RELATIONS = ['Parent', 'Spouse', 'Partner', 'Sibling', 'Child', 'Friend', 'Other'];
 
-/** A password someone can read aloud at a desk: Word-1234-word, from the browser's random source. */
-function readablePassword(): string {
-  const words = ['Lift', 'Core', 'Push', 'Pull', 'Squat', 'Grip', 'Stride', 'Power', 'Steady', 'Climb', 'Sprint', 'Flex'];
-  const r = new Uint32Array(3);
-  crypto.getRandomValues(r);
-  return `${words[r[0] % words.length]}-${String(1000 + (r[1] % 9000))}-${words[r[2] % words.length].toLowerCase()}`;
-}
-
-type Done = { id: string; name: string; email: string; password: string; code: string | null; planName: string | null };
+type Done = { id: string; name: string; email: string | null; username: string | null; password: string | null; code: string | null; planName: string | null };
 
 /**
  * People → Members → Add member (2026-10-04), one question at a time: who they
- * are (the address from the Philippine place list), the login you hand them,
+ * are (the address from the Philippine place list), the login you hand them
+ * (an email and/or a username; the one-time password is made for you and shown
+ * on the login slip — 0236, the owner: the desk never types a password),
  * their training level and emergency contact, and the plan. Known answers are
  * chips, never typed. It ends on what to do next — the first payment is what
  * activates a plan, so that is the button there, and the login can be copied
@@ -42,14 +38,16 @@ export default function AddMemberWizard({ plans, onClose, onCreated }: {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
-  const [showPw, setShowPw] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [done, setDone] = useState<Done | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [slipOpen, setSlipOpen] = useState(false);
+  /** Usernames exist once 0236 is in the database; before it the field stays hidden. */
+  const [usernamesOn, setUsernamesOn] = useState(false);
+  useEffect(() => { void myLogin().then((l) => setUsernamesOn(l !== null)); }, []);
   const sellable = plans.filter((p) => p.is_active);
   const [f, setF] = useState({
-    firstName: '', lastName: '', phone: '', email: '', dateOfBirth: '', gender: '', address: '',
-    password: readablePassword(), experienceLevel: '',
+    firstName: '', lastName: '', phone: '', email: '', username: '', dateOfBirth: '', gender: '', address: '',
+    experienceLevel: '',
     emergencyContactName: '', emergencyContactPhone: '', emergencyContactRelationship: '',
     planId: sellable[0]?.id ?? '',
   });
@@ -63,9 +61,14 @@ export default function AddMemberWizard({ plans, onClose, onCreated }: {
       if (f.phone.trim() && await isPhoneTaken(f.phone)) e.phone = 'Another account already uses this number.';
     }
     if (step === 1) {
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.trim())) e.email = 'They sign in with this — type a real address.';
-      else if (await isEmailTaken(f.email)) e.email = 'This email already has an account. Search for them under Members instead.';
-      if (f.password.length < 8) e.password = 'At least 8 characters.';
+      const em = f.email.trim();
+      if (!em && !f.username.trim()) e.email = usernamesOn ? 'Give an email or a username — they sign in with it.' : 'They sign in with this — type a real address.';
+      else if (em && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) e.email = 'That is not an email address.';
+      else if (em && await isEmailTaken(em)) e.email = 'This email already has an account. Search for them under Members instead.';
+      if (f.username.trim()) {
+        const why = usernameShape(f.username) ?? await usernameAvailable(f.username).catch(() => null);
+        if (why) e.username = why;
+      }
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -75,7 +78,7 @@ export default function AddMemberWizard({ plans, onClose, onCreated }: {
     setBusy(true);
     try {
       const created = await createMember({
-        email: f.email.trim(), password: f.password, firstName: f.firstName.trim(), lastName: f.lastName.trim(),
+        email: f.email.trim(), username: f.username.trim() || undefined, firstName: f.firstName.trim(), lastName: f.lastName.trim(),
         phone: f.phone.trim() || undefined, address: f.address.trim() || undefined,
         dateOfBirth: f.dateOfBirth || undefined, gender: f.gender || undefined,
         emergencyContactName: f.emergencyContactName.trim() || undefined, emergencyContactPhone: f.emergencyContactPhone.trim() || undefined,
@@ -87,8 +90,10 @@ export default function AddMemberWizard({ plans, onClose, onCreated }: {
       if (f.dateOfBirth || f.gender) {
         await updateMemberProfile(created.id, { date_of_birth: f.dateOfBirth || null, gender: f.gender || null }).catch(() => undefined);
       }
-      setDone({ id: created.id, name: `${f.firstName.trim()} ${f.lastName.trim()}`, email: f.email.trim(), password: f.password,
+      setDone({ id: created.id, name: `${f.firstName.trim()} ${f.lastName.trim()}`, email: created.email ?? null,
+        username: created.username ?? null, password: created.password ?? null,
         code: created.id, planName: sellable.find((p) => p.id === f.planId)?.name ?? null });
+      setSlipOpen(true);
       await onCreated();
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not add the member', 'error');
@@ -98,12 +103,17 @@ export default function AddMemberWizard({ plans, onClose, onCreated }: {
   };
 
   const next = async () => {
-    if (step < STEPS.length - 1) { if (await check()) setStep(step + 1); return; }
+    if (step < STEPS.length - 1) {
+      if (!(await check())) return;
+      // A first suggestion for the username, from their name — the desk can change or clear it.
+      if (step === 0 && usernamesOn && !f.username) set('username', suggestUsername(f.firstName, f.lastName));
+      setStep(step + 1);
+      return;
+    }
     await create();
   };
 
   if (done) {
-    const login = `Your Core Fitness app login\nEmail: ${done.email}\nPassword: ${done.password}\nGet the app: https://corefitness-gym.vercel.app/get-app`;
     return (
       <StepModal title={`${done.name} is in`} steps={STEPS} step={STEPS.length - 1} onStep={() => undefined} canNext={false}
         onNext={() => undefined} onBack={() => undefined} onClose={onClose} finishLabel="" hideNav>
@@ -113,11 +123,12 @@ export default function AddMemberWizard({ plans, onClose, onCreated }: {
         </div>
         <div>
           <p className="text-[12px] font-semibold text-white">Hand them their login</p>
-          <pre className="text-xs rounded-lg p-3 mt-1.5 whitespace-pre-wrap" style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}>{login}</pre>
-          <Button size="sm" variant="ghost" className="mt-1.5" onClick={() => void navigator.clipboard.writeText(login).then(() => setCopied(true))}>
-            <Copy size={13} /> {copied ? 'Copied' : 'Copy for a text or Messenger'}
+          <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>
+            A one-time password was made for them. At their first sign-in they choose their own password{usernamesOn ? ', a username and a photo' : ''}.
+          </p>
+          <Button size="sm" variant="ghost" className="mt-1.5" onClick={() => setSlipOpen(true)} data-show-slip>
+            <KeyRound size={13} /> Show the login slip
           </Button>
-          <p className="text-[11px] mt-1" style={{ color: 'var(--color-text-secondary)' }}>They can change it in the app under Settings, or use “Forgot password?” on the sign-in screen.</p>
         </div>
         <div>
           <p className="text-[12px] font-semibold text-white">Next</p>
@@ -130,12 +141,16 @@ export default function AddMemberWizard({ plans, onClose, onCreated }: {
           {done.planName && <Button variant="secondary" className="flex-1" onClick={() => navigate(`/payments?record=${done.id}`)}>Record their first payment</Button>}
           <Button variant="ghost" className="flex-1" onClick={onClose}>Done</Button>
         </div>
+        {slipOpen && (
+          <LoginSlip name={done.name} role="member" username={done.username} email={done.email} password={done.password}
+            emailed={null} onClose={() => setSlipOpen(false)} />
+        )}
       </StepModal>
     );
   }
 
   const ready = step === 0 ? !!f.firstName.trim() && !!f.lastName.trim()
-    : step === 1 ? !!f.email.trim() && f.password.length >= 8 : true;
+    : step === 1 ? !!f.email.trim() || !!f.username.trim() : true;
 
   return (
     <StepModal title="Add a member" subtitle="A walk-in at the desk — they get a real login for the phone app"
@@ -167,22 +182,19 @@ export default function AddMemberWizard({ plans, onClose, onCreated }: {
       </>)}
 
       {step === 1 && (<>
-        <StepField label="Email" hint="They sign in to the app with this." error={errors.email}>
+        <StepField label={usernamesOn ? 'Email (optional with a username)' : 'Email'} hint="They sign in to the app with this, and receipts and notices go here." error={errors.email}>
           <input autoFocus type="email" value={f.email} onChange={(e) => set('email', e.target.value)} aria-label="Email" placeholder="name@email.com" className={STEP_INPUT} style={STEP_INPUT_STYLE} />
         </StepField>
-        <StepField label="Password" hint="Made for you — easy to read out at the desk. You will see it again at the end to hand over." error={errors.password}>
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <input type={showPw ? 'text' : 'password'} value={f.password} onChange={(e) => set('password', e.target.value)} aria-label="Password"
-                className={`${STEP_INPUT} pr-9 font-mono`} style={STEP_INPUT_STYLE} />
-              <button type="button" onClick={() => setShowPw(!showPw)} aria-label={showPw ? 'Hide password' : 'Show password'}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-1" style={{ color: 'var(--color-text-secondary)' }}>
-                {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
-              </button>
-            </div>
-            <Button variant="ghost" onClick={() => set('password', readablePassword())}><RefreshCw size={13} /> New one</Button>
-          </div>
-        </StepField>
+        {usernamesOn && (
+          <StepField label={f.email.trim() ? 'Username (optional)' : 'Username'} hint={`${USERNAME_HINT}. They sign in with their email or this — with no email, this is their only login.`} error={errors.username}>
+            <input value={f.username} onChange={(e) => set('username', e.target.value.toLowerCase().replace(/\s+/g, ''))} aria-label="Username" placeholder="e.g. maria.santos"
+              autoCapitalize="off" spellCheck={false} className={`${STEP_INPUT} font-mono`} style={STEP_INPUT_STYLE} data-add-username />
+          </StepField>
+        )}
+        <p className="text-xs flex items-start gap-2 rounded-lg p-2.5" style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}>
+          <KeyRound size={14} className="flex-none mt-0.5" />
+          A one-time password is made for them and shown on a login slip to print or hand over. At their first sign-in they choose their own.
+        </p>
       </>)}
 
       {step === 2 && (<>

@@ -106,14 +106,15 @@ export async function updateTrainerProfile(
  */
 export async function createTrainer(input: {
   email: string;
-  password: string;
+  /** 0236: no password — a one-time one comes back for the slip. Email may be empty with a username. */
+  username?: string;
   firstName: string;
   lastName: string;
   phone?: string;
   specialization?: string;
   bio?: string;
   availability?: string;
-}): Promise<{ id: string; email: string }> {
+}): Promise<{ id: string; email: string | null; username: string | null; password: string | null }> {
   const { data, error } = await supabase.functions.invoke('create-trainer', {
     body: input,
   });
@@ -132,7 +133,7 @@ export async function createTrainer(input: {
     }
     throw new Error(serverMessage ?? error.message);
   }
-  return data as { id: string; email: string };
+  return data as { id: string; email: string | null; username: string | null; password: string | null };
 }
 
 export interface TrainerRatingSummary {

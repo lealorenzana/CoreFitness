@@ -99,6 +99,11 @@ Deno.serve(async (req: Request) => {
     if (!KINDS.includes(kind)) {
       return json({ error: `Unknown kind "${kind}"` }, 400);
     }
+    // 0236: an account with no email has a stand-in address that can never receive
+    // mail. Nothing is sent or recorded; the caller is told plainly.
+    if (/@no-email\.invalid$/i.test(String(to).trim())) {
+      return json({ configured: true, status: "no_email", error: "This person has no email — hand it over in person." }, 200);
+    }
 
     // The record, first and always. If this is refused the caller had no right
     // to send in that gym's name, and nothing is attempted.

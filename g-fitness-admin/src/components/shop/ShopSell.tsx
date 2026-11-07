@@ -3,6 +3,7 @@ import { Minus, Plus, Receipt, Search, ShoppingCart, Trash2, UserRound, X } from
 import { RdCard, RdButton, EmptyBlock } from '../ui/rd';
 import { formatCurrency } from '../../utils/formatters';
 import { findMembers, type MemberHit, type Product, type Sale } from '../../lib/api/shop';
+import { realEmail } from '../../lib/api/logins';
 
 const MUTED = 'var(--color-text-muted)';
 const FIELD = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)' };
@@ -263,7 +264,7 @@ export default function ShopSell({ products, today, owner, busy, onRecord, onRec
                       <button key={m.id} type="button" role="option" aria-selected={false} className="flex w-full items-center gap-2 text-left px-3 py-2 hover:bg-white/5"
                         onClick={() => { setMember(m); setMemberQ(''); setHits([]); }}>
                         <span className="text-[13px] text-white">{m.name}</span>
-                        {m.email && <span className="text-[11.5px] truncate" style={{ color: MUTED }}>{m.email}</span>}
+                        {realEmail(m.email) && <span className="text-[11.5px] truncate" style={{ color: MUTED }}>{realEmail(m.email)}</span>}
                       </button>
                     ))}
                   </div>

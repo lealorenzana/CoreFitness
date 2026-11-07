@@ -14,6 +14,7 @@ import { clearPushOnSignOut } from '../lib/api/push';
 import { clearMemberCaches } from '../lib/memberCaches';
 import { forgetOfflineSession } from '../lib/offlineReads';
 import { clearGymContext, getGymContext, myGyms, usableGyms } from '../lib/gymContext';
+import { signInWithLogin, uploadWaitingPhoto } from '../lib/api/logins';
 
 interface User {
   id: string;
@@ -33,6 +34,8 @@ export interface LoginResult {
   status?: 'active' | 'pending_approval' | 'suspended' | 'archived';
   /** An invited account's first sign-in (0202): the token whose form comes first. */
   inviteToken?: string;
+  /** 0236: a login the desk made or reset — the slip's one-time password worked once; set up comes first. */
+  setUp?: boolean;
   /**
    * The person can sign in to more than one gym, or their current gym is not
    * usable but another is: the gym picker decides where they land.
@@ -41,15 +44,18 @@ export interface LoginResult {
   error?: string;
 }
 
+/** `email` may be a username (0236): signInWithLogin sends it to the server, which never reveals the address. */
 export const login = async (email: string, password: string): Promise<LoginResult> => {
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error || !data.user) {
-    return { success: false, error: error?.message ?? 'Invalid email or password' };
+  const { error } = await signInWithLogin(email, password);
+  const { data: { user } } = await supabase.auth.getUser();
+  if (error || !user) {
+    return { success: false, error: error && /invalid login credentials/i.test(error) ? 'That email or username and password don’t match.' : (error ?? 'Invalid email or password') };
   }
-  const meta = data.user.user_metadata ?? {};
-  const result = await finishSignIn(data.user.id);
-  return meta.invite_pending && typeof meta.invite_token === 'string' && result.success
-    ? { ...result, inviteToken: meta.invite_token } : result;
+  const meta = user.user_metadata ?? {};
+  const result = await finishSignIn(user.id);
+  if (meta.invite_pending && typeof meta.invite_token === 'string' && result.success) return { ...result, inviteToken: meta.invite_token };
+  if (meta.must_change_password === true && result.success) return { ...result, setUp: true };
+  return result;
 };
 
 /**
@@ -67,6 +73,8 @@ export const finishSignIn = async (userId: string): Promise<LoginResult> => {
     await supabase.auth.signOut();
     return { success: false, error: 'Could not load account profile' };
   }
+  // 0236: a photo chosen at sign-up on this phone goes up at the first sign-in (never blocks it).
+  void uploadWaitingPhoto((profile as { email?: string }).email, !!(profile as { photo_url?: string | null }).photo_url);
 
   const userData: User = {
     id: profile.id,

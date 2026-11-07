@@ -118,6 +118,7 @@ export default function TrainerSettings() {
       items: [
         { label: 'Edit profile', description: 'Photo, bio and specialisation', to: '/trainer/profile/edit' },
         { label: 'Change email', description: 'The address you sign in with', to: '/trainer/change-email' },
+        { label: 'Username', description: 'Sign in with a name instead of your email', to: '/trainer/username' },
         { label: 'Change password', description: 'Update your password', to: '/trainer/change-password' },
         { label: 'Privacy policy', description: 'How your data is handled', to: '/privacy' },
         { label: 'Terms of service', description: 'Read our terms', to: '/terms' },

@@ -26,6 +26,7 @@ import type { MemberPlanInfo } from '../../pages/Payments';
 // yesterday — and this value is written straight to payments.paid_on.
 import { todayKey } from '../../utils/dates';
 import DatePicker from './DatePicker';
+import { realEmail } from '../../lib/api/logins';
 
 interface RecordPaymentModalProps {
   isOpen: boolean;
@@ -256,7 +257,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, planByMe
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-white font-semibold truncate">{member.profile.first_name} {member.profile.last_name}</p>
-                                <p className="text-gray-400 text-xs truncate">{member.profile.email}</p>
+                                <p className="text-gray-400 text-xs truncate">{realEmail(member.profile.email) ?? 'No email'}</p>
                               </div>
                             </button>
                           ))
@@ -284,7 +285,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, planByMe
                         </div>
                         <div className="flex-1">
                           <p className="text-white font-semibold text-sm">{selectedMember.profile.first_name} {selectedMember.profile.last_name}</p>
-                          <p className="text-gray-400 text-xs">{selectedMember.profile.email}</p>
+                          <p className="text-gray-400 text-xs">{realEmail(selectedMember.profile.email) ?? 'No email'}</p>
                         </div>
                         <button
                           type="button"

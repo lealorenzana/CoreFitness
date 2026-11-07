@@ -76,7 +76,7 @@ async (page) => {
     await page.goto('http://localhost:5174/admin/login', { waitUntil: 'domcontentloaded' });
     await page.evaluate(() => { localStorage.clear(); sessionStorage.clear(); });
     await page.goto('http://localhost:5174/admin/login', { waitUntil: 'domcontentloaded' });
-    await page.getByPlaceholder('Email address').fill(U.email);
+    await page.getByPlaceholder('Email or username').fill(U.email);
     await page.getByPlaceholder('Password').fill('one-time-pass');
     await page.locator('button[type="submit"]').click();
   };

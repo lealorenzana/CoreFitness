@@ -373,6 +373,7 @@ export default function Settings() {
     { label: 'Interests & how much you train', description: 'Change what we recommend you', to: '/onboarding' },
     // Was the one account detail nobody could change.
     { label: 'Change email', description: 'The address you sign in with', to: '/member/change-email' },
+    { label: 'Username', description: 'Sign in with a name instead of your email', to: '/member/username' },
     { label: 'Change password', description: 'Update your password', to: '/member/change-password' },
     { label: 'Help', description: 'Ask the in-app assistant', to: '/member/chatbot' },
     { label: 'Privacy policy', description: 'How your data is handled', to: '/privacy' },

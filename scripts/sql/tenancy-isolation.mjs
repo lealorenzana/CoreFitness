@@ -187,6 +187,8 @@ const GLOBAL = [
   'day_passes',
   // 0212: the platform's What's new notes, one set for every gym, and who has read them.
   'app_releases', 'app_release_reads',
+  // 0236: the username sign-in's failure count — usernames are Core Fitness-wide; RLS on, no policy, the server only.
+  'login_failures',
   // 0221: which tours a person has seen — per account, not per gym; own row only, written by a definer.
   'tours_seen'];
 const unclassified = await db.query(`select tablename from pg_tables where schemaname = 'public'

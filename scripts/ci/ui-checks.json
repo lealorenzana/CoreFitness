@@ -680,6 +680,14 @@
     {
       "file": "admin-light-dropdowns-check.js",
       "app": "admin"
+    },
+    {
+      "file": "admin-logins-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "member-logins-check.js",
+      "app": "member"
     }
   ]
 }

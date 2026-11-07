@@ -23,6 +23,7 @@
 // and the first sign-in replaces it (`must_change_password`).
 
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { isStandIn, standInEmail, temporaryPassword, tidyUsername, usernameProblem } from "../_shared/logins.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -35,17 +36,6 @@ function json(body: unknown, status: number): Response {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
-
-/** Readable down a phone line: no 0/O or 1/l/I. crypto, never Math.random. */
-function temporaryPassword(): string {
-  const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
-  const bytes = new Uint32Array(12);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
-}
-
-const ADMIN_APP = "https://corefitness-admin.vercel.app";
-const MEMBER_APP = "https://corefitness-gym.vercel.app";
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -73,13 +63,26 @@ Deno.serve(async (req: Request) => {
     const gymName = (ctx.gym_name as string) ?? "Your gym";
 
     const body = await req.json();
-    const email = String(body.email ?? "").trim().toLowerCase();
+    // 0236: a username, and with it the email may be left out — the login is the
+    // username, the address a stand-in that never receives mail.
+    const username = tidyUsername(body.username) || null;
+    const admin = createClient(supabaseUrl, serviceRoleKey);
+    const typed = String(body.email ?? "").trim().toLowerCase();
+    if (!typed && !username) return json({ error: "Give an email or a username — they sign in with it." }, 400);
+    const email = typed || standInEmail(username!);
+    if (username) {
+      // A new login sent again to the same person keeps their own username: it is theirs, not taken.
+      const { data: holder } = await admin.from("profiles").select("id").ilike("email", email).maybeSingle();
+      const why = await usernameProblem(admin, username, holder?.id as string | undefined);
+      if (why) return json({ error: why }, 400);
+    }
     const role = String(body.role ?? "member");
     const firstName = String(body.firstName ?? "").trim() || null;
     const lastName = String(body.lastName ?? "").trim() || null;
     const phone = String(body.phone ?? "").trim() || null;
     const note = String(body.note ?? "").trim() || null;
-    const sendEmail = body.sendEmail !== false;
+    // Never to a stand-in address: it cannot receive mail (the slip is how they get it).
+    const sendEmail = body.sendEmail !== false && !isStandIn(email);
 
     // 1. The invitation, by the rules (raises for the desk inviting a coach, a
     //    person already in this gym, a bad address, a read-only gym).
@@ -89,11 +92,15 @@ Deno.serve(async (req: Request) => {
     if (invError) return json({ error: invError.message }, 400);
     const inv = (Array.isArray(invRows) ? invRows[0] : invRows) as { id: string; token: string };
 
-    const admin = createClient(supabaseUrl, serviceRoleKey);
-
     // 2. The login.
     const { data: known } = await admin.from("profiles").select("id").ilike("email", email).maybeSingle();
     let userId = known?.id as string | undefined;
+    // Someone who already has an account keeps their own login: the slip shows theirs.
+    let slipUsername = username;
+    if (userId) {
+      const { data: had } = await admin.from("profiles").select("username").eq("id", userId).maybeSingle();
+      slipUsername = (had as { username?: string | null } | null)?.username ?? null;
+    }
     let password: string | null = null;
     let existing = false;
 
@@ -129,7 +136,7 @@ Deno.serve(async (req: Request) => {
       // the legacy role column is 'member' (nothing reads it; gym_roles decides).
       const { error: profileError } = await admin.from("profiles").insert({
         id: userId, role: "member", first_name: firstName ?? "New", last_name: lastName ?? (role === "trainer" ? "Coach" : role === "staff" ? "Staff" : "Member"),
-        email, phone, status: "active", active_gym_id: null,
+        email, phone, status: "active", active_gym_id: null, ...(username ? { username } : {}),
       });
       if (profileError) {
         await admin.auth.admin.deleteUser(userId);
@@ -172,10 +179,12 @@ Deno.serve(async (req: Request) => {
       emailError = res.ok ? out.error : (out.error ?? "The email service did not answer.");
     }
 
+    // 0236: the slip is always shown (the owner, 2026-11-07), so the one-time
+    // password always comes back — it is never stored, and the first sign-in
+    // replaces it. The real email only, never the stand-in.
     return json({
       id: inv.id, token: inv.token, userId, existing, emailed, emailError,
-      // Only when nobody was emailed: the desk hands it over in person, once.
-      password: emailed === "sent" ? null : password,
+      password, username: slipUsername, email: isStandIn(email) ? null : email,
     }, 200);
   } catch (err) {
     return json({ error: err instanceof Error ? err.message : "Unexpected error" }, 500);

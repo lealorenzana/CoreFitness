@@ -22,6 +22,8 @@ export interface ProfileRow {
   first_name: string;
   last_name: string;
   email: string;
+  /** 0236: optional sign-in name, unique across Core Fitness. Absent before 0236 is pasted. */
+  username?: string | null;
   phone: string | null;
   photo_url: string | null;
   status: ProfileStatus;

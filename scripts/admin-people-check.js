@@ -59,7 +59,8 @@ async (page) => {
     if (path.startsWith('/functions/v1/')) {
       const fn = path.split('/functions/v1/')[1];
       CALLS.push(['fn', fn, JSON.parse(req.postData() || '{}')]);
-      return json({ id: fn === 'create-trainer' ? 't9' : fn === 'create-staff' ? 's9' : 'm9', email: 'x@gym.test' });
+      // 0236: the server makes the one-time password and returns it for the slip.
+      return json({ id: fn === 'create-trainer' ? 't9' : fn === 'create-staff' ? 's9' : 'm9', email: 'x@gym.test', username: null, password: 'ONETM-pass9' });
     }
     if (path.startsWith('/rest/v1/rpc/')) {
       const fn = path.split('/rest/v1/rpc/')[1];
@@ -99,9 +100,10 @@ async (page) => {
   await page.getByLabel('City or municipality').selectOption('Mamburao');
   await page.getByLabel('Street or barangay').fill('Brgy. Payompon');
   await next();
-  await page.getByLabel('Email').fill('ana@x.ph');
-  const pw = await page.getByRole('textbox', { name: 'Password' }).inputValue();
-  out.push('a readable password is made for them: ' + (/^[A-Z][a-z]+-\d{4}-[a-z]+$/.test(pw) ? 'yes' : 'NO ' + pw));
+  await page.getByLabel('Email', { exact: true }).fill('ana@x.ph');
+  // 0236: the desk never types a password — a one-time one is made on the server and shown on the slip.
+  out.push('no password to type; a one-time one is made for them: ' + ((await page.getByRole('textbox', { name: 'Password' }).count()) === 0
+    && /one-time password is made for them/.test(await text()) ? 'yes' : 'NO'));
   await next();
   await page.getByRole('radio', { name: 'Beginner' }).click();
   await page.getByLabel('Emergency contact name').fill('Rosa Reyes');
@@ -114,7 +116,10 @@ async (page) => {
   const cm = CALLS.find((c) => c[1] === 'create-member');
   out.push('created with every answer: ' + (cm && cm[2].address === 'Brgy. Payompon, Mamburao, Occidental Mindoro' && cm[2].gender === 'female' && cm[2].experienceLevel === 'beginner'
     && cm[2].emergencyContactRelationship === 'Parent' && cm[2].planId === 'p1' ? 'yes' : 'MISSING ' + JSON.stringify(cm?.[2])));
-  out.push('done screen: login to copy and the first payment next: ' + (new RegExp(pw).test(await text()) && (await page.getByRole('button', { name: 'Record their first payment' }).count()) === 1 ? 'yes' : 'MISSING'));
+  const slip = (await page.locator('[data-login-slip]').count()) ? await page.locator('[data-login-slip]').innerText() : '';
+  out.push('done screen: the login slip with the one-time password, and the first payment next: ' + (/ONETM-pass9/.test(slip) && (await page.getByRole('button', { name: 'Record their first payment' }).count()) === 1 ? 'yes' : 'MISSING ' + slip.slice(0, 120)));
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
   await page.screenshot({ path: 'shots/admin-add-member-done.png' });
 
   // ---- Add trainer -----------------------------------------------------------------------------------
@@ -144,7 +149,7 @@ async (page) => {
   await next();
   await page.getByRole('button', { name: 'Mon–Sat' }).click();
   await next();
-  await page.getByLabel('Email').fill('ben@x.ph');
+  await page.getByLabel('Email', { exact: true }).fill('ben@x.ph');
   await page.getByRole('button', { name: 'Add trainer' }).last().click();
   await page.getByText('is on the team').waitFor({ timeout: 8000 });
   const up = CALLS.find((c) => c[0] === 'PATCH' && c[1] === 'trainer_profiles');
@@ -177,7 +182,7 @@ async (page) => {
   out.push('issuer and expiry on the card: ' + (/Philippine Red Cross · expires in 10 days/.test(t) ? 'yes' : 'MISSING'));
   out.push('an expiring count: ' + (/Expiring\s*1\b/i.test(t) && /Expiring or lapsed\s*1\b/i.test(t) ? 'yes' : 'MISSING ' + (t.match(/Expiring[^A-Z]{0,30}/i) || [''])[0]));
   out.push('the expiry sweep runs on open: ' + (CALLS.some((c) => c[1] === 'credential_expiry_sweep') ? 'yes' : 'MISSING'));
-  out.push('the view keeps the Trainers tabs, a search and the by-coach panel: ' + ((await page.locator('[data-credentials-view] .a-tabs a').count()) === 3
+  out.push('the view keeps the Trainers tabs, a search and the by-coach panel: ' + ((await page.locator('[data-credentials-view] .a-tabs a').count()) === 4
     && (await page.getByLabel('Search credentials').count()) === 1 && (await page.locator('[data-by-coach]').count()) === 1 ? 'yes' : 'MISSING'));
   out.push('…with a reminder to renew what is running out: ' + ((await page.locator('[data-ask-renew]').count()) >= 1 ? 'yes' : 'MISSING'));
   await page.waitForTimeout(900); await page.screenshot({ path: 'shots/admin-credentials.png' });

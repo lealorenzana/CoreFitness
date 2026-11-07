@@ -53,6 +53,7 @@ import type {
   MembershipStatus,
   MembershipRow,
 } from '../types/db';
+import { realEmail } from '../lib/api/logins';
 
 /** A member row joined with their current membership, for the roster table. */
 interface MemberRow {
@@ -1013,7 +1014,7 @@ function EditMemberForm({
   };
 
   return (
-    <ModalShell title="Edit Member" subtitle={member.email} onClose={onClose}>
+    <ModalShell title="Edit Member" subtitle={realEmail(member.email) ?? 'No email'} onClose={onClose}>
       <SectionLabel>Personal Information</SectionLabel>
       <div className="grid grid-cols-2 gap-3">
         <Field label="First name" required error={errors.firstName}
@@ -1212,7 +1213,7 @@ function PendingRegistrationsList({
               <Initials name={name} size={48} />
               <div className="flex-1 min-w-0">
                 <p className="text-[16px] font-semibold text-white truncate">{name}</p>
-                <p className="text-[13.5px] truncate" style={{ color: 'var(--color-text-secondary)' }}>{reg.email}</p>
+                <p className="text-[13.5px] truncate" style={{ color: 'var(--color-text-secondary)' }}>{realEmail(reg.email) ?? 'No email'}</p>
                 <div className="flex items-center gap-2 mt-2 flex-wrap">
                   <span className="text-[12.5px] inline-flex items-center gap-1" style={{ color: 'var(--color-text-muted)' }}>
                     <Clock size={13} /> Registered {new Date(reg.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}

@@ -12,6 +12,7 @@ import { readCache, writeCache } from '../lib/pageCache';
 import { Page, PageTitle } from '../components/ui/page';
 import { LineRow, NocButton, SectionHead, StatusPill } from '../components/ui/noc';
 import { formatPhone } from '../utils/phone';
+import { realEmail } from '../lib/api/logins';
 
 /** The flattened identity + plan this screen renders. */
 interface MemberSummary {
@@ -100,7 +101,7 @@ export default function Profile() {
   const isActive = member.status === 'active';
 
   const contactRows = [
-    { label: 'Email', value: member.email },
+    { label: 'Email', value: realEmail(member.email) ?? 'None — you sign in with your username' },
     { label: 'Phone', value: formatPhone(member.phone) },
     { label: 'Home gym', value: member.gym },
     { label: 'Member since', value: member.joinDate },

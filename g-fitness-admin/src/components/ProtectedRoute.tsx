@@ -25,7 +25,7 @@ interface ProtectedRouteProps {
  */
 export default function ProtectedRoute({ children, adminOnly = false }: ProtectedRouteProps) {
   const [status, setStatus] =
-    useState<'checking' | 'authorized' | 'unauthorized' | 'forbidden' | 'unset-up' | 'waiting-for-owner' | 'invite' | 'deleting' | 'suspended'>('checking');
+    useState<'checking' | 'authorized' | 'unauthorized' | 'forbidden' | 'unset-up' | 'waiting-for-owner' | 'invite' | 'set-up' | 'deleting' | 'suspended'>('checking');
   /** 0225: the account asked to be deleted — when it is erased; keeping it re-runs the check. */
   const [eraseAfter, setEraseAfter] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
@@ -48,6 +48,11 @@ export default function ProtectedRoute({ children, adminOnly = false }: Protecte
       const meta = session.user.user_metadata;
       if (meta?.invite_pending && typeof meta.invite_token === 'string') {
         if (active) { setInviteToken(meta.invite_token); setStatus('invite'); }
+        return;
+      }
+      // 0236: a login made or reset at the desk — the slip's one-time password worked once.
+      if (meta?.must_change_password === true) {
+        if (active) setStatus('set-up');
         return;
       }
       // Suspended by Core Fitness (0226): nothing opens; they are shown why.
@@ -100,6 +105,7 @@ export default function ProtectedRoute({ children, adminOnly = false }: Protecte
   }, [adminOnly, pathname, tick]);
 
   if (status === 'invite') return <Navigate to={`/admin/invite/${inviteToken}`} replace />;
+  if (status === 'set-up') return <Navigate to="/admin/set-up-login" replace />;
   if (status === 'suspended' && suspension) return <Suspended reason={suspension.reason} since={suspension.suspended_at} />;
   if (status === 'deleting' && eraseAfter) return <DeletionPending eraseAfter={eraseAfter} onKept={() => setTick((n) => n + 1)} />;
   if (status === 'checking') {

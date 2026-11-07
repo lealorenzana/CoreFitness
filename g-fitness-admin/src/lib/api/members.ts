@@ -360,8 +360,9 @@ export async function archiveMember(memberId: string): Promise<void> {
  * Created already 'active' — walk-ins skip the self-registration approval queue.
  */
 export async function createMember(input: {
+  /** Empty when a username is given (0236). The desk never types a password: a one-time one comes back for the slip. */
   email: string;
-  password: string;
+  username?: string;
   firstName: string;
   lastName: string;
   phone?: string;
@@ -375,7 +376,7 @@ export async function createMember(input: {
   emergencyContactRelationship?: string;
   experienceLevel?: string;
   planId?: string;
-}): Promise<{ id: string; email: string }> {
+}): Promise<{ id: string; email: string | null; username: string | null; password: string | null }> {
   const { data, error } = await supabase.functions.invoke('create-member', { body: input });
   if (error) {
     // FunctionsHttpError hides the function's JSON error body on error.context.
@@ -391,7 +392,7 @@ export async function createMember(input: {
     }
     throw new Error(serverMessage ?? error.message);
   }
-  return data as { id: string; email: string };
+  return data as { id: string; email: string | null; username: string | null; password: string | null };
 }
 
 /**

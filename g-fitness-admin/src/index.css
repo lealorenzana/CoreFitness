@@ -287,7 +287,12 @@
    the page. Doing this with `print:hidden` on the sidebar, the header and the
    search bar would be three places to forget the next time one is added. */
 @media print {
-  body.poster-open #root, body.receipt-open #root { display: none !important; }
+  body.poster-open #root, body.receipt-open #root, body.slip-open #root { display: none !important; }
+  /* The login slip (0236): the paper alone — no dimmed backdrop, no desk buttons. */
+  body.slip-open { background: #FFFFFF; }
+  .login-slip-sheet { position: static !important; background: none !important; backdrop-filter: none !important; padding: 0 !important; display: block !important; }
+  .login-slip-paper { box-shadow: none !important; border: 1px solid #C9C9D5; }
+  .login-slip-controls { display: none !important; }
   body.poster-open, body.receipt-open { background: #FFFFFF; }
   .receipt-sheet { background: #FFFFFF !important; }
   .receipt-paper { border-radius: 0 !important; padding: 0 !important; }

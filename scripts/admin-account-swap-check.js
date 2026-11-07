@@ -131,7 +131,7 @@ async (page) => {
   await page.waitForTimeout(800);
 
   // 3. The second owner signs in on the same tab, through the real form.
-  await page.getByPlaceholder('Email address').fill(EMAIL.u2);
+  await page.getByPlaceholder('Email or username').fill(EMAIL.u2);
   await page.getByPlaceholder('Password').fill('test-password-1');
   await page.getByPlaceholder('Password').press('Enter');
   await page.waitForTimeout(3500);

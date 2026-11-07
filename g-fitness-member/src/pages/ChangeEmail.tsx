@@ -6,6 +6,7 @@ import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
 import { Page, PageTitle } from '../components/ui/page';
 import { Eyebrow, NocButton, Panel } from '../components/ui/noc';
+import { realEmail } from '../lib/api/logins';
 
 /**
  * Change the email you sign in with (Nocturne redesign).
@@ -102,7 +103,7 @@ export default function ChangeEmail() {
           {/* The one thing that must not be misread: nothing has moved yet. */}
           <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--color-text-secondary)' }}>
             Nothing has changed yet. Keep signing in with{' '}
-            <span className="break-all" style={{ color: 'var(--color-text-primary)' }}>{current}</span> until you tap that link.
+            <span className="break-all" style={{ color: 'var(--color-text-primary)' }}>{realEmail(current) ?? 'your username'}</span> until you tap that link.
           </p>
         </Panel>
         <NocButton variant="action" onClick={() => navigate(backTo)} className="w-full">Done</NocButton>
@@ -112,11 +113,14 @@ export default function ChangeEmail() {
 
   return (
     <Page>
-      <PageTitle back fallback={backTo} title="Change email" subtitle="The address you sign in with" />
+      <PageTitle back fallback={backTo} title={realEmail(current) || !current ? 'Change email' : 'Add an email'} subtitle="The address you sign in with" />
 
       <section>
         <Eyebrow>Signing in as</Eyebrow>
-        <p className="truncate" style={{ fontSize: 15, marginTop: 6, color: 'var(--color-text-primary)' }}>{current || '—'}</p>
+        {/* 0236: an account with no email signs in by username; its address is a stand-in, never shown. */}
+        <p className="truncate" style={{ fontSize: 15, marginTop: 6, color: 'var(--color-text-primary)' }}>
+          {realEmail(current) ?? (current ? 'Your username — no email yet. Add one to get receipts and reset your own password.' : '—')}
+        </p>
       </section>
 
       <div className="rule" />

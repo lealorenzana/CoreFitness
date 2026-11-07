@@ -46,6 +46,8 @@ import { memberHouseRulesVersion } from '../../lib/api/houseRules';
 import { memberPurchases, type Sale } from '../../lib/api/shop';
 import { moduleOn, useGymModules } from '../../hooks/useGymModules';
 import type { MembershipStatus, MembershipPlanRow } from '../../types/db';
+import { realEmail } from '../../lib/api/logins';
+import LoginSection from '../LoginSection';
 
 /**
  * The whole of one member, on one screen.
@@ -360,10 +362,11 @@ function OverviewTab({ detail }: { detail: MemberDetail }) {
     <div className="space-y-4">
       <Section title="Contact">
         <div className="grid grid-cols-2 gap-2">
-          <InfoCell icon={Mail} label="Email" value={profile.email} />
+          <InfoCell icon={Mail} label="Email" value={realEmail(profile.email) ?? 'No email'} />
           <InfoCell icon={Phone} label="Phone" value={profile.phone ? formatPhoneNumber(profile.phone) : null} />
           <InfoCell icon={MapPin} label="Address" value={member.address} className="col-span-2" />
         </div>
+        <div className="mt-2"><LoginSection userId={profile.id} name={`${profile.first_name} ${profile.last_name}`} role="member" /></div>
       </Section>
 
       <Section title="Intake">

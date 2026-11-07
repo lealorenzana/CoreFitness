@@ -33,7 +33,9 @@ export interface Invitation {
 }
 
 export interface NewInvite {
+  /** Empty when a username is given instead (0236): the login is the username. */
   email: string;
+  username?: string | null;
   role?: InviteRole;
   firstName?: string | null;
   lastName?: string | null;
@@ -79,7 +81,12 @@ export interface InviteOutcome {
   existing: boolean;
   emailed: 'sent' | 'failed' | 'not_configured' | 'skipped';
   emailError?: string;
+  /** 0236: always back for a new or never-used account — the desk's login slip shows it. Null for an existing account. */
   password: string | null;
+  /** Their username, if they have one (for the slip). */
+  username?: string | null;
+  /** The real address, never the stand-in; null when they have no email. */
+  email?: string | null;
 }
 
 /**
@@ -92,7 +99,7 @@ export interface InviteOutcome {
 export async function inviteAccount(i: NewInvite & { sendEmail?: boolean }): Promise<InviteOutcome> {
   const { data, error } = await supabase.functions.invoke('invite-account', {
     body: {
-      email: i.email.trim(), role: i.role ?? 'member',
+      email: i.email.trim(), username: i.username?.trim() || null, role: i.role ?? 'member',
       firstName: i.firstName?.trim() || null, lastName: i.lastName?.trim() || null,
       phone: i.phone?.trim() || null, note: i.note?.trim() || null, sendEmail: i.sendEmail !== false,
     },

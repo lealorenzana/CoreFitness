@@ -46,8 +46,8 @@ async (page) => {
     if (path === '/functions/v1/invite-account') {
       SENT.push(JSON.parse(req.postData() || '{}'));
       return json(MAIL_MODE === 'off'
-        ? { id: 'i' + SENT.length, token: 't' + SENT.length, existing: false, emailed: 'not_configured', password: 'Hk7mPq2RtW9x' }
-        : { id: 'i' + SENT.length, token: 't' + SENT.length, existing: false, emailed: 'sent', password: null });
+        ? { id: 'i' + SENT.length, token: 't' + SENT.length, existing: false, emailed: 'not_configured', password: 'Hk7mPq2RtW9x', email: 'mara@example.test' }
+        : { id: 'i' + SENT.length, token: 't' + SENT.length, existing: false, emailed: 'sent', password: 'Zq3wRt8YuP2m', email: 'lea@example.test' });
     }
     if (path.startsWith('/rest/v1/rpc/')) {
       const fn = path.split('/rest/v1/rpc/')[1];
@@ -84,24 +84,28 @@ async (page) => {
     && (await page.getByRole('button', { name: /Copy link/ }).count()) === 0 ? 'yes' : 'MISSING'));
 
   // The form: email not set up.
-  await page.getByLabel('Email').fill('mara@example.test');
+  await page.getByLabel('Email', { exact: true }).fill('mara@example.test');
   await page.getByLabel(/First name/).fill('Mara');
   await page.getByRole('button', { name: /Send member login/ }).click();
   await page.waitForTimeout(800);
   let t = await text();
   const m = SENT[0] ?? {};
   out.push('the form sends a member login through invite-account: ' + (m.email === 'mara@example.test' && m.role === 'member' && m.firstName === 'Mara' && m.sendEmail === true ? 'yes' : 'MISSING ' + JSON.stringify(m)));
-  out.push('not set up: says nothing was sent, and shows the one-time password once: ' + (/the email did not go out/.test(t) && /Email is not set up on Core Fitness yet/.test(t)
-    && (await page.locator('[data-invite-password]').innerText()) === 'Hk7mPq2RtW9x' ? 'yes' : 'MISSING'));
+  // 0236: the login slip, always — it says whether the email went.
+  const slipPw = async () => (await page.locator('[data-slip-line="slip-password"]').count()) ? (await page.locator('[data-slip-line="slip-password"]').innerText()) : '';
+  out.push('not set up: the slip says to hand it over, with the one-time password: ' + (/Email is not set up — hand this slip over/.test(t)
+    && /Hk7mPq2RtW9x/.test(await slipPw()) ? 'yes' : 'MISSING ' + t.slice(0, 160)));
   await page.screenshot({ path: 'shots/admin-invite-handover.png' });
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
 
   // A row: email set up.
   MAIL_MODE = 'on';
   await page.getByRole('button', { name: 'Send a new login' }).click();
   await page.waitForTimeout(800);
   t = await text();
-  out.push('set up: says it went, and shows no password: ' + (SENT.length === 2 && SENT[1].email === 'lea@example.test' && /Login emailed to lea@example.test/.test(t)
-    && (await page.locator('[data-invite-password]').count()) === 0 ? 'yes' : 'MISSING'));
+  out.push('set up: the slip says it was also emailed, and still shows the password to hand over: ' + (SENT.length === 2 && SENT[1].email === 'lea@example.test'
+    && /Also emailed to them/.test(t) && /Zq3wRt8YuP2m/.test(await slipPw()) ? 'yes' : 'MISSING ' + t.slice(0, 160)));
   await page.screenshot({ path: 'shots/admin-invite-email.png' });
   return out.join('\n');
 }

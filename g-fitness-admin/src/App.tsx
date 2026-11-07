@@ -40,6 +40,7 @@ import Challenges from './pages/Challenges';
 import AttendanceHistory from './pages/AttendanceHistory';
 import Kiosk from './pages/Kiosk';
 import FinishInvite from './pages/FinishInvite';
+import SetUpLogin from './pages/SetUpLogin';
 import LobbyTv from './pages/LobbyTv';
 import { Toaster } from './components/ui/sonner';
 import { PhotoViewerHost } from './components/ui/PhotoViewer';
@@ -59,6 +60,7 @@ function App() {
           <Route path="/admin/login" element={<AdminLogin />} />
           {/* 0202: an invited front-desk login's first sign-in. Outside the shell: no gym yet. */}
           <Route path="/admin/invite/:token" element={<FinishInvite />} />
+          <Route path="/admin/set-up-login" element={<SetUpLogin />} />
           {/* Which gym this desk is. Outside the shell: the shell belongs to a gym. */}
           <Route path="/admin/choose-gym" element={<ChooseGym />} />
           {/* 0187: an applicant signed in before their gym exists. */}

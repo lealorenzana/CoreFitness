@@ -35,6 +35,8 @@ import {
 } from '../lib/api/settings';
 import type { ProfileRow, ProfileStatus } from '../types/db';
 import { cropPhoto } from '../components/ui/PhotoCropper';
+import { realEmail } from '../lib/api/logins';
+import MyUsernameBox from '../components/MyUsernameBox';
 
 /**
  * Admin settings — every tab here writes to the database.
@@ -536,7 +538,7 @@ export default function Settings() {
 
               {activeTab === 'profile' && (
                 <>
-                  {head('My profile', `Signed in as ${me?.email ?? ''} · ${me?.role ?? ''}`)}
+                  {head('My profile', `Signed in as ${realEmail(me?.email) ?? (me?.username ? `@${me.username}` : '')} · ${me?.role ?? ''}`)}
                   <div className="flex items-center gap-4" style={{ marginBottom: 12 }}>
                     <div className="relative flex-shrink-0">
                       <Avatar name={`${me?.first_name ?? ''} ${me?.last_name ?? ''}`} photoUrl={me?.photo_url ?? null} size={56} />
@@ -550,6 +552,7 @@ export default function Settings() {
                       <button type="button" className="a-btn ghost sm" onClick={handleRemovePhoto} disabled={uploadingPhoto}><Trash2 size={12} />Remove photo</button>
                     )}
                   </div>
+                  <MyUsernameBox />
                   <div className="a-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                     <div className="a-fld"><label htmlFor="p-first">First name</label>
                       <input id="p-first" className="a-in" value={profileForm.firstName} onChange={(e) => setProfileForm({ ...profileForm, firstName: e.target.value })} /></div>

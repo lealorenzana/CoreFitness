@@ -19,6 +19,8 @@ import {
   listTrainerRatings, getTrainerMonths, periodLabel, listTrainerFeedback,
   type TrainerRatingRow, type TrainerMonth, type TrainerFeedbackRow,
 } from '../../lib/api/trainers';
+import LoginSection from '../LoginSection';
+import { realEmail } from '../../lib/api/logins';
 
 /**
  * One trainer's whole record.
@@ -253,9 +255,10 @@ function ProfileTab({ detail, onChanged }: { detail: TrainerDetail; onChanged?: 
     <div className="space-y-4">
       <Section title="Contact">
         <div className="grid grid-cols-2 gap-2">
-          <InfoCell icon={Mail} label="Login email" value={profile.email} />
+          <InfoCell icon={Mail} label="Login email" value={realEmail(profile.email) ?? 'No email'} />
           <InfoCell icon={Phone} label="Phone" value={profile.phone ? formatPhoneNumber(profile.phone) : null} />
         </div>
+        <div className="mt-2"><LoginSection userId={profile.id} name={`${profile.first_name} ${profile.last_name}`} role="trainer" /></div>
       </Section>
 
       <Section title="Account">

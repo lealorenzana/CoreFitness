@@ -28,6 +28,8 @@ const sections: LegalSection[] = [
     title: '1. What the gym holds about you',
     body: [
       'Your name, email, phone, address and date of birth, and an emergency contact.',
+      'Your login: the email and, if you choose one, a username you sign in with. The front desk may make your login for you — with an email or, if you have none, a username — and hand you a one-time password on a printed slip; you choose your own password the first time you sign in, and only then does the slip stop working. The password you choose is never shown to the gym: only a scrambled form of it is kept.',
+      'Your profile photo, if you add one — at sign-up or later. The desk and your coach see it, so they know you at the door. You can change or remove it in Profile.',
       'Your check-in code, and every check-in made with it.',
       'Payments — amount, method and date, whether recorded at the desk or paid in the app. No card or bank details: the gym never receives them.',
       'Anything you choose to log: workouts, measurements, goals, and how you rate a coach.',

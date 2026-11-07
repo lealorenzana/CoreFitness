@@ -24,6 +24,11 @@ export default function ForgotPassword() {
   const send = async (e: React.FormEvent) => {
     e.preventDefault();
     const address = email.trim().toLowerCase();
+    // 0236: a username has no email to send a link to — the desk resets it and hands over a new slip.
+    if (address && !address.includes('@')) {
+      setError('A username has no email to send a link to. Ask your gym’s front desk to reset your login — they give you a new one-time password.');
+      return;
+    }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address)) { setError('Type the email you sign in with.'); return; }
     setBusy(true); setError(null);
     const { error: err } = await supabase.auth.resetPasswordForEmail(address, { redirectTo: `${window.location.origin}/reset-password` });

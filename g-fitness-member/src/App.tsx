@@ -95,9 +95,11 @@ const ChooseGym = lazyPage(() => import('./pages/ChooseGym'));
 const JoinGym = lazyPage(() => import('./pages/JoinGym'));
 const SwitchGym = lazyPage(() => import('./pages/SwitchGym'));
 const AcceptInvite = lazyPage(() => import('./pages/AcceptInvite'));
+const SetUpLogin = lazyPage(() => import('./pages/SetUpLogin'));
+const ChangeUsername = lazyPage(() => import('./pages/ChangeUsername'));
 
 
-type RoleCheck = 'checking' | 'authorized' | 'unauthorized' | 'invite' | 'deleting' | 'suspended';
+type RoleCheck = 'checking' | 'authorized' | 'unauthorized' | 'invite' | 'set-up' | 'deleting' | 'suspended';
 
 /** An invited account that has not finished its first-sign-in form (0202). */
 function pendingInvite(meta: Record<string, unknown> | undefined): string | null {
@@ -148,6 +150,11 @@ function RoleProtectedRoute({
         if (active) setStatus('invite');
         return;
       }
+      // 0236: a login the desk made or reset — the slip's one-time password worked once.
+      if (session.user.user_metadata?.must_change_password === true) {
+        if (active) setStatus('set-up');
+        return;
+      }
       // Suspended by Core Fitness (0226): nothing opens; they are shown why.
       const { data: sus } = await supabase.rpc('my_platform_suspension');
       // Only a real answer counts: a reason, as text. Anything else (null, an empty reply) is not a suspension.
@@ -186,6 +193,7 @@ function RoleProtectedRoute({
 
   if (status === 'checking') return null;
   if (status === 'invite') return <InviteRedirect />;
+  if (status === 'set-up') return <Navigate to="/set-up-login" replace />;
   if (status === 'suspended' && suspension) return <Suspended reason={suspension.reason} since={suspension.suspended_at} />;
   if (status === 'deleting' && eraseAfter) return <DeletionPending eraseAfter={eraseAfter} onKept={() => setTick((n) => n + 1)} />;
   if (status === 'unauthorized') return <Navigate to={redirectTo} replace />;
@@ -271,6 +279,7 @@ function App() {
             reveals only which gym invited them. Accepting still needs a
             session whose email matches the invitation. */}
         <Route path="/invite/:token" element={<StandalonePage><AcceptInvite /></StandalonePage>} />
+        <Route path="/set-up-login" element={<StandalonePage><SetUpLogin /></StandalonePage>} />
         {/* Forgot password: the link is emailed by Supabase Auth and lands on /reset-password. */}
         <Route path="/forgot-password" element={<StandalonePage><ForgotPassword /></StandalonePage>} />
         <Route path="/reset-password" element={<StandalonePage><ResetPassword /></StandalonePage>} />
@@ -329,6 +338,7 @@ function App() {
               drops them into a layout their role can't load. */}
           <Route path="change-password" element={<ChangePassword />} />
           <Route path="change-email" element={<ChangeEmail />} />
+          <Route path="username" element={<ChangeUsername />} />
           {/* Anything else under /trainer goes home rather than rendering the
               shell around nothing — see the member block below. */}
           <Route path="*" element={<Navigate to="/trainer/home" replace />} />
@@ -410,6 +420,7 @@ function App() {
           <Route path="help" element={<Help />} />
           <Route path="change-password" element={<ChangePassword />} />
           <Route path="change-email" element={<ChangeEmail />} />
+          <Route path="username" element={<ChangeUsername />} />
           <Route path="payments" element={<PaymentHistory />} />
           <Route path="renew" element={<RenewMembership />} />
           {/* The Training tab opens Book a Session; this keeps the path alive. */}

@@ -1,0 +1,499 @@
+/**
+ * Usernames and first-sign-in set-up (0236) on the phone app, in light: a
+ * desk-made login with no email opens on "Set up your login" — its own
+ * password, a required username (lowercased as typed, a taken one refused), an
+ * optional photo through the cropper — then home; a username signs in through
+ * the server; Settings → Username; Profile never shows the stand-in address;
+ * the Privacy Policy says so; the sign-up photo shows on the member card.
+ * Judged as admin-light-check.js in light.
+ *
+ * Fixture from member-coach-term-check.js. Member dev server on :5173.
+ */
+async (page) => {
+  await page.unrouteAll({ behavior: 'ignoreErrors' });
+  const REF = 'ifwxtekyjgeljerslnzr';
+  const KEY = `sb-${REF}-auth-token`;
+  const C = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  const b64 = (o) => {
+    const str = JSON.stringify(o); let bits = '', out = '';
+    for (let i = 0; i < str.length; i++) bits += str.charCodeAt(i).toString(2).padStart(8, '0');
+    while (bits.length % 6) bits += '0';
+    for (let i = 0; i < bits.length; i += 6) out += C[parseInt(bits.slice(i, i + 6), 2)];
+    return out;
+  };
+  const exp = Math.floor(Date.now() / 1000) + 3600;
+  const now = new Date();
+  const iso = (d, h, m) => { const x = new Date(now); x.setDate(now.getDate() + d); x.setHours(h, m, 0, 0); return x.toISOString(); };
+  const dstr = (d) => { const x = new Date(now); x.setDate(now.getDate() + d);
+    return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; };
+
+  const ME = { id: 'm1', first_name: 'Lea', last_name: 'Lorenzana', email: 'lea@corefitness-test.com',
+    role: 'member', status: 'active', phone: null, photo_url: null, created_at: iso(-90, 9, 0) };
+  const session = {
+    access_token: `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: 'm1', role: 'authenticated', exp })}.sig`,
+    refresh_token: 'r', token_type: 'bearer', expires_at: exp,
+    user: { id: 'm1', aud: 'authenticated', role: 'authenticated', email: ME.email, app_metadata: {}, user_metadata: {} },
+  };
+  await page.addInitScript(([k, s]) => {
+    localStorage.setItem(k, JSON.stringify(s));
+    localStorage.setItem('user', JSON.stringify({ id: 'm1', name: 'Lea Lorenzana', email: 'lea@corefitness-test.com', role: 'member' }));
+  }, [KEY, session]);
+
+  const QUARTER = { id: 'p4', name: 'Quarterly', tier: 'premium', price: 4200, duration_days: 90, is_active: true,
+    description: 'Three months', can_book_classes: true, can_book_pt: true, class_bookings_per_week: null, pt_sessions_per_month: null };
+  const PREMIUM = { id: 'p3', name: 'Premium', tier: 'premium', price: 1500, duration_days: 30, is_active: true,
+    description: 'All', can_book_classes: true, can_book_pt: true, class_bookings_per_week: null, pt_sessions_per_month: null };
+  const EX = [
+    { id: 'e1', name: 'Barbell Squat', muscle_group: 'legs', equipment: 'barbell', is_timed: false, is_active: true, sort_order: 1 },
+    { id: 'e2', name: 'Leg Press', muscle_group: 'legs', equipment: 'machine', is_timed: false, is_active: true, sort_order: 2 },
+    { id: 'e3', name: 'Plank', muscle_group: 'core', equipment: 'bodyweight', is_timed: true, is_active: true, sort_order: 3 },
+  ];
+  let n = 0;
+  const uid = (p) => `${p}-${++n}`;
+  const DB = {
+    profiles: [ME],
+    member_profiles: [{ profile_id: 'm1', experience_level: 'beginner', qr_code: 'QR', created_at: iso(-90, 9, 0), profiles: ME }],
+    membership_plans: [PREMIUM, QUARTER],
+    renewal_requests: [], payments: [{ id: 'pay1', member_id: 'm1', membership_id: 'ms1', amount: 1500, method: 'cash', status: 'completed', due_date: null, invoice_number: 'INV-2026-0002', notes: null, recorded_by: 'u9', paid_on: dstr(-10), created_at: iso(-10, 10, 0), plan_id: 'p3', plan_name: 'Premium' }],
+    memberships: [{ id: 'ms1', member_id: 'm1', plan_id: 'p3', status: 'active', start_date: dstr(-9), expiry_date: dstr(21),
+      never_expires: false, frozen_at: null, created_at: iso(-10, 9, 0), membership_plans: PREMIUM }],
+    exercises: EX,
+    attendance: [-1, -3, -7, -8, -9, -14, -15, -16].map((d, i) => ({ id: 'a' + i, member_id: 'm1', check_in_time: iso(d, 18, 20 + i), method: 'qr', activity: 'Gym floor' })),
+    workout_routines: [{ id: 'r1', member_id: 'm1', name: 'Leg day', notes: null, position: 0, updated_at: iso(-1, 9, 0) },
+      { id: 'r2', member_id: 'm1', name: 'Arms day', notes: null, position: 1, updated_at: iso(-1, 9, 0) }],
+    workout_routine_exercises: [
+      { id: 'x1', routine_id: 'r1', position: 0, exercise_id: 'e1', custom_name: null, target_sets: 3,
+        target_reps: 8, target_weight_kg: 60, target_seconds: null, rest_seconds: 90 },
+      { id: 'x2', routine_id: 'r1', position: 1, exercise_id: 'e2', custom_name: null, target_sets: 2,
+        target_reps: 12, target_weight_kg: 100, target_seconds: null, rest_seconds: 60 },
+      { id: 'x3', routine_id: 'r1', position: 2, exercise_id: 'e3', custom_name: null, target_sets: 2,
+        target_reps: null, target_weight_kg: null, target_seconds: 20, rest_seconds: 30 }],
+    workout_logs: [{ id: 'L1', member_id: 'm1', activity: 'Leg day', routine_id: 'r1', created_at: new Date(Date.now() - 6 * 60000).toISOString(),
+      completed_at: null, duration_minutes: null, performed_on: dstr(0) }],
+    workout_sets: [],
+    gym_plans: [{ id: 'g1', member_id: 'm1', day_of_week: new Date().getDay(), remind_at: '18:00:00', active: true,
+      last_reminded_on: null, routine_id: null, created_at: iso(-5, 9, 0) },
+      { id: 'g2', member_id: 'm1', day_of_week: (new Date().getDay() + 2) % 7, remind_at: '18:00:00', active: true,
+      last_reminded_on: null, routine_id: null, created_at: iso(-5, 9, 0) }],
+    workout_resources: [
+      { id: 'w1', title: 'Yoga With Adriene', provider: 'YouTube', url: 'https://youtube.com/x', image_url: null, description: 'Yoga', category: 'Follow-along', level: 'all_levels', is_active: true, sort_order: 1 },
+      { id: 'w2', title: 'Bodyweight workouts', provider: 'Darebee', url: 'https://darebee.com', image_url: null, description: 'No equipment', category: 'Bodyweight', level: 'beginner', is_active: true, sort_order: 2 },
+      { id: 'w3', title: 'StrongLifts 5x5', provider: 'StrongLifts', url: 'https://stronglifts.com', image_url: null, description: 'Barbell', category: 'Strength programs', level: 'beginner', is_active: true, sort_order: 3 },
+    ],
+    saved_resources: [],
+    // The coach's roster (0082): one trainee.
+    my_trainer_members: [{ member_id: 'mb1', name: 'Lea Lorenzana', photo_url: null, experience_level: 'beginner',
+      last_visit: iso(-1, 18, 0), visits_last_30: 6 }],
+    gym_programs: [
+      { id: 'pF', name: 'Starter Strength', description: null, cover_url: null, level: 'beginner', weeks: 2,
+        premium: false, published: true, hidden: false, created_at: iso(-5, 9, 0) },
+      { id: 'pP', name: 'Advanced Block', description: null, cover_url: null, level: 'advanced', weeks: 1,
+        premium: true, published: true, hidden: false, created_at: iso(-4, 9, 0) },
+    ],
+    classes: [{ id: 'c1', name: 'Sunrise HIIT', level: 'all_levels', class_type: 'hiit', location: 'Studio', capacity: 10,
+      scheduled_at: iso(1, 7, 0), duration_minutes: 60, trainer_id: 't1', status: 'scheduled' }],
+    class_availability: [{ class_id: 'c1', capacity: 10, booked_count: 2 }],
+    bookings: [],
+    public_trainers: [
+      { id: 't1', first_name: 'Rae', last_name: 'Santos', photo_url: null, specialization: 'Strength', bio: null, availability: null,
+        years_experience: 5, certifications: null, focus_areas: null, achievements: null, gym_id: 'gym-1', presence: 'available' },
+      { id: 't2', first_name: 'Ben', last_name: 'Cruz', photo_url: null, specialization: 'Strength', bio: null, availability: null,
+        years_experience: 3, certifications: null, focus_areas: null, achievements: null, gym_id: 'gym-1', presence: 'available' },
+      { id: 't3', first_name: 'Yoga', last_name: 'Yu', photo_url: null, specialization: 'Yoga', bio: null, availability: null,
+        years_experience: 2, certifications: null, focus_areas: null, achievements: null, gym_id: 'gym-1', presence: 'available' }],
+    trainer_payment_methods: [{ id: 'pm1', trainer_id: 't1', kind: 'gcash', label: 'GCash', account_name: 'Rae Santos',
+      account_number: '0917 222 3333', qr_url: null, active: true, created_at: iso(-3, 9, 0) }],
+    coaching_prices: [],
+    gym_settings: [{ id: true, gym_name: 'Core Fitness', address: 'Mamburao', phone: null, email: null,
+      opening_time: '06:00', closing_time: '21:00', logo_url: null, short_name: 'CF', tagline: null,
+      activity_options: [], updated_at: iso(0, 9, 0), updated_by: null }],
+  };
+  const FEATURES = ['workout_tracker', 'plan_builder', 'ai_model', 'points_earn', 'points_redeem', 'challenges']
+    .map((key) => ({ key, label: key, description: key, enabled: true }));
+
+  // Embeds the fixture understands: routine → its exercises → exercise names;
+  // a log → its sets → exercise names.
+  const embed = (t, r) => {
+    if (t === 'workout_routines') {
+      return { ...r, workout_routine_exercises: DB.workout_routine_exercises.filter((x) => x.routine_id === r.id)
+        .map((x) => ({ ...x, exercises: EX.find((e) => e.id === x.exercise_id) ?? null })) };
+    }
+    if (t === 'workout_logs') {
+      return { ...r, workout_sets: DB.workout_sets.filter((s) => s.log_id === r.id)
+        .map((s) => ({ ...s, exercises: EX.find((e) => e.id === s.exercise_id) ?? null })) };
+    }
+    return r;
+  };
+  const match = (rows, params) => rows.filter((r) => params.every(([k, v]) => {
+    if (['select', 'order', 'limit', 'offset', 'columns'].includes(k)) return true;
+    if (!(k in r)) return true;
+    if (v === 'is.null') return r[k] == null;
+    if (v === 'not.is.null') return r[k] != null;
+    let m = /^eq\.(.*)$/.exec(v); if (m) return String(r[k]) === m[1];
+    m = /^gte\.(.*)$/.exec(v); if (m) return String(r[k]) >= m[1];
+    m = /^lte\.(.*)$/.exec(v); if (m) return String(r[k]) <= m[1];
+    return true;
+  }));
+
+
+  const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+  const UPLOADED = [];
+  DB.progress_photos = [
+    { id: 'ph1', member_id: 'm1', path: 'gym-1/m1/a.jpg', pose: 'front', taken_on: dstr(-60), note: 'Start, 74 kg', created_at: iso(-60, 9, 0) },
+    { id: 'ph2', member_id: 'm1', path: 'gym-1/m1/b.jpg', pose: 'front', taken_on: dstr(-2), note: '69 kg', created_at: iso(-2, 9, 0) },
+    { id: 'ph3', member_id: 'm1', path: 'gym-1/m1/c.jpg', pose: 'side', taken_on: dstr(-2), note: null, created_at: iso(-2, 9, 1) },
+  ];
+  DB.member_share_prefs = [{ member_id: 'm1', share_photos: false }];
+  const ROOM = { id: 'rm1', kind: 'pt', name: 'Lea · 1-on-1', description: null, trainer_id: 't1', trainer_name: 'Coach Rae',
+    member_count: 1, post_count: 0, last_post_at: null, comments_on: true, archived: false, join_code: null, is_mine: false, full_access: true };
+  const CALLS = {};
+  let n2 = 0;
+  const STATE = { status: null };
+  const coachingRow = () => ({ id: 'k1', member_id: 'm1', member_name: 'Lea Lorenzana', member_photo: null, trainer_id: 't1',
+    trainer_name: 'Rae Santos', trainer_photo: null, kind: 'pt', room_id: 'rm1', months: 3, status: STATE.status,
+    fee_mode: 'trainer_direct', price: 1500, pay_reference: null, pay_sent_at: null,
+    starts_on: STATE.status === 'active' ? dstr(-5) : null, ends_on: STATE.status === 'active' ? dstr(85) : null,
+    started_by: 'member', created_at: iso(-5, 9, 0), standin_id: null, standin_trainer_id: null, standin_name: null,
+    standin_from: null, standin_to: null, group_code: null, i_am: 'member' });
+  const FN = {
+    coaching_settings: () => [{ modes: ['classes', 'pick_pt', 'desk_assigns', 'coach_invites'], lengths: [1, 3, 6], fee_mode: 'trainer_direct' }],
+    my_coachings: () => (STATE.status ? [coachingRow()] : []),
+    // 0192: this coach takes payments online into their own PayMongo account.
+    gym_online_pay: () => ({ gym: false, trainers: ['t1'] }),
+    my_member_checkouts: () => (STATE.coachPaid ? [{ id: 'co9', purpose: 'coaching', description: 'Coaching, 1 month with Rae Santos', amount: '1500',
+      status: 'paid', method: 'gcash', created_at: iso(0, 9, 0), paid_at: iso(0, 9, 1) }] : []),
+    request_coaching: () => { STATE.status = 'requested'; return 'k1'; },
+    submit_coaching_payment: () => { STATE.status = 'payment_sent'; return null; },
+    set_coaching_standin: () => 'sd1',
+    coaching_sweep: () => 0,
+    reserve_progress_photo: (b) => { const id = 'new' + (++n2); const p = `gym-1/m1/new${n2}.jpg`;
+      DB.progress_photos.unshift({ id, member_id: 'm1', path: p, pose: b.p_pose, taken_on: b.p_taken_on || dstr(0), note: b.p_note, created_at: new Date().toISOString() });
+      return [{ photo_id: id, path: p }]; },
+    set_share_photos: (b) => { DB.member_share_prefs[0].share_photos = b.p_share; return null; },
+    delete_progress_photo: () => null,
+    sync_gym_rooms: () => 0,
+    my_rooms: () => [ROOM],
+    room_badges: () => [],
+    room_classwork: () => [{ id: 'wp', kind: 'checkin', checkin_type: 'photo', title: 'Front photo, week 4', instructions: 'Same spot, same light.',
+      due_on: dstr(2), gym_workout_id: null, workout_name: null, created_at: iso(-1, 9, 0), whole_room: true, targets: 1, turned_in: 0,
+      late: 0, missing: 0, to_review: 0, my_status: 'assigned', my_answer_text: null, my_answer_number: null, my_return_comment: null, my_points: 0 }],
+    submit_checkin_photo: () => 's1',
+  };
+  const RPC = {
+    refund_quote: [{ percent: 70, amount: 1050, rule_label: 'Pro-rata for the 21 unused days of your term.', days_elapsed: 9,
+      has_visited: true, paid_total: 1500, days_total: 30, days_unused: 21, prorata_percent: 70, floor_percent: 50, basis: 'prorata', fee_deducted: 0 }],
+    gym_traffic: [1,2,3,4,5,6,0].flatMap((dow) => ['6am','9am','12pm','3pm','6pm','9pm'].map((band, k) =>
+      ({ dow, band, visits: [8, 5, 2, 4, 14, 3][k] * 4, weeks: 4 }))),
+    my_features: FEATURES, plan_allows: true, member_points_balance: 0,
+    member_progression: [{ level: 1, points: 0, next_level_points: 100 }], sync_my_achievements: 0,
+    member_commitments: [], my_trainer_ratings: [],
+    my_booking_modes: [{ class_mode: 'off', pt_mode: 'instant' }],
+    member_last_sets: [{ exercise_id: 'e1', set_number: 1, reps: 8, weight_kg: 50, duration_seconds: null },
+      { exercise_id: 'e1', set_number: 2, reps: 8, weight_kg: 50, duration_seconds: null }],
+  };
+
+  await page.route(`**://${REF}.supabase.co/**`, async (route) => {
+    const req = route.request();
+    const after = req.url().replace(/^https?:\/\/[^/]+/, '');
+    const qi = after.indexOf('?');
+    const path = qi === -1 ? after : after.slice(0, qi);
+    const params = (qi === -1 ? '' : after.slice(qi + 1)).split('&').filter(Boolean).map((kv) => {
+      const eq = kv.indexOf('=');
+      return eq === -1 ? [decodeURIComponent(kv), ''] : [decodeURIComponent(kv.slice(0, eq)), decodeURIComponent(kv.slice(eq + 1))];
+    });
+    const one = (req.headers()['accept'] || '').includes('vnd.pgrst.object');
+    const json = (b, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(b),
+      headers: { 'Content-Range': '0-9/10', 'Access-Control-Allow-Origin': '*', 'Access-Control-Expose-Headers': 'Content-Range' } });
+
+    if (path.startsWith('/auth/v1/')) return json(path.includes('/user') ? session.user : { ...session });
+    if (path.startsWith('/rest/v1/rpc/')) { const fn = path.split('/rest/v1/rpc/')[1];
+      // One gym (docs/TENANCY.md): my_gym_context answers from this fixture's
+      // own profiles, so the sign-in gates see the role they always did.
+      if (fn === 'my_gym_context') {
+        // Each fixture keeps its rows differently (DB, TABLES, tables()); take
+        // whichever exists rather than naming one and crashing the run in the others.
+        const rows = (() => {
+          try { return DB.profiles; } catch { /* not this fixture */ }
+          try { return TABLES.profiles; } catch { /* nor this */ }
+          try { return tables().profiles; } catch { /* nor this */ }
+          return [];
+        })() || [];
+        // Who is asking: the `sub` of the bearer token the app just sent. Read
+        // from the request rather than a fixture variable, because the fixtures
+        // name their session differently and some mint one per role.
+        const sub = (() => {
+          try {
+            const raw = (route.request().headers()['authorization'] || '').split(' ')[1].split('.')[1];
+            return JSON.parse(Buffer.from(raw.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString()).sub;
+          } catch { return null; }
+        })();
+        const me = rows.find((p) => p.id === sub) || rows[0];
+        return json(me ? [{ gym_id: 'gym-1', gym_name: 'Core Fitness', slug: 'core-fitness',
+          role: me.role, status: me.status, lock_reason: null, short_name: null, logo_url: null,
+          accent: 'violet', gym_count: 1 }] : []);
+      }
+      if (fn in FN) { const b = JSON.parse(req.postData() || '{}'); CALLS[fn] = b; return json(FN[fn](b)); }
+      return json(fn in RPC ? RPC[fn] : null); }
+    if (path.startsWith('/functions/v1/paymongo-checkout')) {
+      CALLS.paymongo = JSON.parse(req.postData() || '{}');
+      return json({ configured: true, url: 'https://checkout.paymongo.test/cs_coach', id: 'co9' });
+    }
+    // Private storage (0132): signed links, and uploads into reserved slots.
+    if (path.startsWith('/storage/v1/object/sign/')) {
+      if (req.method() === 'POST') {
+        const b = JSON.parse(req.postData() || '{}');
+        return json((b.paths || []).map((p) => ({ path: p, signedURL: `/object/sign/progress/${p}?token=t`, error: null })));
+      }
+      return route.fulfill({ status: 200, contentType: 'image/png', body: PNG });
+    }
+    if (path.startsWith('/storage/v1/object/progress/')) {
+      UPLOADED.push(path.replace('/storage/v1/object/progress/', ''));
+      return json({ Key: path });
+    }
+    if (!path.startsWith('/rest/v1/')) return json([]);
+    const t = path.split('/rest/v1/')[1].replace('gym_people', 'profiles');
+    DB[t] = DB[t] ?? [];
+    const method = req.method();
+    if (method === 'POST') {
+      const body = JSON.parse(req.postData() || '[]');
+      const list = (Array.isArray(body) ? body : [body]).map((r) => ({
+        id: uid(t), created_at: new Date().toISOString(),
+        ...(t === 'workout_logs' ? { performed_on: dstr(0), completed_at: null, duration_minutes: null } : {}),
+        ...r,
+      }));
+      DB[t].push(...list);
+      return json(one ? list[0] : list, 201);
+    }
+    if (method === 'PATCH') {
+      const body = JSON.parse(req.postData() || '{}');
+      const hit = match(DB[t], params);
+      hit.forEach((r) => Object.assign(r, body));
+      return json(one ? hit[0] ?? null : hit);
+    }
+    if (method === 'DELETE') {
+      const hit = match(DB[t], params);
+      DB[t] = DB[t].filter((r) => !hit.includes(r));
+      if (t === 'workout_routines') DB.workout_routine_exercises = DB.workout_routine_exercises.filter((x) => !hit.some((h) => h.id === x.routine_id));
+      return json(hit);
+    }
+    const rows = match(DB[t], params).map((r) => embed(t, r));
+    return json(one ? rows[0] ?? null : rows);
+  });
+
+  // What the owner asked for (2026-11-03, 2026-11-06): in light every word is plainly seen, fills are
+  // solid with white words, the lines dark mode draws are drawn too, and nothing dark is left behind.
+  // Each finding is walked up to the first painted background:
+  //   words (or a field's typed value) under 3:1 against what is behind them;
+  //   a gradient behind words — light mode's fills are solid (a photo's scrim is exempt);
+  //   dark words on a coloured fill — a filled thing carries white words;
+  //   a line that disappears into what is behind it (dark mode's white hairlines on white);
+  //   a near-black block bigger than a dot — a dark-mode fill that never turned light.
+  const faint = () => page.evaluate(() => {
+    const rgb = (s) => {
+      const m = /rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)/.exec(s);
+      if (m) return [+m[1], +m[2], +m[3], m[4] === undefined ? 1 : +m[4]];
+      // color-mix() computes to color(srgb r g b / a), 0–1 — unread, every tinted ground passed as see-through (2026-11-07).
+      const c = /color\(srgb\s+([\d.e-]+)\s+([\d.e-]+)\s+([\d.e-]+)(?:\s*\/\s*([\d.]+))?\)/.exec(s);
+      return c ? [+c[1] * 255, +c[2] * 255, +c[3] * 255, c[4] === undefined ? 1 : +c[4]] : null;
+    };
+    const lum = ([r, g, b]) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+    const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+    const over = (top, under) => [0, 1, 2].map((i) => top[i] * top[3] + under[i] * (1 - top[3])).concat(1);
+    const sat = ([r, g, b]) => { const mx = Math.max(r, g, b), mn = Math.min(r, g, b); return mx === 0 ? 0 : (mx - mn) / mx; };
+    const kept = (el) => !!el.closest('.keep-dark, img, video, canvas, svg, [data-photo-viewer], [data-tv-preview], [data-light-exempt]');
+    // A colour, or { grad } when words sit on a gradient, or 'photo' when a picture is behind them.
+    const bgOf = (el, ignoreImage) => {
+      const layers = [];
+      for (let n = el; n; n = n.parentElement) {
+        const cs = getComputedStyle(n);
+        const img = cs.backgroundImage;
+        if (!ignoreImage && img && img !== 'none') return img.includes('url(') ? 'photo' : { grad: `${n.tagName.toLowerCase()}.${String(n.className).split(' ').slice(0, 2).join('.')} ${img.slice(0, 70)}` };
+        const c = rgb(cs.backgroundColor);
+        if (c && c[3] > 0.6) return layers.reduceRight((under, top) => over(top, under), c);
+        // A see-through fill is blended with what is behind it, never skipped — a 55% near-black
+        // row read as "the page" and passed while it showed grey.
+        if (c && c[3] >= 0.12) layers.push(c);
+      }
+      return layers.reduceRight((under, top) => over(top, under), [246, 246, 249, 1]);
+    };
+    const tag = (el) => `<${el.tagName.toLowerCase()}${el.className && typeof el.className === 'string' ? '.' + el.className.split(' ').filter(Boolean).slice(0, 2).join('.') : ''}>`;
+    const label = (el) => `"${String(/^(INPUT|TEXTAREA)$/.test(el.tagName) ? el.value : el.textContent ?? '').trim().slice(0, 24)}"`;
+    const bad = [];
+    for (const el of document.querySelectorAll('body *')) {
+      const r = el.getBoundingClientRect(); if (!r.width || !r.height) continue;
+      const cs = getComputedStyle(el); if (cs.visibility === 'hidden' || +cs.opacity < 0.5 || kept(el)) continue;
+      // Lines: a drawn border must stand off what is behind it.
+      for (const side of ['Top', 'Bottom', 'Left', 'Right']) {
+        if (parseFloat(cs[`border${side}Width`]) < 1 || cs[`border${side}Style`] === 'none') continue;
+        const bc = rgb(cs[`border${side}Color`]); if (!bc || bc[3] < 0.02) continue; // transparent on purpose
+        const behind = bgOf(el.parentElement ?? el, true);
+        if (!Array.isArray(behind)) continue;
+        const own = rgb(cs.backgroundColor);
+        const ground = own && own[3] > 0.6 ? own : behind;
+        if (ratio(over(bc, ground), ground) < 1.06 && ratio(over(bc, behind), behind) < 1.06) { bad.push(`invisible line ${tag(el)} ${side.toLowerCase()} (${cs[`border${side}Color`]} on rgb(${ground.slice(0, 3).map(Math.round).join(', ')}))`); break; }
+      }
+      const field = /^(INPUT|TEXTAREA)$/.test(el.tagName) && !/checkbox|radio|range|color|file|hidden/.test(el.type) && el.value?.trim();
+      const words = el.childNodes.length && [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim().length > 1);
+      if (field || words) {
+        const fg = rgb(cs.color); const bg = bgOf(el, !!field);
+        if (bg && bg.grad) { bad.push(`gradient behind ${label(el)} [${bg.grad}]`); continue; }
+        if (!fg || !Array.isArray(bg) || fg[3] < 0.5) continue;
+        const c = ratio(fg, bg);
+        if (c < 3) { bad.push(`${label(el)} ${c.toFixed(1)}:1`); continue; }
+        // A coloured fill (saturated, not a pale tint) or a dark one carries light words.
+        if (!field && ((sat(bg) > 0.45 && lum(bg) < 0.5) || lum(bg) < 0.2) && lum(fg) < lum(bg)) bad.push(`dark words on a fill ${label(el)}`);
+        continue;
+      }
+      const c = rgb(cs.backgroundColor);
+      if (c && c[3] > 0.8 && lum(c) < 0.05 && r.width * r.height > 900 && !el.querySelector('video, canvas')) bad.push(`dark block ${tag(el)} ${Math.round(r.width)}x${Math.round(r.height)}`);
+      // A dark gradient is a dark block too (owner, 2026-11-07: Equipment's #2a2050→#14323a squares passed as "an image").
+      const gi = cs.backgroundImage;
+      if (gi && gi.includes('gradient') && !gi.includes('url(') && r.width * r.height > 900) {
+        const stops = [...gi.matchAll(/rgba?\([^)]*\)/g)].map((m) => rgb(m[0])).filter((s) => s && s[3] > 0.6);
+        if (stops.length && stops.every((s) => lum(s) < 0.05)) bad.push(`dark gradient block ${tag(el)} ${Math.round(r.width)}x${Math.round(r.height)}`);
+      }
+    }
+    return [...new Set(bad)].slice(0, 10);
+  });
+
+  const H2 = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': 'POST, PUT, OPTIONS' };
+  const ok = (r, b) => r.fulfill({ status: 200, contentType: 'application/json', headers: H2, body: JSON.stringify(b) });
+  const argsOf = (r) => { try { return JSON.parse(r.request().postData() || '{}'); } catch { return {}; } };
+  const calls = [];
+  let myName = null;
+  // A login the desk made: no email (a stand-in address), the slip's password still to change.
+  session.user.email = 'lea.l@no-email.invalid';
+  ME.email = 'lea.l@no-email.invalid';
+  session.user.user_metadata = { must_change_password: true, first_name: 'Lea', last_name: 'Lorenzana' };
+  await page.addInitScript(([k, u]) => {
+    // Once: after that the app's own writes (the password step clears must_change_password) stand.
+    if (sessionStorage.getItem('planted-set-up')) return;
+    try { const s = JSON.parse(localStorage.getItem(k)); s.user = u; localStorage.setItem(k, JSON.stringify(s)); sessionStorage.setItem('planted-set-up', '1'); } catch { /* none */ }
+  }, [KEY, session.user]);
+  await page.route('**/auth/v1/user**', (r) => {
+    if (r.request().method() === 'OPTIONS') return r.fulfill({ status: 200, headers: H2, body: 'ok' });
+    if (r.request().method() === 'PUT') {
+      const a = argsOf(r); calls.push(['updateUser', a]);
+      session.user.user_metadata = { ...session.user.user_metadata, ...(a.data ?? {}) };
+    }
+    return ok(r, session.user);
+  });
+  await page.route('**/rest/v1/rpc/my_login', (r) => ok(r, [{ username: myName, has_email: false, email: null }]));
+  await page.route('**/rest/v1/rpc/username_available', (r) => ok(r, argsOf(r).p === 'taken.one' ? 'That username is taken. Choose another.' : null));
+  await page.route('**/rest/v1/rpc/set_my_username', (r) => { const a = argsOf(r); calls.push(['set_my_username', a]); myName = a.p; ok(r, a.p); });
+  await page.route('**/storage/v1/object/avatars/**', (r) => { calls.push(['avatar', r.request().method()]); ok(r, { Key: 'avatars/m1/x.jpg' }); });
+  await page.route('**/rest/v1/rpc/my_color_mode', (r) => ok(r, 'system'));
+  await page.route('**/functions/v1/sign-in-username', (r) => {
+    if (r.request().method() === 'OPTIONS') return r.fulfill({ status: 200, headers: H2, body: 'ok' });
+    calls.push(['sign-in-username', argsOf(r)]);
+    return r.fulfill({ status: 400, contentType: 'application/json', headers: H2, body: JSON.stringify({ error: 'That username and password do not match.' }) });
+  });
+
+  await page.setViewportSize({ width: 393, height: 852 });
+  const out = [];
+  const say = (label, good, extra = '') => out.push(`${label}: ${good ? 'yes' : 'MISSING ' + extra}`);
+  const go = async (p) => {
+    await page.goto(`http://localhost:5173${p}`, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#boot', { state: 'detached', timeout: 9000 }).catch(() => {});
+    await page.waitForTimeout(1800);
+  };
+  // A small square PNG to pick, drawn in the page.
+  const png = Buffer.from(await page.evaluate(async () => {
+    const c = document.createElement('canvas'); c.width = 240; c.height = 240;
+    const g = c.getContext('2d'); g.fillStyle = '#7c3aed'; g.fillRect(0, 0, 240, 240); g.fillStyle = '#fbbf24'; g.fillRect(60, 60, 120, 120);
+    const b = await new Promise((res) => c.toBlob(res, 'image/png'));
+    return [...new Uint8Array(await b.arrayBuffer())];
+  }).catch(() => []));
+  const pickPhoto = async () => {
+    await page.locator('[data-photo-pick] input[type="file"]').setInputFiles({ name: 'me.png', mimeType: 'image/png', buffer: png });
+    await page.locator('[data-crop-use]').click({ timeout: 6000 });
+    await page.waitForTimeout(600);
+  };
+  await page.emulateMedia({ colorScheme: 'light' });
+
+  try {
+  // ---- a desk-made login is sent to set up first ----
+  await go('/member/home');
+  say('a desk-made login opens on "Set up your login", nothing else', /\/set-up-login$/.test(page.url()) && (await page.locator('[data-set-up-login]').count()) === 1, page.url());
+  let f = await faint();
+  say('set-up is right in light (words, fills, lines)', f.length === 0, f.join(' | '));
+  await page.screenshot({ path: 'shots/member-set-up-light.png' });
+
+  // Step 1: the password.
+  await page.getByLabel('New password').fill('my-own-pass1');
+  await page.getByLabel('Confirm password').fill('my-own-pass1');
+  await page.getByRole('button', { name: 'Next' }).click();
+  await page.waitForTimeout(900);
+  const up = calls.find((c) => c[0] === 'updateUser');
+  say('step 1 saves their own password and stops asking', !!up && up[1].password === 'my-own-pass1' && up[1].data?.must_change_password === false, JSON.stringify(up?.[1]));
+
+  // Step 2: the username — required, since there is no email.
+  say('step 2 asks for a username, required with no email', /Your username/.test(await page.locator('body').innerText()) && (await page.getByRole('button', { name: 'Skip' }).count()) === 0);
+  await page.getByLabel('Username').fill('Lea L');
+  say('the username is lowercased and spaces dropped as typed', (await page.getByLabel('Username').inputValue()) === 'leal');
+  await page.getByLabel('Username').fill('taken.one');
+  await page.getByLabel('Username').blur();
+  await page.waitForTimeout(500);
+  say('a taken one says so when you leave the box', /taken/.test(await page.locator('[data-username-input]').locator('..').innerText()));
+  await page.getByLabel('Username').fill('lea.l');
+  await page.getByRole('button', { name: 'Next' }).click();
+  await page.waitForTimeout(800);
+  const su = calls.find((c) => c[0] === 'set_my_username');
+  say('step 2 saves the username', !!su && su[1].p === 'lea.l', JSON.stringify(su?.[1]));
+
+  // Step 3: an optional photo, through the cropper.
+  if (png.length) await pickPhoto();
+  say('step 3: a picked photo is framed and previewed', (await page.locator('[data-photo-pick] img').count()) === 1);
+  f = await faint();
+  say('the photo step is right in light', f.length === 0, f.join(' | '));
+  await page.screenshot({ path: 'shots/member-set-up-photo-light.png' });
+  await page.getByRole('button', { name: /Save and start/ }).click();
+  await page.waitForTimeout(1500);
+  say('…the photo is uploaded', calls.some((c) => c[0] === 'avatar'), JSON.stringify(calls.map((c) => c[0])));
+  say('…and they land on their home', /\/member\/home/.test(page.url()), page.url());
+
+  // ---- the login screen and the helper ----
+  const res = await page.evaluate(async () => (await import('/src/lib/api/logins.ts')).signInWithLogin('lea.l', 'x1234567'));
+  const si = calls.find((c) => c[0] === 'sign-in-username');
+  say('a username goes to the server to sign in', !!si && si[1].username === 'lea.l' && /do not match/.test(res?.error ?? ''), JSON.stringify(si?.[1]));
+  const src = await page.evaluate(async () => (await fetch('/src/pages/Login.tsx')).text());
+  say('the login field says "Email or username"', /Email or username/.test(src));
+
+  // ---- Settings → Username ----
+  await go('/member/settings?section=account');
+  say('Settings → Account links to Username', (await page.getByText('Username', { exact: true }).count()) >= 1);
+  await go('/member/username');
+  say('the Username page shows the current one', /@lea\.l/.test(await page.locator('[data-current-username]').innerText().catch(() => '')));
+  await page.getByLabel('Username').fill('');
+  say('with no email, removing it is not offered as possible', /only login|how you sign in/.test(await page.locator('body').innerText()));
+  await page.getByLabel('Username').fill('lea.lorenzana');
+  await page.getByRole('button', { name: 'Save username' }).click();
+  await page.waitForTimeout(800);
+  say('saving changes it', calls.some((c) => c[0] === 'set_my_username' && c[1].p === 'lea.lorenzana'));
+  f = await faint();
+  say('the Username page is right in light', f.length === 0, f.join(' | '));
+
+  // ---- Profile hides the stand-in address; Privacy says what is kept ----
+  await go('/member/profile');
+  const prof = await page.locator('body').innerText();
+  say('Profile never shows the stand-in address', !/no-email\.invalid/.test(prof) && /sign in with your username/.test(prof), (prof.match(/Email.{0,60}/) ?? [''])[0]);
+  await go('/privacy');
+  say('the Privacy Policy says a desk-made login comes on a slip', /one-time password on a printed slip/.test(await page.locator('body').innerText()));
+
+  // ---- the sign-up photo on the card ----
+  await page.evaluate(() => localStorage.clear());
+  await go('/register');
+  const pick = page.locator('[data-photo-pick]');
+  if (await pick.count() && png.length) {
+    await pickPhoto();
+    say('sign-up: the photo shows on the member card at once', (await page.locator('[data-card-photo]').count()) === 1);
+    await page.locator('[data-member-card]').screenshot({ path: 'shots/member-register-photo-light.png' });
+  } else {
+    say('sign-up: the photo step is on the first step', false, 'no [data-photo-pick] on /register');
+  }
+  } catch (e) {
+    out.push('ERR ' + String(e.message).split(String.fromCharCode(10))[0] + ' @ ' + page.url());
+    await page.screenshot({ path: 'shots/member-logins-err.png' });
+  }
+  return out.join(String.fromCharCode(10));
+}

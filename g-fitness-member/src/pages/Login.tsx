@@ -69,6 +69,14 @@ export default function Login() {
       return;
     }
 
+    // 0236: a login the desk made or reset — the slip's one-time password worked once.
+    if (result.setUp) {
+      localStorage.setItem('isLoggedIn', 'true');
+      setIsLoading(false);
+      navigate('/set-up-login', { replace: true });
+      return;
+    }
+
     // More than one gym to sign in to (or this one is closed to them but
     // another is open): they choose. The picker routes by the role in the gym
     // they pick, so the Member/Coach toggle does not apply.
@@ -423,7 +431,7 @@ export default function Login() {
             >
               <div>
                 <label className="block text-xs font-semibold mb-2" style={{ color: 'var(--color-text-secondary)' }}>
-                  Email
+                  Email or username
                 </label>
                 <div className="relative">
                   <Mail
@@ -432,15 +440,17 @@ export default function Login() {
                     style={{ color: 'var(--color-text-muted)' }}
                   />
                   <input
-                    type="email"
+                    type="text"
                     inputMode="email"
-                    autoComplete="email"
+                    autoCapitalize="off"
+                    autoComplete="username"
+                    aria-label="Email or username"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     /* Was `eya.lorenzana@email.com` — one real person's address
                        shown to every user as the example, the same mistake the
                        member profile made with her photo. */
-                    placeholder="you@example.com"
+                    placeholder="you@example.com or your username"
                     className="field-input field-role w-full rounded-xl pl-10 pr-4 h-12 text-sm text-white"
                     readOnly={isLoading}
                   />

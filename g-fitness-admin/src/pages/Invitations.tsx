@@ -8,6 +8,8 @@ import {
   importInvites, inviteAccount, listInvitations, parseList, revokeInvitation,
   type ImportResult, type Invitation, type InviteOutcome, type InviteRole, type ParsedRow,
 } from '../lib/api/invitations';
+import { isStandInEmail, suggestUsername, usernameShape, USERNAME_HINT } from '../lib/api/logins';
+import LoginSlip from '../components/LoginSlip';
 import { RdHeader, RdCard, StatTile, RdButton, Pill, RdTable, Tr, Td, TableFooter, EmptyBlock, IconTile } from '../components/ui/rd';
 import type { Tone } from '../components/ui/rdTokens';
 
@@ -50,14 +52,14 @@ export default function Invitations() {
   const [showDone, setShowDone] = useState(false);
   const [role, setRole] = useState<InviteRole>('member');
   const [isAdmin, setIsAdmin] = useState(false);
-  const [one, setOne] = useState({ email: '', firstName: '', lastName: '', phone: '' });
+  const [one, setOne] = useState({ email: '', username: '', firstName: '', lastName: '', phone: '' });
   const [busy, setBusy] = useState(false);
   const [paste, setPaste] = useState('');
   const [importing, setImporting] = useState<{ done: number; total: number } | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   /** What the last single invitation did — emailed, or the password to hand over. */
-  const [sent, setSent] = useState<(InviteOutcome & { email: string; role: InviteRole }) | null>(null);
+  const [sent, setSent] = useState<(InviteOutcome & { name: string; role: InviteRole }) | null>(null);
   const [resending, setResending] = useState<string | null>(null);
   const [reviewing, setReviewing] = useState(false);
   /** Now, read once — never during a render. */
@@ -96,9 +98,13 @@ export default function Invitations() {
     e.preventDefault();
     setBusy(true);
     try {
+      // 0236: an email or a username — they sign in with either.
+      if (!one.email.trim() && !one.username.trim()) { showToast('Give an email or a username — they sign in with it.', 'error'); return; }
+      const shape = usernameShape(one.username);
+      if (shape) { showToast(`Username: ${shape}`, 'error'); return; }
       const out = await inviteAccount({ ...one, role });
-      setSent({ ...out, email: one.email.trim(), role });
-      setOne({ email: '', firstName: '', lastName: '', phone: '' });
+      setSent({ ...out, name: [one.firstName, one.lastName].map((x) => x.trim()).filter(Boolean).join(' ') || out.email || out.username || 'New account', role });
+      setOne({ email: '', username: '', firstName: '', lastName: '', phone: '' });
       await load();
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'That could not be sent', 'error');
@@ -135,8 +141,11 @@ export default function Invitations() {
   const resend = async (r: Invitation) => {
     setResending(r.id);
     try {
-      const out = await inviteAccount({ email: r.email, role: r.role, firstName: r.first_name, lastName: r.last_name, phone: r.phone });
-      setSent({ ...out, email: r.email, role: r.role });
+      // A no-email invitation is sent again by its username (its address is a stand-in).
+      const out = await inviteAccount(isStandInEmail(r.email)
+        ? { email: '', username: r.email.split('@')[0], role: r.role, firstName: r.first_name, lastName: r.last_name, phone: r.phone }
+        : { email: r.email, role: r.role, firstName: r.first_name, lastName: r.last_name, phone: r.phone });
+      setSent({ ...out, name: [r.first_name, r.last_name].filter(Boolean).join(' ') || out.email || out.username || 'New account', role: r.role });
       setWay('one');
       await load();
     } catch (e) {
@@ -201,8 +210,22 @@ export default function Invitations() {
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <label className={labelCls} style={labelSt} htmlFor="iv-email">Email</label>
-                <input id="iv-email" type="email" required className={input} style={inputSt} placeholder="name@example.com"
+                <input id="iv-email" type="email" className={input} style={inputSt} placeholder="name@example.com"
                   value={one.email} onChange={(e) => setOne({ ...one, email: e.target.value })} />
+              </div>
+              {/* 0236: a username — the only login when they have no email. */}
+              <div className="sm:col-span-2" data-invite-username>
+                <label className={labelCls} style={labelSt} htmlFor="iv-username">Username {one.email.trim() ? '(optional)' : '(needed without an email)'}</label>
+                <div className="flex gap-2">
+                  <input id="iv-username" className={input} style={inputSt} placeholder="e.g. maria.santos" autoCapitalize="off" spellCheck={false}
+                    value={one.username} onChange={(e) => setOne({ ...one, username: e.target.value.toLowerCase().replace(/\s+/g, '') })} />
+                  {(one.firstName.trim() || one.lastName.trim()) && !one.username && (
+                    <RdButton variant="soft" type="button" onClick={() => setOne({ ...one, username: suggestUsername(one.firstName, one.lastName) })}>Suggest</RdButton>
+                  )}
+                </div>
+                <p className="mt-1.5 text-[12.5px]" style={{ color: usernameShape(one.username) ? 'var(--color-secondary)' : 'var(--color-text-secondary)' }}>
+                  {usernameShape(one.username) ?? `${USERNAME_HINT}. They sign in with their email or this; with no email, this is their only login.`}
+                </p>
               </div>
               <div>
                 <label className={labelCls} style={labelSt} htmlFor="iv-first">First name (optional)</label>
@@ -223,7 +246,10 @@ export default function Invitations() {
             <RdButton className="mt-6" variant="primary" icon={Send} type="submit" disabled={busy}>
               {busy ? 'Sending…' : `Send ${ROLE[role].toLowerCase()} login`}
             </RdButton>
-            {sent && <SentCard sent={sent} copied={copied} onCopy={copy} onClose={() => setSent(null)} />}
+            {sent && (
+              <LoginSlip name={sent.name} role={sent.role} username={sent.username ?? null} email={sent.email ?? null}
+                password={sent.password} emailed={sent.emailed} existing={sent.existing} onClose={() => setSent(null)} />
+            )}
           </form>
         )}
 
@@ -353,7 +379,8 @@ export default function Invitations() {
             return (
               <Tr key={r.id} data-invite-row style={{ height: (rows?.length ?? 0) > paged.perPage ? fit.rowHeight : undefined }}>
                 <Td>
-                  <p className="text-[15px] text-white">{r.email}</p>
+                  <p className="text-[15px] text-white">{isStandInEmail(r.email) ? `@${r.email.split('@')[0]}` : r.email}</p>
+                  {isStandInEmail(r.email) && <p className="text-[12.5px]" style={muted}>No email — signs in with a username</p>}
                   {name && <p className="text-[13px]" style={muted}>{name}</p>}
                 </Td>
                 <Td>
@@ -397,44 +424,3 @@ function IconAct({ label, icon: Icon, onClick, disabled, danger }: { label: stri
   );
 }
 
-/** What sending did: emailed, or — only when it was not — the one-time password, once. */
-function SentCard({ sent, copied, onCopy, onClose }: {
-  sent: InviteOutcome & { email: string; role: InviteRole };
-  copied: string | null; onCopy: (text: string, key: string) => void; onClose: () => void;
-}) {
-  const app = sent.role === 'staff' ? 'corefitness-admin.vercel.app' : 'corefitness-gym.vercel.app';
-  const ok = sent.emailed === 'sent';
-  return (
-    <div className="mt-4 rounded-xl p-4 relative" data-invite-sent
-      style={ok ? { background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(139,92,246,0.45)' } : { background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.45)' }}>
-      <button type="button" aria-label="Close" onClick={onClose} className="absolute top-2.5 right-2.5 w-8 h-8 grid place-items-center rounded-lg hover:bg-white/5" style={{ color: 'var(--color-text-secondary)' }}><X size={15} /></button>
-      <p className="text-[14.5px] text-white font-semibold flex items-center gap-2">
-        {ok ? <CheckCircle2 size={17} style={{ color: '#A78BFA' }} /> : <AlertTriangle size={17} style={{ color: '#FBBF24' }} />}
-        {ok ? `Login emailed to ${sent.email}` : `${sent.email} is invited — the email did not go out`}
-      </p>
-      {sent.existing ? (
-        <p className="mt-1.5 text-[13px]" style={{ color: 'var(--color-text-secondary)' }}>
-          They already have a Core Fitness account, so no new password was made. They sign in at {app} with their own and are asked to finish joining.
-        </p>
-      ) : ok ? (
-        <p className="mt-1.5 text-[13px]" style={{ color: 'var(--color-text-secondary)' }}>
-          It has their email, a one-time password and the link to {app}. At first sign-in they choose their own password and fill in the form.
-        </p>
-      ) : (
-        <>
-          <p className="mt-1.5 text-[13px]" style={{ color: 'var(--color-text-secondary)' }}>
-            {sent.emailed === 'not_configured' ? 'Email is not set up on Core Fitness yet.' : `The email service said: ${sent.emailError?.slice(0, 120) ?? 'no answer'}.`} Give them this login yourself — it is shown only now:
-          </p>
-          {sent.password && (
-            <div className="mt-2 flex items-center gap-2 flex-wrap">
-              <code className="px-3 py-2 rounded-lg text-[14px] tracking-wide" style={{ background: 'rgba(0,0,0,0.35)', color: '#FDE68A' }} data-invite-password>{sent.password}</code>
-              <RdButton variant="soft" icon={Copy} onClick={() => onCopy(`Sign in at ${app}\nEmail: ${sent.email}\nOne-time password: ${sent.password}`, 'one')}>
-                {copied === 'one' ? 'Copied' : 'Copy login'}
-              </RdButton>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-}

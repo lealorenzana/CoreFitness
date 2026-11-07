@@ -114,12 +114,13 @@ export async function setStaffStatus(id: string, status: ProfileStatus): Promise
  * on a non-2xx — the real message is on `error.context`, so unwrap it.
  */
 export async function createStaffAccount(input: {
+  /** 0236: no password — a one-time one comes back for the slip. Email may be empty with a username. */
   email: string;
-  password: string;
+  username?: string;
   firstName: string;
   lastName: string;
   phone?: string;
-}): Promise<{ id: string; email: string }> {
+}): Promise<{ id: string; email: string | null; username: string | null; password: string | null }> {
   const { data, error } = await supabase.functions.invoke('create-staff', { body: input });
   if (error) {
     const context = (error as { context?: Response }).context;
@@ -134,7 +135,7 @@ export async function createStaffAccount(input: {
     }
     throw new Error(serverMessage ?? error.message);
   }
-  return data as { id: string; email: string };
+  return data as { id: string; email: string | null; username: string | null; password: string | null };
 }
 
 /**

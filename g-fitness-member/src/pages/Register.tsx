@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -22,6 +22,9 @@ import { finishSignIn, logout } from '../utils/auth';
 import { applyAccent } from '../lib/gymTheme';
 import { getCurrentMemberId, setExperienceLevel } from '../services/bookingService';
 import GoogleButton from '../components/ui/GoogleButton';
+import { PhotoPick } from '../components/account/LoginPieces';
+import { keepPhotoForLater } from '../lib/api/logins';
+import { uploadMyAvatar } from '../lib/api/avatars';
 
 /**
  * Member sign-up — direction B of the 2026-11-02 mock-ups: **the member card
@@ -125,6 +128,10 @@ export default function Register() {
   const navigate = useNavigate();
 
   const [step, setStep] = useState(1);
+  /** 0236: an optional photo, shown on the card at once; uploaded when there is a session (now, or at the first sign-in). */
+  const [photo, setPhoto] = useState<File | null>(null);
+  const photoUrl = useMemo(() => (photo ? URL.createObjectURL(photo) : null), [photo]);
+  useEffect(() => () => { if (photoUrl) URL.revokeObjectURL(photoUrl); }, [photoUrl]);
   const [direction, setDirection] = useState(1);
   const [formData, setFormData] = useState({
     firstName: '', lastName: '', phone: '',
@@ -329,6 +336,7 @@ export default function Register() {
         });
         if (pwError) showErrorToast({ type: 'validation', message: 'You are signed up, but the password was not saved', details: pwError.message });
         const { data: { session } } = await supabase.auth.getSession();
+        if (session && photo) await uploadMyAvatar(photo).catch(() => undefined);
         if (session) await finishSignIn(session.user.id);
         if (formData.experience) {
           const memberId = await getCurrentMemberId().catch(() => null);
@@ -370,6 +378,10 @@ export default function Register() {
         signupGoal: formData.goal || undefined,
       });
       setIsLoading(false);
+      if (photo) {
+        if (signedIn) await uploadMyAvatar(photo).catch(() => keepPhotoForLater(formData.email, photo));
+        else await keepPhotoForLater(formData.email, photo);
+      }
 
       // Signed in already (no email to confirm): straight on. Otherwise the
       // card flips and they are told to check their inbox.
@@ -432,13 +444,16 @@ export default function Register() {
                       : <span className="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-extrabold" style={{ background: 'rgba(0,0,0,.25)' }}>{initials(gymName)}</span>}
                     <span className="font-bold text-[15px] truncate">{gymName}</span>
                   </div>
-                  <div className="mt-auto">
+                  <div className="mt-auto flex items-end gap-3">
+                    {photoUrl && <img src={photoUrl} alt="" data-card-photo className="w-14 h-14 rounded-2xl object-cover flex-none" style={{ border: '2px solid rgba(255,255,255,.75)' }} />}
+                    <div className="min-w-0 flex-1">
                     <p className="text-xs font-semibold" style={{ opacity: 0.85 }}>Member</p>
                     <p className="text-2xl font-extrabold truncate" style={{ minHeight: 32 }} data-card-name>{cardName || 'Your name'}</p>
                     <div className="flex gap-2 mt-2 flex-wrap">
                       {level && <span key={level.id} className="rg-tag">Experience: {level.label}</span>}
                       {goal && <span key={goal.id} className="rg-tag">{goal.label}</span>}
                       {step === STEPS.length && <span className="rg-tag">{freePlan?.name ?? 'Free plan'} to start</span>}
+                    </div>
                     </div>
                   </div>
                 </div>
@@ -484,6 +499,7 @@ export default function Register() {
                       Filled in from your Google account ({google.email}). Check your name, then answer the rest.
                     </p>
                   )}
+                  <PhotoPick file={photo} onChange={setPhoto} name={cardName} />
 
                   {full && (
                     <div data-gym-full className="rounded-2xl px-4 py-3 text-xs leading-relaxed"

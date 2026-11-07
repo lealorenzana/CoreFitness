@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabaseClient';
 import { clearGymContext, getGymContext, myGyms, usableGyms } from '../lib/gymContext';
 import { myApplications } from '../lib/api/applications';
 import { getSessionPersistence, setSessionPersistence } from '../lib/authStorage';
+import { signInWithLogin } from '../lib/api/logins';
 
 // Floating particles
 function Particles() {
@@ -86,9 +87,10 @@ export default function AdminLogin() {
     // session lands in the wrong store.
     setSessionPersistence(rememberMe);
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error || !data.user) {
-      showToast(error?.message ?? 'Invalid email or password', 'error');
+    // 0236: an email or a username.
+    const { error } = await signInWithLogin(email, password);
+    if (error) {
+      showToast(/invalid login credentials/i.test(error) ? 'That email or username and password don’t match.' : error, 'error');
       setIsLoading(false);
       return;
     }
@@ -325,7 +327,7 @@ export default function AdminLogin() {
                   className="relative" whileHover={{ scale: 1.01 }}>
                   <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 transition-colors duration-300"
                     style={{ color: focusedInput === 'email' ? '#fff' : 'rgba(255,255,255,0.35)' }} />
-                  <input type="email" placeholder="Email address" value={email}
+                  <input type="text" inputMode="email" autoCapitalize="off" autoComplete="username" placeholder="Email or username" aria-label="Email or username" value={email}
                     onChange={e => setEmail(e.target.value)}
                     onFocus={() => setFocusedInput('email')} onBlur={() => setFocusedInput(null)}
                     className="w-full h-10 pl-10 pr-4 rounded-lg text-sm text-white placeholder-white/30 transition-all duration-300"

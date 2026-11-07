@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Archive, Check, Copy, Eye, EyeOff, RefreshCw, ShieldCheck, UserCheck, UserPlus, UserX } from 'lucide-react';
+import { Archive, Check, KeyRound, ShieldCheck, UserCheck, UserPlus, UserX } from 'lucide-react';
 import Avatar from '../ui/Avatar';
 import Button from '../ui/Button';
 import StepModal, { StepField } from '../ui/StepModal';
@@ -8,18 +8,13 @@ import { createStaffAccount } from '../../lib/api/settings';
 import { isEmailTaken } from '../../lib/api/members';
 import { listStaffPermissions, setStaffPermissions, STAFF_AREAS, type StaffArea } from '../../lib/api/staffPermissions';
 import { showToast } from '../../utils/toast';
+import { myLogin, realEmail, suggestUsername, usernameAvailable, usernameShape, USERNAME_HINT } from '../../lib/api/logins';
+import LoginSlip from '../LoginSlip';
 import type { ProfileRow, ProfileStatus } from '../../types/db';
 
 const MUTED = 'var(--color-text-secondary)';
 const PANEL = { background: 'var(--color-surface)', border: '1px solid var(--color-border)' };
 const ALL = STAFF_AREAS.map((a) => a.key);
-
-function readablePassword(): string {
-  const words = ['Desk', 'Front', 'Core', 'Steady', 'Swift', 'Clear', 'Bright', 'Ready'];
-  const r = new Uint32Array(3);
-  crypto.getRandomValues(r);
-  return `${words[r[0] % words.length]}-${String(1000 + (r[1] % 9000))}-${words[r[2] % words.length].toLowerCase()}`;
-}
 
 /** The areas as tick boxes with what each one lets them do. */
 function AreaPicker({ value, onChange }: { value: StaffArea[]; onChange: (v: StaffArea[]) => void }) {
@@ -104,7 +99,7 @@ export default function StaffAccounts({ accounts, meId, onStatus, onChanged }: {
                 <Avatar name={`${a.first_name} ${a.last_name}`} photoUrl={a.photo_url} size={34} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-white truncate">{a.first_name} {a.last_name}</p>
-                  <p className="text-[11px] truncate" style={{ color: MUTED }}>{a.email}</p>
+                  <p className="text-[11px] truncate" style={{ color: MUTED }}>{realEmail(a.email) ?? (a.username ? `@${a.username}` : 'No email')}</p>
                 </div>
                 <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full"
                   style={live ? { background: 'var(--color-primary-light)', color: 'var(--color-primary)' } : { background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
@@ -152,7 +147,7 @@ export default function StaffAccounts({ accounts, meId, onStatus, onChanged }: {
           <div key={a.id} className="flex items-center gap-3 p-2.5 rounded-xl" style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
             <Avatar name={`${a.first_name} ${a.last_name}`} photoUrl={a.photo_url} size={30} />
             <p className="flex-1 min-w-0 text-xs font-semibold text-white truncate">{a.first_name} {a.last_name}{a.id === meId ? <span className="font-normal" style={{ color: MUTED }}> (you)</span> : null}</p>
-            <span className="text-[11px]" style={{ color: MUTED }}>{a.email}</span>
+            <span className="text-[11px]" style={{ color: MUTED }}>{realEmail(a.email) ?? (a.username ? `@${a.username}` : 'No email')}</span>
           </div>
         ))}
       </div>
@@ -166,27 +161,39 @@ function AddStaffWizard({ onClose, onCreated, permsLive }: { onClose: () => void
   const STEPS = permsLive ? ['Who they are', 'Their login', 'What they may do'] : ['Who they are', 'Their login'];
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
-  const [showPw, setShowPw] = useState(true);
   const [err, setErr] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [done, setDone] = useState<{ name: string; email: string; password: string } | null>(null);
-  const [f, setF] = useState({ firstName: '', lastName: '', phone: '', email: '', password: readablePassword(), areas: [...ALL] as StaffArea[] });
+  const [done, setDone] = useState<{ name: string; email: string | null; username: string | null; password: string | null } | null>(null);
+  const [slipOpen, setSlipOpen] = useState(false);
+  // 0236: no typed password — a one-time one is made and shown on the login slip.
+  const [f, setF] = useState({ firstName: '', lastName: '', phone: '', email: '', username: '', areas: [...ALL] as StaffArea[] });
+  const [usernamesOn, setUsernamesOn] = useState(false);
+  useEffect(() => { void myLogin().then((l) => setUsernamesOn(l !== null)); }, []);
 
   const next = async () => {
     setErr(null);
     if (step === 1) {
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.trim())) { setErr('They sign in with this — type a real address.'); return; }
-      if (await isEmailTaken(f.email)) { setErr('This email already has an account.'); return; }
-      if (f.password.length < 8) { setErr('At least 8 characters.'); return; }
+      const em = f.email.trim();
+      if (!em && !f.username.trim()) { setErr(usernamesOn ? 'Give an email or a username — they sign in with it.' : 'They sign in with this — type a real address.'); return; }
+      if (em && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) { setErr('That is not an email address.'); return; }
+      if (em && await isEmailTaken(em)) { setErr('This email already has an account.'); return; }
+      if (f.username.trim()) {
+        const why = usernameShape(f.username) ?? await usernameAvailable(f.username).catch(() => null);
+        if (why) { setErr(`Username: ${why}`); return; }
+      }
     }
-    if (step < STEPS.length - 1) { setStep(step + 1); return; }
+    if (step < STEPS.length - 1) {
+      if (step === 0 && usernamesOn && !f.username) setF((x) => ({ ...x, username: suggestUsername(x.firstName, x.lastName) }));
+      setStep(step + 1);
+      return;
+    }
     setBusy(true);
     try {
-      const created = await createStaffAccount({ firstName: f.firstName.trim(), lastName: f.lastName.trim(), email: f.email.trim(), phone: f.phone.trim() || undefined, password: f.password });
+      const created = await createStaffAccount({ firstName: f.firstName.trim(), lastName: f.lastName.trim(), email: f.email.trim(), phone: f.phone.trim() || undefined, username: f.username.trim() || undefined });
       if (permsLive && f.areas.length < ALL.length) {
         await setStaffPermissions(created.id, f.areas).catch(() => showToast('They were added with the whole desk — set what they may do from the list.', 'error'));
       }
-      setDone({ name: `${f.firstName.trim()} ${f.lastName.trim()}`, email: f.email.trim(), password: f.password });
+      setDone({ name: `${f.firstName.trim()} ${f.lastName.trim()}`, email: created.email ?? null, username: created.username ?? null, password: created.password ?? null });
+      setSlipOpen(true);
       await onCreated();
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Could not add them');
@@ -194,18 +201,21 @@ function AddStaffWizard({ onClose, onCreated, permsLive }: { onClose: () => void
   };
 
   if (done) {
-    const login = `Your Core Fitness front-desk login\nEmail: ${done.email}\nPassword: ${done.password}\nSign in: https://corefitness-admin.vercel.app`;
     return (
       <StepModal title={`${done.name} can sign in`} steps={STEPS} step={0} onStep={() => undefined} canNext={false} onNext={() => undefined}
         onBack={() => undefined} onClose={onClose} finishLabel="" hideNav>
-        <pre className="text-xs rounded-lg p-3 whitespace-pre-wrap" style={{ background: 'var(--color-surface-high)', color: MUTED }}>{login}</pre>
-        <Button size="sm" variant="ghost" onClick={() => void navigator.clipboard.writeText(login).then(() => setCopied(true))}><Copy size={13} /> {copied ? 'Copied' : 'Copy to send them'}</Button>
+        <p className="text-xs" style={{ color: MUTED }}>A one-time password was made for them. At their first sign-in they choose their own.</p>
+        <Button size="sm" variant="ghost" onClick={() => setSlipOpen(true)} data-show-slip><KeyRound size={13} /> Show the login slip</Button>
         <Button variant="secondary" className="w-full" onClick={onClose}>Done</Button>
+        {slipOpen && (
+          <LoginSlip name={done.name} role="staff" username={done.username} email={done.email} password={done.password}
+            emailed={null} onClose={() => setSlipOpen(false)} />
+        )}
       </StepModal>
     );
   }
 
-  const ready = step === 0 ? !!f.firstName.trim() && !!f.lastName.trim() : step === 1 ? !!f.email.trim() && f.password.length >= 8 : f.areas.length > 0;
+  const ready = step === 0 ? !!f.firstName.trim() && !!f.lastName.trim() : step === 1 ? !!f.email.trim() || !!f.username.trim() : f.areas.length > 0;
   return (
     <StepModal title="Add front-desk staff" subtitle="A login for the dashboard — only the parts of the desk you choose"
       steps={STEPS} step={step} onStep={setStep} canNext={ready} onNext={() => void next()} onBack={() => setStep(step - 1)}
@@ -218,18 +228,17 @@ function AddStaffWizard({ onClose, onCreated, permsLive }: { onClose: () => void
         <StepField label="Mobile number (optional)"><input value={f.phone} inputMode="tel" onChange={(e) => setF({ ...f, phone: e.target.value })} aria-label="Mobile number" placeholder="0917 123 4567" className={STEP_INPUT} style={STEP_INPUT_STYLE} /></StepField>
       </>)}
       {step === 1 && (<>
-        <StepField label="Email" hint="They sign in to this dashboard with it."><input autoFocus type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} aria-label="Email" className={STEP_INPUT} style={STEP_INPUT_STYLE} /></StepField>
-        <StepField label="Password" hint="Made for you — shown again at the end to hand over.">
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <input type={showPw ? 'text' : 'password'} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} aria-label="Password" className={`${STEP_INPUT} pr-9 font-mono`} style={STEP_INPUT_STYLE} />
-              <button type="button" onClick={() => setShowPw(!showPw)} aria-label={showPw ? 'Hide password' : 'Show password'} className="absolute right-2 top-1/2 -translate-y-1/2 p-1" style={{ color: MUTED }}>
-                {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
-              </button>
-            </div>
-            <Button variant="ghost" onClick={() => setF({ ...f, password: readablePassword() })}><RefreshCw size={13} /> New one</Button>
-          </div>
-        </StepField>
+        <StepField label={usernamesOn ? 'Email (optional with a username)' : 'Email'} hint="They sign in to this dashboard with it."><input autoFocus type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} aria-label="Email" className={STEP_INPUT} style={STEP_INPUT_STYLE} /></StepField>
+        {usernamesOn && (
+          <StepField label={f.email.trim() ? 'Username (optional)' : 'Username'} hint={`${USERNAME_HINT}. They sign in with their email or this.`}>
+            <input value={f.username} onChange={(e) => setF({ ...f, username: e.target.value.toLowerCase().replace(/\s+/g, '') })} aria-label="Username"
+              autoCapitalize="off" spellCheck={false} className={`${STEP_INPUT} font-mono`} style={STEP_INPUT_STYLE} />
+          </StepField>
+        )}
+        <p className="text-xs flex items-start gap-2 rounded-lg p-2.5" style={{ background: 'var(--color-surface-high)', color: MUTED }}>
+          <KeyRound size={14} className="flex-none mt-0.5" />
+          A one-time password is made for them and shown on a login slip. At their first sign-in they choose their own.
+        </p>
       </>)}
       {step === 2 && (
         <StepField label="What may they do?" hint="Everything is ticked — untick what this person should not touch. Pricing, coaches, settings and these permissions are always the owner's.">

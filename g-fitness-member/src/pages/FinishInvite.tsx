@@ -9,6 +9,9 @@ import { PasswordInput, PasswordStrength } from '../components/auth/PasswordFiel
 import { ageFrom, birthDateProblem, GENDER_OPTIONS, PHONE_RE } from '../utils/profileRules';
 import { TERMS_VERSION, PRIVACY_VERSION } from '../lib/legalVersions';
 import { logout } from '../utils/auth';
+import { myLogin, realEmail, setMyUsername, usernameShape, type MyLogin } from '../lib/api/logins';
+import { uploadMyAvatar } from '../lib/api/avatars';
+import { PhotoPick, UsernameInput } from '../components/account/LoginPieces';
 
 interface Mine {
   gym_id: string; gym_name: string; logo_url: string | null;
@@ -43,11 +46,18 @@ export default function FinishInvite({ token }: { token: string }) {
   const [shown, setShown] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /** 0236: their login (null before 0236), the username they choose, and an optional photo. */
+  const [login, setLogin] = useState<MyLogin | null>(null);
+  const [username, setUsername] = useState('');
+  const [photo, setPhoto] = useState<File | null>(null);
 
   useEffect(() => {
     void (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setMustChange(user?.user_metadata?.must_change_password === true);
+      const l = await myLogin();
+      setLogin(l);
+      setUsername(l?.username ?? '');
       const { data } = await supabase.rpc('my_invitation', { p_token: token });
       const row = (Array.isArray(data) ? data[0] : null) as Mine | null;
       setMine(row);
@@ -61,6 +71,8 @@ export default function FinishInvite({ token }: { token: string }) {
 
   const problem = (): string | null => {
     if (!f.first.trim() || !f.last.trim()) return 'Please enter your first and last name.';
+    if (login && !login.hasEmail && !username.trim()) return 'Keep a username — with no email, it is how you sign in.';
+    if (login && username.trim() && usernameShape(username)) return `Username: ${usernameShape(username)}`;
     if (f.phone.trim() && !PHONE_RE.test(f.phone.trim())) return 'That phone number does not look right.';
     if (mine?.role === 'member') {
       if (!f.dob) return 'Please enter your date of birth.';
@@ -93,6 +105,9 @@ export default function FinishInvite({ token }: { token: string }) {
         if (pwError) throw new Error(pwError.message);
         setMustChange(false);
       }
+      // 0236: the username (a taken one stops here, fixable) and the photo, before the acceptance.
+      if (login && username.trim() !== (login.username ?? '')) await setMyUsername(username.trim() || null);
+      if (photo) await uploadMyAvatar(photo).catch(() => undefined);
       const { error: rpcError } = await supabase.rpc('complete_invitation', {
         p_token: token, p_first: f.first.trim(), p_last: f.last.trim(), p_phone: f.phone.trim() || null,
         ...(mine?.role === 'member' ? {
@@ -231,12 +246,24 @@ export default function FinishInvite({ token }: { token: string }) {
       {mustChange && (
         <section className="space-y-3">
           <Eyebrow>Your password</Eyebrow>
-          <p className="text-xs" style={muted}>The one in the email worked once. Choose your own for {mine.email}.</p>
+          <p className="text-xs" style={muted}>The one-time password worked once. Choose your own{realEmail(mine.email) ? ` for ${realEmail(mine.email)}` : ''}.</p>
           <PasswordInput value={f.password} onChange={(v) => set('password', v)} shown={shown} onToggle={() => setShown((s) => !s)} placeholder="New password" autoComplete="new-password" label="New password" />
           <PasswordStrength password={f.password} />
           <PasswordInput value={f.confirm} onChange={(v) => set('confirm', v)} shown={shown} onToggle={() => setShown((s) => !s)} placeholder="Type it again" autoComplete="new-password" label="Confirm password" />
         </section>
       )}
+
+      {login && (
+        <section className="space-y-3" data-invite-username>
+          <Eyebrow>Your username</Eyebrow>
+          <UsernameInput value={username} onChange={setUsername} required={!login.hasEmail} />
+        </section>
+      )}
+
+      <section className="space-y-3" data-invite-photo>
+        <Eyebrow>Your photo</Eyebrow>
+        <PhotoPick file={photo} onChange={setPhoto} name={`${f.first} ${f.last}`} />
+      </section>
 
       {mine.role === 'member' && (
         <label className="flex items-start gap-3 text-sm" style={{ color: 'var(--color-text-secondary)' }}>

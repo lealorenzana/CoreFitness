@@ -13,6 +13,7 @@
 // by the Supabase runtime. The service-role key never appears in either frontend.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { isStandIn, standInEmail, temporaryPassword, tidyUsername, usernameProblem } from "../_shared/logins.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -61,8 +62,8 @@ Deno.serve(async (req: Request) => {
     const gymId = ctx.gym_id as string;
 
     const {
-      email,
-      password,
+      email: typedEmail,
+      username: typedUsername,
       firstName,
       lastName,
       phone,
@@ -76,17 +77,29 @@ Deno.serve(async (req: Request) => {
       planId,
     } = await req.json();
 
-    if (!email || !password || !firstName || !lastName) {
-      return json({ error: "email, password, firstName, lastName are required" }, 400);
-    }
-
     // Service-role client — bypasses RLS, used ONLY after the admin check passed.
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
+
+    // 0236 (the owner, 2026-11-07): the desk never types a password. A one-time
+    // password is made here, shown on the login slip, and replaced at the first
+    // sign-in (must_change_password). The member signs in with their email or a
+    // username; with no email the address is a stand-in that never receives mail.
+    const username = tidyUsername(typedUsername) || null;
+    const emailIn = String(typedEmail ?? "").trim().toLowerCase();
+    if (!firstName || !lastName) return json({ error: "First and last name are required" }, 400);
+    if (!emailIn && !username) return json({ error: "Give an email or a username — they sign in with it." }, 400);
+    if (username) {
+      const why = await usernameProblem(adminClient, username);
+      if (why) return json({ error: why }, 400);
+    }
+    const email = emailIn || standInEmail(username!);
+    const password = temporaryPassword();
 
     const { data: created, error: createError } = await adminClient.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
+      user_metadata: { must_change_password: true, first_name: firstName, last_name: lastName },
     });
     if (createError || !created.user) {
       return json({ error: createError?.message ?? "Failed to create member account" }, 400);
@@ -109,6 +122,7 @@ Deno.serve(async (req: Request) => {
       email,
       phone: phone ?? null,
       status: "active", // walk-ins are added by staff, so no approval queue
+      ...(username ? { username } : {}),
     });
     if (profileInsertError) return await rollback(profileInsertError.message);
 
@@ -148,7 +162,8 @@ Deno.serve(async (req: Request) => {
       if (membershipError) return await rollback(membershipError.message);
     }
 
-    return json({ id: newId, email }, 200);
+    // The slip: the real email (never the stand-in), the username, the one-time password.
+    return json({ id: newId, email: isStandIn(email) ? null : email, username, password }, 200);
   } catch (err) {
     return json({ error: err instanceof Error ? err.message : "Unexpected error" }, 500);
   }
