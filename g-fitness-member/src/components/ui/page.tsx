@@ -1,5 +1,8 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { previousPath } from '../../lib/navTrail';
+import { tabForPath } from '../layout/memberNav';
+import { trainerAreaFor } from '../layout/trainerNav';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft } from '@phosphor-icons/react';
 import { cn } from '../../lib/utils';
 import { panelStyle } from './Card';
@@ -91,11 +94,24 @@ export function PageTitle({
   hub?: boolean;
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
   return (
     <header className="flex flex-col">
       {back && (
         <button
-          onClick={() => (window.history.length > 1 ? navigate(-1) : navigate(fallback))}
+          onClick={() => {
+            // Back goes up within the tab you are in (the owner, 2026-11-07): when the screen before this one is in
+            // a different bottom-bar tab (Routines opened from You), Back lands on this screen's parent in its own
+            // tab, not on You. In the same tab it steps back exactly as before. Nothing behind: the parent.
+            const prev = previousPath();
+            if (!prev || window.history.length <= 1) { navigate(fallback); return; }
+            // The member's bottom-bar tabs, or the coach's areas (trainerNav) — the same rule in both apps.
+            const area = (path: string) => (path.startsWith('/trainer') ? trainerAreaFor(path) : tabForPath(path));
+            const here = area(location.pathname);
+            const before = area(prev.split('?')[0]);
+            if (here && before && before !== here && area(fallback.split('?')[0]) === here) { navigate(fallback, { replace: true }); return; }
+            navigate(-1);
+          }}
           className="self-start flex items-center"
           // 44px tall to a thumb; the visible row is the 13px line inside it.
           style={{ gap: 7, height: 44, marginTop: -12, marginBottom: 2, fontSize: 13, color: 'var(--color-primary-300)' }}

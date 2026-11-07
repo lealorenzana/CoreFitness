@@ -78,6 +78,20 @@ export function trainerTabRootFor(pathname: string): TrainerTab | null {
   return TRAINER_TABS.find((t) => t.path === pathname) ?? null;
 }
 
+/**
+ * Which coach area a screen belongs to (2026-11-07), for Back's "up within your area" rule (PageTitle): a tab's
+ * own screen, any screen in its rail, and a trainee's place (the hub's). Null for screens of no area.
+ */
+export function trainerAreaFor(pathname: string): TrainerTabId | null {
+  const root = TRAINER_TABS.find((t) => t.path === pathname);
+  if (root) return root.id;
+  if (pathname.startsWith('/trainer/pt/') || pathname.startsWith('/trainer/members/')) return 'home';
+  for (const [id, rail] of Object.entries(TRAINER_RAILS) as [TrainerTabId, Destination[]][]) {
+    if (rail.some((d) => { const p = d.path.split('?')[0]; return pathname === p || pathname.startsWith(`${p}/`); })) return id;
+  }
+  return null;
+}
+
 /** A tab's rail, filtered to what the gym runs. */
 export function trainerRail(id: TrainerTabId, app: GymApp | null): Destination[] {
   return visibleDestinations(TRAINER_RAILS[id], app);

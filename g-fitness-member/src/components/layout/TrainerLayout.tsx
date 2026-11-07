@@ -1,8 +1,9 @@
-import { useSyncExternalStore } from 'react';
+import { useSyncExternalStore, useEffect } from 'react';
 import { subscribeSaved, syncTick } from '../../lib/offlineReads';
 import { Suspense } from 'react';
 import { SkeletonList } from '../ui/Skeleton';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, useNavigationType } from 'react-router-dom';
+import { recordLocation } from '../../lib/navTrail';
 import { useRef } from 'react';
 import TrainerTabHeader from './TrainerTabHeader';
 import { trainerTabRootFor } from './trainerNav';
@@ -38,6 +39,9 @@ export default function TrainerLayout() {
   // Back online after showing saved data: the page reads again (offlineReads.ts).
   const sync = useSyncExternalStore(subscribeSaved, syncTick, () => 0);
   const mainRef = useRef<HTMLDivElement>(null);
+  // Every screen this visit steps through, for Back's "up within your tab" rule (lib/navTrail.ts).
+  const how = useNavigationType();
+  useEffect(() => { recordLocation(location.key, location.pathname + location.search, how); }, [location.key, location.pathname, location.search, how]);
   // The hub (TrainerHub) is the app's home, Discord style: no header, no gutter, no bar.
   const hub = location.pathname === '/trainer/home';
   const root = hub ? null : trainerTabRootFor(location.pathname);

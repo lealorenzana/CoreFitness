@@ -2,7 +2,8 @@ import { useSyncExternalStore } from 'react';
 import { subscribeSaved, syncTick } from '../../lib/offlineReads';
 import { Suspense } from 'react';
 import { SkeletonList } from '../ui/Skeleton';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate, useNavigationType } from 'react-router-dom';
+import { recordLocation } from '../../lib/navTrail';
 import { useRef } from 'react';
 import TabBar from './TabBar';
 import TabHeader from './TabHeader';
@@ -70,6 +71,14 @@ export default function Layout() {
   // Back online after showing saved data: the page reads again (offlineReads.ts).
   const sync = useSyncExternalStore(subscribeSaved, syncTick, () => 0);
   const mainRef = useRef<HTMLDivElement>(null);
+  // Every screen this visit steps through, for Back's "up within your tab" rule (lib/navTrail.ts).
+  const how = useNavigationType();
+  // Development only: the checks walk the app as taps do (scripts/member-navigation-check.js).
+  const navigateForChecks = useNavigate();
+  useEffect(() => {
+    if (import.meta.env.DEV) (window as unknown as { __cfNavigate?: (to: string) => void }).__cfNavigate = (to: string) => navigateForChecks(to);
+  }, [navigateForChecks]);
+  useEffect(() => { recordLocation(location.key, location.pathname + location.search, how); }, [location.key, location.pathname, location.search, how]);
   const root = tabRootFor(location.pathname);
   // A routine being run takes the whole screen (2026-09-19): no bar, no chat
   // head, no gutter — the page draws its own chrome, and its way out is its own

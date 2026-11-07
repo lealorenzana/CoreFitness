@@ -1,6 +1,7 @@
 import { clearPageCache } from './pageCache';
 import { clearHubMemory } from '../components/layout/memberNav';
 import { clearScrollMemory } from '../hooks/useScrollMemory';
+import { clearNavTrail } from './navTrail';
 import { clearFeatureCache } from '../hooks/useFeatures';
 import { clearGymApp } from './gymApp';
 import { clearHere } from './here';
@@ -56,6 +57,7 @@ import { clearColorMode } from './colorMode';
 export function clearMemberCaches(): void {
   clearPageCache();
   clearScrollMemory();
+  clearNavTrail();
   clearHubMemory();
   clearTourCache();
   // Entitlements are per-member *and* per-gym: the same person can be on

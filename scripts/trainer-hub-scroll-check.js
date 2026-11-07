@@ -94,8 +94,7 @@ async (page) => {
   await go('/trainer/home');
   out.push('the hub opens on Today: ' + ((await page.locator('[data-today-panel]').count()) === 1 ? 'yes' : 'MISSING'));
   const labels = await page.locator('[data-rail-label]').allInnerTexts();
-  out.push('the rail in order — Today, Personal training, a photo per package trainee, then +: '
-    + (JSON.stringify(labels) === JSON.stringify(['Today', 'Personal training', 'Ana', 'Cy', 'Start coaching someone']) ? 'yes' : 'NO ' + JSON.stringify(labels)));
+  /* covered by trainer-hub-check.js with its own short list; this copy adds 26 people to make the columns scroll */
   out.push('no class or group rooms on the rail: ' + ((await page.locator('[data-rail-room], [data-rail-group]').count()) === 0 ? 'yes' : 'STILL SHOWN'));
   out.push('a package trainee’s photo counts what waits (classwork + unread): ' + (/1/.test(await page.locator('[data-rail-trainee="m2"]').innerText()) ? 'yes' : 'MISSING'));
   out.push('no tab bar: ' + ((await page.locator('nav[aria-label="Main"]').count()) === 0 ? 'yes' : 'STILL SHOWN'));
@@ -106,7 +105,7 @@ async (page) => {
   await page.waitForTimeout(800);
   out.push('Personal training opens: ' + (/view=pt/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
   const sections = await page.locator('[data-pt-section]').allTextContents(); // the eyebrow draws them in capitals
-  out.push('two sections with counts: ' + (sections.join('|') === 'On a package · 2|Single sessions · 2' ? 'yes' : 'NO ' + sections.join('|')));
+  /* covered by trainer-hub-check.js with its own short list; this copy adds 26 people to make the columns scroll */
   const pkgRows = await page.locator('[data-pt-row="package"]').allInnerTexts();
   out.push('the package pill — months while running, Ended after: ' + (pkgRows.some((r) => /Ana Reyes/.test(r) && /3 mo/.test(r)) && pkgRows.some((r) => /Cy Lim/.test(r) && /Ended/.test(r)) ? 'yes' : 'NO ' + JSON.stringify(pkgRows)));
   const singleRows = await page.locator('[data-pt-row="single"]').allInnerTexts();

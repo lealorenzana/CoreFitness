@@ -357,5 +357,24 @@ async (page) => {
   await bar.getByRole('button', { name: 'Train', exact: true }).click(); await page.waitForTimeout(900);
   const again = new URL(page.url());
   out.push('NAV tapping Train while in Train goes to its main screen: ' + (again.pathname === trainRoot && !again.search.includes('coach') ? 'yes' : 'MISSING ' + again.pathname + again.search));
+
+  // Back goes up within the tab (2026-11-07). Navigation inside the app, as a tap does (dev-only __cfNavigate).
+  const tap = async (to) => { await page.evaluate((t) => window.__cfNavigate(t), to); await page.waitForTimeout(1300); };
+  const backBtn = () => page.getByRole('button', { name: 'Back', exact: true }).first();
+  const at = () => { const u = new URL(page.url()); return u.pathname + u.search; };
+  await page.goto('http://localhost:5173/member/you', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#boot', { state: 'detached', timeout: 9000 }).catch(() => {});
+  await page.waitForTimeout(1800);
+  const startedAt = at();
+  await tap('/member/track');
+  await backBtn().click(); await page.waitForTimeout(1200);
+  const cross = at();
+  out.push('NAV from another tab -> Routines -> Back goes up in Train, not back where it came from: ' + (cross.startsWith('/member/workouts') ? `yes (${startedAt} -> ${cross})` : `MISSING landed ${cross}`));
+  await page.goBack(); await page.waitForTimeout(1000);
+  out.push('NAV …and the phone Back from there returns to where the trip began (Routines replaced, not stacked): ' + (at() === startedAt ? 'yes' : `MISSING ${at()} vs ${startedAt}`));
+  await tap('/member/book-class?tab=coach');
+  await tap('/member/track');
+  await backBtn().click(); await page.waitForTimeout(1200);
+  out.push('NAV Train -> Routines -> Back returns exactly where you were: ' + (at() === '/member/book-class?tab=coach' ? 'yes' : `MISSING ${at()}`));
   return out.join('\n');
 }
