@@ -74,7 +74,7 @@ export default function AwardModal({ achievement, onClose, onDone }: { achieveme
     <Modal isOpen onClose={onClose} hideFooter title={`${achievement.rule_kind === 'manual' ? 'Give' : 'Who has'} "${achievement.title}"`}>
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <span className="grid place-items-center rounded-full flex-none" style={{ width: 48, height: 48, border: `2px solid ${ring}`, background: '#15131f', boxShadow: `0 0 18px -6px ${ring}` }}>
+          <span className="award-medal grid place-items-center rounded-full flex-none" data-tier={achievement.tier} style={{ width: 48, height: 48, border: `2px solid ${ring}`, background: '#15131f', boxShadow: `0 0 18px -6px ${ring}` }}>
             {createElement(badgeIcon(achievement.icon), { size: 20, style: { color: ring } })}
           </span>
           <p className="text-[13px]" style={{ color: SECOND }}>{achievement.requirement}</p>

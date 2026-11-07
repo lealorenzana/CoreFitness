@@ -291,7 +291,8 @@ export function RdSelect({ value, onChange, children, label, className = '' }: {
           style={{ color: SECOND, transform: `translateY(-50%) rotate(${open ? 180 : 0}deg)` }} />
       </button>
       <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} width={Math.max(anchor?.offsetWidth ?? 200, 200)}>
-        <div style={{ background: '#1A1530', boxShadow: 'inset 0 0 0 1px rgba(139,92,246,0.3)', borderRadius: 12 }}>
+        {/* Theme colours, never a fixed #1A1530: in light that was a dark box with dark words (owner, 2026-11-07). */}
+        <div style={{ background: 'var(--rd-menu-bg, #1A1530)', boxShadow: 'inset 0 0 0 1px var(--rd-menu-line, rgba(139,92,246,0.3))', borderRadius: 12 }}>
           {searchable && (
             <div className="p-2" style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.07)' }}>
               <label className="relative block">
@@ -312,9 +313,9 @@ export function RdSelect({ value, onChange, children, label, className = '' }: {
                   onMouseEnter={() => setHi(i)} onClick={() => pick(o)}
                   ref={(el) => { if (el && i === hi && open) el.scrollIntoView({ block: 'nearest' }); }}
                   className="w-full flex items-center gap-2.5 px-3 h-10 rounded-lg text-[14px] text-left disabled:opacity-40"
-                  style={{ background: i === hi ? 'rgba(124,58,237,0.22)' : 'transparent', color: on ? '#EDE9FE' : o.value === '' ? SECOND : 'var(--color-text-primary)' }}>
+                  style={{ background: i === hi ? 'rgba(124,58,237,0.22)' : 'transparent', color: on ? 'var(--rd-menu-on, #EDE9FE)' : o.value === '' ? SECOND : 'var(--color-text-primary)' }}>
                   <span className="flex-1 truncate">{o.text}</span>
-                  {on && <Check size={15} style={{ color: '#C4B5FD' }} />}
+                  {on && <Check size={15} style={{ color: 'var(--rd-menu-on, #C4B5FD)' }} />}
                 </button>
               );
             })}

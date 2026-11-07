@@ -162,7 +162,7 @@ export default function PayTab() {
           {acc ? <div className="a-phcard" style={{ borderColor: '#f59e0b' }}><b>Pay in the app</b><div className="a-sub">GCash · Maya · card</div></div> : null}
           <div className="a-phcard" style={acc ? undefined : { borderColor: '#f59e0b' }}><b>Pay at the desk</b><div className="a-sub">cash, next time you come in</div></div>
           {!acc && <div className="a-sub">Paying in the app appears here once PayMongo is connected.</div>}
-          <div className="a-phbtn" style={{ background: '#f59e0b', color: '#1f1a0a', marginTop: 'auto' }}>{acc ? 'Pay now' : 'I’ll pay at the desk'}</div>
+          <div className="a-phbtn" style={{ background: 'var(--amber-solid, #f59e0b)', color: 'var(--on-amber, #1f1a0a)', marginTop: 'auto' }}>{acc ? 'Pay now' : 'I’ll pay at the desk'}</div>
         </div></div>
       </div>
     </div>

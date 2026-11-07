@@ -149,7 +149,7 @@ export default function CoachTab({ enabled, sold, onToggle }: { enabled: boolean
         <div className="cap"><Smartphone size={13} />Live preview · a member's chat</div>
         <div className="a-phone"><div className="scr">
           <b style={{ fontSize: 15 }}>Coach</b>
-          <div className="a-phcard" style={{ alignSelf: 'flex-end', maxWidth: '85%', background: '#2a2050' }}>What should I do today? Legs are sore.</div>
+          <div className="a-phcard on-fill" style={{ alignSelf: 'flex-end', maxWidth: '85%', background: 'var(--fill-primary, #2a2050)', borderColor: 'transparent', color: '#fff' }}>What should I do today? Legs are sore.</div>
           <div className="a-phcard" style={{ maxWidth: '90%' }}>Then upper body: push-ups, rows and planks, kept light. Walking helps sore legs recover.</div>
           <div className="a-sub" style={{ textAlign: 'center', marginTop: 'auto' }}>
             {u ? `Each member gets ${u.daily_limit.toLocaleString('en-PH')} messages a day` : 'A sample conversation'}

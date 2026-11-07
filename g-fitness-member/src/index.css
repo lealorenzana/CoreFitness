@@ -1639,3 +1639,25 @@ img { -webkit-user-drag: none; user-select: none; }
   background: #FFFFFF !important; border-color: rgb(var(--hair-rgb) / 0.12) !important; color: var(--color-text-secondary) !important;
   box-shadow: 0 1px 2px rgba(22, 22, 38, 0.06);
 }
+
+/* ── Not a sea of white; lines you can see (owner, 2026-11-07) ───────────────────────────────────────────
+   "in lightmode it doesnt need to be so much white colors … also the lines are too thin". Every ground
+   carries a soft tint of the gym's own colour, in steps so the page, cards, raised rows and sheets still
+   separate; lines are drawn about twice as strongly. A premium theme still brings its own grounds. */
+:root[data-mode="light"] {
+  --color-bg:             color-mix(in srgb, var(--color-primary) 6%, #ECECF2);
+  --color-surface:        color-mix(in srgb, var(--color-primary) 3%, #FAFAFC);
+  --color-surface-raised: color-mix(in srgb, var(--color-primary) 7%, #F0F0F5);
+  --color-surface-high:   color-mix(in srgb, var(--color-primary) 11%, #E6E6EE);
+  --glass-bg:             color-mix(in srgb, var(--color-primary) 3%, #FAFAFC);
+  --glass-line:           rgba(20, 20, 32, 0.18);
+  --color-border:         rgba(20, 20, 32, 0.22);
+  --color-hairline:       rgba(20, 20, 32, 0.22);
+  --color-separator:      rgba(20, 20, 32, 0.13);
+}
+/* The coach's rail (TrainerHub) in light: a deeper step of the gym's tint, not the page mixed with black. */
+:root[data-mode="light"] {
+  --rail-bg: color-mix(in srgb, var(--color-primary) 12%, #E2E2EA);
+  --rail-card: var(--color-surface);
+  --rail-card-shadow: 0 8px 22px -10px rgba(22, 22, 38, 0.25);
+}

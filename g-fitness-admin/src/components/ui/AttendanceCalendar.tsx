@@ -139,7 +139,7 @@ export default function AttendanceCalendar({
               }}>
               <span className="grid place-items-center tabular-nums text-[15px] font-medium rounded-full"
                 style={{
-                  width: 34, height: 34, color: '#fff',
+                  width: 34, height: 34, color: isSelected ? '#fff' : 'var(--color-text-primary)',
                   background: isSelected ? 'linear-gradient(180deg,#8B5CF6,#6D28D9)' : 'transparent',
                   boxShadow: isSelected ? '0 6px 18px -6px rgba(124,58,237,0.9)' : undefined,
                 }}>

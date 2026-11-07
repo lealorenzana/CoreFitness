@@ -94,6 +94,7 @@ export default function Popover({ anchor, open, onClose, children, width }: Popo
   return createPortal(
     <div
       ref={panelRef}
+      data-popover
       className="fixed rounded-xl shadow-2xl overflow-hidden"
       style={{
         // Above the modals, which sit at z-50 (Members, Trainers) and z-[200] (Events).

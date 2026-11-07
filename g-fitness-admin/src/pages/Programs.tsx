@@ -110,7 +110,7 @@ export default function Programs() {
               {programs.map((p) => (
                 <button key={p.id} type="button" className={`a-tile ${editingProgram === p.id ? 'on' : ''}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
                   onClick={() => setEditingProgram(p.id)} data-program={p.name}>
-                  <span style={{ height: 46, width: 56, borderRadius: 10, flex: 'none', display: 'grid', placeItems: 'center', overflow: 'hidden', background: 'linear-gradient(135deg,#2a2050,#14323a)', color: '#ffffff99' }}>
+                  <span data-tile="violet" style={{ height: 46, width: 56, borderRadius: 10, flex: 'none', display: 'grid', placeItems: 'center', overflow: 'hidden', background: 'linear-gradient(135deg,#2a2050,#14323a)', color: '#ffffff99' }}>
                     {p.coverUrl ? <img src={p.coverUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Dumbbell size={20} />}
                   </span>
                   <span style={{ flex: 1, minWidth: 0 }}>

@@ -10,6 +10,7 @@ import { getDoorSettings, listDoorCoaches, type DoorCoach } from '../lib/api/doo
 import { todayKey } from '../utils/dates';
 import { getGymContext } from '../lib/gymContext';
 import { flushScans, isOffline, resolveOffline, saveScan, savedScans } from '../lib/checkinOutbox';
+import './kiosk.css';
 
 type Flash = { kind: 'ok' | 'error'; title: string; detail: string } | null;
 
@@ -254,12 +255,11 @@ export default function Kiosk() {
   const date = now.toLocaleDateString('en-PH', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'Asia/Manila' });
 
   return (
-    <div className="fixed inset-0 flex flex-col lg:flex-row overflow-hidden select-none"
-      style={{ background: 'radial-gradient(120% 90% at 100% 0%, rgba(124,58,237,0.25) 0%, transparent 60%), var(--color-bg)' }}>
+    <div className="kiosk fixed inset-0 flex flex-col lg:flex-row overflow-hidden select-none">
       {/* The camera */}
       <div className="relative flex-1 min-h-0 flex items-center justify-center p-6">
-        <div className="relative w-full max-w-3xl aspect-video rounded-3xl overflow-hidden"
-          style={{ background: '#000', border: '1px solid var(--color-border)', boxShadow: '0 30px 80px -30px rgba(124,58,237,0.6)' }}>
+        <div className="kiosk-cam relative w-full max-w-3xl aspect-video rounded-3xl overflow-hidden"
+          style={{ background: '#000', border: '1px solid var(--color-border)' }}>
           <video ref={videoRef} muted playsInline className="w-full h-full object-cover" style={{ transform: 'scaleX(-1)' }} />
           {/* A frame to aim at — decoration only; the whole picture is read. */}
           {!camError && <div aria-hidden className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -267,23 +267,22 @@ export default function Kiosk() {
           </div>}
           {camError && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center px-8">
-              <Camera size={40} style={{ color: 'var(--color-text-muted)' }} />
-              <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{camError}</p>
+              {/* On the camera's black, whatever the mode. */}
+              <Camera size={40} style={{ color: '#9CA3AF' }} />
+              <p className="text-sm" style={{ color: '#D1D5DB' }}>{camError}</p>
             </div>
           )}
         </div>
       </div>
 
       {/* The instructions */}
-      <div className="w-full lg:w-[420px] flex flex-col justify-between p-8 gap-6"
-        style={{ borderLeft: '1px solid var(--color-border)', background: 'rgba(8,8,14,0.6)' }}>
+      <div className="kiosk-panel w-full lg:w-[420px] flex flex-col justify-between p-8 gap-6">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: 'var(--color-text-muted)' }}>{gymName || 'Check-in'}</p>
-          <p className="text-6xl font-bold text-white tabular-nums mt-3">{time}</p>
-          <p className="text-sm mt-1" style={{ color: 'var(--color-text-secondary)' }}>{date}</p>
+          <p className="kiosk-label text-xs font-semibold uppercase tracking-[0.2em]">{gymName || 'Check-in'}</p>
+          <p className="kiosk-word text-6xl font-bold tabular-nums mt-3 tracking-tight">{time}</p>
+          <p className="kiosk-sub text-base mt-1">{date}</p>
           {(offline || waiting > 0) && (
-            <p className="mt-4 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold" data-kiosk-offline
-              style={{ background: 'rgba(245,158,11,0.12)', color: '#FCD34D', border: '1px solid rgba(245,158,11,0.35)' }}>
+            <p className="kiosk-pill mt-4 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold" data-kiosk-offline>
               <CloudOff size={14} />
               {offline ? 'No connection' : 'Connection back'}{waiting > 0 ? ` · ${waiting} check-in${waiting === 1 ? '' : 's'} saved on this device` : ' · scans are saved here'}
             </p>
@@ -292,10 +291,10 @@ export default function Kiosk() {
 
         <div className="space-y-4">
           <div className="flex items-start gap-3">
-            <QrCode size={26} className="flex-shrink-0 mt-1" style={{ color: '#c4b5fd' }} />
+            <span className="kiosk-qr flex-shrink-0 grid place-items-center rounded-xl" style={{ width: 44, height: 44 }}><QrCode size={24} /></span>
             <div>
-              <p className="text-xl font-semibold text-white">Check yourself in</p>
-              <p className="text-sm mt-1" style={{ color: 'var(--color-text-secondary)' }}>
+              <p className="kiosk-word text-xl font-semibold">Check yourself in</p>
+              <p className="kiosk-sub text-sm mt-1 leading-relaxed">
                 Open the app, tap your check-in, and hold the QR code up to the camera.
               </p>
             </div>
@@ -303,23 +302,21 @@ export default function Kiosk() {
           <form onSubmit={(e) => { e.preventDefault(); void submit(code); }} className="flex gap-2">
             <input value={code} onChange={(e) => setCode(e.target.value.slice(0, 64))}
               placeholder="Or type your 6-character code" aria-label="Check-in code"
-              className={`flex-1 min-w-0 h-14 rounded-xl px-4 font-semibold text-white outline-none ${code ? 'text-lg tracking-[0.2em] uppercase' : 'text-sm'}`}
-              style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }} />
-            <button type="submit" className="h-14 px-5 rounded-xl text-sm font-bold"
-              style={{ background: 'var(--color-secondary)', color: '#08080E' }}>Go</button>
+              className={`kiosk-field flex-1 min-w-0 h-14 rounded-xl px-4 font-semibold outline-none ${code ? 'text-lg tracking-[0.2em] uppercase' : 'text-sm'}`} />
+            <button type="submit" className="kiosk-go h-14 px-6 rounded-xl text-base font-bold">Go</button>
           </form>
         </div>
 
         <div className="flex items-end justify-between">
           <div>
-            <p className="text-4xl font-bold text-white tabular-nums">{count}</p>
-            <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>checked in today</p>
+            <p className="kiosk-word text-4xl font-bold tabular-nums">{count}</p>
+            <p className="kiosk-sub text-xs">checked in today</p>
           </div>
           <button onPointerDown={startHold} onPointerUp={endHold} onPointerLeave={endHold}
-            className="flex items-center gap-2 h-10 px-4 rounded-full text-xs font-semibold transition-colors"
+            className="kiosk-hold flex items-center gap-2 h-10 px-4 rounded-full text-xs font-semibold transition-colors"
             style={{
               border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)',
-              background: holding ? 'rgba(124,58,237,0.3)' : 'transparent',
+              background: holding ? 'var(--k-hold)' : 'transparent',
             }}
             title="Hold to leave kiosk mode">
             <LogOut size={14} /> {holding ? 'Keep holding…' : 'Hold to exit'}
@@ -329,15 +326,15 @@ export default function Kiosk() {
 
       {/* The answer, big enough to read from the door */}
       {flash && (
-        <div role="status" aria-live="assertive" className="absolute inset-0 flex items-center justify-center p-8"
-          style={{ background: 'rgba(8,8,14,0.78)', backdropFilter: 'blur(10px)' }}
+        <div role="status" aria-live="assertive" className="kiosk-flash absolute inset-0 flex items-center justify-center p-8"
+          style={{ backdropFilter: 'blur(10px)' }}
           onClick={() => setFlash(null)}>
           <div className="text-center max-w-xl">
             {flash.kind === 'ok'
-              ? <CheckCircle2 size={96} className="mx-auto" style={{ color: '#a78bfa' }} />
-              : <AlertTriangle size={96} className="mx-auto" style={{ color: 'var(--color-secondary)' }} />}
-            <p className="text-5xl font-bold text-white mt-6">{flash.title}</p>
-            <p className="text-lg mt-3" style={{ color: 'var(--color-text-secondary)' }}>{flash.detail}</p>
+              ? <CheckCircle2 size={96} className="kiosk-ok mx-auto" />
+              : <AlertTriangle size={96} className="kiosk-warn mx-auto" />}
+            <p className="kiosk-word text-5xl font-bold mt-6">{flash.title}</p>
+            <p className="kiosk-sub text-lg mt-3">{flash.detail}</p>
           </div>
         </div>
       )}

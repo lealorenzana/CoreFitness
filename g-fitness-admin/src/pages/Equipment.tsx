@@ -173,7 +173,7 @@ export default function Equipment() {
                     <tr key={i.id} data-equipment-row={i.name}>
                       <td><div className="a-who">
                         {i.photo_url ? <img src={i.photo_url} alt="" style={{ width: 38, height: 38, borderRadius: 9, objectFit: 'cover', flex: 'none' }} />
-                          : <span className="a-thumb" style={{ width: 38, height: 38, borderRadius: 9, display: 'grid', placeItems: 'center', background: 'linear-gradient(135deg,#2a2050,#14323a)', flex: 'none' }}><Dumbbell size={17} /></span>}
+                          : <span className="a-thumb" data-tile="violet" style={{ width: 38, height: 38, borderRadius: 9, display: 'grid', placeItems: 'center', background: 'linear-gradient(135deg,#2a2050,#14323a)', flex: 'none' }}><Dumbbell size={17} /></span>}
                         <div className="min-w-0"><b className="truncate">{i.name}</b><div className="a-sub">{CATEGORIES.find((c) => c.key === i.category)?.label}{i.exercise_ids.length ? ` · ${i.exercise_ids.length} exercise${i.exercise_ids.length === 1 ? '' : 's'}` : ''}</div></div></div></td>
                       <td>{i.location_note || <span className="a-sub">—</span>}</td>
                       <td>{i.quantity}</td>

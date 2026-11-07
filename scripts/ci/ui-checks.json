@@ -676,6 +676,10 @@
     {
       "file": "member-coaching-rules-check.js",
       "app": "member"
+    },
+    {
+      "file": "admin-light-dropdowns-check.js",
+      "app": "admin"
     }
   ]
 }

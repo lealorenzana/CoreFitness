@@ -316,7 +316,7 @@ export default function GymApp() {
       {tab === 'words' && (
         <Split preview={(
           <Phone cap="Live preview · your words in place">
-            {words.welcome_message.trim() && <div className="a-phcard" style={{ background: '#1d1833', borderColor: '#33295c' }}><span className="a-sub">📣 {words.welcome_message.trim()}</span></div>}
+            {words.welcome_message.trim() && <div className="a-phcard" style={{ background: 'var(--color-primary-light)', borderColor: 'color-mix(in srgb, var(--color-primary) 30%, transparent)' }}><span className="a-sub">📣 {words.welcome_message.trim()}</span></div>}
             <div className="a-phcard"><b>You earned <span style={{ color: 'var(--a-a300)' }}>{pointsShort}</span></b><div className="a-sub">for checking in</div></div>
             <div className="a-phcard"><b>Book a <span style={{ color: 'var(--a-a300)' }}>{v('class', 'class')}</span></b><div className="a-sub">with one of our <span style={{ color: 'var(--a-a300)' }}>{v('trainers', 'coaches')}</span></div></div>
             <div className="a-phcard"><b>{v('members', 'members')[0].toUpperCase() + v('members', 'members').slice(1)} this week</b><div className="a-sub">how many {v('members', 'members')} checked in</div></div>
@@ -456,7 +456,7 @@ export default function GymApp() {
           {app.join_policy !== 'closed' && (
             <>
               <div className="a-ct" style={{ marginTop: 12 }}><h3><Share2 size={16} />Your link and code</h3></div>
-              <div className="flex gap-3 items-center" style={{ padding: 12, borderRadius: 14, background: '#120f20', border: '1px solid #33295c' }}>
+              <div className="flex gap-3 items-center" style={{ padding: 12, borderRadius: 14, background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
                 <div style={{ width: 74, height: 74, borderRadius: 10, background: '#fff', display: 'grid', placeItems: 'center', flex: 'none' }}>
                   <QRCodeSVG value={joinLink} size={62} level="M" bgColor="#ffffff" fgColor="#111111" />
                 </div>

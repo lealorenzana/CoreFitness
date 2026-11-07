@@ -53,7 +53,8 @@ import { tourFor } from '../../lib/tours';
 const PRESENCE_TONE: Record<Presence, string> = {
   available: 'var(--color-primary-300)', away: 'var(--color-secondary)', on_leave: 'var(--color-text-muted)',
 };
-const RAIL_BG = 'color-mix(in srgb, var(--color-bg) 70%, #000)';
+// Dark: the page darkened. Light has its own tint (index.css --rail-bg) — darkened, it was a muddy grey with grey words.
+const RAIL_BG = 'var(--rail-bg, color-mix(in srgb, var(--color-bg) 70%, #000))';
 const PANEL_SPACE = 92; // room for the floating panel at the bottom
 
 /** One person this coach trains: their package (if any), chat and room merged. */
@@ -269,7 +270,7 @@ export default function TrainerHub() {
       {me && (
         <div className="fixed flex items-center" data-user-panel data-presence={presence}
           style={{ left: 8, right: 8, bottom: 'calc(env(safe-area-inset-bottom) + 8px)', gap: 10, padding: '8px 10px', borderRadius: 18, zIndex: 30,
-            background: 'color-mix(in srgb, var(--color-surface) 92%, #000)', border: '1px solid var(--color-separator)', boxShadow: '0 8px 24px rgba(0,0,0,.35)' }}>
+            background: 'var(--rail-card, color-mix(in srgb, var(--color-surface) 92%, #000))', border: '1px solid var(--color-separator)', boxShadow: 'var(--rail-card-shadow, 0 8px 24px rgba(0,0,0,.35))' }}>
           <button type="button" onClick={() => setYouOpen(true)} aria-label="You — your status and screens" data-you-button className="flex items-center min-w-0 flex-1 text-left noc-press" style={{ gap: 10 }}>
             <span className="relative flex-none">
               <Avatar name={me.name} photoUrl={me.photo} size={38} />

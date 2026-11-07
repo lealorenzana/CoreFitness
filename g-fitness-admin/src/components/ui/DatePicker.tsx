@@ -174,6 +174,9 @@ export default function DatePicker({
       <button
         ref={setAnchor}
         type="button"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        data-date-trigger
         onClick={() => { setOpen((o) => !o); setShowYears(startView === 'year' && !value); }}
         className="w-full px-3 py-2 rounded-xl text-xs text-left flex items-center justify-between gap-2 transition-colors"
         style={{
@@ -192,8 +195,8 @@ export default function DatePicker({
           {/* Month header */}
           <div className="flex items-center justify-between mb-2">
             <button type="button" onClick={() => setShowYears((s) => !s)}
-              className="px-2 py-1 rounded-lg text-xs font-bold text-white transition-colors"
-              style={{ background: showYears ? 'var(--color-primary-light)' : 'transparent' }}>
+              className="px-2 py-1 rounded-lg text-xs font-bold transition-colors"
+              style={{ color: 'var(--color-text-primary)', background: showYears ? 'var(--color-primary-light)' : 'transparent' }}>
               {MONTHS[view.m]} {view.y}
             </button>
             <div className="flex items-center gap-1">
@@ -242,17 +245,17 @@ export default function DatePicker({
                     className="h-8 rounded-lg text-[11px] font-semibold transition-colors disabled:cursor-not-allowed"
                     style={{
                       background: c.isSelected ? 'var(--color-primary)' : 'transparent',
+                      // Theme words, never a fixed white: #fff vanished on the light popover (owner, 2026-11-07).
+                      // A day you cannot pick is the muted word, faded — still readable, plainly not on offer.
                       color: c.isSelected
                         ? '#fff'
-                        : c.disabled
-                          ? 'var(--color-border)'
-                          : c.outside
-                            ? 'var(--color-text-muted)'
-                            : '#fff',
+                        : c.disabled || c.outside
+                          ? 'var(--color-text-muted)'
+                          : 'var(--color-text-primary)',
                       // Today is ringed in amber rather than filled, so it never
                       // gets mistaken for the selected day.
                       boxShadow: c.isToday && !c.isSelected ? 'inset 0 0 0 1px var(--color-secondary)' : undefined,
-                      opacity: c.outside && !c.isSelected ? 0.45 : 1,
+                      opacity: c.isSelected ? 1 : c.disabled ? 0.4 : c.outside ? 0.55 : 1,
                     }}
                   >
                     {c.d}

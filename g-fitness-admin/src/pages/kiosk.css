@@ -1,0 +1,75 @@
+/* The kiosk (/kiosk) in both modes (owner, 2026-11-07: "color looks off in the kiosk mode when in light mode").
+   Dark keeps its look: a see-through night panel over a violet glow. Light was dark mode's see-through
+   near-black panel laid over a white page — a muddy grey with grey words. Light is now its own design,
+   by the light rules: a solid white panel, the readable word shades, solid fills with white words. */
+.kiosk {
+  --k-ground: radial-gradient(120% 90% at 100% 0%, rgba(124, 58, 237, 0.25) 0%, transparent 60%), var(--color-bg);
+  --k-cam-shadow: 0 30px 80px -30px rgba(124, 58, 237, 0.6);
+  --k-panel: rgba(8, 8, 14, 0.6);
+  --k-panel-shadow: none;
+  --k-label: var(--color-text-muted);
+  --k-word: #FFFFFF;
+  --k-sub: var(--color-text-secondary);
+  --k-qr-tile: rgba(124, 58, 237, 0.18);
+  --k-qr-icon: #C4B5FD;
+  --k-field: var(--color-surface-raised);
+  --k-field-line: var(--color-border);
+  --k-go: var(--color-secondary);
+  --k-go-word: #08080E;
+  --k-pill: rgba(245, 158, 11, 0.12);
+  --k-pill-word: #FCD34D;
+  --k-pill-line: rgba(245, 158, 11, 0.35);
+  --k-hold: rgba(124, 58, 237, 0.3);
+  --k-flash: rgba(8, 8, 14, 0.78);
+  --k-ok: #A78BFA;
+  --k-panel-line: var(--color-border);
+  --k-warn: var(--color-secondary);
+  background: var(--k-ground);
+}
+
+:root[data-mode="light"] .kiosk {
+  /* Not a sea of white (owner, 2026-11-07): the ground and the panel carry a soft tint of the gym's colour,
+     and the lines are drawn plainly — dark mode's faint hairlines vanish on a light ground. */
+  --k-ground: radial-gradient(90% 80% at 30% 50%, color-mix(in srgb, var(--color-primary) 14%, transparent) 0%, transparent 70%),
+    color-mix(in srgb, var(--color-primary) 5%, #EEEEF4);
+  --k-cam-shadow: 0 30px 70px -34px color-mix(in srgb, var(--fill-primary) 55%, transparent);
+  --k-panel: color-mix(in srgb, var(--color-primary) 7%, #FAFAFD);
+  --k-panel-shadow: -18px 0 40px -28px rgba(22, 22, 38, 0.18);
+  --k-label: var(--color-text-secondary);
+  --k-word: var(--color-text-primary);
+  --k-sub: var(--color-text-secondary);
+  --k-qr-tile: var(--fill-primary);
+  --k-qr-icon: #FFFFFF;
+  --k-field: #FFFFFF;
+  --k-field-line: color-mix(in srgb, var(--color-primary) 30%, #9A9AB0);
+  --k-panel-line: color-mix(in srgb, var(--color-primary) 22%, #C9C9D6);
+  --k-warn: var(--fill-action);
+  --k-go: var(--fill-primary);
+  --k-go-word: #FFFFFF;
+  --k-pill: #FEF3C7;
+  --k-pill-word: #92400E;
+  --k-pill-line: #FCD34D;
+  --k-hold: color-mix(in srgb, var(--color-primary) 14%, transparent);
+  --k-flash: rgba(246, 246, 249, 0.94);
+  --k-ok: var(--fill-primary);
+}
+
+.kiosk-panel { background: var(--k-panel); box-shadow: var(--k-panel-shadow); border-left: 1px solid var(--k-panel-line); }
+:root[data-mode="light"] .kiosk-panel { border-left-width: 1.5px; }
+:root[data-mode="light"] .kiosk-field { border-width: 1.5px; }
+:root[data-mode="light"] .kiosk-hold { border: 1.5px solid var(--k-panel-line) !important; }
+.kiosk-warn { color: var(--k-warn); }
+.kiosk-cam { box-shadow: var(--k-cam-shadow); }
+.kiosk-label { color: var(--k-label); }
+.kiosk-word { color: var(--k-word); }
+.kiosk-sub { color: var(--k-sub); }
+.kiosk-qr { background: var(--k-qr-tile); color: var(--k-qr-icon); }
+.kiosk-field { background: var(--k-field); border: 1px solid var(--k-field-line); color: var(--k-word); transition: border-color 0.15s, box-shadow 0.15s; }
+.kiosk-field::placeholder { color: var(--color-text-muted); opacity: 1; }
+.kiosk-field:focus { border-color: var(--color-primary); box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 18%, transparent); }
+.kiosk-go { background: var(--k-go); color: var(--k-go-word); transition: filter 0.15s, transform 0.1s; }
+.kiosk-go:hover { filter: brightness(1.08); }
+.kiosk-go:active { transform: scale(0.97); }
+.kiosk-pill { background: var(--k-pill); color: var(--k-pill-word); border: 1px solid var(--k-pill-line); }
+.kiosk-flash { background: var(--k-flash); }
+.kiosk-ok { color: var(--k-ok); }

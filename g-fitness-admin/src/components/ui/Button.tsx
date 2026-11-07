@@ -43,11 +43,13 @@ const variantStyles: Record<Variant, React.CSSProperties> = {
   primary:     { background: PRIMARY,   color: '#fff' },
   gradient:    { background: PRIMARY,   color: '#fff' },
   default:     { background: PRIMARY,   color: '#fff' },
-  secondary:   { background: SECONDARY, color: '#000' },
+  // Words on the gym's second colour: black on amber in dark, white on light mode's solid fill (--on-secondary) — fixed black
+  // read dark-on-violet on Add staff (owner, 2026-11-07).
+  secondary:   { background: SECONDARY, color: 'var(--on-secondary, #000)' },
   ghost:       { background: 'transparent', color: PRIMARY },
   danger:      { background: 'transparent', color: SECONDARY, border: `1px solid ${SECONDARY}` },
   destructive: { background: 'transparent', color: SECONDARY, border: `1px solid ${SECONDARY}` },
-  outline:     { background: 'transparent', color: '#fff',     border: `1px solid ${BORDER}` },
+  outline:     { background: 'transparent', color: 'var(--color-text-primary)', border: `1px solid ${BORDER}` },
   link:        { background: 'transparent', color: PRIMARY },
 };
 

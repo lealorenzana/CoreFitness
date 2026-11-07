@@ -70,6 +70,9 @@ export default function TimePicker({ value, onChange, placeholder = 'Select a ti
       <button
         ref={setAnchor}
         type="button"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        data-time-trigger
         onClick={() => setOpen((o) => !o)}
         className="w-full px-3 py-2 rounded-xl text-xs text-left flex items-center justify-between gap-2 transition-colors"
         style={{

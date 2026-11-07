@@ -126,7 +126,13 @@ async (page) => {
   //   a line that disappears into what is behind it (dark mode's white hairlines on white);
   //   a near-black block bigger than a dot — a dark-mode fill that never turned light.
   const faint = () => page.evaluate(() => {
-    const rgb = (s) => { const m = /rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)/.exec(s); return m ? [+m[1], +m[2], +m[3], m[4] === undefined ? 1 : +m[4]] : null; };
+    const rgb = (s) => {
+      const m = /rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)/.exec(s);
+      if (m) return [+m[1], +m[2], +m[3], m[4] === undefined ? 1 : +m[4]];
+      // color-mix() computes to color(srgb r g b / a), 0–1 — unread, every tinted ground passed as see-through (2026-11-07).
+      const c = /color\(srgb\s+([\d.e-]+)\s+([\d.e-]+)\s+([\d.e-]+)(?:\s*\/\s*([\d.]+))?\)/.exec(s);
+      return c ? [+c[1] * 255, +c[2] * 255, +c[3] * 255, c[4] === undefined ? 1 : +c[4]] : null;
+    };
     const lum = ([r, g, b]) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
     const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
     const over = (top, under) => [0, 1, 2].map((i) => top[i] * top[3] + under[i] * (1 - top[3])).concat(1);
@@ -176,7 +182,13 @@ async (page) => {
         continue;
       }
       const c = rgb(cs.backgroundColor);
-      if (c && c[3] > 0.8 && lum(c) < 0.05 && r.width * r.height > 900) bad.push(`dark block ${tag(el)} ${Math.round(r.width)}x${Math.round(r.height)}`);
+      if (c && c[3] > 0.8 && lum(c) < 0.05 && r.width * r.height > 900 && !el.querySelector('video, canvas')) bad.push(`dark block ${tag(el)} ${Math.round(r.width)}x${Math.round(r.height)}`);
+      // A dark gradient is a dark block too (owner, 2026-11-07: Equipment's #2a2050→#14323a squares passed as "an image").
+      const gi = cs.backgroundImage;
+      if (gi && gi.includes('gradient') && !gi.includes('url(') && r.width * r.height > 900) {
+        const stops = [...gi.matchAll(/rgba?\([^)]*\)/g)].map((m) => rgb(m[0])).filter((s) => s && s[3] > 0.6);
+        if (stops.length && stops.every((s) => lum(s) < 0.05)) bad.push(`dark gradient block ${tag(el)} ${Math.round(r.width)}x${Math.round(r.height)}`);
+      }
     }
     return [...new Set(bad)].slice(0, 10);
   });
@@ -185,7 +197,14 @@ async (page) => {
   const pages = ['/dashboard', '/members', '/invitations', '/attendance', '/attendance/walk-ins', '/attendance-history', '/analytics', '/retention',
     '/retention/messages', '/revenue', '/payments', '/membership-plans', '/resources', '/trainers', '/gym-app', '/schedule', '/personal-training',
     '/bookings/classes', '/equipment', '/events', '/notifications', '/activity', '/achievements', '/exercises', '/programs', '/rooms', '/shop',
-    '/help', '/inbox', '/subscription', '/rewards', '/challenges', '/credentials', '/settings', '/system'];
+    '/help', '/inbox', '/subscription', '/rewards', '/challenges', '/credentials', '/settings', '/system',
+    // Every tab past the first too (owner, 2026-11-07: Your app → Words and Settings → Staff accounts were never looked at).
+    ...['words', 'runs', 'join', 'coach', 'pay', 'tv', 'moments'].map((t) => `/gym-app?tab=${t}`),
+    ...['gym', 'hours', 'checkin', 'bookings', 'coaching', 'walk-ins', 'refunds', 'payments', 'waiver', 'house-rules', 'security', 'staff', 'profile'].map((t) => `/settings?tab=${t}`),
+    ...['catalogue', 'earning', 'season', 'referrals', 'history'].map((t) => `/rewards?tab=${t}`),
+    ...['gg', 'sq', 'gp'].map((t) => `/challenges?tab=${t}`),
+    ...['ideas', 'rate', 'tours'].map((t) => `/help?tab=${t}`),
+    '/trainers?view=pay', '/trainers?view=credentials', '/kiosk'];
   const bad = [];
   for (const p of pages) {
     await page.goto('http://localhost:5174' + p, { waitUntil: 'domcontentloaded' });
@@ -193,7 +212,7 @@ async (page) => {
     if (p === '/dashboard') say('with the computer in light mode, the app is light', (await page.evaluate(() => document.documentElement.dataset.mode)) === 'light');
     const f = await faint();
     if (f.length) bad.push(`${p}: ${f.join(' | ')}`);
-    await page.screenshot({ path: `shots/admin-light${p.replace(/\//g, '-')}.png` });
+    await page.screenshot({ path: `shots/admin-light${p.replace(/[/?=&]/g, '-')}.png` });
   }
   say('every main page readable in light (3:1 or better)', bad.length === 0, bad.join(' || '));
 

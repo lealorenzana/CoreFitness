@@ -236,3 +236,59 @@
 }
 /* A warning card's edge (dark: #3e310f, a near-black amber) is a clear amber line in light. */
 :root[data-mode="light"] { --a-warn-line: color-mix(in srgb, var(--amber-solid) 45%, transparent); }
+
+/* A native dropdown's list is drawn from each <option>'s own colours. att.css gives them dark mode's
+   near-black ground, under which light mode's dark words vanished (owner, 2026-11-07). */
+:root[data-mode="light"] .att .a-sentence select option { background: var(--color-surface); color: var(--color-text-primary); }
+
+/* Badge medals in light (owner, 2026-11-07, Achievements): solid, in the tier's own deep shade, with a white
+   icon — the pale glass circle is dark mode's. Each shade carries white words at 4.5:1 or better.
+   A badge nobody has yet (.locked) stays a white circle with a grey ring: not earned, so not filled. */
+:root[data-mode="light"] .att .a-medal:not(.locked) { color: #FFFFFF; box-shadow: 0 6px 14px -8px currentColor; }
+:root[data-mode="light"] .att .a-medal.bronze   { background: #C2410C; border-color: #C2410C; box-shadow: 0 6px 14px -8px #C2410C; }
+:root[data-mode="light"] .att .a-medal.silver   { background: #64748B; border-color: #64748B; box-shadow: 0 6px 14px -8px #64748B; }
+:root[data-mode="light"] .att .a-medal.gold     { background: #B45309; border-color: #B45309; box-shadow: 0 6px 14px -8px #B45309; }
+:root[data-mode="light"] .att .a-medal.platinum { background: var(--fill-primary); border-color: var(--fill-primary); box-shadow: 0 6px 14px -8px var(--fill-primary); }
+
+/* ── Not a sea of white; lines you can see (owner, 2026-11-07) ───────────────────────────────────────────
+   "in lightmode it doesnt need to be so much white colors … also the lines are too thin". Every ground
+   carries a soft tint of the gym's own colour (--color-primary, which GymLook sets per gym), in steps so the
+   page, its cards, raised panels and wells still separate; fields stay white, the one place you type.
+   Lines are drawn about twice as strongly as the first light pass. Last in the file, so it wins. */
+:root[data-mode="light"] {
+  --color-bg:             color-mix(in srgb, var(--color-primary) 6%, #ECECF2);
+  --color-surface:        color-mix(in srgb, var(--color-primary) 3%, #FAFAFC);
+  --color-surface-raised: color-mix(in srgb, var(--color-primary) 7%, #F0F0F5);
+  --color-surface-high:   color-mix(in srgb, var(--color-primary) 11%, #E6E6EE);
+  --color-border:         color-mix(in srgb, var(--color-primary) 16%, #C9C9D5);
+  --border:               240 12% 80%;
+  --input:                240 12% 80%;
+  --rd-card-line:  color-mix(in srgb, var(--color-primary) 16%, #CBCBD7);
+  --rd-input-line: rgba(20, 20, 32, 0.26);
+  --rd-soft-bg:    var(--color-surface);
+  --tone-gray-line: rgba(20, 20, 32, 0.22);
+  --glow-line: color-mix(in srgb, var(--color-primary) 34%, #D6D6E0);
+}
+:root[data-mode="light"] .att {
+  --a-surface: var(--color-surface);
+  --a-raised:  var(--color-surface-raised);
+  --a-high:    var(--color-surface-high);
+  --a-well:    color-mix(in srgb, var(--color-primary) 4%, #F3F3F7);
+  --a-border:  rgb(22 22 38 / 0.18);
+  --a-line:    rgb(22 22 38 / 0.26);
+}
+
+/* The kit's dropdown list (rd.tsx RdSelect) in light: a tinted panel with a line you can see, the chosen
+   option in the gym's deep shade — it was a fixed #1A1530 box with dark words (owner, 2026-11-07). */
+:root[data-mode="light"] {
+  --rd-menu-bg: var(--color-surface);
+  --rd-menu-line: color-mix(in srgb, var(--color-primary) 28%, #C4C4D0);
+  --rd-menu-on: var(--fill-primary);
+}
+/* The award window's medal: solid in its tier's deep shade with a white icon, as on Achievements. */
+:root[data-mode="light"] .award-medal { box-shadow: none !important; }
+:root[data-mode="light"] .award-medal svg { color: #FFFFFF !important; }
+:root[data-mode="light"] .award-medal[data-tier="bronze"]   { background: #C2410C !important; border-color: #C2410C !important; }
+:root[data-mode="light"] .award-medal[data-tier="silver"]   { background: #64748B !important; border-color: #64748B !important; }
+:root[data-mode="light"] .award-medal[data-tier="gold"]     { background: #B45309 !important; border-color: #B45309 !important; }
+:root[data-mode="light"] .award-medal[data-tier="platinum"] { background: var(--fill-primary) !important; border-color: var(--fill-primary) !important; }
