@@ -195,7 +195,7 @@ export default function VisualDashboardTab() {
                         screen, and a bar that wide stops reading as a bar. */}
                     <div style={{
                       width: '100%', maxWidth: 44, height: b.value === 0 && series.floor === 0 ? 4 : h, borderRadius: 4,
-                      background: latest ? 'var(--color-primary)' : 'var(--color-surface-high)',
+                      background: latest ? 'var(--color-primary)' : 'var(--trend-past, var(--color-surface-high))',
                       boxShadow: latest ? '0 0 14px -4px var(--color-primary)' : 'none',
                     }} />
                     <span className="truncate w-full text-center" style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>

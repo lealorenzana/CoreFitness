@@ -283,7 +283,11 @@ export default function TimelineTab({ room, mode, with: withPerson }: {
         </button>
       )}
       {chatOn ? (
-        <div className="flex items-end" style={{ gap: 8, position: 'sticky', bottom: 0, paddingTop: 8, background: 'var(--color-bg, transparent)' }}>
+        // A frosted bar (the owner, 2026-11-07): the old strip was the page's solid ground — a black band in dark,
+        // a pale one in light, since the page is glass.
+        <div className="flex items-end" data-composer style={{ gap: 8, position: 'sticky', bottom: 8, marginTop: 8, padding: 8, borderRadius: 20,
+          background: 'var(--bar-glass)', backdropFilter: 'blur(18px) saturate(150%)', WebkitBackdropFilter: 'blur(18px) saturate(150%)',
+          border: '1px solid rgb(var(--hair-rgb, 233 233 237) / 0.12)', boxShadow: '0 12px 30px -16px rgba(0,0,0,0.45)' }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <TextArea rows={2} value={draft} aria-label="Message" placeholder={other ? `Message ${other.name.split(' ')[0]}` : 'Write a message'}
               onChange={(e) => setDraft(e.target.value.slice(0, 2000))}
@@ -291,7 +295,7 @@ export default function TimelineTab({ room, mode, with: withPerson }: {
           </div>
           <button type="button" onClick={() => void send()} disabled={busy || !draft.trim() || !other} aria-label="Send"
             className="flex-none flex items-center justify-center"
-            style={{ width: 44, height: 44, borderRadius: 22, background: 'var(--color-secondary)', color: '#000',
+            style={{ width: 44, height: 44, borderRadius: 22, background: 'var(--color-secondary)', color: 'var(--nb-action-fg, #000)',
               opacity: busy || !draft.trim() ? 0.45 : 1 }}>
             <PaperPlaneRight size={20} weight="fill" />
           </button>

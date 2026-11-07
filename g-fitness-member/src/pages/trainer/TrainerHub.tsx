@@ -355,7 +355,7 @@ function RailOrb({ on, children }: { on: boolean; children: React.ReactNode }) {
     return <span className="grid place-items-center rail-disc" style={{ width: 46, height: 46, borderRadius: '50%' }}>{children}</span>;
   }
   return (
-    <span className="ai-orb rail-orb relative grid place-items-center" style={{ width: 46, height: 46, borderRadius: '50%' }}>
+    <span className="ai-orb rail-orb relative grid place-items-center" data-light-exempt style={{ width: 46, height: 46, borderRadius: '50%' }}>
       <span aria-hidden className="ai-orb__ring absolute inset-0 rounded-full" />
       <span aria-hidden className="ai-orb__core absolute rounded-full" style={{ inset: 2 }} />
       <span className="relative rail-orb__icon grid place-items-center">{children}</span>

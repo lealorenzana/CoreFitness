@@ -164,6 +164,8 @@ export default function FloatingChathead() {
             role="button"
             aria-label="Open the AI assistant"
             data-floating-chathead
+            // The jewel is dark in both modes on purpose (the owner, 2026-11-07) — no words on it.
+            data-light-exempt
             className="ai-orb relative grid place-items-center rounded-full"
             style={{ width: bubbleSize, height: bubbleSize, transform: scrolling ? 'scale(0.74)' : 'none', opacity: scrolling ? 0.7 : 1, transition: 'transform 0.2s ease, opacity 0.2s ease' }}
           >

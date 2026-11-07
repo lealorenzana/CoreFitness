@@ -42,7 +42,10 @@ export default function NotificationListItem({
           (selectable ? onToggleSelect : onClick)?.();
         }
       }}
-      className="flex items-start cursor-pointer"
+      // Unread or read, at a glance (the owner, 2026-11-07: "the unread is not distinguishable"): a tinted row with
+      // a bar, a bold title and a New mark for unread; read rows step back (index.css [data-notif]).
+      data-notif={n.read ? 'read' : 'unread'}
+      className="flex items-start cursor-pointer relative"
       style={{
         gap: 10,
         padding: '12px var(--card-pad)',
@@ -81,14 +84,15 @@ export default function NotificationListItem({
 
       <span className="flex-1 min-w-0">
         <span className="block truncate" style={{
-          fontSize: 14.5, color: n.read ? 'var(--color-text-secondary)' : 'var(--color-text-primary)',
+          fontSize: 14.5, fontWeight: n.read ? 500 : 700, color: n.read ? 'var(--color-text-secondary)' : 'var(--color-text-primary)',
         }}>
           {n.title}
         </span>
-        <span className="block line-clamp-2" style={{ fontSize: 12.5, marginTop: 3, lineHeight: 1.45, color: 'var(--color-text-muted)' }}>
+        <span className="block line-clamp-2" style={{ fontSize: 12.5, marginTop: 3, lineHeight: 1.45, color: n.read ? 'var(--color-text-muted)' : 'var(--color-text-secondary)' }}>
           {n.message}
         </span>
         <span className="block" style={{ fontSize: 12, marginTop: 5, color: 'var(--color-text-muted)' }}>
+          {!n.read && <span className="notif-new">New</span>}
           {getRelativeTime(n.timestamp)}
           {n.archived && ' · archived'}
         </span>

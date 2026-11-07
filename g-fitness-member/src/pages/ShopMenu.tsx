@@ -1,5 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Storefront } from '@phosphor-icons/react';
+import { Barbell, Drop, ShoppingBag, Storefront, TShirt, Ticket, type Icon } from '@phosphor-icons/react';
+
+/** What a photo-less item is, from its category's words (2026-11-07: the old tile was a faint store icon). */
+const kindIcon = (category: string): Icon => {
+  const c = category.toLowerCase();
+  if (/drink|water|beverage|juice|shake|supplement|protein/.test(c)) return Drop;
+  if (/gear|apparel|shirt|merch|cloth|towel/.test(c)) return TShirt;
+  if (/pass|ticket|visit|session/.test(c)) return Ticket;
+  if (/equipment|strap|glove|belt/.test(c)) return Barbell;
+  if (/snack|food/.test(c)) return ShoppingBag;
+  return Storefront;
+};
 import { Page, PageTitle } from '../components/ui/page';
 import { LineRow, Panel, SectionHead, StatusPill } from '../components/ui/noc';
 import { SkeletonList } from '../components/ui/Skeleton';
@@ -66,10 +77,12 @@ export default function ShopMenu() {
                   gutter={i.photoUrl
                     ? <span data-product-photo><ZoomImg src={i.photoUrl} alt="" label={i.name} loading="lazy"
                         style={{ width: 56, height: 56, borderRadius: 12, objectFit: 'cover', display: 'block' }} /></span>
-                    : <span aria-hidden className="grid place-items-center"
-                        style={{ width: 56, height: 56, borderRadius: 12, background: 'rgb(var(--hair-rgb, 233 233 237) / 0.05)', color: 'var(--color-text-muted)' }}>
-                        <Storefront size={20} />
-                      </span>}
+                    : (() => { const KindIcon = kindIcon(i.category); return (
+                      // No photo: an icon for what it is, on a tile in the gym's colours (like More's tiles).
+                      <span aria-hidden className="more-tile shop-tile grid place-items-center" data-product-tile
+                        style={{ width: 56, height: 56, borderRadius: 14, ['--k' as string]: `${(k * 37) % 100}%`, animation: 'none' }}>
+                        <KindIcon size={24} weight="duotone" />
+                      </span>); })()}
                   meta={`${peso(i.price)}${i.description ? ` · ${i.description}` : ''}`}
                   action={a ? <StatusPill label={a.label} tone={a.tone} /> : undefined} />
               );

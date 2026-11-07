@@ -1837,7 +1837,7 @@ img { -webkit-user-drag: none; user-select: none; }
 .about-card__empty { font-size: 13px; color: var(--color-text-muted); }
 .about-stat { padding: 11px 12px; border-radius: 14px; background: var(--color-surface); border: 1px solid rgb(var(--hair-rgb, 233 233 237) / 0.10); min-width: 0; }
 .about-stat small { display: block; font-size: 11.5px; font-weight: 600; color: var(--color-text-muted); }
-.about-stat b { display: block; margin-top: 3px; font-size: 17px; font-weight: 700; color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.about-stat b { display: block; margin-top: 3px; font-size: 15px; line-height: 1.2; font-weight: 700; color: var(--color-text-primary); overflow-wrap: anywhere; } /* wraps — "Intermediate" was cut to "Intermed…" */
 .about-day { flex: none; min-width: 44px; text-align: center; font-size: 12px; font-weight: 700; padding: 4px 8px; border-radius: 8px;
   background: color-mix(in srgb, var(--color-primary) 16%, transparent); color: var(--color-primary-300); }
 :root[data-mode="light"] .about-card__icon:not([data-off]), :root[data-mode="light"] .about-day { background: var(--color-primary-700); color: #FFFFFF; }
@@ -1878,3 +1878,33 @@ select.field-input, select:not([multiple]):not([size]) {
 .rail-orb__icon { color: color-mix(in srgb, var(--color-primary) 22%, #FFFFFF);
   filter: drop-shadow(0 0 6px color-mix(in srgb, var(--color-primary) 85%, transparent)); }
 .rail-disc { background: var(--color-surface); color: var(--color-text-secondary); border: 1px solid rgb(var(--hair-rgb, 233 233 237) / 0.10); }
+
+/* A field inside a composite box (search with an icon): the inner input is bare and the box carries the focus
+   (the owner, 2026-11-07: a ring drawn inside the box looked like a second text box). */
+.field-input[style*="border: none"], .field-input[style*="border: none"]:focus { box-shadow: none !important; border-color: transparent !important; outline: none; }
+label:has(> .field-input[style*="border: none"]:focus) {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 22%, transparent);
+}
+/* Trends in light: the past bars were near-white on a light page — a clear tint of the gym's colour now. */
+:root[data-mode="light"] { --trend-past: color-mix(in srgb, var(--color-primary) 26%, #FFFFFF); }
+
+/* Inbox rows, unread vs read (the owner, 2026-11-07; second pass: "should the text be darker?" — yes). Unread:
+   a rounded card tinted with the gym's colour, a bar inside its edge, a bold near-black title, dark body text and
+   a NEW tag. Read: calmer, never faded — a medium-weight title and readable grey. Only the time stamp stays light. */
+[data-notif="unread"] { background-color: color-mix(in srgb, var(--color-primary) 10%, transparent) !important; border-radius: 14px; margin: 3px 0;
+  background-image: none !important; }
+[data-notif="unread"]::before { content: ""; position: absolute; left: 6px; top: 12px; bottom: 12px; width: 3px; border-radius: 3px; background: var(--color-primary); }
+.notif-new { display: inline-block; margin-right: 6px; padding: 1px 7px; border-radius: 999px; font-size: 10.5px; font-weight: 800; letter-spacing: 0.04em;
+  text-transform: uppercase; vertical-align: 1px; background: color-mix(in srgb, var(--color-primary) 22%, transparent); color: var(--color-primary-300); }
+:root[data-mode="light"] [data-notif="unread"] { background-color: color-mix(in srgb, var(--color-primary) 11%, #FFFFFF) !important;
+  box-shadow: 0 6px 16px -12px color-mix(in srgb, var(--color-primary) 60%, transparent); }
+:root[data-mode="light"] [data-notif] > span:nth-child(3) > span:nth-child(1) { color: #15151C !important; }
+:root[data-mode="light"] [data-notif="unread"] > span:nth-child(3) > span:nth-child(2) { color: #34374A !important; }
+:root[data-mode="light"] [data-notif="read"] > span:nth-child(3) > span:nth-child(1) { color: #2E3142 !important; }
+:root[data-mode="light"] [data-notif="read"] > span:nth-child(3) > span:nth-child(2) { color: #4A4D5E !important; }
+:root[data-mode="light"] .notif-new { background: var(--color-primary-700); color: #FFFFFF; }
+/* Shop items with no photo: More's colour tile, still (no pop-in on a list). */
+.shop-tile { color: #FFFFFF; }
+/* The bar says unread; the old dot beside it said it twice. Its space is kept so titles stay aligned. */
+[data-notif="unread"] > span.rounded-full:first-child { visibility: hidden; }
