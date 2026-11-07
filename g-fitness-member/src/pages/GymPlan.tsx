@@ -173,7 +173,8 @@ export default function GymPlan() {
           {/* ── Days ── */}
           <section>
             <SectionHead title="Days" meta={`${days.length} a week`} />
-            <div className="flex overflow-x-auto scrollbar-hide" style={{ gap: 8, marginTop: 12, marginInline: -2, padding: 2 }}>
+            {/* Wrapping, not a sideways scroll: "Every day" was cut off at the edge (2026-11-07). */}
+            <div className="flex flex-wrap" style={{ gap: 8, marginTop: 12 }}>
               {DAY_PRESETS.map((p) => (
                 <Chip key={p.label} label={p.label} on={samePreset(p.days)} onClick={() => applyPreset(p.days)} />
               ))}
@@ -199,6 +200,8 @@ export default function GymPlan() {
                     }}
                   >
                     {label}
+                    {/* A workout is planned for this day. */}
+                    {on && routineByDay[d] && <span aria-hidden data-day-planned style={{ width: 5, height: 5, borderRadius: 5, background: '#fff', opacity: 0.9 }} />}
                     {isToday && (
                       <span style={{ fontSize: 12, lineHeight: 1, color: on ? '#fff' : 'var(--color-secondary)' }}>today</span>
                     )}
@@ -224,32 +227,28 @@ export default function GymPlan() {
               <SectionHead title="On each day" meta="Optional" />
               {routines && routines.length > 0 ? (
                 <>
-                  <div className="noc-rows" style={{ marginTop: 6 }}>
-                    {days.map((d, i) => (
-                      <div key={d} className="flex items-center" style={{
-                        gap: 12, padding: '10px 0',
-                        borderBottom: i === days.length - 1 ? 'none' : '1px solid var(--color-separator)',
-                      }}>
-                        <span style={{ width: 104, flex: 'none', fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                          {DAY_FULL[d]}
-                          {coachSet(d) && (
-                            <span className="block" style={{ fontSize: 12, fontWeight: 500, marginTop: 1, color: 'var(--color-primary-300)' }}>
-                              Set by the coach
-                            </span>
-                          )}
-                        </span>
-                        <Select
-                          aria-label={`Workout on ${DAY_FULL[d]}`}
-                          value={routineByDay[d] ?? ''}
-                          onChange={(e) => pickRoutine(d, e.target.value)}
-                          className="min-w-0 flex-1"
-                          style={{ height: 42, fontSize: 14 }}
-                        >
-                          <option value="">Any workout</option>
-                          {routines.map((r) => (
-                            <option key={r.id} value={r.id}>{r.name}</option>
-                          ))}
-                        </Select>
+                  {/* A card per chosen day (2026-11-07): the day as a tile, the workout picker filling the card. */}
+                  <div className="flex flex-col" style={{ gap: 8, marginTop: 10 }}>
+                    {days.map((d) => (
+                      <div key={d} className="plan-day" data-plan-day={d}>
+                        <span className="plan-day__tile" aria-hidden>{DAY_LABELS[d]}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="plan-day__name">
+                            {DAY_FULL[d]}
+                            {coachSet(d) && <span className="plan-day__coach">Set by the coach</span>}
+                          </p>
+                          <Select
+                            aria-label={`Workout on ${DAY_FULL[d]}`}
+                            value={routineByDay[d] ?? ''}
+                            onChange={(e) => pickRoutine(d, e.target.value)}
+                            className="w-full plan-day__select"
+                          >
+                            <option value="">Any workout</option>
+                            {routines.map((r) => (
+                              <option key={r.id} value={r.id}>{r.name}</option>
+                            ))}
+                          </Select>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -274,7 +273,7 @@ export default function GymPlan() {
           {/* ── Reminder ── */}
           <section>
             <SectionHead title="Reminder" meta="Same time every chosen day" />
-            <div className="flex overflow-x-auto scrollbar-hide" style={{ gap: 8, marginTop: 12, marginInline: -2, padding: 2 }}>
+            <div className="flex flex-wrap" style={{ gap: 8, marginTop: 12 }}>
               {TIME_PRESETS.map((t) => (
                 <Chip key={t.value} label={t.label} on={remindAt === t.value} onClick={() => pickTime(t.value)} />
               ))}

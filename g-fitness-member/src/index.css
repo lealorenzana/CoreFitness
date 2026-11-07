@@ -1908,3 +1908,14 @@ label:has(> .field-input[style*="border: none"]:focus) {
 .shop-tile { color: #FFFFFF; }
 /* The bar says unread; the old dot beside it said it twice. Its space is kept so titles stay aligned. */
 [data-notif="unread"] > span.rounded-full:first-child { visibility: hidden; }
+
+/* Plan your week: a card per chosen day (2026-11-07). */
+.plan-day { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 16px; background: var(--color-surface);
+  border: 1px solid rgb(var(--hair-rgb, 233 233 237) / 0.10); }
+.plan-day__tile { flex: none; width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; font-size: 13px; font-weight: 800;
+  letter-spacing: 0.04em; text-transform: uppercase; color: #FFFFFF; background: var(--color-primary);
+  box-shadow: 0 6px 14px -8px var(--color-primary); }
+:root[data-mode="light"] .plan-day__tile { background: var(--color-primary-700); }
+.plan-day__name { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; font-weight: 700; color: var(--color-text-secondary); margin-bottom: 6px; }
+.plan-day__coach { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--color-primary) 18%, transparent); color: var(--color-primary-300); }
+.field-input.plan-day__select { min-height: 42px; height: 42px; font-size: 15px; font-weight: 600; padding-top: 0; padding-bottom: 0; }
