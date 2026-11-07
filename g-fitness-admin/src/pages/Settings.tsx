@@ -685,7 +685,8 @@ export default function Settings() {
  * is genuinely surprising, so the screen says it rather than leaving somebody
  * to discover it from a quote that ignored their edit.
  */
-function RefundPolicyTab() {
+/** Settings → Refunds; also the onboarding's refunds step (2026-11-07). */
+export function RefundPolicyTab() {
   const [rules, setRules] = useState<RefundRule[] | null>(null);
   const [fee, setFee] = useState<RefundFee | null>(null);
   const [failed, setFailed] = useState(false);

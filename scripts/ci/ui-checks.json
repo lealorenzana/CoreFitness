@@ -696,6 +696,10 @@
     {
       "file": "member-receipts-address-check.js",
       "app": "member"
+    },
+    {
+      "file": "admin-studio-check.js",
+      "app": "admin"
     }
   ]
 }

@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ArrowRight, Banknote, Building2, CalendarDays, Check, Clock, DoorOpen, Dumbbell, FileSignature, KeyRound,
-  LayoutGrid, LogOut, Palette, ScanLine, ScrollText, ShoppingBag, Sparkles, Tags, Trash2, Type, UserPlus, Users,
+  ArrowLeft, ArrowRight, Banknote, Building2, CalendarDays, Check, Clock, DoorOpen, Dumbbell, FileSignature, Gift, Globe, KeyRound,
+  LayoutGrid, LogOut, Palette, Rocket, ScanLine, ScrollText, ShieldCheck, Sparkles, Tags, Trash2, Type, UserPlus, Users, Volume2, VolumeX, Wallet,
 } from 'lucide-react';
-import Button from '../components/ui/Button';
 import { supabase } from '../lib/supabaseClient';
 import { showToast } from '../utils/toast';
 import ColourRolePicker from '../components/ColourRolePicker';
@@ -32,44 +31,77 @@ import { uploadMedia } from '../lib/api/media';
 import type { MembershipPlanRow } from '../types/db';
 import { myGymApplication } from '../lib/api/applications';
 import { cropPhoto } from '../components/ui/PhotoCropper';
+import PlacePicker from '../components/ui/PlacePicker';
+import OnlinePaymentsTab from '../components/OnlinePaymentsTab';
+import WaiverTab from '../components/WaiverTab';
+import HouseRulesTab from '../components/HouseRulesTab';
+import { RefundPolicyTab } from './Settings';
+import { rampFor } from '../lib/gymTheme';
+import StudioPreview from './setup/StudioPreview';
+import { EquipmentStep, MembersStep, RewardsStep, TeamStep } from './setup/StudioSteps';
+import { fanfare, levelUp, saved, setSoundOn, soundOn, tick, whoosh } from './setup/sounds';
+import './setup/setup.css';
 
 
 /**
- * A gym's first day (redesigned 2026-10-04).
+ * A gym's first day — the build studio (owner, 2026-11-07: "should feel like you
+ * are on customization mode in games … all things included to fully complete
+ * their gym"). Character-creator layout: six chapters down the left (Identity,
+ * How you run it, Money, Safety and rules, Team and floor, Open the doors), the
+ * choice in the middle, and the live result on the right — the members' phone
+ * or this dashboard, in the gym's own colours, name and words, light or dark. A
+ * build meter fills as steps are done, each finished chapter is celebrated, and
+ * soft synthesised sounds mark choices (muteable; motion stops under reduced
+ * motion). Styles: pages/setup/setup.css (.ob-*), designed in both modes.
  *
- * `create_gym()` copies Core Fitness's *rules* into a new gym — plans, point
- * rules, cancellation reasons, badges — and none of its *identity*. This walks
- * the owner through everything a gym customises, in the order it matters:
- * who you are, when you are open, how the app looks, what you call things,
- * which parts you run (only the parts your Core Fitness plan includes), the
- * AI coach's limits (only if the plan sells it), your plans — edited, added
- * and removed — and how members join. The last step is a checklist of what
- * lives on its own page (refunds, waiver, house rules, classes, the shop,
- * your team), each linked, rather than a second copy of those screens here.
- *
- * Every step saves before it advances, `set_onboarding_step` remembers where
- * they were, and `finish_gym_setup()` stamps `gyms.onboarded_at` (0107) so the
- * wizard never appears again. Nothing is only settable here: each field also
- * lives on Settings, Your app or Membership Plans.
+ * `create_gym()` copies Core Fitness's *rules* into a new gym and none of its
+ * identity; this is where a gym makes them its own. Every step saves before it
+ * advances (or saves itself, for the pages hosted from Settings), every step but
+ * the gym's name and the password can be skipped, `set_onboarding_step`
+ * remembers where they were, and `finish_gym_setup()` stamps `gyms.onboarded_at`
+ * (0107) so the studio never appears again. Nothing is only settable here.
  */
 
-type Step = 'gym' | 'hours' | 'look' | 'words' | 'runs' | 'bookings' | 'coaching' | 'walkins' | 'checkin' | 'coach' | 'plans' | 'door' | 'password' | 'ready';
+type Step = 'gym' | 'hours' | 'look' | 'words'
+  | 'runs' | 'bookings' | 'coaching' | 'checkin' | 'coach'
+  | 'plans' | 'walkins' | 'refunds' | 'payments'
+  | 'waiver' | 'rules'
+  | 'team' | 'equipment' | 'rewards'
+  | 'door' | 'members' | 'password' | 'ready';
+type Chapter = 'identity' | 'run' | 'money' | 'safety' | 'team' | 'open';
 
-const STEPS: { key: Step; title: string; blurb: string; icon: typeof Check }[] = [
-  { key: 'gym', title: 'Your gym', blurb: 'What your members and your receipts will say.', icon: Building2 },
-  { key: 'hours', title: 'When you are open', blurb: 'Your hours, and the days you close.', icon: Clock },
-  { key: 'look', title: 'How your app looks', blurb: 'Two colours — and a live preview of your members’ app.', icon: Palette },
-  { key: 'words', title: 'Your words', blurb: 'What you call your points, your coaches, your members and your classes.', icon: Type },
-  { key: 'runs', title: 'What you run', blurb: 'A few questions about your gym. Each answer switches that part of the app on or off — nothing is deleted.', icon: LayoutGrid },
-  { key: 'bookings', title: 'Who approves bookings', blurb: 'Instant, your coaches, your desk — or not in the app at all. Classes and 1-on-1 apart.', icon: CalendarDays },
-  { key: 'coaching', title: 'How coaching works', blurb: 'How members get a coach, for how long, and who is paid.', icon: Dumbbell },
-  { key: 'walkins', title: 'Day passes and walk-ins', blurb: 'Whether guests can pay for a day, and what packs you sell.', icon: Banknote },
-  { key: 'checkin', title: 'Checking in', blurb: 'Whether your coaches check in too, and whether members pick what they are doing.', icon: ScanLine },
-  { key: 'coach', title: 'The AI assistant', blurb: 'How much your members may talk to it.', icon: Sparkles },
-  { key: 'plans', title: 'Your plans', blurb: 'These came from a working gym. Make them yours before anyone pays.', icon: Tags },
-  { key: 'door', title: 'How members join', blurb: 'Who can ask to join you, and how they find you.', icon: DoorOpen },
-  { key: 'password', title: 'Your password', blurb: 'Replace the temporary one you were given.', icon: KeyRound },
-  { key: 'ready', title: 'Ready to open', blurb: 'Everything else has its own page. Do these now or any time — none is needed to open.', icon: Check },
+const CHAPTERS: { key: Chapter; title: string; icon: typeof Check }[] = [
+  { key: 'identity', title: 'Your identity', icon: Building2 },
+  { key: 'run', title: 'How you run it', icon: LayoutGrid },
+  { key: 'money', title: 'Money', icon: Wallet },
+  { key: 'safety', title: 'Safety and rules', icon: ShieldCheck },
+  { key: 'team', title: 'Team and floor', icon: Users },
+  { key: 'open', title: 'Open the doors', icon: DoorOpen },
+];
+
+const STEPS: { key: Step; chapter: Chapter; title: string; blurb: string; icon: typeof Check; optional?: boolean }[] = [
+  { key: 'gym', chapter: 'identity', title: 'Name your gym', blurb: 'What your members, your receipts and your sign will say — and where you are.', icon: Building2 },
+  { key: 'hours', chapter: 'identity', title: 'When you are open', blurb: 'Your hours, and the days you close.', icon: Clock, optional: true },
+  { key: 'look', chapter: 'identity', title: 'Your colours', blurb: 'Two colours, and watch your app and this dashboard change on the right.', icon: Palette },
+  { key: 'words', chapter: 'identity', title: 'Your words', blurb: 'What you call your points, your coaches, your members and your classes.', icon: Type, optional: true },
+  { key: 'runs', chapter: 'run', title: 'What you run', blurb: 'A few questions. Each answer switches that part of the app on or off — nothing is deleted.', icon: LayoutGrid, optional: true },
+  { key: 'bookings', chapter: 'run', title: 'Who approves bookings', blurb: 'Instant, your coaches, your desk — or not in the app at all.', icon: CalendarDays, optional: true },
+  { key: 'coaching', chapter: 'run', title: 'How coaching works', blurb: 'How members get a coach, for how long, who is paid — and your house rules for coaching.', icon: Dumbbell, optional: true },
+  { key: 'checkin', chapter: 'run', title: 'Checking in', blurb: 'Whether your coaches check in too, and whether members pick what they are doing.', icon: ScanLine, optional: true },
+  { key: 'coach', chapter: 'run', title: 'The AI assistant', blurb: 'How much your members may talk to it.', icon: Sparkles, optional: true },
+  { key: 'plans', chapter: 'money', title: 'Your plans', blurb: 'These came from a working gym. Make them yours before anyone pays.', icon: Tags, optional: true },
+  { key: 'walkins', chapter: 'money', title: 'Day passes and walk-ins', blurb: 'Whether guests can pay for a day, and the packs you sell.', icon: Banknote, optional: true },
+  { key: 'refunds', chapter: 'money', title: 'Refunds', blurb: 'What a member gets back when they cancel, and the fee you keep.', icon: Banknote, optional: true },
+  { key: 'payments', chapter: 'money', title: 'How members pay you', blurb: 'Cash at the desk, GCash, Maya or bank details — and paying in the app.', icon: Wallet, optional: true },
+  { key: 'waiver', chapter: 'safety', title: 'Your waiver', blurb: 'What members sign before they book, and the health questions with it.', icon: FileSignature, optional: true },
+  { key: 'rules', chapter: 'safety', title: 'House rules', blurb: 'Your gym’s own rules — shown to members in your Terms.', icon: ScrollText, optional: true },
+  { key: 'team', chapter: 'team', title: 'Your team', blurb: 'Add your coaches and your front desk. Each gets a login slip.', icon: UserPlus, optional: true },
+  { key: 'equipment', chapter: 'team', title: 'Your floor', blurb: 'What you have, so members know where each machine is — and can say when one breaks.', icon: Dumbbell, optional: true },
+  { key: 'rewards', chapter: 'team', title: 'Points and rewards', blurb: 'What members earn for showing up, and what they can spend it on.', icon: Gift, optional: true },
+  { key: 'door', chapter: 'open', title: 'How members join', blurb: 'Who can ask to join you, and how they find you.', icon: DoorOpen },
+  { key: 'members', chapter: 'open', title: 'Your members', blurb: 'Your join link to hand out, and the members you already have.', icon: Users, optional: true },
+  { key: 'password', chapter: 'open', title: 'Your password', blurb: 'Replace the temporary one you were given.', icon: KeyRound },
+  { key: 'ready', chapter: 'open', title: 'Open your gym', blurb: 'Your gym, built. Open it — anything you skipped is in the menu.', icon: Rocket },
 ];
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -107,6 +139,10 @@ export default function Setup() {
   const [adding, setAdding] = useState<PlanDraft[]>([]);
   const [password, setPassword] = useState({ next: '', again: '' });
   const [done, setDone] = useState<Step[]>([]);
+  /** The studio: sounds on/off (this device), the way the stage slides, the chapter-complete moment. */
+  const [sound, setSound] = useState(() => soundOn());
+  const [dir, setDir] = useState<'fwd' | 'back'>('fwd');
+  const [burst, setBurst] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -294,31 +330,10 @@ export default function Setup() {
   // Any step up to the furthest one reached: going back to step 3 must not lock you out of step 9.
   const furthest = Math.max(index, ...done.map((k) => steps.findIndex((x) => x.key === k) + 1));
   const reachable = (to: Step) => steps.findIndex((x) => x.key === to) <= furthest;
-  const go = (to: Step) => { if (reachable(to)) setStep(to); };
-
-  const next = async () => {
-    setSaving(true);
-    try {
-      if (step === 'gym') await saveGym();
-      if (step === 'hours') await saveHours();
-      if (step === 'look') await saveLook();
-      if (step === 'words') await saveWords();
-      if (step === 'plans') await savePlans();
-      if (step === 'door') await saveDoor();
-      if (step === 'password') await savePassword();
-      setDone((d) => (d.includes(step) ? d : [...d, step]));
-      if (!isLast) {
-        const to = steps[index + 1].key;
-        await setOnboardingStep(to);
-        setStep(to);
-      } else {
-        await openGym('/dashboard');
-      }
-    } catch (e) {
-      showToast(e instanceof Error ? e.message : 'That could not be saved', 'error');
-    } finally {
-      setSaving(false);
-    }
+  const move = (to: Step, how?: 'back') => {
+    if (!reachable(to)) return;
+    setDir(how ?? (steps.findIndex((x) => x.key === to) < index ? 'back' : 'fwd'));
+    setStep(to);
   };
 
   /**
@@ -337,16 +352,64 @@ export default function Setup() {
     // A full load: the shell reads the gym's name and colours once at boot.
     window.location.assign(to);
   };
-
-  const finishAndGo = async (to: string) => {
+  const next = async (skip = false) => {
     setSaving(true);
     try {
-      await openGym(to);
+      if (skip) { /* skipped: nothing saved, the standard rules stand */ }
+      else if (step === 'gym') await saveGym();
+      else if (step === 'hours') await saveHours();
+      else if (step === 'look') await saveLook();
+      else if (step === 'words') await saveWords();
+      else if (step === 'plans') await savePlans();
+      else if (step === 'door') await saveDoor();
+      else if (step === 'password') await savePassword();
+      // A skipped step is not done — the chapter waits for it — but it does not hold anyone up.
+      const nowDone = skip || done.includes(step) ? done : [...done, step];
+      if (!skip) setDone(nowDone);
+      if (!isLast) {
+        const to = steps[index + 1].key;
+        await setOnboardingStep(to);
+        // The chapter just finished? Celebrate it.
+        const ch = current.chapter;
+        const inCh = steps.filter((x) => x.chapter === ch);
+        if (!skip && steps[index + 1].chapter !== ch && inCh.every((x) => nowDone.includes(x.key))) {
+          setBurst(CHAPTERS.find((c) => c.key === ch)?.title ?? null);
+          levelUp();
+          window.setTimeout(() => setBurst(null), 1900);
+        } else if (!skip) { saved(); } else { whoosh(); }
+        setDir('fwd');
+        setStep(to);
+      } else {
+        fanfare();
+        await openGym('/dashboard');
+      }
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'That could not be opened', 'error');
+      showToast(e instanceof Error ? e.message : 'That could not be saved', 'error');
+    } finally {
       setSaving(false);
     }
   };
+
+
+
+
+
+  /** The latest next(), for the Enter key (its effect does not re-subscribe every render). */
+  const nextRef = useRef(next);
+  useEffect(() => { nextRef.current = next; });
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Enter' || e.shiftKey || e.isComposing || saving || step === 'ready') return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'TEXTAREA' || t.tagName === 'BUTTON' || t.tagName === 'SELECT' || t.tagName === 'A')) return;
+      if (document.body.classList.contains('slip-open') || document.querySelector('[role="dialog"]')) return;
+      e.preventDefault();
+      void nextRef.current();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [saving, step]);
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -356,484 +419,369 @@ export default function Setup() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center"
-        style={{ background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }}>
-        Loading…
+      <div className="ob" data-studio-loading>
+        <div style={{ margin: 'auto', textAlign: 'center' }}>
+          <div className="ob-logo" style={{ margin: '0 auto', width: 56, height: 56 }}><Sparkles size={24} /></div>
+          <p style={{ marginTop: 14, fontWeight: 800, color: 'var(--ob-ink)' }}>Opening your build studio…</p>
+        </div>
       </div>
     );
   }
 
-  const label = 'block text-xs mb-1';
-  const input = 'w-full rounded-lg border px-3 py-2 text-sm';
-  const inputStyle = { borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-primary)' };
-  const labelStyle = { color: 'var(--color-text-secondary)' };
-  const hint = 'text-xs';
   const monogram = (gym.short_name || gym.gym_name || '?').slice(0, 2).toUpperCase();
+  const selfSaving: Step[] = ['runs', 'bookings', 'coaching', 'walkins', 'checkin', 'coach', 'refunds', 'payments', 'waiver', 'rules', 'team', 'equipment', 'rewards', 'members'];
+  const chapters = CHAPTERS.map((ch) => {
+    const list = steps.filter((s) => s.chapter === ch.key);
+    return { ...ch, list, done: list.filter((s) => done.includes(s.key)).length };
+  }).filter((ch) => ch.list.length > 0);
+  const totalDone = steps.filter((s) => done.includes(s.key)).length;
+  const pct = Math.round((totalDone / steps.length) * 100);
+  const here = chapters.find((ch) => ch.key === current.chapter) ?? chapters[0];
+  const level = chapters.filter((ch) => ch.done === ch.list.length).length + 1;
+  const vocabWord = (k: 'members' | 'trainers' | 'classes', d: string) => (vocab && vocab[k]?.trim()) || d;
+
+  // The studio wears the colours as they are picked — the whole screen, not only the preview (a game's
+  // customise mode): main colour and action colour, as the gym's look will set them once published.
+  const lightMode = document.documentElement.dataset.mode === 'light';
+  const pr = rampFor(gym.accent, 'violet');
+  const ac = rampFor(action || null, 'amber');
+  const studioColours = {
+    '--color-primary': pr.base, '--color-primary-300': lightMode ? pr.c700 : pr.c300,
+    '--fill-primary': lightMode ? pr.c700 : pr.base,
+    '--color-secondary': lightMode ? ac.c700 : ac.base, '--fill-action': ac.c700,
+  } as React.CSSProperties;
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--color-bg)' }}>
-      <div className="mx-auto w-full max-w-6xl px-4 py-6 lg:py-10">
-        {/* Header: the gym as it will look, from the first screen */}
-        <div className="flex items-center gap-3">
-          {logoUrl
-            ? <img src={logoUrl} alt="" className="h-11 w-11 rounded-xl object-cover" />
-            : <div className="grid h-11 w-11 place-items-center rounded-xl text-sm font-bold"
-                style={{ background: 'var(--color-primary)', color: '#fff' }}>{monogram}</div>}
-          <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-semibold truncate" style={{ color: 'var(--color-text-primary)' }}>
-              {gym.gym_name ? `Setting up ${gym.gym_name}` : 'Welcome to Core Fitness'}
-            </h1>
-            <p className="text-sm" style={labelStyle}>
-              Step {index + 1} of {steps.length} · every answer can be changed later
-            </p>
+    <div className="ob" data-studio style={studioColours}>
+      {/* ── top: who is being built, the build meter, sound ── */}
+      <header className="ob-top">
+        <div className="ob-brand">
+          <div className="ob-logo">{logoUrl ? <img src={logoUrl} alt="" /> : monogram}</div>
+          <div className="min-w-0">
+            <div className="ob-kicker">Build studio</div>
+            <div className="ob-gymname" data-studio-name>{gym.gym_name || 'Your gym'}</div>
           </div>
-          <Button variant="ghost" onClick={() => void signOut()}>
-            <LogOut size={15} className="mr-1.5" /> Sign out
-          </Button>
         </div>
-
-        {/* Mobile: a thin progress bar instead of the rail */}
-        <div className="mt-4 flex gap-1 lg:hidden">
-          {steps.map((s, i) => (
-            <span key={s.key} className="h-1 flex-1 rounded-full"
-              style={{ background: i <= index ? 'var(--color-primary)' : 'var(--color-border)' }} />
-          ))}
+        <div aria-label={`Gym build ${pct}%`} data-build-meter>
+          <div className="ob-meter-head"><span>Gym build · {here.title}</span><b data-build-pct>{pct}%</b></div>
+          <div className="ob-meter" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+            {chapters.map((ch) => (
+              <span key={ch.key} className="ob-seg" title={ch.title}><i style={{ ['--f' as string]: ch.done / ch.list.length }} /></span>
+            ))}
+          </div>
         </div>
+        <div className="ob-tools">
+          <span className="ob-level" data-studio-level><span>{level}</span>Level {level} of {chapters.length + 1}</span>
+          <button type="button" className="ob-iconbtn" aria-label={sound ? 'Turn sounds off' : 'Turn sounds on'} aria-pressed={sound}
+            onClick={() => { setSoundOn(!sound); setSound(!sound); if (!sound) tick(); }}>
+            {sound ? <Volume2 size={16} /> : <VolumeX size={16} />}
+          </button>
+          <button type="button" className="ob-iconbtn" onClick={() => void signOut()}><LogOut size={15} />Save and leave</button>
+        </div>
+      </header>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
-          {/* The rail: where you are, what is done, and a way back to it */}
-          <nav aria-label="Setup steps" className="hidden lg:block">
-            <ol className="space-y-1">
-              {steps.map((s, i) => {
-                const here = s.key === step;
-                const ok = done.includes(s.key) && !here;
-                const Icon = s.icon;
-                return (
-                  <li key={s.key}>
-                    <button type="button" onClick={() => go(s.key)} disabled={!reachable(s.key)}
-                      aria-current={here ? 'step' : undefined}
-                      className="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-left text-sm disabled:cursor-default"
-                      style={{
-                        background: here ? 'var(--color-surface)' : 'transparent',
-                        color: here ? 'var(--color-text-primary)' : ok ? 'var(--color-text-secondary)' : 'var(--color-text-muted)',
-                        border: here ? '1px solid var(--color-border)' : '1px solid transparent',
-                      }}>
-                      <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] font-semibold"
-                        style={{
-                          background: ok ? 'var(--color-primary)' : here ? 'var(--color-primary-soft, var(--color-surface-high))' : 'var(--color-surface)',
-                          color: ok ? '#fff' : here ? 'var(--color-primary-300, var(--color-primary))' : 'var(--color-text-muted)',
-                        }}>
-                        {ok ? <Check size={13} /> : <Icon size={13} />}
-                      </span>
-                      <span className="truncate">{i + 1}. {s.title}</span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ol>
-          </nav>
+      <div className="ob-body">
+        {/* ── the chapters, like a game's customise tabs ── */}
+        <nav className="ob-rail" aria-label="Setup chapters">
+          {chapters.map((ch) => {
+            const isHere = ch.key === here.key;
+            const complete = ch.done === ch.list.length;
+            const CI = ch.icon;
+            return (
+              <div key={ch.key} className={`ob-chap ${isHere ? 'here' : ''} ${complete ? 'done' : ''}`} data-chapter={ch.key}>
+                <button type="button" className="ob-chap-head" disabled={!reachable(ch.list[0].key)}
+                  onClick={() => { tick(); move(ch.list.find((s) => !done.includes(s.key))?.key ?? ch.list[0].key); }}>
+                  <span className="ob-chap-icon">{complete && !isHere ? <Check size={17} /> : <CI size={17} />}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="ob-chap-title block">{ch.title}</span>
+                    <span className="ob-chap-sub block">{complete ? 'Complete' : `${ch.done} of ${ch.list.length}`}</span>
+                    <span className="ob-chap-bar block"><i style={{ transform: `scaleX(${ch.done / ch.list.length})` }} /></span>
+                  </span>
+                </button>
+                {isHere && (
+                  <div className="ob-steps">
+                    {ch.list.map((s) => {
+                      const ok = done.includes(s.key) && s.key !== step;
+                      return (
+                        <button key={s.key} type="button" disabled={!reachable(s.key)} onClick={() => { tick(); move(s.key); }}
+                          className={`ob-step ${s.key === step ? 'here' : ''} ${ok ? 'ok' : ''}`} aria-current={s.key === step ? 'step' : undefined}>
+                          <span className="ob-dot">{ok && <Check size={11} />}</span>
+                          <span className="truncate">{s.title}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </nav>
 
-          <section className="rounded-2xl border p-5 sm:p-6"
-            style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}>
-            <h2 className="text-lg font-semibold" style={{ color: 'var(--color-text-primary)' }}>{current.title}</h2>
-            <p className="mt-1 text-sm" style={labelStyle}>{current.blurb}</p>
+        {/* ── the stage ── */}
+        <main className="ob-stage">
+          <div className="ob-stage-scroll">
+            <div key={step} className={`ob-stage-in ${dir === 'back' ? 'back' : ''}`} data-studio-step={step}>
+              <div className="ob-step-tag"><i><current.icon size={13} /></i>{here.title} · step {index + 1} of {steps.length}</div>
+              <h1 className="ob-title">{current.title}{current.optional && <span className="ob-optional">Optional</span>}</h1>
+              <p className="ob-blurb">{current.blurb}</p>
 
-            {step === 'gym' && (
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <div className="sm:col-span-2">
-                  <label className={label} style={labelStyle} htmlFor="s-name">Gym name</label>
-                  <input id="s-name" className={input} style={inputStyle} value={gym.gym_name}
-                    onChange={(e) => setGym({ ...gym, gym_name: e.target.value })} />
-                </div>
-                <div>
-                  <label className={label} style={labelStyle} htmlFor="s-short">Short name (optional)</label>
-                  <input id="s-short" className={input} style={inputStyle} value={gym.short_name}
-                    placeholder="For tight corners of the phone app"
-                    onChange={(e) => setGym({ ...gym, short_name: e.target.value })} />
-                </div>
-                <div>
-                  <label className={label} style={labelStyle} htmlFor="s-tag">Tagline (optional)</label>
-                  <input id="s-tag" className={input} style={inputStyle} value={gym.tagline}
-                    onChange={(e) => setGym({ ...gym, tagline: e.target.value })} />
-                </div>
-                <div className="sm:col-span-2">
-                  <label className={label} style={labelStyle} htmlFor="s-addr">Address</label>
-                  <input id="s-addr" className={input} style={inputStyle} value={gym.address}
-                    onChange={(e) => setGym({ ...gym, address: e.target.value })} />
-                </div>
-                <div>
-                  <label className={label} style={labelStyle} htmlFor="s-phone">Mobile number</label>
-                  <input id="s-phone" className={input} style={inputStyle} value={gym.phone} placeholder="09XX XXX XXXX"
-                    onChange={(e) => setGym({ ...gym, phone: e.target.value })} />
-                </div>
-                <div>
-                  <label className={label} style={labelStyle} htmlFor="s-email">Email</label>
-                  <input id="s-email" type="email" className={input} style={inputStyle} value={gym.email}
-                    onChange={(e) => setGym({ ...gym, email: e.target.value })} />
-                </div>
-                <div className="sm:col-span-2">
-                  <span className={label} style={labelStyle}>Your logo</span>
-                  <div className="flex flex-wrap items-center gap-3">
-                    {logoUrl
-                      ? <img src={logoUrl} alt="" className="h-14 w-14 rounded-xl object-cover" style={{ background: 'var(--color-bg)' }} />
-                      : <div className="grid h-14 w-14 place-items-center rounded-xl text-lg font-bold"
-                          style={{ background: 'var(--color-primary)', color: '#fff' }}>{monogram}</div>}
-                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm"
-                      style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
+              <div className="ob-content">
+                {step === 'gym' && (<>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <label className="ob-field sm:col-span-2"><span>Gym name</span>
+                      <input className="ob-in" style={{ height: 54, fontSize: 18, fontWeight: 800 }} value={gym.gym_name} autoFocus
+                        onChange={(e) => setGym({ ...gym, gym_name: e.target.value })} /></label>
+                    <label className="ob-field"><span>Short name (optional)</span>
+                      <input className="ob-in" value={gym.short_name} placeholder="For tight corners of the app" onChange={(e) => setGym({ ...gym, short_name: e.target.value })} /></label>
+                    <label className="ob-field"><span>Tagline (optional)</span>
+                      <input className="ob-in" value={gym.tagline} placeholder="Train hard, train here" onChange={(e) => setGym({ ...gym, tagline: e.target.value })} /></label>
+                    <label className="ob-field"><span>Mobile number</span>
+                      <input className="ob-in" value={gym.phone} placeholder="09XX XXX XXXX" onChange={(e) => setGym({ ...gym, phone: e.target.value })} /></label>
+                    <label className="ob-field"><span>Email for members</span>
+                      <input className="ob-in" type="email" value={gym.email} placeholder="desk@yourgym.com" onChange={(e) => setGym({ ...gym, email: e.target.value })} /></label>
+                  </div>
+                  <div><p className="ob-field"><span>Where you are</span></p>
+                    <PlacePicker value={gym.address} inputClass="ob-in" inputStyle={{}} onChange={(v) => setGym({ ...gym, address: v })} /></div>
+                  <div className="flex flex-wrap items-center gap-4 ob-hosted">
+                    <div className="ob-logo" style={{ width: 72, height: 72, borderRadius: 20, fontSize: 22 }}>{logoUrl ? <img src={logoUrl} alt="" /> : monogram}</div>
+                    <div className="flex-1 min-w-[220px]">
+                      <p className="font-extrabold" style={{ color: 'var(--ob-ink)' }}>Your logo</p>
+                      <p className="ob-hint" style={{ marginTop: 2 }}>Square works best. With none, members see your initials in your colour — never another gym&rsquo;s mark.</p>
+                    </div>
+                    <label className="ob-btn ghost cursor-pointer">
                       {uploading ? 'Uploading…' : logoUrl ? 'Choose another' : 'Choose a picture'}
                       <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden"
                         onChange={(e) => {
                           const raw = e.target.files?.[0];
                           if (!raw) return;
                           void (async () => {
-                          const file = await cropPhoto(raw, { aspect: 1, title: 'Frame your logo' });
-                          if (!file) return;
-                          setUploading(true);
-                          void uploadMedia(file, 'logos')
-                            .then((url) => setLogoUrl(url))
-                            .catch((err) => showToast(err instanceof Error ? err.message : 'That could not be uploaded', 'error'))
-                            .finally(() => setUploading(false));
+                            const file = await cropPhoto(raw, { aspect: 1, title: 'Frame your logo' });
+                            if (!file) return;
+                            setUploading(true);
+                            void uploadMedia(file, 'logos')
+                              .then((url) => { setLogoUrl(url); saved(); })
+                              .catch((err) => showToast(err instanceof Error ? err.message : 'That could not be uploaded', 'error'))
+                              .finally(() => setUploading(false));
                           })();
                         }} />
                     </label>
-                    {logoUrl && <Button variant="ghost" onClick={() => setLogoUrl(null)}>Remove</Button>}
+                    {logoUrl && <button type="button" className="ob-btn ghost" onClick={() => setLogoUrl(null)}>Remove</button>}
                   </div>
-                  <p className={`mt-2 ${hint}`} style={labelStyle}>
-                    Square works best. With no logo, your members see your initials in your colour — never another gym&rsquo;s mark.
-                    It is saved with your colours, two steps on.
-                  </p>
-                </div>
-                <div className="sm:col-span-2"><GymLocationPicker /></div>
-              </div>
-            )}
+                  <div className="ob-hosted"><GymLocationPicker /></div>
+                </>)}
 
-            {step === 'hours' && (
-              <div className="mt-5 space-y-5">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <label className={label} style={labelStyle} htmlFor="s-open">Opens at</label>
-                    <input id="s-open" type="time" className={input} style={inputStyle} value={gym.opening_time}
-                      onChange={(e) => setGym({ ...gym, opening_time: e.target.value })} />
+                {step === 'hours' && (<>
+                  <div className="grid gap-4 sm:grid-cols-2 max-w-xl">
+                    <label className="ob-field"><span>Opens at</span><input type="time" className="ob-in" value={gym.opening_time} onChange={(e) => setGym({ ...gym, opening_time: e.target.value })} /></label>
+                    <label className="ob-field"><span>Closes at</span><input type="time" className="ob-in" value={gym.closing_time} onChange={(e) => setGym({ ...gym, closing_time: e.target.value })} /></label>
                   </div>
-                  <div>
-                    <label className={label} style={labelStyle} htmlFor="s-close">Closes at</label>
-                    <input id="s-close" type="time" className={input} style={inputStyle} value={gym.closing_time}
-                      onChange={(e) => setGym({ ...gym, closing_time: e.target.value })} />
-                  </div>
-                </div>
-                {closedDays !== null && (
-                  <div>
-                    <span className={label} style={labelStyle}>Closed on</span>
-                    <div className="flex flex-wrap gap-1.5" role="group" aria-label="Days the gym is closed">
-                      {DAYS.map((d, k) => {
-                        const day = (k + 1) % 7; // 0 = Sunday, as the database stores it
-                        const on = closedDays.includes(day);
-                        return (
-                          <button key={d} type="button" aria-pressed={on} disabled={!on && closedDays.length >= 6}
-                            onClick={() => setClosedDays(on ? closedDays.filter((x) => x !== day) : [...closedDays, day])}
-                            className="rounded-lg border px-3.5 py-2 text-sm font-semibold disabled:opacity-40"
-                            style={on
-                              ? { background: 'var(--color-primary)', borderColor: 'var(--color-primary)', color: '#fff' }
-                              : { borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
-                            {d}
-                          </button>
-                        );
-                      })}
+                  {closedDays !== null && (
+                    <div>
+                      <p className="ob-field"><span>Closed on</span></p>
+                      <div className="flex flex-wrap gap-2" role="group" aria-label="Days the gym is closed">
+                        {DAYS.map((d, k) => {
+                          const day = (k + 1) % 7; // 0 = Sunday, as the database stores it
+                          const on = closedDays.includes(day);
+                          return (
+                            <button key={d} type="button" className="ob-day" aria-pressed={on} disabled={!on && closedDays.length >= 6}
+                              onClick={() => { tick(); setClosedDays(on ? closedDays.filter((x) => x !== day) : [...closedDays, day]); }}>{d}</button>
+                          );
+                        })}
+                      </div>
+                      <p className="ob-hint">Open every day? Leave them all off. Streaks never count a closed day as a day left to train.</p>
                     </div>
-                    <p className={`mt-2 ${hint}`} style={labelStyle}>
-                      Open every day? Leave them all off. Members&rsquo; streaks never count a closed day as a day left to train.
-                    </p>
-                  </div>
-                )}
-                <p className={hint} style={labelStyle}>
-                  Your hours flag classes scheduled outside them, and show on your members&rsquo; app.
-                </p>
-              </div>
-            )}
-
-            {step === 'look' && (
-              <div className="mt-5 grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-                <div>
-                  <p className="text-xs" style={labelStyle}>Your main colour — where you are, and what you have</p>
-                  <div className="mt-2">
-                    <ColourRolePicker idPrefix="setup-accent" value={gym.accent} fallback="violet"
-                      onChange={(v) => setGym({ ...gym, accent: v || 'violet' })} />
-                  </div>
-                  <p className="mt-5 text-xs" style={labelStyle}>Your action colour — the buttons that do the next thing: book, renew, save</p>
-                  <div className="mt-2">
-                    <ColourRolePicker idPrefix="setup-action" value={action} fallback="amber"
-                      unsetLabel="Standard amber, the colour every gym started with" onChange={setAction} />
-                  </div>
-                  <p className={`mt-3 ${hint}`} style={labelStyle}>
-                    Your own brand colour works too — every colour is adjusted to stay readable on the app&rsquo;s dark background.
-                  </p>
-                </div>
-                <ThemePreview accent={gym.accent} action={action}
-                  onPick={(accent, act) => { setGym((g) => ({ ...g, accent })); setAction(act); }} />
-              </div>
-            )}
-
-            {step === 'words' && (
-              <div className="mt-5 space-y-6">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <label className={label} style={labelStyle} htmlFor="s-pn">Your points are called</label>
-                    <input id="s-pn" className={input} style={inputStyle} maxLength={30} value={gym.points_name} placeholder="Points"
-                      onChange={(e) => setGym({ ...gym, points_name: e.target.value })} />
-                  </div>
-                  <div>
-                    <label className={label} style={labelStyle} htmlFor="s-pns">In the middle of a sentence</label>
-                    <input id="s-pns" className={input} style={inputStyle} maxLength={30} value={gym.points_name_short} placeholder="points"
-                      onChange={(e) => setGym({ ...gym, points_name_short: e.target.value })} />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className={label} style={labelStyle} htmlFor="s-wm">A line on your members&rsquo; home screen (optional)</label>
-                    <input id="s-wm" className={input} style={inputStyle} maxLength={280} value={gym.welcome_message}
-                      placeholder="Open 5am–10pm. Ask the desk about the new racks."
-                      onChange={(e) => setGym({ ...gym, welcome_message: e.target.value })} />
-                  </div>
-                </div>
-                {vocab && (
-                  <div>
-                    <p className="text-xs" style={labelStyle}>What you call your people — leave a box empty for the standard word</p>
-                    <div className="mt-2 grid gap-3 sm:grid-cols-3">
-                      {([
-                        ['trainers', 'Your coaches', 'coaches'],
-                        ['members', 'Your members', 'members'],
-                        ['classes', 'Your classes', 'classes'],
-                      ] as const).map(([key, title, fallback]) => (
-                        <div key={key}>
-                          <label className={label} style={labelStyle} htmlFor={'s-v-' + key}>{title}</label>
-                          <input id={'s-v-' + key} className={input} style={inputStyle} maxLength={30}
-                            value={vocab[key]} placeholder={fallback}
-                            onChange={(e) => { const v = e.target.value; setVocab((old) => old && { ...old, [key]: v }); }} />
-                        </div>
-                      ))}
-                    </div>
-                    <p className={`mt-2 ${hint}`} style={labelStyle}>The singulars can be renamed too, later, on Your app → Words.</p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {step === 'walkins' && (
-              <div className="mt-5"><DayPassSettings /></div>
-            )}
-
-            {step === 'checkin' && (
-              <div className="mt-5"><DoorSettings /></div>
-            )}
-
-            {step === 'coaching' && (
-              <div className="mt-5"><CoachingSettings /></div>
-            )}
-
-            {step === 'bookings' && (
-              <div className="mt-5"><BookingApproval /></div>
-            )}
-
-            {step === 'runs' && (
-              <div className="mt-5">
-                {modules.length === 0
-                  ? <p className="text-sm" style={labelStyle}>Every part is on. You can switch parts off later on Your app → What you run.</p>
-                  : <>
-                    <RunQuestions modules={modules} onSet={setModule} />
-                    <details className="mt-3" data-every-switch>
-                      <summary className="text-sm font-semibold cursor-pointer" style={{ color: 'var(--color-text-secondary)' }}>Show every switch</summary>
-                      <div className="mt-2"><ModuleSwitches modules={modules} onToggle={(m) => void toggleModule(m)} hideUnsold /></div>
-                    </details>
-                  </>}
-                <p className={`mt-3 ${hint}`} style={labelStyle}>
-                  Each answer saves at once. You can change any of them later on Your app → What you run.
-                </p>
-              </div>
-            )}
-
-            {step === 'coach' && (
-              <div className="mt-5"><AiCoachCard switchedOff={!coach?.enabled} /></div>
-            )}
-
-            {step === 'plans' && (
-              <div className="mt-5 space-y-3">
-                {plans.length === 0 && adding.length === 0 && (
-                  <p className="text-sm" style={labelStyle}>No plans yet — add your first one below.</p>
-                )}
-                {plans.map((plan) => (
-                  <div key={plan.id} className="rounded-xl border p-3"
-                    style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}>
-                    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_120px_110px_auto] items-end">
-                      <div>
-                        <label className={label} style={labelStyle} htmlFor={`p-${plan.id}`}>
-                          {plan.tier === 'free' ? 'Free plan' : 'Plan'} · {peso(plan.price)} now
-                        </label>
-                        <input id={`p-${plan.id}`} className={input} style={inputStyle} value={edited[plan.id]?.name ?? ''}
-                          onChange={(e) => setEdited({ ...edited, [plan.id]: { ...edited[plan.id], name: e.target.value } })} />
-                      </div>
-                      <div>
-                        <label className={label} style={labelStyle} htmlFor={`pp-${plan.id}`}>Price (₱)</label>
-                        <input id={`pp-${plan.id}`} type="number" min={0} className={input} style={inputStyle}
-                          value={edited[plan.id]?.price ?? ''}
-                          onChange={(e) => setEdited({ ...edited, [plan.id]: { ...edited[plan.id], price: e.target.value } })} />
-                      </div>
-                      <div>
-                        <label className={label} style={labelStyle} htmlFor={`pd-${plan.id}`}>Days</label>
-                        <input id={`pd-${plan.id}`} type="number" min={1} className={input} style={inputStyle}
-                          value={edited[plan.id]?.days ?? ''} placeholder="never ends"
-                          onChange={(e) => setEdited({ ...edited, [plan.id]: { ...edited[plan.id], days: e.target.value } })} />
-                      </div>
-                      {plan.tier !== 'free'
-                        ? <button type="button" onClick={() => void removePlan(plan)} aria-label={`Remove ${plan.name}`}
-                            data-tip="Remove this plan" className="h-[38px] w-[38px] grid place-items-center rounded-lg border"
-                            style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
-                            <Trash2 size={15} />
-                          </button>
-                        : <span className="h-[38px] w-[38px]" aria-hidden />}
-                    </div>
-                  </div>
-                ))}
-                {adding.map((row, i) => (
-                  <div key={i} className="rounded-xl border border-dashed p-3" style={{ borderColor: 'var(--color-primary)' }}>
-                    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_120px_110px_auto] items-end">
-                      <div>
-                        <label className={label} style={labelStyle} htmlFor={`np-${i}`}>A new plan</label>
-                        <input id={`np-${i}`} className={input} style={inputStyle} value={row.name} placeholder="Student rate"
-                          onChange={(e) => setAdding(adding.map((r, n) => (n === i ? { ...r, name: e.target.value } : r)))} />
-                      </div>
-                      <div>
-                        <label className={label} style={labelStyle} htmlFor={`npp-${i}`}>Price (₱)</label>
-                        <input id={`npp-${i}`} type="number" min={0} className={input} style={inputStyle} value={row.price}
-                          onChange={(e) => setAdding(adding.map((r, n) => (n === i ? { ...r, price: e.target.value } : r)))} />
-                      </div>
-                      <div>
-                        <label className={label} style={labelStyle} htmlFor={`npd-${i}`}>Days</label>
-                        <input id={`npd-${i}`} type="number" min={1} className={input} style={inputStyle} value={row.days}
-                          placeholder="never ends"
-                          onChange={(e) => setAdding(adding.map((r, n) => (n === i ? { ...r, days: e.target.value } : r)))} />
-                      </div>
-                      <button type="button" onClick={() => setAdding(adding.filter((_, n) => n !== i))}
-                        aria-label="Discard this new plan" className="h-[38px] w-[38px] grid place-items-center rounded-lg border"
-                        style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                <Button variant="ghost" onClick={() => setAdding([...adding, { name: '', price: '', days: '30' }])}>
-                  Add a plan
-                </Button>
-                <p className={hint} style={labelStyle}>
-                  A ₱0 plan is free, and empty days means it never expires. Your free plan stays — it is where a member
-                  goes when a paid plan ends. What each plan unlocks is on Membership Plans.
-                </p>
-              </div>
-            )}
-
-            {step === 'door' && (
-              <div className="mt-5 space-y-2">
-                <div className="pb-2">
-                  <label className={label} style={labelStyle} htmlFor="s-slug">Your members&rsquo; link</label>
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs shrink-0" style={labelStyle}>/join/</span>
-                    <input id="s-slug" className={input} style={inputStyle} maxLength={40} value={slug} placeholder="your-gym"
-                      onChange={(e) => setSlug(e.target.value.toLowerCase())} />
-                  </div>
-                  <p className={`mt-1 ${hint}`} style={labelStyle}>
-                    Small letters, numbers and dashes. Get this right now — changing it later stops every link you have handed out.
-                  </p>
-                </div>
-                {([
-                  ['open', 'Anyone can find you', 'You are listed in the app’s gym list. Anyone with the app can search for you and ask to join.'],
-                  ['code', 'Only with your link or code', 'You are not listed. Members join with your link, or by typing a short code you give them.'],
-                  ['closed', 'Only at the front desk', 'Nobody can ask to join from the app. Your desk creates every member account, or invites them.'],
-                ] as const).map(([key, title, blurb]) => (
-                  <button key={key} type="button" onClick={() => setDoor(key)} aria-pressed={door === key}
-                    className="w-full flex items-start gap-3 rounded-lg border px-3.5 py-3 text-left"
-                    style={{ borderColor: door === key ? 'var(--color-primary)' : 'var(--color-border)', background: 'var(--color-bg)' }}>
-                    <span className="mt-0.5 shrink-0">
-                      {door === key
-                        ? <Check size={16} style={{ color: 'var(--color-primary)' }} />
-                        : <span className="block h-4 w-4 rounded-full border" style={{ borderColor: 'var(--color-border)' }} />}
-                    </span>
-                    <span className="flex-1 min-w-0">
-                      <span className="block text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>{title}</span>
-                      <span className="block text-xs mt-0.5" style={labelStyle}>{blurb}</span>
-                    </span>
-                  </button>
-                ))}
-                {joinSet && <JoinApproval policy={door} value={joinSet} onChange={setJoinSet} />}
-                <p className={hint} style={labelStyle}>
-                  {joinSet?.approval === 'auto' && door !== 'closed'
-                    ? 'Sign-ups start on your free plan straight away.'
-                    : 'However they arrive, you approve every sign-up.'}
-                  {joinCode && door === 'code' && (
-                    <> Your join code is <strong style={{ color: 'var(--color-text-primary)', letterSpacing: '0.12em' }}>{joinCode}</strong>.</>
                   )}
-                </p>
-              </div>
-            )}
+                </>)}
 
-            {step === 'password' && (
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <div>
-                  <label className={label} style={labelStyle} htmlFor="s-pw">New password</label>
-                  <input id="s-pw" type="password" className={input} style={inputStyle} value={password.next}
-                    onChange={(e) => setPassword({ ...password, next: e.target.value })} />
-                </div>
-                <div>
-                  <label className={label} style={labelStyle} htmlFor="s-pw2">Type it again</label>
-                  <input id="s-pw2" type="password" className={input} style={inputStyle} value={password.again}
-                    onChange={(e) => setPassword({ ...password, again: e.target.value })} />
-                </div>
-                <p className={`sm:col-span-2 ${hint}`} style={labelStyle}>At least 8 characters. The temporary password stops working.</p>
-              </div>
-            )}
+                {step === 'look' && (
+                  <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                    <div>
+                      <p className="ob-field"><span>Your main colour — where you are, and what you have</span></p>
+                      <ColourRolePicker idPrefix="setup-accent" value={gym.accent} fallback="violet" onChange={(v) => { tick(); setGym({ ...gym, accent: v || 'violet' }); }} />
+                      <p className="ob-field" style={{ marginTop: 20 }}><span>Your action colour — the buttons that do the next thing</span></p>
+                      <ColourRolePicker idPrefix="setup-action" value={action} fallback="amber" unsetLabel="Standard amber, the colour every gym started with" onChange={(v) => { tick(); setAction(v); }} />
+                      <p className="ob-hint">Your own brand colour works too — each is adjusted to stay readable in light and in dark.</p>
+                    </div>
+                    <div className="ob-hosted"><ThemePreview accent={gym.accent} action={action}
+                      onPick={(accent, act) => { tick(); setGym((g) => ({ ...g, accent })); setAction(act); }} /></div>
+                  </div>
+                )}
 
-            {step === 'ready' && (
-              <div className="mt-5">
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {([
-                    [Banknote, 'Refund tiers and fee', 'What a member gets back when they cancel.', '/settings?tab=refunds'],
-                    [FileSignature, 'Your waiver', 'What members sign before they book.', '/settings?tab=waiver'],
-                    [ScrollText, 'House rules', 'Your gym’s own rules, shown in your Terms.', '/settings?tab=house-rules'],
-                    [CalendarDays, 'Your class timetable', 'The classes members can book.', '/schedule'],
-                    [Dumbbell, 'Your coaches', 'Add trainers and their hours.', '/trainers'],
-                    [UserPlus, 'Front desk accounts', 'Who works the desk, and what they may do.', '/settings?tab=staff'],
-                    [Users, 'Invite your members', 'Bring in the people you already have.', '/invitations'],
-                    [ShoppingBag, 'The shop', 'Drinks, supplements and gear at the desk.', '/shop'],
-                  ] as const).map(([Icon, title, blurb, to]) => (
-                    <button key={to} type="button" disabled={saving} onClick={() => void finishAndGo(to)}
-                      className="flex items-start gap-3 rounded-xl border p-3 text-left transition-colors hover:brightness-110 disabled:opacity-60"
-                      style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}>
-                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg"
-                        style={{ background: 'var(--color-surface-high)', color: 'var(--color-primary-300, var(--color-primary))' }}>
-                        <Icon size={15} />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>{title}</span>
-                        <span className="block text-xs mt-0.5" style={labelStyle}>{blurb}</span>
-                      </span>
-                      <ArrowRight size={14} className="mt-1 shrink-0" style={labelStyle} />
-                    </button>
-                  ))}
-                </div>
-                <p className={`mt-3 ${hint}`} style={labelStyle}>
-                  Choosing one opens your gym and takes you there. None of them is needed to open — your gym works with
-                  the standard rules until you change them, and every one is in the menu afterwards.
-                </p>
-              </div>
-            )}
+                {step === 'words' && (<>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <label className="ob-field"><span>Your points are called</span>
+                      <input className="ob-in" maxLength={30} value={gym.points_name} placeholder="Points" onChange={(e) => setGym({ ...gym, points_name: e.target.value })} /></label>
+                    <label className="ob-field"><span>In the middle of a sentence</span>
+                      <input className="ob-in" maxLength={30} value={gym.points_name_short} placeholder="points" onChange={(e) => setGym({ ...gym, points_name_short: e.target.value })} /></label>
+                    <label className="ob-field sm:col-span-2"><span>A line on your members&rsquo; home screen (optional)</span>
+                      <input className="ob-in" maxLength={280} value={gym.welcome_message} placeholder="Open 5am–10pm. Ask the desk about the new racks."
+                        onChange={(e) => setGym({ ...gym, welcome_message: e.target.value })} /></label>
+                  </div>
+                  {vocab && (
+                    <div>
+                      <p className="ob-field"><span>What you call your people — leave a box empty for the standard word</span></p>
+                      <div className="grid gap-4 sm:grid-cols-3">
+                        {([['trainers', 'Your coaches', 'coaches'], ['members', 'Your members', 'members'], ['classes', 'Your classes', 'classes']] as const).map(([key, title, fallback]) => (
+                          <label key={key} className="ob-field"><span>{title}</span>
+                            <input className="ob-in" maxLength={30} value={vocab[key]} placeholder={fallback}
+                              onChange={(e) => { const v = e.target.value; setVocab((old) => old && { ...old, [key]: v }); }} /></label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>)}
 
-            <div className="mt-7 flex flex-wrap items-center gap-2 border-t pt-5" style={{ borderColor: 'var(--color-border)' }}>
-              <Button onClick={() => void next()} disabled={saving || uploading}>
-                {saving ? 'Saving…' : isLast ? 'Open my gym' : step === 'runs' || step === 'bookings' || step === 'coaching' || step === 'walkins' || step === 'checkin' || step === 'coach' ? 'Continue' : 'Save and continue'}
-              </Button>
-              {index > 0 && (
-                <Button variant="ghost" disabled={saving} onClick={() => setStep(steps[index - 1].key)}>Back</Button>
-              )}
+                {step === 'runs' && (
+                  <div className="ob-hosted">
+                    {modules.length === 0
+                      ? <p className="ob-hint" style={{ margin: 0 }}>Every part is on. Switch parts off later on Your app → What you run.</p>
+                      : <>
+                        <RunQuestions modules={modules} onSet={async (k, v) => { tick(); await setModule(k, v); }} />
+                        <details className="mt-3" data-every-switch>
+                          <summary className="text-sm font-bold cursor-pointer" style={{ color: 'var(--ob-sub)' }}>Show every switch</summary>
+                          <div className="mt-2"><ModuleSwitches modules={modules} onToggle={(m) => { tick(); void toggleModule(m); }} hideUnsold /></div>
+                        </details>
+                      </>}
+                  </div>
+                )}
+                {step === 'bookings' && <div className="ob-hosted"><BookingApproval /></div>}
+                {step === 'coaching' && <div className="ob-hosted"><CoachingSettings /></div>}
+                {step === 'checkin' && <div className="ob-hosted"><DoorSettings /></div>}
+                {step === 'coach' && <div className="ob-hosted"><AiCoachCard switchedOff={!coach?.enabled} /></div>}
+                {step === 'walkins' && <div className="ob-hosted"><DayPassSettings /></div>}
+                {step === 'refunds' && <div className="ob-hosted att"><RefundPolicyTab /></div>}
+                {step === 'payments' && <div className="ob-hosted att"><OnlinePaymentsTab /></div>}
+                {step === 'waiver' && <div className="ob-hosted att"><WaiverTab /></div>}
+                {step === 'rules' && <div className="ob-hosted att"><HouseRulesTab /></div>}
+                {step === 'team' && <TeamStep />}
+                {step === 'equipment' && <EquipmentStep />}
+                {step === 'rewards' && <RewardsStep pointsName={gym.points_name} />}
+                {step === 'members' && <MembersStep slug={savedSlug} joinCode={joinCode} />}
+
+                {step === 'plans' && (<>
+                  {plans.length === 0 && adding.length === 0 && <p className="ob-hint">No plans yet — add your first one below.</p>}
+                  {[...plans.map((plan) => ({ kind: 'old' as const, plan })), ...adding.map((row, i) => ({ kind: 'new' as const, row, i }))].map((x) => {
+                    const v = x.kind === 'old' ? edited[x.plan.id] : x.row;
+                    const set = (patch: Partial<PlanDraft>) => (x.kind === 'old'
+                      ? setEdited({ ...edited, [x.plan.id]: { ...edited[x.plan.id], ...patch } })
+                      : setAdding(adding.map((r, n) => (n === x.i ? { ...r, ...patch } : r))));
+                    const key = x.kind === 'old' ? x.plan.id : `new-${x.i}`;
+                    return (
+                      <div key={key} className="ob-choice" style={{ cursor: 'default', borderStyle: x.kind === 'new' ? 'dashed' : 'solid' }} data-plan-row>
+                        <span className="ob-chap-icon" style={{ color: '#fff', background: x.kind === 'old' && x.plan.tier === 'free' ? 'var(--ob-fill)' : 'var(--ob-fill-2)', border: 0 }}>
+                          <Tags size={16} /></span>
+                        <div className="grid flex-1 gap-3 sm:grid-cols-[minmax(0,1fr)_130px_120px] items-end">
+                          <label className="ob-field"><span>{x.kind === 'new' ? 'A new plan' : x.plan.tier === 'free' ? 'Free plan' : `Plan · ${peso(x.plan.price)} now`}</span>
+                            <input className="ob-in" value={v?.name ?? ''} placeholder="Student rate" onChange={(e) => set({ name: e.target.value })} /></label>
+                          <label className="ob-field"><span>Price (₱)</span><input className="ob-in" type="number" min={0} value={v?.price ?? ''} onChange={(e) => set({ price: e.target.value })} /></label>
+                          <label className="ob-field"><span>Days</span><input className="ob-in" type="number" min={1} value={v?.days ?? ''} placeholder="never ends" onChange={(e) => set({ days: e.target.value })} /></label>
+                        </div>
+                        {x.kind === 'old'
+                          ? (x.plan.tier !== 'free'
+                            ? <button type="button" className="ob-iconbtn" aria-label={`Remove ${x.plan.name}`} onClick={() => void removePlan(x.plan)} style={{ alignSelf: 'flex-end' }}><Trash2 size={15} /></button>
+                            : <span style={{ width: 38 }} aria-hidden />)
+                          : <button type="button" className="ob-iconbtn" aria-label="Discard this new plan" onClick={() => setAdding(adding.filter((_, n) => n !== x.i))} style={{ alignSelf: 'flex-end' }}><Trash2 size={15} /></button>}
+                      </div>
+                    );
+                  })}
+                  <button type="button" className="ob-btn ghost" onClick={() => { tick(); setAdding([...adding, { name: '', price: '', days: '30' }]); }}><Tags size={15} />Add a plan</button>
+                  <p className="ob-hint">A ₱0 plan is free; empty days means it never expires. Your free plan stays — it is where a member goes when a paid plan ends.</p>
+                </>)}
+
+                {step === 'door' && (<>
+                  <label className="ob-field max-w-xl"><span>Your members&rsquo; link</span>
+                    <div className="flex items-center gap-2"><span className="text-sm font-bold" style={{ color: 'var(--ob-muted)' }}>/join/</span>
+                      <input className="ob-in" maxLength={40} value={slug} placeholder="your-gym" onChange={(e) => setSlug(e.target.value.toLowerCase())} /></div></label>
+                  <p className="ob-hint" style={{ marginTop: -10 }}>Small letters, numbers and dashes. Get it right now — changing it later stops every link you handed out.</p>
+                  <div className="grid gap-3">
+                    {([
+                      ['open', Globe, 'Anyone can find you', 'Listed in the app’s gym list and on the map. Anyone can ask to join.'],
+                      ['code', KeyRound, 'Only with your link or code', 'Not listed. Members join with your link, or a short code you give them.'],
+                      ['closed', Building2, 'Only at the front desk', 'Nobody asks to join from the app. Your desk makes every account, with a login slip.'],
+                    ] as const).map(([key, I, title, blurb]) => (
+                      <button key={key} type="button" className={`ob-choice ${door === key ? 'on' : ''}`} aria-pressed={door === key} onClick={() => { tick(); setDoor(key); }}>
+                        <span className="ob-tick">{door === key && <Check size={13} />}</span>
+                        <span className="min-w-0 flex-1"><span className="flex items-center gap-2 font-extrabold" style={{ color: 'var(--ob-ink)' }}><I size={16} />{title}</span>
+                          <span className="block text-[12.5px] mt-1" style={{ color: 'var(--ob-sub)' }}>{blurb}</span></span>
+                      </button>
+                    ))}
+                  </div>
+                  {joinSet && <div className="ob-hosted"><JoinApproval policy={door} value={joinSet} onChange={setJoinSet} /></div>}
+                  <p className="ob-hint">
+                    {joinSet?.approval === 'auto' && door !== 'closed' ? 'Sign-ups start on your free plan straight away.' : 'However they arrive, you approve every sign-up.'}
+                    {joinCode && door === 'code' && <> Your join code is <strong style={{ color: 'var(--ob-ink)', letterSpacing: '0.12em' }}>{joinCode}</strong>.</>}
+                  </p>
+                </>)}
+
+                {step === 'password' && (
+                  <div className="grid gap-4 sm:grid-cols-2 max-w-xl">
+                    <label className="ob-field"><span>New password</span><input type="password" className="ob-in" value={password.next} onChange={(e) => setPassword({ ...password, next: e.target.value })} /></label>
+                    <label className="ob-field"><span>Type it again</span><input type="password" className="ob-in" value={password.again} onChange={(e) => setPassword({ ...password, again: e.target.value })} /></label>
+                    <p className="ob-hint sm:col-span-2">At least 8 characters. The temporary password stops working.</p>
+                  </div>
+                )}
+
+                {step === 'ready' && (<>
+                  <div className="grid gap-3 sm:grid-cols-3" data-studio-summary>
+                    {chapters.filter((ch) => ch.key !== 'open').map((ch) => {
+                      const complete = ch.done === ch.list.length;
+                      const CI = ch.icon;
+                      return (
+                        <div key={ch.key} className={`ob-choice ${complete ? 'on' : ''}`} style={{ cursor: 'default' }}>
+                          <span className="ob-chap-icon" style={complete ? { color: '#fff', background: 'var(--ob-fill-2)', border: 0 } : undefined}>{complete ? <Check size={16} /> : <CI size={16} />}</span>
+                          <span className="min-w-0"><span className="block font-extrabold" style={{ color: 'var(--ob-ink)' }}>{ch.title}</span>
+                            <span className="block text-[12.5px]" style={{ color: 'var(--ob-sub)' }}>{complete ? 'Done' : `${ch.done} of ${ch.list.length} — finish any time`}</span></span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="ob-hosted flex flex-wrap items-center gap-5" style={{ marginTop: 6 }}>
+                    <div style={{ fontSize: 44, fontWeight: 900, lineHeight: 1, color: 'var(--ob-ink)' }}>{pct}<span style={{ fontSize: 20 }}>%</span></div>
+                    <div className="flex-1 min-w-[220px]">
+                      <p className="font-extrabold" style={{ color: 'var(--ob-ink)' }}>{pct >= 100 ? 'Fully built.' : 'Built enough to open.'}</p>
+                      <p className="ob-hint" style={{ marginTop: 2 }}>Everything you skipped works on the standard rules until you change it — each one is in the menu.</p>
+                    </div>
+                    <button type="button" className="ob-btn open" disabled={saving} onClick={() => void next()} data-open-gym><Rocket size={18} />{saving ? 'Opening…' : 'Open my gym'}</button>
+                  </div>
+                </>)}
+              </div>
             </div>
-          </section>
-        </div>
+          </div>
+
+          {step !== 'ready' && (
+            <div className="ob-foot">
+              {index > 0 && <button type="button" className="ob-btn ghost" disabled={saving} onClick={() => { tick(); move(steps[index - 1].key, 'back'); }}><ArrowLeft size={16} />Back</button>}
+              <span className="ob-key"><kbd>Enter</kbd> to continue</span>
+              <span className="flex-1" />
+              {current.optional && !selfSaving.includes(step) && (
+                <button type="button" className="ob-btn ghost" disabled={saving} onClick={() => void next(true)}>Skip for now</button>
+              )}
+              <button type="button" className="ob-btn go" onClick={() => void next()} disabled={saving || uploading} data-studio-next>
+                {saving ? 'Saving…' : selfSaving.includes(step) ? 'Continue' : 'Save and continue'}<ArrowRight size={17} className="arr" />
+              </button>
+            </div>
+          )}
+        </main>
+
+        <StudioPreview name={gym.gym_name} shortName={gym.short_name} logoUrl={logoUrl} accent={gym.accent} action={action}
+          pointsName={gym.points_name} welcome={gym.welcome_message}
+          members={vocabWord('members', 'members')} coaches={vocabWord('trainers', 'coaches')} classes={vocabWord('classes', 'classes')}
+          plans={[...plans.map((p) => ({ name: edited[p.id]?.name || p.name, price: Number(edited[p.id]?.price || p.price) || 0 }))]}
+          hours={gym.opening_time && gym.closing_time ? `${gym.opening_time}–${gym.closing_time}` : ''} />
       </div>
+
+      {/* ── the chapter-complete moment ── */}
+      {burst && (
+        <div className="ob-burst" aria-live="polite" data-chapter-burst>
+          {Array.from({ length: 18 }, (_, i) => {
+            const ang = (i / 18) * Math.PI * 2;
+            const dist = 150 + (i % 3) * 50;
+            return <span key={i} className="ob-spark" style={{ ['--x' as string]: `${Math.cos(ang) * dist}px`, ['--y' as string]: `${Math.sin(ang) * dist}px`,
+              ['--r' as string]: `${(i * 47) % 360}deg`, ['--d' as string]: `${(i % 4) * 0.03}s`, ['--c' as string]: i % 2 ? 'var(--ob-fill)' : 'var(--ob-fill-2)' }} />;
+          })}
+          <div className="ob-burst-card"><small>Chapter complete</small><b>{burst}</b></div>
+        </div>
+      )}
     </div>
   );
 }
