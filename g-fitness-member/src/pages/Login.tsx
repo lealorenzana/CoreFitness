@@ -181,7 +181,8 @@ export default function Login() {
   return (
     <MobileFrame>
       {overlayRoot && isLoading && createPortal(<LoadingOverlay message="Logging you in..." />, overlayRoot)}
-      <div className="absolute z-10" style={{ top: 'calc(env(safe-area-inset-top) + 14px)', right: 16 }}><ModeSwitch /></div>
+      {/* Above everything on the screen: on Trainer the content is taller and the logo slid under it (2026-11-07). */}
+      <div className="absolute" style={{ top: 'calc(env(safe-area-inset-top) + 14px)', right: 16, zIndex: 60 }}><ModeSwitch /></div>
 
       <div
         className="px-6 min-h-full flex flex-col justify-center relative overflow-hidden"
