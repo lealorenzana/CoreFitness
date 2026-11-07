@@ -65,7 +65,7 @@ export default function ProgramNext() {
             <CalendarCheck size={17} style={{ color: 'var(--color-primary-300)' }} />
             <span className="truncate">Week {next.week} · Day {next.day} — {next.workoutName}</span>
           </span>
-          <NocButton onClick={() => void start()} disabled={busy}>{busy ? 'Starting…' : 'Start'}</NocButton>
+          <NocButton className="flex-none" style={{ height: 40, padding: '0 20px' }} onClick={() => void start()} disabled={busy}>{busy ? 'Starting…' : 'Start'}</NocButton>
         </div>
       ) : (
         <p style={{ marginTop: 12, fontSize: 13.5, color: 'var(--color-primary-300)' }}>Every day done — well finished. Pick your next one under Programs.</p>

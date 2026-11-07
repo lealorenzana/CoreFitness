@@ -1755,3 +1755,58 @@ img { -webkit-user-drag: none; user-select: none; }
   --panel-edge-primary: inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 34%, transparent), 0 14px 28px -18px color-mix(in srgb, var(--color-primary) 75%, transparent);
   --panel-edge-action:  inset 0 0 0 1px color-mix(in srgb, var(--color-secondary) 38%, transparent), 0 14px 28px -18px color-mix(in srgb, var(--color-secondary) 75%, transparent);
 }
+
+/* The assistant's floating orb in light (2026-11-07): the near-black glass core was a dark blot on a light
+   screen — solid in the gym's colour, white sparkle, the spinning ring kept. */
+:root[data-mode="light"] .ai-orb__core { background: var(--color-primary-700); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35); }
+:root[data-mode="light"] .ai-orb [data-floating-chathead] svg, :root[data-mode="light"] .ai-orb > svg { color: #FFFFFF !important; filter: none !important; }
+:root[data-mode="light"] .ai-orb { filter: drop-shadow(0 8px 18px color-mix(in srgb, var(--color-primary) 40%, transparent)); }
+
+/* More (the owner, 2026-11-07: "moving icons with colors", both modes). --k runs 0%→100% down the list: the
+   tile's colour slides from the gym's main colour to its second. Dark: a soft two-shade glow; light: solid. */
+.more-tile {
+  --tile: color-mix(in srgb, var(--color-secondary) var(--k, 0%), var(--color-primary));
+  width: 38px; height: 38px; border-radius: 12px; color: #FFFFFF;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--tile) 92%, #FFFFFF), color-mix(in srgb, var(--tile) 70%, #000000));
+  box-shadow: 0 6px 16px -8px var(--tile), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+:root[data-mode="light"] .more-tile {
+  background: color-mix(in srgb, var(--tile) 82%, #000000);
+  box-shadow: 0 6px 14px -8px var(--tile);
+}
+.more-tile__icon { display: grid; place-items: center; }
+@media (prefers-reduced-motion: no-preference) {
+  .more-tile { animation: more-pop 0.42s cubic-bezier(0.3, 1.4, 0.5, 1) both; animation-delay: calc(var(--i, 0) * 45ms); }
+  .more-move--ring  { animation: more-ring 3.6s ease-in-out infinite; animation-delay: calc(0.6s + var(--i, 0) * 0.3s); transform-origin: 50% 10%; }
+  .more-move--bob   { animation: more-bob 2.8s ease-in-out infinite; animation-delay: calc(0.6s + var(--i, 0) * 0.3s); }
+  .more-move--pulse { animation: more-pulse 2.4s ease-in-out infinite; animation-delay: calc(0.6s + var(--i, 0) * 0.3s); }
+  .more-move--tilt  { animation: more-tilt 3.2s ease-in-out infinite; animation-delay: calc(0.6s + var(--i, 0) * 0.3s); }
+}
+@keyframes more-pop { from { opacity: 0; transform: scale(0.4) rotate(-12deg); } to { opacity: 1; transform: none; } }
+@keyframes more-ring { 0%, 70%, 100% { transform: rotate(0); } 75% { transform: rotate(14deg); } 82% { transform: rotate(-12deg); } 89% { transform: rotate(8deg); } 95% { transform: rotate(-4deg); } }
+@keyframes more-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes more-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.14); } }
+@keyframes more-tilt { 0%, 100% { transform: rotate(0); } 30% { transform: rotate(-10deg); } 60% { transform: rotate(8deg); } }
+
+/* Sign-in in light (the owner, 2026-11-07: "the gray color of the text box … is not good looking"). The fields
+   were see-through black — muddy grey on a light screen. In light: white frosted boxes with a soft border in
+   the role's colour (violet Member, amber Trainer), the role switch a white groove, the card frosted white. */
+:root[data-mode="light"] {
+  --login-track: rgba(255, 255, 255, 0.7);
+  --login-track-shadow: inset 0 1px 2px rgba(20, 20, 40, 0.08);
+  --login-card: rgba(255, 255, 255, 0.62);
+  --login-card-drop: 0 24px 50px -18px rgba(40, 30, 90, 0.35);
+}
+:root[data-mode="light"] .field-input.field-role {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: color-mix(in srgb, var(--role, var(--color-primary)) 32%, #D6D6E0);
+  color: var(--color-text-primary);
+}
+
+/* Faded white words (text-white/30–50) were written for dark grounds; on light ones they vanish — the sign-in
+   footer was the case the owner saw (2026-11-07). In light they are the secondary ink instead. */
+:root[data-mode="light"] .text-white\/25, :root[data-mode="light"] .text-white\/30, :root[data-mode="light"] .text-white\/40, :root[data-mode="light"] .text-white\/50 { color: #3F3D56; }
+
+/* The coach's hub: the rail and the panel are scrolling columns — their rows keep their size and scroll,
+   never squeeze to fit (2026-11-07). */
+[data-trainer-hub] > nav > *, [data-trainer-hub] > section > * { flex-shrink: 0; }

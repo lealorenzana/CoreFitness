@@ -227,7 +227,7 @@ export function NocButton({
       onClick={onClick}
       disabled={disabled}
       className={cn('flex items-center justify-center noc-press disabled:opacity-50 disabled:cursor-not-allowed', className)}
-      style={{ height: 46, borderRadius: 'var(--radius-btn)', gap: 7, fontSize: 14, fontWeight: 600, ...skin, ...style }}
+      style={{ height: 46, padding: '0 18px', whiteSpace: 'nowrap', borderRadius: 'var(--radius-btn)', gap: 7, fontSize: 14, fontWeight: 600, ...skin, ...style }}
     >
       {icon}
       {children}

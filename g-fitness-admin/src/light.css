@@ -359,3 +359,48 @@
   --sidebar-bg:   color-mix(in srgb, color-mix(in srgb, var(--color-primary) 9%, #F8F8FB) 72%, transparent);
   --sidebar-rail: color-mix(in srgb, color-mix(in srgb, var(--color-primary) 14%, #F1F1F6) 72%, transparent);
 }
+
+
+/* ── Light mode, every word plain to see (the owner, 2026-11-07: "some parts … still has light text with light
+   background") ──────────────────────────────────────────────────────────────────────────────────────────
+   Dark mode writes pastel words (mint, pink, sky, lime, lilac, gold, green, red) straight into ~80 places.
+   On a light ground each turns to its deep shade here — one map, so a new screen is covered too. */
+:root[data-mode="light"] [style^="color: rgb(126, 231, 212)"], :root[data-mode="light"] [style*="; color: rgb(126, 231, 212)"] { color: #0F766E !important; }
+:root[data-mode="light"] [style^="color: rgb(240, 171, 252)"], :root[data-mode="light"] [style*="; color: rgb(240, 171, 252)"] { color: #A21CAF !important; }
+:root[data-mode="light"] [style^="color: rgb(240, 168, 224)"], :root[data-mode="light"] [style*="; color: rgb(240, 168, 224)"] { color: #A21CAF !important; }
+:root[data-mode="light"] [style^="color: rgb(147, 197, 253)"], :root[data-mode="light"] [style*="; color: rgb(147, 197, 253)"] { color: #1D4ED8 !important; }
+:root[data-mode="light"] [style^="color: rgb(217, 249, 157)"], :root[data-mode="light"] [style*="; color: rgb(217, 249, 157)"] { color: #3F6212 !important; }
+:root[data-mode="light"] [style^="color: rgb(196, 181, 253)"], :root[data-mode="light"] [style*="; color: rgb(196, 181, 253)"] { color: var(--color-primary-700, #6D28D9) !important; }
+:root[data-mode="light"] [style^="color: rgb(167, 139, 250)"], :root[data-mode="light"] [style*="; color: rgb(167, 139, 250)"] { color: var(--color-primary-700, #6D28D9) !important; }
+:root[data-mode="light"] [style^="color: rgb(221, 214, 254)"], :root[data-mode="light"] [style*="; color: rgb(221, 214, 254)"] { color: var(--color-primary-700, #6D28D9) !important; }
+:root[data-mode="light"] [style^="color: rgb(233, 213, 255)"], :root[data-mode="light"] [style*="; color: rgb(233, 213, 255)"] { color: var(--color-primary-700, #6D28D9) !important; }
+:root[data-mode="light"] [style^="color: rgb(252, 211, 77)"], :root[data-mode="light"] [style*="; color: rgb(252, 211, 77)"] { color: #92400E !important; }
+:root[data-mode="light"] [style^="color: rgb(251, 191, 36)"], :root[data-mode="light"] [style*="; color: rgb(251, 191, 36)"] { color: #92400E !important; }
+:root[data-mode="light"] [style^="color: rgb(74, 222, 128)"], :root[data-mode="light"] [style*="; color: rgb(74, 222, 128)"] { color: #15803D !important; }
+:root[data-mode="light"] [style^="color: rgb(134, 239, 172)"], :root[data-mode="light"] [style*="; color: rgb(134, 239, 172)"] { color: #15803D !important; }
+:root[data-mode="light"] [style^="color: rgb(248, 113, 113)"], :root[data-mode="light"] [style*="; color: rgb(248, 113, 113)"] { color: #B91C1C !important; }
+:root[data-mode="light"] [style^="color: rgb(252, 165, 165)"], :root[data-mode="light"] [style*="; color: rgb(252, 165, 165)"] { color: #B91C1C !important; }
+/* The redesign stylesheet's own pastel words. */
+:root[data-mode="light"] .att .a-wkg-name.t0 { color: var(--color-primary-700, #5B21B6); }
+:root[data-mode="light"] .att .a-wkg-name.t1 { color: #0F766E; }
+:root[data-mode="light"] .att .a-wkg-name.t2 { color: #92400E; }
+:root[data-mode="light"] .att .a-wkg-name.t3 { color: #9D174D; }
+:root[data-mode="light"] .att .a-wkg-name.t4 { color: #1D4ED8; }
+:root[data-mode="light"] .att .a-wkg-name.t5 { color: #3F6212; }
+:root[data-mode="light"] .att .a-wkg .d small { color: inherit; opacity: 0.85; }
+:root[data-mode="light"] .att .a-av.g { background: #D5F2EC; color: #0F766E; }
+:root[data-mode="light"] .att .a-av.p { background: #F8DDF1; color: #9D174D; }
+:root[data-mode="light"] .att .a-status { background: #D5F2EC; color: #0F766E; }
+:root[data-mode="light"] .att .a-medal.gold { color: #92400E; }
+:root[data-mode="light"] .att .a-medal.platinum { color: var(--color-primary-700, #5B21B6); }
+/* Words written straight on the page (titles, their subtitles) sit on the colour behind the glass: in light
+   that colour is quieter, and the subtitles a step darker. */
+:root[data-mode="light"] { --amb-strength: 0.5; }
+:root[data-mode="light"] .att { --a-text2: #3E4154; }
+/* The sidebar in light is the gym's own colour, solid (the owner, 2026-11-07 — "the color scheme of their
+   own gym"): a clear tint for the panel, a deeper one for the rail, the current page a solid tile. */
+:root[data-mode="light"] {
+  --sidebar-bg:     color-mix(in srgb, var(--color-primary) 15%, #F6F5FB);
+  --sidebar-rail:   color-mix(in srgb, var(--color-primary) 22%, #EFEEF6);
+  --sidebar-active: color-mix(in srgb, var(--color-primary) 26%, #FFFFFF);
+}

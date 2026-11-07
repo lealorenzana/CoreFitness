@@ -54,7 +54,8 @@ const PRESENCE_TONE: Record<Presence, string> = {
   available: 'var(--color-primary-300)', away: 'var(--color-secondary)', on_leave: 'var(--color-text-muted)',
 };
 // Dark: the page darkened. Light has its own tint (index.css --rail-bg) — darkened, it was a muddy grey with grey words.
-const RAIL_BG = 'var(--rail-bg, color-mix(in srgb, var(--color-bg) 70%, #000))';
+// See-through since the glass (2026-11-07): the gym's colours drift behind the rail too.
+const RAIL_BG = 'color-mix(in srgb, var(--rail-bg, color-mix(in srgb, var(--color-bg) 70%, #000)) 72%, transparent)';
 const PANEL_SPACE = 92; // room for the floating panel at the bottom
 
 /** One person this coach trains: their package (if any), chat and room merged. */
@@ -202,12 +203,15 @@ export default function TrainerHub() {
   if (rooms === null) return <div style={{ padding: 'var(--gutter)' }}><SkeletonList /></div>;
 
   return (
-    <div className="flex" data-trainer-hub style={{ flex: 1, minHeight: '100dvh', background: RAIL_BG }}>
+    <div className="flex" data-trainer-hub
+      // Pinned to the screen (the owner, 2026-11-07): the rail and the panel each scroll on their own — the
+      // hub used to grow with its content, so the whole page scrolled, rail and all, and Today never did.
+      style={{ position: 'absolute', inset: 0, background: RAIL_BG }}>
       {/* What changed for coaches (0212), once. */}
       <WhatsNew app="trainer" />
       {/* ---- the rail ---- */}
       <nav aria-label="Your trainees" className="flex flex-col items-center flex-none scrollbar-hide"
-        style={{ width: 74, gap: 8, padding: `12px 0 ${PANEL_SPACE}px`, overflowY: 'auto' }}>
+        style={{ width: 74, gap: 8, padding: `12px 0 ${PANEL_SPACE}px`, overflowY: 'auto', overscrollBehavior: 'contain', minHeight: 0 }}>
         <RailButton label="Today" on={view === 'today'} onClick={showToday} badge={requests + queue.length} dataAttr="today">
           <span className="grid place-items-center" style={{ width: 46, height: 46, borderRadius: 'inherit',
             background: view === 'today' ? 'var(--color-primary)' : 'var(--color-surface)', color: view === 'today' ? '#fff' : 'var(--color-text-secondary)' }}>
@@ -225,7 +229,7 @@ export default function TrainerHub() {
         {packaged.map((x) => (
           <RailButton key={x.id} label={x.name.split(' ')[0]} on={false} onClick={() => navigate(`/trainer/pt/${x.id}`)} badge={unreadOf(x)} trainee={x.id}>
             <span className="block" style={{ opacity: x.coaching?.status === 'active' ? 1 : 0.55 }}>
-              <Avatar name={x.name} photoUrl={x.photo} size={46} />
+              <Avatar name={x.name} photoUrl={x.photo} size={46} zoom={false} />
             </span>
           </RailButton>
         ))}
@@ -239,7 +243,7 @@ export default function TrainerHub() {
       </nav>
 
       {/* ---- the panel: Today, or Personal training ---- */}
-      <section className="flex-1 min-w-0 flex flex-col overflow-y-auto scrollbar-hide"
+      <section className="flex-1 min-w-0 min-h-0 flex flex-col overflow-y-auto overscroll-contain scrollbar-hide"
         style={{ background: 'color-mix(in srgb, var(--color-bg) 55%, transparent)', borderTopLeftRadius: 18, padding: `14px 14px ${PANEL_SPACE}px`, borderLeft: '1px solid var(--color-separator)' }}>
         {view === 'today' ? (
           <TodayPanel trainerId={trainerId} classes={today} queue={queue} onRequests={setRequests} arriving={arriving} />
@@ -273,7 +277,7 @@ export default function TrainerHub() {
             background: 'var(--rail-card, color-mix(in srgb, var(--color-surface) 92%, #000))', border: '1px solid var(--color-separator)', boxShadow: 'var(--rail-card-shadow, 0 8px 24px rgba(0,0,0,.35))' }}>
           <button type="button" onClick={() => setYouOpen(true)} aria-label="You — your status and screens" data-you-button className="flex items-center min-w-0 flex-1 text-left noc-press" style={{ gap: 10 }}>
             <span className="relative flex-none">
-              <Avatar name={me.name} photoUrl={me.photo} size={38} />
+              <Avatar name={me.name} photoUrl={me.photo} size={38} zoom={false} />
               <span className="absolute" style={{ right: -1, bottom: -1, width: 13, height: 13, borderRadius: 7, border: '2px solid var(--color-surface)', background: PRESENCE_TONE[presence] }} />
             </span>
             <span className="min-w-0">
@@ -397,7 +401,7 @@ function PtList({ people, q, unreadOf, onOpen, canOffer, onOffer }: {
     return (
       <button key={x.id} type="button" onClick={() => onOpen(x.id, !x.coaching)} className="flex items-center text-left noc-press" data-dm-row data-pt-row={x.coaching ? 'package' : 'single'}
         style={{ gap: 12, padding: '9px 4px', borderRadius: 12 }}>
-        <Avatar name={x.name} photoUrl={x.photo} size={44} />
+        <Avatar name={x.name} photoUrl={x.photo} size={44} zoom={false} />
         <span className="min-w-0 flex-1">
           <span className="flex items-center" style={{ gap: 8 }}>
             <span className="truncate" style={{ fontSize: 15, fontWeight: u ? 800 : 600, color: 'var(--color-text-primary)' }}>{x.name}</span>

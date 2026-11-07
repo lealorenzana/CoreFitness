@@ -700,6 +700,10 @@
     {
       "file": "admin-studio-check.js",
       "app": "admin"
+    },
+    {
+      "file": "trainer-hub-scroll-check.js",
+      "app": "member"
     }
   ]
 }

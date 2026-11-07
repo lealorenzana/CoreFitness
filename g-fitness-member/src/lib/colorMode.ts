@@ -15,12 +15,28 @@ import { reapplyPremiumTheme } from './premiumThemes';
 export type ColorMode = 'system' | 'light' | 'dark';
 
 let saved: ColorMode = 'system';
+/**
+ * The sign-in screen's own switch (the owner, 2026-11-07): before anyone signs in there is no account to
+ * save a choice on, so it is this phone's — a per-device convenience, read where "the device decides".
+ * A signed-in person's Light or Dark always wins; their "Same as my phone" means this.
+ */
+const DEVICE_KEY = 'cf-device-mode';
+let device: 'light' | 'dark' | null = (() => {
+  try { const v = localStorage.getItem(DEVICE_KEY); return v === 'light' || v === 'dark' ? v : null; } catch { return null; }
+})();
 const listeners = new Set<(m: ColorMode) => void>();
 const media = typeof window !== 'undefined' ? window.matchMedia('(prefers-color-scheme: light)') : null;
 
 export const colorModeChoice = (): ColorMode => saved;
 export const resolvedMode = (): 'light' | 'dark' =>
-  saved === 'system' ? (media?.matches ? 'light' : 'dark') : saved;
+  saved === 'system' ? (device ?? (media?.matches ? 'light' : 'dark')) : saved;
+
+/** The sign-in screen's sun/moon: this phone's light or dark until someone signs in. */
+export function setDeviceMode(mode: 'light' | 'dark'): void {
+  device = mode;
+  try { localStorage.setItem(DEVICE_KEY, mode); } catch { /* private mode: for this visit only */ }
+  applyColorMode();
+}
 
 export function applyColorMode(): void {
   const root = document.documentElement;
@@ -33,7 +49,7 @@ export function applyColorMode(): void {
   listeners.forEach((fn) => fn(saved));
 }
 
-media?.addEventListener('change', () => { if (saved === 'system') applyColorMode(); });
+media?.addEventListener('change', () => { if (saved === 'system' && !device) applyColorMode(); });
 
 /** After sign-in: this account's choice. Before 0234 (or signed out), the device decides. */
 export async function loadColorMode(): Promise<void> {

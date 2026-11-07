@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, ChevronDown } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import LandingFooter from '../components/ui/LandingFooter';
+import OwnerStory from '../components/landing/OwnerStory';
 import { arrivedByResetLink, supabase } from '../lib/supabaseClient';
 import { clearGymContext, getGymContext, myGyms, usableGyms } from '../lib/gymContext';
 import { myApplications } from '../lib/api/applications';
@@ -439,7 +440,8 @@ export default function AdminLogin() {
       </motion.div>
     </div>
 
-    {/* Parallax Features + Cinematic Footer */}
+    {/* The story (2026-11-07): the statement, an owner's day pinned, everything in it — then the ending. */}
+    <OwnerStory />
     <LandingFooter />
 
     {/* Gradient text animation */}

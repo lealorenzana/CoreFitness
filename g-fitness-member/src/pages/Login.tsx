@@ -7,6 +7,7 @@ import { User, Lock, Mail, ArrowRight, Eye, EyeOff, Dumbbell, Clock } from 'luci
 import MobileFrame from '../components/layout/MobileFrame';
 import AuthBackground from '../components/ui/AuthBackground';
 import BrandMark from '../components/ui/BrandMark';
+import ModeSwitch from '../components/ui/ModeSwitch';
 import LoadingOverlay from '../components/ui/LoadingOverlay';
 import { login, logout } from '../utils/auth';
 import GoogleButton from '../components/ui/GoogleButton';
@@ -180,6 +181,7 @@ export default function Login() {
   return (
     <MobileFrame>
       {overlayRoot && isLoading && createPortal(<LoadingOverlay message="Logging you in..." />, overlayRoot)}
+      <div className="absolute z-10" style={{ top: 'calc(env(safe-area-inset-top) + 14px)', right: 16 }}><ModeSwitch /></div>
 
       <div
         className="px-6 min-h-full flex flex-col justify-center relative overflow-hidden"
@@ -307,9 +309,9 @@ export default function Login() {
                 // reads as a groove cut into the background, so the gradient
                 // still shows through it and the bright pill has something dark
                 // to sit against.
-                background: 'rgba(0,0,0,0.30)',
+                background: 'var(--login-track, rgba(0,0,0,0.30))',
                 border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.10)',
-                boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.45)',
+                boxShadow: 'var(--login-track-shadow, inset 0 1px 2px rgba(0,0,0,0.45))',
               }}
               role="tablist"
             >
@@ -418,14 +420,14 @@ export default function Login() {
                 // over *detailed* backdrops; behind this card is a smooth radial
                 // gradient with nothing to smear, so it would cost GPU on a
                 // mid-range phone in a TWA and change almost no pixels.
-                background: 'rgba(255,255,255,0.05)',
+                background: 'var(--login-card, rgba(255,255,255,0.05))',
                 // A whisper of the accent on the card edge — enough that the
                 // card belongs to the role without competing with the fields.
                 border: `1px solid ${tint(0.22)}`,
                 boxShadow:
                   // Light catching the top edge, the way a real pane would.
                   `inset 0 1px 0 rgba(255,255,255,0.10), ` +
-                  `0 24px 64px rgba(0,0,0,0.45), 0 0 0 1px ${tint(0.06)}`,
+                  `var(--login-card-drop, 0 24px 64px rgba(0,0,0,0.45)), 0 0 0 1px ${tint(0.06)}`,
                 transition: morph,
               }}
             >

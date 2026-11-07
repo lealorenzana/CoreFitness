@@ -1,19 +1,12 @@
 import { useRef } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { Dumbbell, Users, QrCode, CalendarDays, TrendingUp, MessageSquare, Shield, ArrowUp } from 'lucide-react';
+import { Dumbbell, Shield, ArrowUp } from 'lucide-react';
 
-const FEATURES = [
-  { icon: Users, title: 'Member Management', desc: 'Track memberships, body progress, and attendance in one place.' },
-  { icon: QrCode, title: 'QR Attendance', desc: 'Secure time-limited QR codes for instant check-ins.' },
-  { icon: CalendarDays, title: 'Class Scheduling', desc: 'Weekly grid view with duplicate detection and booking management.' },
-  { icon: TrendingUp, title: 'Progress Tracking', desc: 'BMI, body measurements, workout logs, and goal achievement.' },
-  { icon: MessageSquare, title: 'Trainer Feedback', desc: 'Workout recommendations, performance comments, and plans.' },
-  { icon: Shield, title: 'Role-Based Access', desc: 'Admin, Staff, and Member views with appropriate permissions.' },
-];
 
+// What the system does today (2026-11-07) — the old list named class booking and "QR attendance" first.
 const MARQUEE_ITEMS = [
-  'Member Management', 'QR Attendance', 'Class Booking', 'Progress Tracking',
-  'Trainer Feedback', 'Revenue Analytics', 'Badge System', 'Goal Achievement',
+  'Members and sign-ups', 'Check-in kiosk', 'Works offline', 'Cash and receipts',
+  'Personal training', 'Fair refunds', 'Your own app', 'Streaks and badges', 'Lobby TV',
 ];
 
 function MarqueeContent() {
@@ -40,84 +33,6 @@ export default function LandingFooter() {
 
   return (
     <>
-      {/* ─── Parallax Features Section ─── */}
-      <section className="relative py-24 px-6 overflow-hidden" style={{ background: '#000' }}>
-        {/* NO gradient transition - same solid black as login section bottom */}
-
-        {/* Section glow */}
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[300px] rounded-full"
-          style={{ background: 'radial-gradient(ellipse, rgba(124,58,237,0.12) 0%, transparent 70%)', filter: 'blur(80px)' }} />
-
-        <div className="max-w-5xl mx-auto relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 60 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-100px' }}
-            transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-            className="text-center mb-16"
-          >
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.8, delay: 0.1 }}
-              className="text-xs font-semibold uppercase tracking-[0.3em] mb-3" style={{ color: 'var(--color-primary)' }}>
-              Powerful Features
-            </motion.p>
-            <motion.h2
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              className="text-4xl md:text-5xl font-bold text-white">
-              Everything you need to manage your gym
-            </motion.h2>
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.8, delay: 0.3 }}
-              className="text-sm mt-4 max-w-lg mx-auto" style={{ color: 'rgba(255,255,255,0.5)' }}>
-              Core Fitness provides a complete management system for modern fitness businesses.
-            </motion.p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {FEATURES.map((feat, i) => {
-              const Icon = feat.icon;
-              return (
-                <motion.div
-                  key={feat.title}
-                  initial={{ opacity: 0, y: 50, scale: 0.95 }}
-                  whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                  viewport={{ once: true, margin: '-50px' }}
-                  transition={{ duration: 0.7, delay: i * 0.12, ease: [0.16, 1, 0.3, 1] }}
-                  whileHover={{ y: -8, scale: 1.03, transition: { duration: 0.3 } }}
-                  className="rounded-2xl p-6 group cursor-default"
-                  style={{
-                    background: 'rgba(255,255,255,0.02)',
-                    border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.06)',
-                    backdropFilter: 'blur(10px)',
-                  }}
-                >
-                  <motion.div
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    whileInView={{ scale: 1, opacity: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: 0.3 + i * 0.12 }}
-                    className="w-10 h-10 rounded-xl flex items-center justify-center mb-4 transition-all duration-300 group-hover:shadow-lg"
-                    style={{ background: 'rgba(124,58,237,0.15)' }}>
-                    <Icon size={20} style={{ color: 'var(--color-primary)' }} />
-                  </motion.div>
-                  <h3 className="text-white font-semibold text-sm mb-2">{feat.title}</h3>
-                  <p className="text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.5)' }}>{feat.desc}</p>
-                </motion.div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
       {/* ─── Cinematic Footer ─── */}
       <div ref={containerRef} className="relative h-screen w-full" style={{ clipPath: 'polygon(0% 0, 100% 0%, 100% 100%, 0 100%)', position: 'relative' }}>
         <footer className="fixed bottom-0 left-0 flex h-screen w-full flex-col justify-between overflow-hidden"
@@ -180,10 +95,11 @@ export default function LandingFooter() {
                 onClick={scrollToTop}>
                 <Dumbbell size={18} /> Go to Login
               </motion.button>
-              <motion.button whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.95 }}
+              {/* It did nothing until 2026-11-07 — it opens the public site now. */}
+              <motion.a whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.95 }} href="https://corefitness-site.vercel.app" target="_blank" rel="noreferrer"
                 className="footer-glass-pill px-8 py-4 rounded-full font-bold text-sm flex items-center gap-2 text-white/70">
-                <Shield size={18} /> Learn More
-              </motion.button>
+                <Shield size={18} /> Learn more
+              </motion.a>
             </motion.div>
           </div>
 

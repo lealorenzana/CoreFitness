@@ -40,7 +40,11 @@ export default function EverythingSheet({ open, onClose, onGo }: { open: boolean
   const groups = EVERYTHING
     .map(({ group, items }) => ({ group, items: visibleDestinations(items, gymApp) }))
     .filter(({ items }) => items.length > 0);
-  const row = (d: Destination, key: string) => {
+  // Colour and motion (the owner, 2026-11-07: "moving icons with colors"): each tile is a step on a scale
+  // from the gym's main colour to its second (never a fixed hue), and its icon has its own idle motion.
+  const total = groups.reduce((n, g) => n + g.items.length, 0);
+  const MOTIONS = ['ring', 'bob', 'pulse', 'tilt'] as const;
+  const row = (d: Destination, key: string, i: number) => {
     const Icon = d.icon;
     const current = d.path === here;
     return (
@@ -48,11 +52,9 @@ export default function EverythingSheet({ open, onClose, onGo }: { open: boolean
         className="w-full flex items-center text-left noc-row"
         style={{ gap: 12, padding: '10px 0', borderBottom: '1px solid var(--color-separator)' }}>
         {Icon && (
-          <span aria-hidden className="flex-none grid place-items-center" style={{
-            width: 36, height: 36, borderRadius: 11, background: 'var(--color-surface-raised)',
-            border: '1px solid var(--color-hairline)', color: current ? 'var(--color-primary-300)' : 'var(--color-text-secondary)',
-          }}>
-            <Icon size={17} />
+          <span aria-hidden className="more-tile flex-none grid place-items-center" data-more-tile
+            style={{ ['--i' as string]: i, ['--k' as string]: `${total > 1 ? Math.round((i / (total - 1)) * 100) : 0}%` }}>
+            <span className={`more-tile__icon more-move--${MOTIONS[i % MOTIONS.length]}`}><Icon size={18} weight="bold" /></span>
           </span>
         )}
         <span className="min-w-0 flex-1">
@@ -96,7 +98,7 @@ export default function EverythingSheet({ open, onClose, onGo }: { open: boolean
       <div className="flex-1 overflow-y-auto scrollbar-hide" style={{ padding: '4px var(--gutter) var(--stack)' }}>
         {groups.map(({ group, items }) => (
           <section key={group} aria-label={t(group)}>
-            {items.map((d) => row(d, d.path))}
+            {items.map((d) => row(d, d.path, groups.slice(0, groups.findIndex((g) => g.group === group)).reduce((n, g) => n + g.items.length, 0) + items.indexOf(d)))}
           </section>
         ))}
       </div>
