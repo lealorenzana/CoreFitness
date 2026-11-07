@@ -708,6 +708,10 @@
     {
       "file": "member-navigation-check.js",
       "app": "member"
+    },
+    {
+      "file": "admin-from-site-check.js",
+      "app": "admin"
     }
   ]
 }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { GYM_SIGN_IN } from './siteAccount';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import StatusPage from './Status';
@@ -45,6 +46,16 @@ export default function Account() {
   useEffect(() => { if (session) void (async () => { await load(); })(); }, [session, load]);
 
   const signOut = async () => { await supabase?.auth.signOut(); setApps(null); setPick(null); };
+  // An account that runs an approved gym (2026-11-08): its dashboard, not an application.
+  const [runs, setRuns] = useState<{ name: string }[]>([]);
+  useEffect(() => {
+    if (!session || !supabase) return;
+    const sb = supabase;
+    void (async () => {
+      const { data } = await sb.rpc('my_gyms');
+      setRuns(((data ?? []) as { name: string; role: string; status: string }[]).filter((g) => g.role === 'admin' && g.status === 'active'));
+    })();
+  }, [session]);
 
   if (session === undefined) return <div className="status-page"><p className="status-loading">Opening…</p></div>;
   if (!session) return <SignIn deleted={deleted} />;
@@ -59,6 +70,26 @@ export default function Account() {
     </div>
   );
   if (eraseAfter) return <DeletionPending eraseAfter={eraseAfter} onKept={() => void load()} onSignOut={() => void signOut()} />;
+
+  if (runs.length > 0 && !pick) return (
+    <div className="status-page" data-runs-gym>
+      <div className="status-back-row">
+        <a className="status-back" href="#top">← Core Fitness</a>
+        <button type="button" className="link-btn" onClick={() => void signOut()}>Sign out</button>
+      </div>
+      <span className="eyebrow">Signed in as {session.user.email}</span>
+      <h1 className="status-title">You already run {runs.map((g) => g.name).join(' and ')}</h1>
+      <p className="status-lede">Your gym is on Core Fitness — there is no application to follow. Run it from its dashboard.</p>
+      <a className="cta" href={GYM_SIGN_IN}>Open your dashboard</a>
+      {apps.length > 0 && (
+        <p className="note" style={{ marginTop: 18 }}>
+          Earlier applications: {apps.map((a, i) => (
+            <span key={a.id}>{i > 0 && ', '}<button type="button" className="link-btn" onClick={() => setPick(a.id)}>{a.gym_name}</button> ({STATUS[a.status] ?? a.status})</span>
+          ))}
+        </p>
+      )}
+    </div>
+  );
 
   const chosen = pick ?? (apps.length === 1 ? apps[0]!.id : null);
   if (chosen) return <StatusPage key={chosen} accountId={chosen} onSignOut={() => void signOut()} onDeleted={() => { setDeleted(true); setApps(null); setPick(null); }} />;

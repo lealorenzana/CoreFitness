@@ -9,7 +9,8 @@ import { arrivedByResetLink, supabase } from '../lib/supabaseClient';
 import { clearGymContext, getGymContext, myGyms, usableGyms } from '../lib/gymContext';
 import { myApplications } from '../lib/api/applications';
 import { getSessionPersistence, setSessionPersistence } from '../lib/authStorage';
-import { signInWithLogin } from '../lib/api/logins';
+import { realEmail, signInWithLogin } from '../lib/api/logins';
+import { clearAdminCaches } from '../lib/adminCaches';
 
 // Floating particles
 function Particles() {
@@ -98,6 +99,30 @@ export default function AdminLogin() {
     await routeSignedIn();
   };
 
+  // From the website's "Gym sign in" (?from=site, 2026-11-08) with this browser already signed in: say who, and ask —
+  // continue as them, or sign out and use the account the website was signed in with. The website's sign-in is its
+  // own (another site), so the two can differ; no email travels in the link.
+  const fromSite = new URLSearchParams(window.location.search).get('from') === 'site';
+  const [already, setAlready] = useState<{ name: string; email: string | null; gym: string | null } | null>(null);
+  useEffect(() => {
+    if (!fromSite) return;
+    void (async () => {
+      const { data } = await supabase.auth.getSession();
+      const u = data.session?.user;
+      if (!u) return;
+      const { data: p } = await supabase.from('profiles').select('first_name, last_name, username').eq('id', u.id).maybeSingle();
+      const ctx = await getGymContext().catch(() => null);
+      const name = [p?.first_name, p?.last_name].filter(Boolean).join(' ') || p?.username || 'this account';
+      setAlready({ name, email: realEmail(u.email) ?? (p?.username ? `@${p.username}` : null), gym: ctx?.gymName ?? null });
+    })();
+  }, [fromSite]);
+  const switchAccount = async () => {
+    await supabase.auth.signOut();
+    clearGymContext();
+    clearAdminCaches();
+    setAlready(null);
+  };
+
   /** After any sign-in — a password, or Google (0190): which gym, the application, or no access. */
   const routeSignedIn = async () => {
     // An invited login's first sign-in (0202): its form comes first — the
@@ -180,6 +205,25 @@ export default function AdminLogin() {
   return (
     // A dark branded page in both modes (0234): .keep-dark keeps light mode's overrides off it.
     <div className="w-full relative keep-dark" style={{ background: '#000' }}>
+    {already && (
+      <div className="fixed inset-0 z-[80] grid place-items-center p-6" style={{ background: 'rgba(5,5,10,0.82)', backdropFilter: 'blur(8px)' }}
+        role="dialog" aria-modal="true" aria-label="Already signed in" data-already-signed-in>
+        <div className="w-full max-w-[440px] rounded-2xl p-7" style={{ background: '#13121c', border: '1px solid rgba(255,255,255,0.12)' }}>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: '#A78BFA' }}>You came from the website</p>
+          <h2 className="mt-3 text-[21px] font-semibold text-white">This browser is signed in as {already.name}</h2>
+          <p className="mt-2 text-[14px]" style={{ color: 'rgba(255,255,255,0.7)' }}>
+            {already.email ? <>{already.email}{already.gym ? ' · ' : ''}</> : null}{already.gym ?? ''}
+          </p>
+          <p className="mt-3 text-[13.5px]" style={{ color: 'rgba(255,255,255,0.6)' }}>
+            If you meant another account — the one you applied with on the website — sign out here and sign in with it.
+          </p>
+          <button type="button" className="mt-5 w-full h-11 rounded-xl font-semibold bg-white text-black" data-continue
+            onClick={() => { setAlready(null); void routeSignedIn(); }}>Continue as {already.name}</button>
+          <button type="button" className="mt-2 w-full h-11 rounded-xl font-semibold text-white" data-switch
+            style={{ border: '1px solid rgba(255,255,255,0.2)' }} onClick={() => void switchAccount()}>Sign out and use another account</button>
+        </div>
+      </div>
+    )}
     {/* Login Section — full viewport */}
     <div className="min-h-screen w-full relative overflow-hidden flex flex-col items-center justify-center">
       {/* Background violet gradient */}

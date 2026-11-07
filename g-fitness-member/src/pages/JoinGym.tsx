@@ -278,7 +278,7 @@ export default function JoinGym() {
                       style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }} />
                   : undefined}
                 gutterWidth={gym.logo_url ? 48 : undefined}
-                title={gym.name}
+                title={gym.is_demo ? `${gym.name} · Demo` : gym.name}
                 // Where it is and how far, then the gym's own line. "You are
                 // already here" wins: it answers the question a tap would ask.
                 meta={mine.has(gym.id) ? 'You are already here'

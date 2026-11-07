@@ -933,3 +933,14 @@ export async function paymongoMode(): Promise<{ configured: boolean; live: boole
   if (error || !data || typeof data.configured !== 'boolean') return null;
   return { configured: data.configured, live: data.live === true };
 }
+
+// ---- demo gyms for a load test (0238) ----------------------------------------------
+/** One demo gym as built so far: its number, name, town, link name, plan, steps done (6 = complete), members. */
+export interface DemoGym { n: number; name: string; town: string; slug: string | null; plan: string | null; steps_done: number; members: number }
+export const demoGyms = async (): Promise<DemoGym[]> =>
+  (await call<DemoGym[]>('demo_summary')).map((g) => ({ ...g, members: Number(g.members) }));
+/** One step of one demo gym (1 the gym and staff, 2–5 fifty members each, 6 coaching, chats, points, badges). */
+export const demoGymStep = (n: number, step: number, password: string) =>
+  call<string>('demo_gym_step', { p_n: n, p_step: step, p_password: password });
+/** One removal step (1 the gym's rows, 2 its people and sign-ins). */
+export const demoRemoveStep = (n: number, step: number) => call<string>('demo_remove_step', { p_n: n, p_step: step });

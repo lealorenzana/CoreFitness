@@ -18,6 +18,8 @@ export interface PublicGym {
   /** The gym's own line about itself (0114). NULL renders nothing — never a
       stand-in sentence, which would be this app inventing a gym's pitch. */
   tagline: string | null;
+  /** One of the platform's demo gyms for a load test (0238) — shown with a Demo mark. Absent before 0238. */
+  is_demo?: boolean;
 }
 
 export async function listGyms(search?: string): Promise<PublicGym[]> {

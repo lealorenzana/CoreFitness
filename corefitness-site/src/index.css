@@ -1101,3 +1101,6 @@ html.anim .ticker b { transform: skewX(calc(var(--vel, 0) * -0.35deg)); transiti
 .cp-seg-opt.on { background: var(--violet); color: #fff; }
 .change-plan-actions { display: flex; gap: 8px; }
 @media (max-width: 560px) { .app-tabs { border-radius: 16px; width: 100%; } .app-tab { flex: 1 1 auto; justify-content: center; padding: 9px 10px; } }
+
+/* A demo gym in the list (0238). */
+.gym-demo { margin-left: 8px; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; border: 1px solid var(--amber-text, #F59E0B); color: var(--amber-text, #F59E0B); }

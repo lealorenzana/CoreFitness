@@ -15,9 +15,9 @@ import { useCountUp, useMotionEngine } from './motion';
 import { currentTheme, setTheme, type Theme } from './theme';
 
 const MEMBER_APP = 'https://corefitness-gym.vercel.app';
-const ADMIN_APP = 'https://corefitness-admin.vercel.app';
+import { GYM_SIGN_IN, showGymSignIn, useSiteAccount, type SiteAccount } from './siteAccount';
 
-interface Gym { id: string; slug: string; name: string }
+interface Gym { id: string; slug: string; name: string; is_demo?: boolean }
 
 const peso = (n: number) => '₱' + n.toLocaleString('en-PH');
 
@@ -142,6 +142,7 @@ function ThemeToggle() {
 }
 
 function SiteFooter() {
+  const siteAccount = useSiteAccount();
   return (
     <footer>
       <div className="wrap foot-row">
@@ -151,7 +152,7 @@ function SiteFooter() {
         </a>
         <span>Mamburao, Occidental Mindoro</span>
         <span className="grow" />
-        <a href={ADMIN_APP}>Gym sign in</a>
+        {showGymSignIn(siteAccount) && <a href={GYM_SIGN_IN}>Gym sign in</a>}
       </div>
       <div className="wrap foot-legal">
         <div>
@@ -174,6 +175,7 @@ function SiteFooter() {
 
 export default function App() {
   useMotionEngine();
+  const siteAccount = useSiteAccount();
   const [gyms, setGyms] = useState<Gym[] | null>(null);
   const [gymsFailed, setGymsFailed] = useState(false);
   const [token, setToken] = useState(statusToken);
@@ -257,7 +259,8 @@ export default function App() {
           <span className="grow" />
           <a className="link-quiet hide-sm" href={`${MEMBER_APP}/get-app`}>Get the member app</a>
           <a className="link-quiet hide-sm" href="#account">My application</a>
-          <a className="link-quiet" href={ADMIN_APP} aria-label="Gym sign in"><span className="hide-sm">Gym sign in</span><span className="only-sm">Sign in</span></a>
+          {/* Hidden for an applicant whose gym is still pending — they have no gym to sign in to yet (2026-11-08). */}
+          {showGymSignIn(siteAccount) && <a className="link-quiet" href={GYM_SIGN_IN} aria-label="Gym sign in" data-gym-sign-in><span className="hide-sm">Gym sign in</span><span className="only-sm">Sign in</span></a>}
           <ThemeToggle />
           <a className="cta magnetic" href="#apply">Register</a>
         </div>
@@ -457,6 +460,8 @@ export default function App() {
                 <a className="gym" key={g.id} href={`${MEMBER_APP}/join/${g.slug}`} data-reveal style={{ ['--d' as string]: i }}>
                   <span className="mono" aria-hidden="true">{initials(g.name)}</span>
                   {g.name}
+                  {/* One of the platform's demo gyms for a load test (0238). */}
+                  {g.is_demo && <span className="gym-demo">Demo</span>}
                   <Icon name="arrow" />
                 </a>
               ))}
@@ -466,7 +471,7 @@ export default function App() {
 
         <Testimonials />
 
-        <div className="wrap"><ApplySection tiers={tiers ?? []} chosen={chosen} /></div>
+        <div className="wrap"><ApplySection tiers={tiers ?? []} chosen={chosen} siteAccount={siteAccount} /></div>
 
         <SiteFooter />
         </>}
@@ -488,7 +493,7 @@ export default function App() {
 const HEARD = ['Facebook', 'A friend or another gym', 'Google', 'TikTok', 'Instagram', 'A Core Fitness gym', 'Other'];
 const CONTACT: [string, string][] = [['viber', 'Viber'], ['messenger', 'Messenger'], ['sms', 'Text (SMS)'], ['call', 'A call'], ['whatsapp', 'WhatsApp'], ['email', 'Email']];
 
-function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null }) {
+function ApplySection({ tiers, chosen, siteAccount }: { tiers: Tier[]; chosen: string | null; siteAccount: SiteAccount | null }) {
   const [form, setForm] = useState({
     gym_name: '', owner_name: '', email: '', phone: '', address: '', member_estimate: '', message: '',
     plan: '', billing: 'monthly', heard_from: '', heard_other: '', contact_pref: 'viber', contact_handle: '',
@@ -651,6 +656,18 @@ function ApplySection({ tiers, chosen }: { tiers: Tier[]; chosen: string | null 
             </>
           )}
         </div>
+      </section>
+    );
+  }
+
+  // An account that already runs a gym is pointed at its dashboard, not asked to apply again (2026-11-08).
+  if (siteAccount && siteAccount.runs.length > 0) {
+    return (
+      <section id="apply" data-runs-gym>
+        <span className="eyebrow">Register your gym</span>
+        <h2>You already run {siteAccount.runs.map((g) => g.name).join(' and ')}</h2>
+        <p className="section-lede">Your gym is on Core Fitness, so there is nothing to apply for. Its dashboard is where you run it.</p>
+        <a className="cta" href={GYM_SIGN_IN}>Open your dashboard</a>
       </section>
     );
   }
