@@ -21,7 +21,7 @@ import CoachMoney from '../../components/coaching/CoachMoney';
 
 const fmt = (ymd: string | null) => (ymd ? new Date(`${ymd}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }) : '');
 
-type Tab = 'needs' | 'training' | 'ended' | 'payments' | 'pay';
+type Tab = 'needs' | 'training' | 'ended' | 'payments';
 
 /**
  * Packages (simplify, 2026-10-28; was Coaching): a coach's monthly packages (0181) — who asked, who paid them (tap Received), who
@@ -85,14 +85,16 @@ export default function TrainerPackages() {
   const canOffer = settings.modes.includes('coach_invites');
   const person = (c: Coaching) => <Avatar name={c.memberName} photoUrl={c.memberPhoto} size={36} />;
   const needs = requests.length + toConfirm.length;
+  const moneyRules = houseRules && (houseRules.cutOn || houseRules.duesOn) ? houseRules : null;
   const tabs: { id: Tab; label: string }[] = [
     { id: 'needs', label: needs ? `Needs you · ${needs}` : 'Needs you' },
     { id: 'training', label: active.length ? `Training · ${active.length}` : 'Training' },
     { id: 'ended', label: 'Ended' },
-    ...(direct && me ? [{ id: 'payments' as Tab, label: 'Payments' }] : []),
-    ...(houseRules && (houseRules.cutOn || houseRules.duesOn) ? [{ id: 'pay' as Tab, label: 'Your pay' }] : []),
+    // One Money tab (0235): the coach's own pay and dues, then how members pay them — six tabs overflowed a phone.
+    ...((direct && me) || moneyRules ? [{ id: 'payments' as Tab, label: 'Money' }] : []),
   ];
-  const asked = params.get('tab') as Tab | null;
+  const askedRaw = params.get('tab');
+  const asked = (askedRaw === 'pay' ? 'payments' : askedRaw) as Tab | null;
   const tab: Tab = tabs.some((t) => t.id === asked) ? (asked as Tab) : needs === 0 && active.length > 0 ? 'training' : 'needs';
   /** How far into the term, from its own dates — nothing without both. */
   const termFraction = (c: Coaching) => {
@@ -218,7 +220,8 @@ export default function TrainerPackages() {
         </div>
       )}
 
-      {tab === 'pay' && houseRules && <CoachMoney rules={houseRules} />}
+      {tab === 'payments' && moneyRules && <CoachMoney rules={moneyRules} />}
+      {tab === 'payments' && moneyRules && direct && me && <div aria-hidden style={{ height: 22 }} />}
 
       {/* 0192: paid directly, a coach may take payments online into their own PayMongo account. */}
       {tab === 'payments' && direct && me && (

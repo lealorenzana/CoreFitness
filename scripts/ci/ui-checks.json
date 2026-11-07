@@ -664,6 +664,18 @@
     {
       "file": "platform-whats-new-check.js",
       "app": "platform"
+    },
+    {
+      "file": "admin-coaching-rules-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "trainer-coaching-rules-check.js",
+      "app": "member"
+    },
+    {
+      "file": "member-coaching-rules-check.js",
+      "app": "member"
     }
   ]
 }

@@ -66,7 +66,7 @@ export default function CoachMoney({ rules }: { rules: HouseRules }) {
 
       {rules.duesOn && duesNow && (
         <>
-          <SectionHead title="Your dues" />
+          <div style={{ marginTop: rules.cutOn ? 22 : 0 }}><SectionHead title="Your dues" /></div>
           <LineRow icon={Bank} tone={duesNow.paid != null ? 'mine' : 'act'} title={`${peso(duesNow.due)} for ${monthName(duesNow.month)}`}
             meta={duesNow.paid != null ? 'Paid — thank you' : 'Pay at the front desk'}
             action={late > 0 ? <StatusPill label={`Behind · ${late} month${late === 1 ? '' : 's'}`} tone="action" /> : undefined} last />

@@ -165,7 +165,7 @@ async (page) => {
   await tab(/^Training/);
   t = await text();
   out.push('Training shows the trainee with until when: ' + (/Joy Tan/.test(t) && /until/.test(t) ? 'yes' : 'MISSING'));
-  await tab('Payments');
+  await tab('Money');
   t = await text();
   out.push('how members pay this coach, and that the gym never sees it: ' + (/How members pay you/.test(t) && /0917 000 1111/.test(t) && /never sees this money/.test(t) ? 'yes' : 'MISSING'));
   out.push('a coach paid directly can connect their own PayMongo: ' + ((await page.locator('[data-connect-paymongo]').count()) === 1
