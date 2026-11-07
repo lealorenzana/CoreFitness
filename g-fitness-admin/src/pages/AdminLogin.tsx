@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, ChevronDown } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import LandingFooter from '../components/ui/LandingFooter';
-import { supabase } from '../lib/supabaseClient';
+import { arrivedByResetLink, supabase } from '../lib/supabaseClient';
 import { clearGymContext, getGymContext, myGyms, usableGyms } from '../lib/gymContext';
 import { myApplications } from '../lib/api/applications';
 import { getSessionPersistence, setSessionPersistence } from '../lib/authStorage';
@@ -138,6 +138,17 @@ export default function AdminLogin() {
   };
 
   // Back from Google (0190): the session is already there; route it like a password sign-in.
+  // A password-reset link returns here (the admin address on Auth's redirect list): on to choosing the new one.
+  // A refused link (expired or used) comes back as #error_description=… — the reset page explains it.
+  useEffect(() => {
+    if (arrivedByResetLink) { navigate('/admin/reset-password', { replace: true }); return; }
+    if (/error_description=/.test(window.location.hash)) navigate(`/admin/reset-password${window.location.hash}`, { replace: true });
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') navigate('/admin/reset-password', { replace: true });
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [navigate]);
+
   useEffect(() => {
     if (!new URLSearchParams(window.location.search).has('google')) return;
     let cancelled = false;
@@ -365,7 +376,7 @@ export default function AdminLogin() {
                     </div>
                     <span className="text-xs text-white/60">Remember me</span>
                   </label>
-                  <button type="button" className="text-xs text-white/60 hover:text-white transition-colors">Forgot password?</button>
+                  <button type="button" data-forgot-link onClick={() => navigate('/admin/forgot-password', { state: { email } })} className="text-xs text-white/60 hover:text-white transition-colors">Forgot password?</button>
                 </motion.div>
 
                 <motion.button type="submit" disabled={isLoading} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.3 }}
