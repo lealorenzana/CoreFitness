@@ -11,6 +11,7 @@ import PlacePicker from './PlacePicker';
 import Legal, { parseLegalHash } from './Legal';
 import { inEffect, VERSION } from './legalText';
 import { usePlatformFacts } from './usePlatformFacts';
+import { useSiteTexts } from './siteTexts';
 import { useCountUp, useMotionEngine } from './motion';
 import { currentTheme, setTheme, type Theme } from './theme';
 
@@ -176,6 +177,9 @@ function SiteFooter() {
 export default function App() {
   useMotionEngine();
   const siteAccount = useSiteAccount();
+  /** Words the platform changed (0241); a missing key keeps the built-in words below. */
+  const tx = useSiteTexts();
+  const title1 = tx.hero_title_1 ?? 'Run your gym,';
   const [gyms, setGyms] = useState<Gym[] | null>(null);
   const [gymsFailed, setGymsFailed] = useState(false);
   const [token, setToken] = useState(statusToken);
@@ -245,6 +249,7 @@ export default function App() {
       <div className="grain" aria-hidden="true" />
 
       <header className={`top${scrolled ? ' scrolled' : ''}`}>
+        {tx.notice && <div className="site-notice" role="status" data-site-notice>{tx.notice}</div>}
         <div className="wrap">
           <a className="brand" href="#top" aria-label="Core Fitness, back to top">
             <img src="/logo-320.webp" alt="" width={34} height={34} />
@@ -286,15 +291,15 @@ export default function App() {
           <div className="blob b2" aria-hidden="true" />
           <div className="wrap hero-inner">
             <div className="hero-copy">
-              <span className="eyebrow">Gym software, made in Occidental Mindoro</span>
+              <span className="eyebrow">{tx.hero_eyebrow ?? 'Gym software, made in Occidental Mindoro'}</span>
               <h1>
-                <Words text="Run your gym," />
+                <Words text={title1} />
                 <br />
-                <em><Words text="give your members an app." from={3} /></em>
+                <em><Words text={tx.hero_title_2 ?? 'give your members an app.'} from={title1.split(/\s+/).length} /></em>
               </h1>
               <p className="lede">
-                Memberships, payments in cash or in the app, QR check-in, personal training, coaches and an AI assistant —
-                with a phone app your members actually install. Built for a real gym in Mamburao, and open to yours.
+                {tx.hero_lede ?? <>Memberships, payments in cash or in the app, QR check-in, personal training, coaches and an AI assistant —
+                with a phone app your members actually install. Built for a real gym in Mamburao, and open to yours.</>}
               </p>
               <div className="cta-row">
                 <a className="cta magnetic" href="#apply">Register your gym <Icon name="arrow" className="arrow" /></a>
@@ -336,10 +341,10 @@ export default function App() {
           <div className="pb-img" aria-hidden="true"><img src="/band-lifter.webp" alt="" loading="lazy" /></div>
           <div className="wrap pb-inner">
             <span className="eyebrow">Built on a real gym floor</span>
-            <h2 className="big">Coaches carry <br />the app too.</h2>
+            <h2 className="big">{tx.coaches_title ?? <>Coaches carry <br />the app too.</>}</h2>
             <p className="lede">
-              Trainers sign in to the same phone app. They run their own classes, decide their own bookings,
-              and see only the members they train — and only what those members choose to share.
+              {tx.coaches_lede ?? <>Trainers sign in to the same phone app. They run their own classes, decide their own bookings,
+              and see only the members they train — and only what those members choose to share.</>}
             </p>
           </div>
         </section>

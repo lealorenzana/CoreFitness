@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { Activity, Building2, ChevronDown, PanelLeftClose, PanelLeftOpen, CreditCard, Grid3x3, History, Inbox, Layers, HardDrive, LayoutDashboard, LifeBuoy, Search, LogOut, Megaphone, MessageSquareHeart, Sparkles, Settings as SettingsIcon, TrendingUp, UserSearch, type LucideIcon } from 'lucide-react';
+import { Activity, Building2, ChevronDown, PanelLeftClose, PanelLeftOpen, CreditCard, Grid3x3, History, Inbox, Layers, HardDrive, LayoutDashboard, LifeBuoy, Search, LogOut, Megaphone, MessageSquareHeart, Sparkles, Settings as SettingsIcon, TrendingUp, UserSearch, Globe, type LucideIcon } from 'lucide-react';
 import { supabase } from './lib/supabaseClient';
 import { CHANGED, isPlatformAdmin, listApplications, listTickets, sweepBilling } from './lib/platform';
 import SignIn from './pages/SignIn';
@@ -16,6 +16,7 @@ import Support from './pages/Support';
 import Feedback from './pages/Feedback';
 import Announcements from './pages/Announcements';
 import WhatsNewPage from './pages/WhatsNew';
+import Website from './pages/Website';
 import Bell from './components/Bell';
 import RibbonField from './components/RibbonField';
 import Capacity from './pages/Capacity';
@@ -60,6 +61,7 @@ const PAGES: Page[] = [
   { group: 'Talk to gyms', path: '/feedback', label: 'Feedback', icon: MessageSquareHeart, title: 'Feedback', lede: 'What gyms think of Core Fitness: ratings, ideas and testimonials for the website.' },
   { group: 'Talk to gyms', path: '/announcements', label: 'Announcements', icon: Megaphone, title: 'Announcements', lede: 'Tell every gym — or one plan — something, as a banner in their admin app.' },
   { group: 'Talk to gyms', path: '/whats-new', label: "What's new", icon: Sparkles, title: "What's new", lede: 'After an update, tell each app what changed — shown once to every person.' },
+  { group: 'Talk to gyms', path: '/website', label: 'Website', icon: Globe, title: 'Website', lede: 'What the public website says, and where everything else on it is set.' },
   { group: 'Run it', path: '/plans', label: 'Plans', icon: Layers, title: 'Plans', lede: 'What you sell to gyms, and what each plan unlocks.' },
   { group: 'Run it', path: '/money', label: 'Money', icon: CreditCard, title: 'Money', lede: 'What gyms have paid, and who is due.' },
   { group: 'Run it', path: '/capacity', label: 'Capacity', icon: HardDrive, title: 'Capacity', lede: 'How close the service is to the free tier, how fast, and where the space goes.' },
@@ -222,6 +224,7 @@ function Shell() {
                 <Route path="/support-access/:gymId" element={<SupportView />} />
                 <Route path="/announcements" element={<Announcements />} />
                 <Route path="/whats-new" element={<WhatsNewPage />} />
+                <Route path="/website" element={<Website />} />
                 <Route path="/capacity" element={<Capacity />} />
                 <Route path="/activity" element={<ActivityPage />} />
                 <Route path="/usage" element={<Usage />} />

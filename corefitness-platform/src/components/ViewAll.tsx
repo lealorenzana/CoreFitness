@@ -120,7 +120,17 @@ export default function ViewAll({ boxes, root, fit = false }: { boxes: string; r
         const r = box.getBoundingClientRect();
         if (r.width < 160 || r.bottom < 0 || r.top > innerHeight) continue;
         // The box's top-right corner, beside its title (2026-11-08): at the bottom it covered the page numbers.
-        found.set(box, { el: box, top: Math.max(r.top, 0) + 12, right: innerWidth - r.right + 14 });
+        // A heading that already has buttons at its right (Open the site, Write to the owner, CSV): View all sits to
+        // their left, on the same line, instead of on top of them (2026-11-08).
+        const head = box.querySelector<HTMLElement>(HEADS);
+        const btns = head ? Array.from(head.querySelectorAll<HTMLElement>('button, a')).filter((b) => b.getBoundingClientRect().width > 0) : [];
+        if (btns.length) {
+          const left = Math.min(...btns.map((b) => b.getBoundingClientRect().left));
+          const bt = btns[0].getBoundingClientRect();
+          found.set(box, { el: box, top: Math.max(bt.top + (bt.height - 24) / 2, 0), right: innerWidth - left + 8 });
+        } else {
+          found.set(box, { el: box, top: Math.max(r.top, 0) + 12, right: innerWidth - r.right + 14 });
+        }
       }
       setSpots([...found.values()]);
     });

@@ -1104,3 +1104,7 @@ html.anim .ticker b { transform: skewX(calc(var(--vel, 0) * -0.35deg)); transiti
 
 /* A demo gym in the list (0238). */
 .gym-demo { margin-left: 8px; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; border: 1px solid var(--amber-text, #F59E0B); color: var(--amber-text, #F59E0B); }
+
+/* A line the platform can put along the top of the site (0241, Website → Notice): holidays, an outage, news. */
+.site-notice { padding: 7px 16px; text-align: center; font-size: 13px; font-weight: 600; line-height: 1.4;
+  background: var(--amber, #F59E0B); color: #1a1205; }
