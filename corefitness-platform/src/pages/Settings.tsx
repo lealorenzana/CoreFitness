@@ -91,9 +91,20 @@ export default function Settings() {
               <div><label htmlFor="s-email">Email</label><input id="s-email" type="email" value={b.business_email ?? ''} onChange={(e) => setB({ ...b, business_email: e.target.value })} /></div>
               <div><label htmlFor="s-note">Line at the bottom</label><input id="s-note" value={b.receipt_note ?? ''} placeholder="Thank you." onChange={(e) => setB({ ...b, receipt_note: e.target.value })} /></div>
             </div>
-            <div className="set-preview" aria-label="How a receipt's header reads">
-              <b>{b.business_name || 'Business name'}</b>
-              <span>{[b.business_address, b.business_email, b.business_phone].filter(Boolean).join(' · ') || 'Address · email · phone'}</span>
+            {/* A preview of the receipt itself (2026-11-08: a bare white bar read as a stray box): labelled, a paper slip
+                with a sample payment, the business at the top and its line at the bottom. */}
+            <div className="set-receipt" aria-label="Receipt preview">
+              <span className="set-receipt__tag">Preview · how your receipts read</span>
+              <div className="set-receipt__paper">
+                <b>{b.business_name || 'Business name'}</b>
+                <small>{[b.business_address, b.business_email, b.business_phone].filter(Boolean).join(' · ') || 'Address · email · phone'}</small>
+                <hr />
+                <div className="set-receipt__row"><span>Receipt</span><span>CF-2026-000123</span></div>
+                <div className="set-receipt__row"><span>Growth plan · 1 month</span><span>₱2,999.00</span></div>
+                <div className="set-receipt__row set-receipt__total"><span>Paid</span><span>₱2,999.00</span></div>
+                <hr />
+                <em>{b.receipt_note || 'Thank you.'}</em>
+              </div>
             </div>
             <div className="row set-actions"><button className="btn" type="submit" disabled={busy}><Receipt size={14} /> Save receipt details</button>{said('business')}</div>
           </>
@@ -106,16 +117,26 @@ export default function Settings() {
         <h2 className="section-title"><Timer size={14} /> Billing rules <InfoDot tip="Every gym's lock, the admin app's banner, the reminders and Money all read these two numbers (0138)." /></h2>
         {b ? (
           <>
-            <div className="fields" style={{ marginTop: 0 }}>
-              <div><label htmlFor="s-grace">Days before read-only</label>
-                <input id="s-grace" type="number" min={0} max={60} required value={b.grace_days} onChange={(e) => setB({ ...b, grace_days: Number(e.target.value) })} /></div>
-              <div><label htmlFor="s-rem">Remind owners, days before</label>
-                <input id="s-rem" value={b.reminders} placeholder="7, 3, 1" onChange={(e) => setB({ ...b, reminders: e.target.value })} /></div>
+            {/* Two numbers, each with what it does, then the month they make (2026-11-08: "enhance the UI/UX"). */}
+            <div className="set-rules">
+              <div className="set-rule">
+                <label htmlFor="s-grace">Days of grace before read-only</label>
+                <div className="set-rule__in"><input id="s-grace" type="number" min={0} max={60} required value={b.grace_days}
+                  onChange={(e) => setB({ ...b, grace_days: Number(e.target.value) })} /><span>days</span></div>
+                <small>After the due date an unpaid gym keeps working this long. Then its dashboard turns read-only — nothing is deleted.</small>
+              </div>
+              <div className="set-rule">
+                <label htmlFor="s-rem">Remind the owner, days before</label>
+                <div className="set-rule__in"><input id="s-rem" value={b.reminders} placeholder="7, 3, 1" onChange={(e) => setB({ ...b, reminders: e.target.value })} /><span>days</span></div>
+                <small>Comma-separated. Each is an email and a notice in their dashboard before the due date.</small>
+              </div>
             </div>
-            <ol className="set-timeline" aria-label="What happens to a gym due on the first of next month">
-              {reminders.map((d) => { const x = new Date(due); x.setDate(due.getDate() - d); return <li key={d}><BellRing size={13} /><b>{long(x)}</b> reminder — {d} day{d === 1 ? '' : 's'} before</li>; })}
-              <li><BellRing size={13} /><b>{long(due)}</b> due — told on the day</li>
-              <li className="warn"><Timer size={13} /><b>{long(locks)}</b> read-only if still unpaid — nothing is deleted</li>
+            <p className="set-ex">For a gym due on {long(due)}:</p>
+            <ol className="set-track" aria-label="What happens to a gym due on the first of next month">
+              {reminders.map((d) => { const x = new Date(due); x.setDate(due.getDate() - d); return (
+                <li key={d} className="is-remind"><span className="set-track__dot"><BellRing size={13} /></span><b>{long(x)}</b><small>Reminder · {d} day{d === 1 ? '' : 's'} before</small></li>); })}
+              <li className="is-due"><span className="set-track__dot"><Receipt size={13} /></span><b>{long(due)}</b><small>Due · told on the day</small></li>
+              <li className="is-lock"><span className="set-track__dot"><Timer size={13} /></span><b>{long(locks)}</b><small>Read-only if still unpaid</small></li>
             </ol>
             <div className="row set-actions"><button className="btn" type="submit" disabled={busy}>Save billing rules</button>{said('billing')}</div>
           </>

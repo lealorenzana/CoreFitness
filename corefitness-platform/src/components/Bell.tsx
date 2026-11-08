@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Bell as BellIcon } from 'lucide-react';
+import { Bell as BellIcon, Bug, ChevronRight, Inbox, LifeBuoy, Wallet, type LucideIcon } from 'lucide-react';
 import { bell, CHANGED, type BellItem } from '../lib/platform';
 
 /**
@@ -29,21 +29,30 @@ export default function Bell() {
   }, []);
 
   const total = items.reduce((n, i) => n + i.count, 0);
+  // What each kind is, at a glance (2026-11-08: the panel was bare numbers, and the count an unstyled "3").
+  const iconOf = (kind: string): LucideIcon =>
+    /appl/.test(kind) ? Inbox : /support|ticket/.test(kind) ? LifeBuoy : /crash|error/.test(kind) ? Bug : /pay|due|overdue|bill/.test(kind) ? Wallet : BellIcon;
   return (
-    <div ref={box} style={{ position: 'relative' }}>
-      <button className="btn ghost" aria-label={total ? `${total} things need you` : 'Nothing needs you'} data-tip={total ? `${total} thing${total === 1 ? '' : 's'} need you — click to see` : 'Nothing needs you right now'} onClick={() => setOpen((v) => !v)}
-        style={{ width: 40, padding: 0, position: 'relative' }}>
+    <div ref={box} className="pbell">
+      <button className="btn ghost pbell__btn" aria-label={total ? `${total} things need you` : 'Nothing needs you'} aria-expanded={open}
+        data-tip={total ? `${total} thing${total === 1 ? '' : 's'} need you — click to see` : 'Nothing needs you right now'} onClick={() => setOpen((v) => !v)}>
         <BellIcon size={17} />
-        {total > 0 && <span className="count" style={{ position: 'absolute', top: -6, right: -6 }}>{total}</span>}
+        {total > 0 && <span className="pbell__count">{total > 99 ? '99+' : total}</span>}
       </button>
       {open && (
-        <div className="card" style={{ position: 'absolute', right: 0, top: 46, width: 320, zIndex: 30, padding: 12, boxShadow: '0 20px 50px -12px rgba(0,0,0,0.7)' }}>
-          {items.length === 0 ? <p className="empty" style={{ padding: '14px 0' }}>Nothing needs you right now.</p> : items.map((i) => (
-            <Link key={i.kind} to={i.href} className="todo" onClick={() => setOpen(false)}>
-              <span className="todo-icon" style={{ fontWeight: 800, fontSize: 13 }}>{i.count}</span>
-              <span className="todo-text">{i.label}</span>
-            </Link>
-          ))}
+        <div className="pbell__panel" role="dialog" aria-label="Needs you" data-floating>
+          <div className="pbell__head"><b>Needs you</b>{total > 0 && <span>{total} waiting</span>}</div>
+          {items.length === 0 ? <p className="pbell__empty">Nothing needs you right now.</p> : items.map((i) => {
+            const Icon = iconOf(i.kind);
+            return (
+              <Link key={i.kind} to={i.href} className="pbell__row" onClick={() => setOpen(false)}>
+                <span className="pbell__icon"><Icon size={16} /></span>
+                <span className="pbell__label">{i.label}</span>
+                <span className="pbell__n">{i.count}</span>
+                <ChevronRight size={15} className="pbell__go" />
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>

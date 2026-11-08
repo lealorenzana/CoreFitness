@@ -43,8 +43,10 @@ export default function PayOnline({ methods, amount, value, onChange, allowProof
       <div className="flex items-start" style={{ gap: 14 }}>
         {m.qr_image && (
           <button type="button" onClick={() => setBig(true)} aria-label={t('Show the QR code bigger')}
-            style={{ flex: 'none', width: 112, height: 112, borderRadius: 12, background: '#fff', padding: 6 }}>
-            <img src={m.qr_image} alt={`${m.label} QR code`} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            style={{ flex: 'none', width: 112, borderRadius: 12, background: 'transparent', padding: 0, textAlign: 'center' }}>
+            <img src={m.qr_image} alt={`${m.label} QR code`} style={{ width: 112, height: 112, objectFit: 'contain', background: '#fff', borderRadius: 12, padding: 6 }} />
+            {/* Say it can be enlarged (2026-11-08): a small QR is hard to scan from another phone. */}
+            <span style={{ display: 'block', marginTop: 4, fontSize: 11, fontWeight: 600, color: 'var(--color-primary-300)' }}>{t('Tap to enlarge')}</span>
           </button>
         )}
         <div className="min-w-0 flex-1" style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--color-text-secondary)' }}>

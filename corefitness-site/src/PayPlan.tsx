@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import QrZoom from './QrZoom';
 import { supabase } from './supabase';
 
 const peso = (n: number) => '₱' + n.toLocaleString('en-PH');
@@ -147,7 +148,7 @@ export default function PayPlan({ applicationId, onChanged }: { applicationId: s
                   {chosen.instructions ? ` ${chosen.instructions}` : ''}
                 </p>
               )}
-              {chosen?.qr_image && <img className="pay-plan-qr" src={chosen.qr_image} alt={`${chosen.label} QR code`} />}
+              {chosen?.qr_image && <QrZoom src={chosen.qr_image} label={chosen.label} sub={chosen.account_name} />}
               <div className="cta-row" style={{ marginTop: 6 }}>
                 <button className="cta ghost" type="submit" disabled={busy || reference.trim().length < 4}>{busy ? 'Sending…' : 'Send the reference'}</button>
               </div>
