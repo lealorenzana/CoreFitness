@@ -6,6 +6,7 @@ import './index.css';
 import './ui.css';
 import './bento.css';
 import './redesign.css';
+import './aurora.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
