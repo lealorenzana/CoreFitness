@@ -329,3 +329,11 @@
 @media (prefers-reduced-motion: reduce) { .att .a-phone .a-phamb span { animation: none; } }
 .att .a-phone .scr, .att .a-phone .a-tabbar { position: relative; z-index: 1; }
 .att .a-phone .a-phcard { background: rgba(23, 22, 42, 0.7); }
+
+/* Members with many rows (2026-11-08): a laptop (1366×768) showed three members a page — the row was 72px because
+   its menu button was 40px tall. A compact row (one line of name, one of detail, a 30px menu) fits five or six. */
+.att [data-member-row] td { padding-top: 5px; padding-bottom: 5px; }
+.att [data-member-row] td:last-child button { width: 30px; height: 30px; min-height: 0; padding: 0; }
+@media (max-height: 820px) {
+  .att [data-ms-requests] .a-card { padding-top: 7px !important; padding-bottom: 7px !important; }
+}

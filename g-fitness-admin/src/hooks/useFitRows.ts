@@ -23,10 +23,19 @@ export function useFitRows(fallback = 10, min = 3) {
       if (window.innerWidth < FIT_MIN_WIDTH) { setPerPage((p) => (p === fallback ? p : fallback)); setRowHeight(undefined); return; }
       const head = el.querySelector('thead');
       const hh = head ? head.getBoundingClientRect().height : 0;
-      const heights = [...el.querySelectorAll('tbody tr')].map((r) => r.getBoundingClientRect().height).filter((x) => x > 20).sort((a, b) => a - b);
-      // The natural height (the median of the rows before any stretching was applied).
-      const natural = Number(el.dataset.naturalRow) || (heights.length ? heights[Math.floor(heights.length / 2)] : 64);
-      if (!el.dataset.naturalRow && heights.length) el.dataset.naturalRow = String(natural);
+      // A row's natural height from what is IN it (each cell's content plus its padding), measured every time — the
+      // stretched height would feed back on itself, and a height cached from the first layout stuck at 72px on
+      // Members (2026-11-08: three members a page on a 1366×768 laptop when five fit).
+      const contentH = (tr: Element) => Math.max(0, ...[...tr.children].map((td) => {
+        const cs = getComputedStyle(td);
+        let h = 0;
+        for (const c of td.children) h = Math.max(h, c.getBoundingClientRect().height);
+        if (!td.children.length) h = parseFloat(cs.lineHeight) || 18;
+        return h + parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) + 1;
+      }));
+      const heights = [...el.querySelectorAll('tbody tr')].map(contentH).filter((x) => x > 20).sort((a, b) => a - b);
+      const natural = heights.length ? Math.max(40, Math.ceil(heights[Math.floor(heights.length / 2)])) : Number(el.dataset.naturalRow) || 64;
+      el.dataset.naturalRow = String(natural);
       const room = el.clientHeight - hh;
       const n = Math.max(min, Math.floor(room / natural));
       setPerPage((p) => (p === n ? p : n));

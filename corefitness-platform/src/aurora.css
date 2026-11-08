@@ -29,7 +29,9 @@
   --ease: cubic-bezier(.16, 1, .3, 1);
   --radius: 18px;
 }
-html, body, #root { background: var(--bg); }
+html { background: var(--bg); }
+/* body and #root stay see-through: the ribbon sits behind the app (z-index -1) and a painted body covered it (2026-11-08). */
+body, #root { background: transparent !important; }
 
 /* ---- the moving background ------------------------------------------------------------------------- */
 .aurora { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
@@ -191,6 +193,7 @@ a.todo:hover, .fb-row:hover { background: rgba(139,92,246,.07); }
    size — and a centred Show all takes its place. */
 [data-va-compact] { overflow: hidden !important; }
 [data-va-compact] > * { visibility: hidden; }
+[data-va-compact] > :is(.section-title, .card-head, .ov-head):first-child { visibility: visible; }
 .va-show { position: fixed; z-index: 60; display: grid; place-items: center; padding: 6px; border: 0; background: transparent; cursor: pointer; }
 .va-show span { display: inline-flex; align-items: center; gap: 8px; padding: 9px 18px; border-radius: 12px; font-size: 13px; font-weight: 700;
   color: #EDE9FE; background: rgba(139, 92, 246, .16); box-shadow: inset 0 0 0 1px rgba(167, 139, 250, .45), 0 8px 24px -12px #7C3AED;
@@ -208,3 +211,17 @@ a.todo:hover, .fb-row:hover { background: rgba(139,92,246,.07); }
 .cap-code { margin-left: 6px; font-size: 11px; color: var(--text-3); }
 .cap-whose { color: var(--accent-text); font-weight: 600; }
 .cap-sub { display: block; margin-top: 2px; color: var(--text-3); font-size: 11.5px; }
+
+/* A box that scrolls itself keeps its head in place (the owner, 2026-11-08): its title — with the search or filters
+   under it when they share a .card-head — stays at the top while the rows scroll beneath. ViewAll marks the scroller
+   (data-va-scrolls); a box that does not scroll is untouched. The head is solid, so rows never show through it. */
+[data-va-scrolls] > .card-head:first-child,
+[data-va-scrolls] > .ov-head:first-child,
+[data-va-scrolls] > .section-title:first-child {
+  position: sticky; top: -16px; z-index: 3;
+  margin: -16px -16px 10px; padding: 14px 16px 10px;
+  background: linear-gradient(180deg, #1b1830 0%, #17142a 100%);
+  border-bottom: 1px solid var(--hairline);
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+.card-head .section-title { margin: 0 0 9px; }

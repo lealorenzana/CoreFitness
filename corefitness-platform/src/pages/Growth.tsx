@@ -90,6 +90,8 @@ export default function Growth() {
         })}
       </div>
 
+      {/* The four boxes, two by two, in their own box — a notice above them can never shift them (2026-11-08). */}
+      <div className="growth-grid">
       <section className="card" style={{ marginTop: 16 }}>
         <h2 className="section-title"><AlertTriangle size={14} /> Gyms at risk of leaving</h2>
         {atRisk.length === 0 ? (
@@ -168,6 +170,7 @@ export default function Growth() {
           })}
         </div>
       </section>
+      </div>
     </>
   );
 }

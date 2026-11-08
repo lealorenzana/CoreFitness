@@ -558,7 +558,7 @@ export default function Members() {
 
   /** A member's request to pause or cancel — the first sits above the table, all of them in a floating window. */
   const requestOf = (r: OpenMembershipRequest, more = 0) => (
-            <div key={r.id} className="a-card" style={{ flexDirection: 'column', gap: 8, padding: '11px 14px', borderColor: '#4a3a12', background: 'linear-gradient(90deg,#211a08,var(--a-surface) 60%)' }}>
+            <div key={r.id} className="a-card" style={{ flexDirection: 'column', gap: 8, padding: '11px 14px', borderColor: 'color-mix(in srgb, var(--a-amber) 32%, transparent)', background: 'var(--a-alight)' }}>
               <div className="flex items-center gap-3">
                 <Pause size={18} style={{ color: 'var(--a-a300)' }} />
                 <div style={{ flex: 1, minWidth: 0 }}>

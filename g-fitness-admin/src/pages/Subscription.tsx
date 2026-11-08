@@ -113,7 +113,7 @@ export default function Subscription() {
       </div>
 
       <div className="a-card" data-plan-state
-        style={warn ? { borderColor: '#5a4512', background: 'linear-gradient(90deg, #211a08, var(--a-surface) 60%)', flex: 'none' } : { flex: 'none' }}>
+        style={warn ? { borderColor: 'color-mix(in srgb, var(--a-amber) 32%, transparent)', background: 'var(--a-alight)', flex: 'none' } : { flex: 'none' }}>
         <div className="a-row" style={{ padding: 0, alignItems: 'flex-start' }}>
           <span className="a-ic" style={warn ? { background: 'var(--a-alight)', color: 'var(--a-a300)' } : undefined}>
             {warn ? <AlertTriangle size={15} /> : billed ? <CalendarClock size={15} /> : <ShieldCheck size={15} />}

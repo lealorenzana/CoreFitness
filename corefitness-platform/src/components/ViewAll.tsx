@@ -20,6 +20,8 @@ import { Maximize2, Search, X } from 'lucide-react';
 interface Spot { el: HTMLElement; top: number; right: number; show?: { top: number; left: number; width: number; height: number; n: number } }
 /** Below this a list area shows a sliver, not a list. */
 const SLIVER = 150;
+/** A box's heading — kept visible in a compact box and pinned in a scrolling one. */
+const HEADS = '.section-title, .card-head, .ov-head';
 
 const FLOAT = 'va-floating';
 /** The smallest a reading box is shrunk to (2026-11-02) — below it the text stops being readable, so it scrolls. */
@@ -68,21 +70,34 @@ export default function ViewAll({ boxes, root, fit = false }: { boxes: string; r
         const wasFit = el.dataset.vaFit !== undefined;
         if (wasFit) unfit(el);
         const wasCompact = el.dataset.vaCompact !== undefined;
-        if (el.scrollHeight <= el.clientHeight + 12 || el.clientHeight < 24) { if (wasCompact) delete el.dataset.vaCompact; continue; }
+        if (el.scrollHeight <= el.clientHeight + 12 || el.clientHeight < 24) { if (wasCompact) delete el.dataset.vaCompact; if (el.dataset.vaScrolls !== undefined) delete el.dataset.vaScrolls; continue; }
         const oy = getComputedStyle(el).overflowY;
-        if (oy !== 'auto' && oy !== 'scroll') continue;
+        // A compacted box is overflow:hidden by our own rule — it still scrolls in truth, so it keeps its Show all.
+        if (oy !== 'auto' && oy !== 'scroll' && !wasCompact) continue;
         // A column of several boxes (a side rail) keeps its own scroll, as the owner asked: only a single box is fitted.
         if (el.querySelectorAll(boxes).length > 1 || el.closest('[data-va-keep]')) continue;
+        // A box that scrolls keeps its heading (and the search under it) in place while the rows move (the owner,
+        // 2026-11-08: "the top should stay along with the search while the contents are scrollable"). CSS does the rest.
+        el.dataset.vaScrolls = '';
         const need = Math.floor((el.clientHeight / el.scrollHeight) * 100) / 100;
         // A sliver: no fitting, no scroll — the list hides (visibility, so the box keeps its size) and Show all sits on it.
-        if (el.clientHeight < SLIVER && !el.querySelector('input, textarea, select')) {
+        // Shrinking a little to fit comes first (a meter or a chart a few pixels too tall stays on screen); only a box
+        // that cannot fit even at MIN_FIT becomes Show all.
+        if (el.clientHeight < SLIVER && !el.querySelector('input, textarea, select') && !(fit && need >= MIN_FIT && !scrolls(el))) {
           el.dataset.vaCompact = '';
           const box = (el.closest(boxes) as HTMLElement | null) ?? el;
           if (!area.contains(box) || box.classList.contains(FLOAT) || found.has(box)) continue;
           const r = el.getBoundingClientRect(), b = box.getBoundingClientRect();
           if (b.width < 160 || b.bottom < 0 || b.top > innerHeight) continue;
-          const list = el.childElementCount > 1 ? el : (el.firstElementChild as HTMLElement | null) ?? el;
-          found.set(box, { el: box, top: 0, right: 0, show: { top: r.top, left: r.left, width: r.width, height: r.height, n: list.childElementCount } });
+          // The box's own heading stays readable (2026-11-08: a card that was its own scroller went blank, title and
+          // all): Show all sits under the heading, and counts only what is below it.
+          const headEl = el.firstElementChild as HTMLElement | null;
+          const head = headEl && headEl.matches(HEADS) ? headEl : null;
+          const hb = head ? head.getBoundingClientRect().bottom - r.top : 0;
+          const kids = head ? el.childElementCount - 1 : el.childElementCount;
+          const list = kids > 1 ? el : ((head ? head.nextElementSibling : el.firstElementChild) as HTMLElement | null) ?? el;
+          const n = list === el ? kids : list.childElementCount;
+          found.set(box, { el: box, top: 0, right: 0, show: { top: r.top + hb, left: r.left, width: r.width, height: r.height - hb, n } });
           continue;
         }
         if (wasCompact) delete el.dataset.vaCompact;

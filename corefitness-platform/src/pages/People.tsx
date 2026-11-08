@@ -56,9 +56,11 @@ export default function People() {
 
       <div className="grid-2" style={{ gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr)' }}>
         <section className="card" data-people-search>
-          <h2 className="section-title"><Search size={14} /> Find a person</h2>
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Name or email — at least 2 letters" aria-label="Find a person"
-            style={{ width: '100%', marginBottom: 10 }} />
+          <div className="card-head">
+            <h2 className="section-title"><Search size={14} /> Find a person</h2>
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Name or email — at least 2 letters" aria-label="Find a person"
+              style={{ width: '100%' }} />
+          </div>
           {rows === null ? <p className="empty">Search every gym's members, coaches, desks, owners and applicants.</p>
             : rows.length === 0 ? <p className="empty">Nobody matches.</p> : rows.map((p) => (
               <div key={p.id} className="fb-row" data-person={p.email}>
