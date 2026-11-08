@@ -48,7 +48,9 @@ html, body, #root { background: var(--bg); }
 .aurora__grain { position: absolute; inset: -50%; opacity: .05;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
 .aurora__vignette { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 0%, transparent 40%, rgba(3, 2, 8, .75) 100%); }
-.app { position: relative; z-index: 1; background: transparent; }
+/* No z-index on .app: a stacking context here trapped View all's lifted window (z 1001) under its own backdrop,
+   which lives on <body>. The background goes behind everything instead (z-index -1 below). */
+.app { background: transparent; }
 
 /* ---- the shell ------------------------------------------------------------------------------------- */
 .side { background: rgba(10, 9, 20, 0.62); border-right: 1px solid var(--border-soft);
@@ -67,8 +69,9 @@ html, body, #root { background: var(--bg); }
 .signout { color: var(--warn); transition: background .2s; border-radius: 10px; }
 .signout:hover { background: rgba(245,158,11,.08); }
 
-.topbar { background: rgba(8, 7, 16, 0.55); border-bottom: 1px solid var(--border-soft);
-  backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%); }
+/* No backdrop-filter here: a filter makes the bar the containing block for fixed children, and View all's buttons
+   and backdrop live in it — they were pinned to the bar, covering the window they open and the page numbers. */
+.topbar { background: rgba(8, 7, 16, 0.92); border-bottom: 1px solid var(--border-soft); }
 .top-title { font-weight: 800; letter-spacing: -.01em; }
 .local-badge { background: rgba(139,92,246,.16); border: 1px solid rgba(167,139,250,.3); color: #DDD6FE; }
 .topbar .find { background: rgba(255,255,255,.04); border: 1px solid var(--border-soft); transition: border-color .2s, box-shadow .2s, background .2s; }
@@ -86,8 +89,10 @@ html, body, #root { background: var(--bg); }
 /* ---- motion: the page arrives, its boxes rise in turn ---------------------------------------------- */
 @media (prefers-reduced-motion: no-preference) {
   /* One entrance for the whole page: per-box animations restarted whenever the page re-fit its boxes. */
-  .p-head { animation: au-in .5s var(--ease) both; }
-  .page { animation: au-page .5s var(--ease) both; }
+  /* `backwards`, not `both`: a fill that outlives the animation keeps the page a stacking context, and View all's
+     lifted window was trapped under its own backdrop. */
+  .p-head { animation: au-in .5s var(--ease) backwards; }
+  .page { animation: au-page .5s var(--ease) backwards; }
 }
 @keyframes au-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 @keyframes au-page { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
@@ -172,7 +177,7 @@ a.todo:hover, .fb-row:hover { background: rgba(139,92,246,.07); }
 ::selection { background: #7C3AED; color: #fff; }
 
 /* ---- the background: the Ribbon Field (components/RibbonField.tsx, 2026-11-08) ----------------------- */
-.ribbon { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; background: #080610; }
+.ribbon { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; background: #080610; }
 /* Drawn at a quarter size, stretched, and softened ("soften" 7) — the oversized layer hides the slices. */
 /* Toned down (the owner, 2026-11-08: "much lighter, not too much"): softer, less saturated, further back. */
 .ribbon__canvas { position: absolute; inset: -4%; width: 108%; height: 108%; filter: blur(28px) saturate(85%); opacity: .45; }

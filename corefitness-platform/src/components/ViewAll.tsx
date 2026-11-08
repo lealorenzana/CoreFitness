@@ -84,7 +84,8 @@ export default function ViewAll({ boxes, root, fit = false }: { boxes: string; r
         if (!area.contains(box) || box.classList.contains(FLOAT) || found.has(box)) continue;
         const r = box.getBoundingClientRect();
         if (r.width < 160 || r.bottom < 0 || r.top > innerHeight) continue;
-        found.set(box, { el: box, top: Math.min(r.bottom, innerHeight) - 34, right: innerWidth - r.right + 14 });
+        // The box's top-right corner, beside its title (2026-11-08): at the bottom it covered the page numbers.
+        found.set(box, { el: box, top: Math.max(r.top, 0) + 12, right: innerWidth - r.right + 14 });
       }
       setSpots([...found.values()]);
     });
