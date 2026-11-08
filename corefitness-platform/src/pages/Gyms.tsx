@@ -14,6 +14,7 @@ import Ask from '../components/Ask';
 import GymMark from '../components/GymMark';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
+import { useFitCards } from '../lib/useFitCards';
 
 const day = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
@@ -72,6 +73,8 @@ export default function Gyms() {
   const [filter, setFilter] = useState<Filter>('all');
   const [sort, setSort] = useState<Sort>('name');
   const [page, setPage] = useState(1);
+  /** Cards a page = what fits the screen (useFitCards); PER_PAGE below 1280px. */
+  const { ref: gridRef, perPage } = useFitCards(PER_PAGE);
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [form, setForm] = useState({ name: '', slug: '' });
   const navigate = useNavigate();
@@ -122,9 +125,9 @@ export default function Gyms() {
       : sort === 'due' ? (a.days_left ?? 1e9) - (b.days_left ?? 1e9)
       : sort === 'newest' ? b.created_at.localeCompare(a.created_at)
       : a.name.localeCompare(b.name));
-  const pages = Math.max(1, Math.ceil(shown.length / PER_PAGE));
+  const pages = Math.max(1, Math.ceil(shown.length / perPage));
   const current = Math.min(page, pages);
-  const onPage = shown.slice((current - 1) * PER_PAGE, current * PER_PAGE);
+  const onPage = shown.slice((current - 1) * perPage, current * perPage);
 
   const tiles: { f: Filter | null; icon: typeof Building2; value: string; label: string; act?: boolean; go?: string }[] = [
     { f: 'all', icon: Building2, value: gyms ? String(all.length) : '…', label: 'Gyms' },
@@ -197,7 +200,7 @@ export default function Gyms() {
         <p className="empty">No gym matches{q ? ` “${search.trim()}”` : ''} in this view.</p>
       )}
 
-      <div className="gym-grid">
+      <div className="gym-grid" ref={gridRef}>
         {onPage.map((gym) => (
           <GymCard key={gym.id} gym={gym} risk={risk.get(gym.id)} busy={busy === gym.id}
             onOpen={() => setDialog({ kind: 'view', gym })}
@@ -207,7 +210,7 @@ export default function Gyms() {
             onReactivate={() => void act(gym.id, () => setGymStatus(gym.id, 'active', ''))} />
         ))}
       </div>
-      <Pagination page={current} perPage={PER_PAGE} total={shown.length} noun={shown.length === 1 ? 'gym' : 'gyms'} onPage={setPage} />
+      <Pagination page={current} perPage={perPage} total={shown.length} noun={shown.length === 1 ? 'gym' : 'gyms'} onPage={setPage} />
 
       {/* ---- the popups ---- */}
       <Modal open={dialog?.kind === 'view'} onClose={close} size="lg" label="Gym">
@@ -330,18 +333,21 @@ function StatusPill({ gym }: { gym: PlatformGym }) {
 }
 
 function Flags({ gym, risk }: { gym: PlatformGym; risk?: Risk }) {
-  if (!risk && !dueSoon(gym) && gym.owners > 0) return null;
+  // One line, the most pressing first (2026-11-08): a row of chips made a flagged card taller than its row-mates,
+  // so the cards a page could not be counted. Every warning is still in the line's tooltip and on the gym's page.
+  const all: { icon: typeof AlertTriangle; text: string }[] = [
+    ...(risk ? [{ icon: AlertTriangle, text: `${risk.level === 'high' ? 'At risk' : 'Watch'}: ${risk.reasons[0]}` }] : []),
+    ...(dueSoon(gym) ? [{ icon: CalendarClock, text: gym.days_left! < 0 ? `${-gym.days_left!} days late` : gym.days_left === 0 ? 'Due today' : `Due in ${gym.days_left} days` }] : []),
+    ...(gym.owners === 0 ? [{ icon: KeyRound, text: 'Nobody can sign in yet' }] : []),
+  ];
+  // An empty line when there is nothing to warn about: every card is one height, so every page holds as many.
+  if (!all.length) return <div className="gym-line gym-flag" aria-hidden="true" />;
+  const Icon = all[0].icon;
+  const tip = [...all.map((f) => f.text), ...(risk && risk.reasons.length > 1 ? risk.reasons.slice(1) : [])].join(' · ');
   return (
-    <div className="gym-flags">
-      {risk && (
-        <span className="chip warn" title={risk.reasons.join(' · ')}><AlertTriangle size={12} />
-          {risk.level === 'high' ? 'At risk' : 'Watch'}: {risk.reasons[0]}</span>
-      )}
-      {dueSoon(gym) && (
-        <span className="chip warn"><CalendarClock size={12} />
-          {gym.days_left! < 0 ? `${-gym.days_left!} days late` : gym.days_left === 0 ? 'due today' : `due in ${gym.days_left} days`}</span>
-      )}
-      {gym.owners === 0 && <span className="chip warn"><KeyRound size={12} />Nobody can sign in yet</span>}
+    <div className="gym-line gym-flag" title={tip} data-gym-flag>
+      <Icon size={14} /><span className="gym-flag__text">{all[0].text}</span>
+      {all.length > 1 && <span className="end">+{all.length - 1} more</span>}
     </div>
   );
 }

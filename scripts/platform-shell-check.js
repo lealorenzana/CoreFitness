@@ -172,7 +172,9 @@ async (page) => {
   out.push("a gym's own logo: " + ((await page.getByAltText('G Fitness logo').count()) === 1 ? 'shown' : 'MISSING'));
   out.push('no logo: initials, never the Core Fitness mark: ' + ((await page.getByRole('img', { name: 'Ana gymanigga, no logo yet' }).count()) === 1 ? 'AG' : 'MISSING'));
   out.push('at-risk tag on the row: ' + (/At risk: No check-ins in 14 days/.test(t) && /Watch: Free trial ends in 5 days/.test(t) ? 'shown' : 'MISSING'));
-  out.push('gyms with chips: ' + (/142 members/.test(t) && /9 days late/.test(t) && /Overdue — read-only/.test(t) ? 'shown' : 'MISSING'));
+  // One warning line per card since 2026-11-08 (cards a page = what fits): the rest are "+N more", all in the line's title.
+  const flagTips = await page.locator('[data-gym-flag]').evaluateAll((els) => els.map((e) => e.getAttribute('title') ?? ''));
+  out.push('gyms with chips: ' + (/142 members/.test(t) && flagTips.some((x) => /9 days late/.test(x)) && /\+1 more/.test(t) && /Overdue — read-only/.test(t) ? 'shown' : 'MISSING'));
   await page.screenshot({ path: 'shots/platform-gyms.png' });
 
   await page.getByRole('button', { name: 'G Fitness, open' }).click();
