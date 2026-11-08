@@ -171,7 +171,7 @@ a.todo:hover, .fb-row:hover { background: rgba(139,92,246,.07); }
 ::selection { background: #7C3AED; color: #fff; }
 
 /* ---- the background: the Ribbon Field (components/RibbonField.tsx, 2026-11-08) ----------------------- */
-.ribbon { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; background: #000; }
+.ribbon { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; background: #080610; }
 /* Drawn at a quarter size, stretched, and softened ("soften" 7) — the oversized layer hides the slices. */
 .ribbon__canvas { position: absolute; inset: -4%; width: 108%; height: 108%; filter: blur(14px) saturate(115%); }
 /* Grain 20 (overlay) and vignette 11, as the gradient's own CSS. */

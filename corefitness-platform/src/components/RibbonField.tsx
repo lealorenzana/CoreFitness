@@ -9,9 +9,10 @@ import { useEffect, useRef } from 'react';
  * ph = 0 (sin(x + p) − sin(p)), so the first frame matches a still one; nothing is rounded per frame. Grain,
  * vignette and the soften blur are CSS on top (aurora.css). Reduced motion: one still frame.
  */
-const INK = [0, 0, 0];
-const VERMILION = [221, 86, 29];
-const INDIGO = [88, 0, 230];
+// Core Fitness's own colours (the owner, 2026-11-08): its violet and amber on the app's violet-black ground.
+const INK = [8, 6, 16];
+const VERMILION = [245, 158, 11];   // Core Fitness amber #F59E0B
+const INDIGO = [124, 58, 237];      // Core Fitness violet #7C3AED
 const STOPS: [number, number[], number][] = [
   // position (0–1 along the field), colour, its opacity over the ink ground
   [0.0, INK, 1], [0.7891, INK, 1], [0.7953, VERMILION, 0.88], [0.8847, VERMILION, 0.88], [0.8853, INDIGO, 0.89], [1.0, INDIGO, 0.89],
@@ -52,7 +53,7 @@ export default function RibbonField() {
       const clock0 = 20.75;
 
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.fillStyle = '#000';
+      ctx.fillStyle = 'rgb(8, 6, 16)';
       ctx.fillRect(0, 0, W, H);
 
       // Rotate the field: 180° would be straight down; the field is drawn oversized so no corner shows.
