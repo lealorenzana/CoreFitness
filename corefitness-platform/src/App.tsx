@@ -17,6 +17,7 @@ import Feedback from './pages/Feedback';
 import Announcements from './pages/Announcements';
 import WhatsNewPage from './pages/WhatsNew';
 import Bell from './components/Bell';
+import RibbonField from './components/RibbonField';
 import Capacity from './pages/Capacity';
 import CommandPalette from './components/CommandPalette';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -125,8 +126,8 @@ function Shell() {
 
   return (
     <>
-    {/* The moving background behind everything (aurora.css, 2026-11-08). Decoration only. */}
-    <div className="aurora" aria-hidden><span className="aurora__blob b1" /><span className="aurora__blob b2" /><span className="aurora__blob b3" /><span className="aurora__blob b4" /><span className="aurora__grid" /><span className="aurora__grain" /><span className="aurora__vignette" /></div>
+    {/* The background: 21st.dev's BLERRY.APP Ribbon Field, live on a canvas (RibbonField, 2026-11-08). */}
+    <RibbonField />
     <div className={`app${narrow ? ' narrow' : ''}`}>
       <aside className="side">
         <div className="brand">
