@@ -67,8 +67,9 @@ export default function PaymentClaims({ onChanged }: { onChanged?: () => void })
       {error && !open && <p className="err">{error}</p>}
       {claims.length === 0 ? (
         <p className="meta" style={{ margin: 0 }}>
-          Nothing waiting. When a gym pays by GCash, Maya or bank, its owner sends the reference and a screenshot from
-          Your plan in their admin app, and it appears here.
+          Nothing waiting. A running gym pays from Your plan in its admin app with PayMongo (QR Ph), which records itself
+          under Paid online — nothing to verify. A reference sent while applying is checked on Applications. Only a
+          reference sent from an older admin app would wait here.
         </p>
       ) : claims.map((c) => (
         <div key={c.id} className="claim">
