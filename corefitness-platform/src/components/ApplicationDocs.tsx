@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { CheckCircle2, Clock, ExternalLink, FileText, XCircle } from 'lucide-react';
+import { CheckCircle2, Clock, Eye, FileText, XCircle } from 'lucide-react';
+import DocViewer, { isPdf, type ViewDoc } from './DocViewer';
 import {
   applicationDocuments, documentKinds, documentUrl, emailApplicant, explain, requestDocumentAgain, reviewDocument,
   type Application, type AppDocument, type DocKind,
@@ -25,12 +26,25 @@ export default function ApplicationDocs({ app, onChanged }: { app: Application; 
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   const [mailNote, setMailNote] = useState<string | null>(null);
+  /** Each document's signed link (5 minutes), for its thumbnail and the viewer — asked once per load. */
+  const [urls, setUrls] = useState<Record<string, string>>({});
+  const [viewing, setViewing] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     try { const [d, k] = await Promise.all([applicationDocuments(app.id), documentKinds()]); setDocs(d); setKinds(k); setError(null); }
     catch (e) { setDocs([]); setError(explain(e, '0187')); }
   }, [app.id]);
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
+  useEffect(() => {
+    if (!docs) return;
+    let alive = true;
+    void (async () => {
+      const live = docs.filter((d) => d.status !== 'replaced' && d.status !== 'draft');
+      const pairs = await Promise.all(live.map(async (d) => [d.id, await documentUrl(d.path)] as const));
+      if (alive) setUrls(Object.fromEntries(pairs.filter((p): p is readonly [string, string] => !!p[1])));
+    })();
+    return () => { alive = false; };
+  }, [docs]);
 
   const decide = async (doc: AppDocument, ok: boolean) => {
     setBusy(true);
@@ -57,9 +71,20 @@ export default function ApplicationDocs({ app, onChanged }: { app: Application; 
   if (docs === null) return <p className="empty">Loading…</p>;
   const current = (k: string) => docs.find((d) => d.kind === k && d.status !== 'replaced' && d.status !== 'draft') ?? null;
   const verified = kinds.filter((k) => current(k.kind)?.status === 'verified').length;
+  // What the viewer steps through: every document sent, in the kinds' order.
+  const viewable: ViewDoc[] = kinds.flatMap((k) => {
+    const d = current(k.kind);
+    return d && urls[d.id] ? [{ id: d.id, label: k.label, url: urls[d.id], fileName: d.file_name, status: d.status,
+      meta: `${d.file_name ?? 'File'} · sent ${when(d.uploaded_at)}${d.expires_on ? ` · expires ${day(d.expires_on)}` : ''}` }] : [];
+  });
+  const openDoc = (id: string) => { const n = viewable.findIndex((v) => v.id === id); if (n >= 0) setViewing(n); };
 
   return (
     <div data-review-documents>
+      {viewing !== null && (
+        <DocViewer docs={viewable} start={viewing} onClose={() => setViewing(null)}
+          onVerify={async (id) => { const doc = docs.find((x) => x.id === id); if (doc) await decide(doc, true); }} />
+      )}
       <p className="meta" style={{ marginTop: 0 }}>
         {verified} of {kinds.length} verified. {verified < kinds.length ? 'Let them in once all are verified and in date.' : 'Everything is verified — you can let them in.'}
       </p>
@@ -69,6 +94,13 @@ export default function ApplicationDocs({ app, onChanged }: { app: Application; 
           const d = current(k.kind);
           return (
             <div key={k.kind} className="doc-review-row" data-doc={k.kind}>
+              {d && (
+                <button type="button" className="doc-thumb" onClick={() => openDoc(d.id)} aria-label={`Look at ${k.label}`} data-doc-thumb>
+                  {!urls[d.id] ? <span className="doc-thumb__wait" />
+                    : isPdf({ fileName: d.file_name, url: urls[d.id] }) ? <span className="doc-thumb__pdf">PDF</span>
+                    : <img src={urls[d.id]} alt="" loading="lazy" />}
+                </button>
+              )}
               <span className="grow">
                 <b><FileText size={13} /> {k.label}</b>
                 {d ? (
@@ -80,8 +112,8 @@ export default function ApplicationDocs({ app, onChanged }: { app: Application; 
               </span>
               {d && (
                 <span className="actions">
-                  <button type="button" className="btn ghost" onClick={() => void documentUrl(d.path).then((u) => u && window.open(u, '_blank', 'noopener'))}>
-                    <ExternalLink size={13} /> Open
+                  <button type="button" className="btn ghost" disabled={!urls[d.id]} onClick={() => openDoc(d.id)} data-doc-open>
+                    <Eye size={13} /> View
                   </button>
                   {d.status === 'pending' && rejecting !== d.id && (
                     <>

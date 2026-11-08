@@ -120,15 +120,20 @@ input, select, textarea { background: #0f0f19; border: 1px solid var(--hairline)
   .content .page > .row, .content .page > p, .content .page > .tabs, .content .page > .chips { flex: none; min-height: 0; overflow: visible; }
 }
 
-/* Money is seven boxes: two columns, every row the same share of the height. */
+/* Money (2026-11-08): the billing rules as one line, then two columns — the waiting boxes sized by what they hold on
+   the left, who is due and every payment on the right with the list taking the height. */
+.money-rules { padding-top: 10px !important; padding-bottom: 10px !important; }
+.money-rules .name { display: inline; margin-right: 10px; }
+.money-rules .meta { display: inline; }
+.money-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.money-col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.money-col > .card { margin: 0 !important; }
 @media (min-width: 1280px) {
-  .content .page[data-page="money"] { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); }
-  .content .page[data-page="money"] > * { min-height: 0; }
-  .content .page[data-page="money"] > .err { grid-column: 1 / -1; }
-}
-
-@media (min-width: 1280px) {
-  .content .page[data-page="money"] > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .content .page > .money-rules { flex: none; min-height: 0; overflow: visible; }
+  .content .page > .money-grid { flex: 1 1 0%; min-height: 0; overflow: hidden; align-items: stretch; }
+  .money-col { min-height: 0; overflow-y: auto; padding-right: 2px; }
+  .money-col > * { flex: none; }
+  .money-col > :last-child { flex: 1 1 auto; min-height: 220px; overflow-y: auto; }
 }
 select { font-size: 13px; }
 

@@ -249,3 +249,71 @@ a.todo:hover, .fb-row:hover { background: rgba(139,92,246,.07); }
 .site-field input, .site-field textarea { width: 100%; }
 .site-field textarea { resize: vertical; line-height: 1.5; }
 .site-field input::placeholder, .site-field textarea::placeholder { color: var(--text-3); opacity: .75; }
+
+/* Bar charts (2026-11-08): the date label sits UNDER a shared baseline, one line, out of the bar's column — a
+   two-line label ("Aug / 31") was lifting its own bar, so heights could not be compared. */
+.bars { position: relative; padding-bottom: 22px !important; box-sizing: border-box; }
+.bars::after { content: ''; position: absolute; left: 0; right: 0; bottom: 21px; height: 1px; background: var(--hairline); pointer-events: none; }
+.bars .bar { position: relative; gap: 0 !important; background: transparent !important; cursor: pointer; border-radius: 6px; }
+.bars .bar:hover { background: rgba(255,255,255,.04) !important; }
+.bars .bar-fill { width: 100%; border-radius: 5px 5px 2px 2px; }
+.bars .bar-label { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 5px; white-space: nowrap; line-height: 1; font-size: 10.5px; }
+.bars { height: 200px !important; }
+.kpi, .tiles > .tile:not(button):not(a) { cursor: pointer; }
+
+/* The detail card a statistic opens (DetailLayer). Solid — a floating thing is never see-through. */
+.detail-pop { position: fixed; z-index: 120; width: 320px; transform: translateX(-50%); padding: 14px 16px 12px;
+  background: #15122a; border: 1px solid rgba(167,139,250,.35); border-radius: 14px;
+  box-shadow: 0 24px 60px -18px rgba(0,0,0,.85), 0 0 0 1px rgba(255,255,255,.03) inset; animation: detail-in .16s var(--ease) backwards; }
+.detail-pop.above { transform: translate(-50%, -100%); }
+@keyframes detail-in { from { opacity: 0; margin-top: 4px; } }
+@media (prefers-reduced-motion: reduce) { .detail-pop { animation: none; } }
+.detail-pop__x { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; display: grid; place-items: center;
+  border-radius: 8px; border: 0; background: transparent; color: var(--text-3); cursor: pointer; }
+.detail-pop__x:hover { background: rgba(255,255,255,.06); color: var(--text); }
+.detail-pop__title { font-size: 12px; font-weight: 700; color: var(--text-2); text-transform: none; padding-right: 28px; }
+.detail-pop__value { font-size: 26px; font-weight: 800; color: var(--text); margin-top: 2px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.detail-pop__rows { margin: 10px 0 0; display: grid; gap: 6px; }
+.detail-pop__rows > div { display: flex; justify-content: space-between; gap: 12px; font-size: 12.5px; padding-top: 6px; border-top: 1px solid var(--hairline); }
+.detail-pop__rows dt { color: var(--text-3); }
+.detail-pop__rows dd { margin: 0; color: var(--text); font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.detail-pop__note { margin: 10px 0 0; font-size: 12px; line-height: 1.5; color: var(--text-2); }
+/* Growth's MRR chart fills its box at any screen height: the box is a column, the chart takes what is left. */
+@media (min-width: 1280px) {
+  .growth-grid .card:has(> .bars) { display: flex; flex-direction: column; }
+  .growth-grid .card > .bars { height: auto !important; flex: 1 1 0%; min-height: 110px; }
+}
+
+/* An application's documents (DocViewer): a thumbnail per row, and a viewer over the page — never a new tab. */
+.doc-review-row { align-items: center; }
+.doc-thumb { flex: none; width: 52px; height: 52px; border-radius: 10px; overflow: hidden; padding: 0; cursor: zoom-in;
+  border: 1px solid var(--hairline); background: rgba(255,255,255,.04); display: grid; place-items: center; }
+.doc-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.doc-thumb:hover { border-color: rgba(167,139,250,.6); }
+.doc-thumb__pdf { font-size: 11px; font-weight: 800; color: var(--accent-text); }
+.doc-thumb__wait { width: 100%; height: 100%; background: linear-gradient(90deg, rgba(255,255,255,.03), rgba(255,255,255,.08), rgba(255,255,255,.03)); }
+.docv { position: fixed; inset: 0; z-index: 200; background: rgba(5, 4, 12, .94); display: flex; flex-direction: column; }
+.docv__bar { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--hairline); background: #0f0d1f; }
+.docv__title { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.docv__title b { color: var(--text); font-size: 15px; }
+.docv__title small { color: var(--text-3); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.docv__count { color: var(--text-3); font-size: 12px; font-variant-numeric: tabular-nums; }
+.docv__x { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 10px; border: 1px solid var(--hairline); background: transparent; color: var(--text); cursor: pointer; }
+.docv__stage { flex: 1; min-height: 0; display: grid; place-items: center; padding: 18px 70px; overflow: hidden; }
+.docv__stage.full { overflow: auto; place-items: start center; }
+.docv__img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; cursor: zoom-in; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+.docv__stage.full .docv__img { max-width: none; max-height: none; cursor: zoom-out; }
+.docv__pdf { width: min(1000px, 100%); height: 100%; border: 0; border-radius: 6px; background: #fff; }
+.docv__nav { position: absolute; top: 50%; width: 44px; height: 44px; margin-top: -22px; border-radius: 999px; display: grid; place-items: center;
+  border: 1px solid var(--hairline); background: #15122a; color: var(--text); cursor: pointer; }
+.docv__nav:disabled { opacity: .3; cursor: default; }
+.docv__nav.prev { left: 14px; } .docv__nav.next { right: 14px; }
+.docv__strip { display: flex; gap: 8px; justify-content: center; padding: 10px; border-top: 1px solid var(--hairline); background: #0f0d1f; }
+.docv__thumb { width: 54px; height: 54px; padding: 0; border-radius: 9px; overflow: hidden; border: 2px solid transparent; background: rgba(255,255,255,.05); cursor: pointer; display: grid; place-items: center; color: var(--accent-text); font-size: 11px; font-weight: 800; }
+.docv__thumb img { width: 100%; height: 100%; object-fit: cover; }
+.docv__thumb.on { border-color: #8B5CF6; }
+@media (max-width: 760px) {
+  .docv__bar { flex-wrap: wrap; }
+  .docv__title { flex-basis: 100%; }
+  .docv__stage { padding: 12px 56px; }
+}

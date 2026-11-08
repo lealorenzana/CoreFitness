@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { detail } from '../components/DetailLayer';
 import { Link } from 'react-router-dom';
 import {
   Activity, AlertTriangle, Building2, Bug, CalendarClock, CheckCircle2, Clock, DoorOpen, Filter, HeartPulse, Inbox, TrendingUp,
@@ -157,7 +158,11 @@ export default function Overview() {
             {months.map((m) => {
               const v = Number(m.total);
               return (
-                <div key={m.month} className={`bar${m.month.startsWith(thisMonth) ? ' now' : ''}`} title={`${monthLabel(m.month)}: ${peso(v)} from ${m.gyms} gym${m.gyms === 1 ? '' : 's'}`}>
+                <div key={m.month} className={`bar${m.month.startsWith(thisMonth) ? ' now' : ''}`}
+                  data-detail={detail({ title: `Revenue, ${new Date(`${m.month.slice(0, 10)}T00:00:00`).toLocaleDateString('en-PH', { month: 'long', year: 'numeric' })}`, value: peso(v), rows: [
+                    ['Gyms that paid', String(m.gyms)], ['Average per paying gym', m.gyms ? peso(v / m.gyms) : '—'],
+                    ['Share of the 12 months', yearTotal ? `${Math.round((v / yearTotal) * 100)}%` : '—'],
+                  ], note: 'What gyms paid Core Fitness in this month, by the day it was paid. Money has every payment.' })}>
                   <span className="bar-value">{v ? `₱${short(v)}` : ''}</span>
                   <span className="ov-track"><span className="bar-fill" style={{ height: `${Math.max(2, (v / top) * 100)}%` }} /></span>
                   <span className="bar-label">{monthLabel(m.month)}</span>
@@ -280,8 +285,11 @@ function GrowthChart({ months }: { months: GrowthMonth[] }) {
           <path d={line} className="ov-line" />
         </svg>
         <div className="ov-gymbars">
-          {months.map((m) => <span key={m.month} title={`${monthLabel(m.month)}: ${m.gyms} gyms, ${m.members} members`}
-            style={{ height: `${Math.max(8, (m.gyms / maxG) * 100)}%` }} />)}
+          {months.map((m, i) => <span key={m.month} style={{ cursor: 'pointer', height: `${Math.max(8, (m.gyms / maxG) * 100)}%` }}
+            data-detail={detail({ title: new Date(`${m.month.slice(0, 10)}T00:00:00`).toLocaleDateString('en-PH', { month: 'long', year: 'numeric' }), value: `${m.members.toLocaleString('en-PH')} members`, rows: [
+              ['Gyms', String(m.gyms)], ['New gyms', String(m.new_gyms)], ['Suspended', String(m.lost_gyms)],
+              ['Members vs the month before', i ? `${m.members - months[i - 1].members >= 0 ? '+' : ''}${(m.members - months[i - 1].members).toLocaleString('en-PH')}` : '—'],
+            ] })} />)}
         </div>
       </div>
       <div className="ov-axis">
@@ -318,7 +326,10 @@ function HealthRing({ health }: { health: GymHealth[] }) {
         <span className="ov-ring-mid"><b>{total ? Math.round((parts[0].n / total) * 100) : 0}%</b>healthy</span>
       </div>
       <div className="ov-ring-legend">
-        {parts.map((p) => <span key={p.key}><i style={{ background: p.color }} />{p.label}<b>{p.n}</b></span>)}
+        {parts.map((p) => <span key={p.key} style={{ cursor: 'pointer' }} data-detail={detail({ title: p.label, value: `${p.n} gym${p.n === 1 ? '' : 's'}`, rows: [
+          ['Share of all gyms', total ? `${Math.round((p.n / total) * 100)}%` : '—'],
+          ...health.filter((h) => h.level === p.key).slice(0, 6).map((h) => [h.name, h.reasons.length ? h.reasons[0] : `score ${h.score}`] as [string, string]),
+        ], note: p.key === 'healthy' ? 'Checking in, paid up, owner around.' : 'Growth lists every gym at risk with its reasons, and Write to the owner.' })}><i style={{ background: p.color }} />{p.label}<b>{p.n}</b></span>)}
       </div>
     </div>
   );
@@ -336,7 +347,10 @@ function FunnelBars({ f }: { f: Funnel }) {
       {steps.map((s, i) => {
         const prev = i ? steps[i - 1].n : null;
         return (
-          <div key={s.label} className="ov-step">
+          <div key={s.label} className="ov-step" style={{ cursor: 'pointer' }} data-detail={detail({ title: s.label, value: String(s.n), rows: [
+            ...(prev !== null ? [['Of the step before', prev ? `${Math.round((s.n / prev) * 100)}% (${s.n} of ${prev})` : '—'] as [string, string]] : []),
+            ['Of all who applied', steps[0].n ? `${Math.round((s.n / steps[0].n) * 100)}%` : '—'],
+          ] })}>
             <span className="ov-step-label">{s.label}</span>
             <span className="ov-step-track"><span style={{ width: `${Math.max(3, (s.n / top) * 100)}%` }} className={i === steps.length - 1 ? 'pay' : ''} /></span>
             <b>{s.n}</b>

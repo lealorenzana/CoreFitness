@@ -20,6 +20,8 @@ import { Maximize2, Search, X } from 'lucide-react';
 interface Spot { el: HTMLElement; top: number; right: number; show?: { top: number; left: number; width: number; height: number; n: number } }
 /** Below this a list area shows a sliver, not a list. */
 const SLIVER = 150;
+/** A window gets a search bar only from this many rows: a short list is read, not searched. */
+const SEARCH_FROM = 10;
 /** A box's heading — kept visible in a compact box and pinned in a scrolling one. */
 const HEADS = '.section-title, .card-head, .ov-head';
 
@@ -55,6 +57,8 @@ export default function ViewAll({ boxes, root, fit = false }: { boxes: string; r
   /** What to find in the open window (the owner, 2026-11-08: "a search bar to easily find something"). */
   const [q, setQ] = useState('');
   const [shown, setShown] = useState<{ n: number; of: number } | null>(null);
+  /** Only a long list gets the search bar (the owner, 2026-11-08: "some don't need this search"). */
+  const [searchable, setSearchable] = useState(false);
   const frame = useRef(0);
 
   const scan = useCallback(() => {
@@ -154,6 +158,8 @@ export default function ViewAll({ boxes, root, fit = false }: { boxes: string; r
       if (n.childElementCount > most) { most = n.childElementCount; list = n; }
     }
     const rows = Array.from(list.children) as HTMLElement[];
+    // Rows with words in them: a chart's bars are many children but nothing to search.
+    setSearchable(rows.filter((r) => (r.textContent ?? '').trim().length > 2).length >= SEARCH_FROM);
     const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
     let n = 0;
     for (const r of rows) {
@@ -219,11 +225,11 @@ export default function ViewAll({ boxes, root, fit = false }: { boxes: string; r
       {open && (
         <>
           <div className="va-backdrop" onClick={close} />
-          <label className="va-search" data-va-search>
+          {searchable && <label className="va-search" data-va-search>
             <Search size={15} />
             <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find in this list…" aria-label="Find in this list" />
             {shown && <span className="va-search__n">{shown.n} of {shown.of}</span>}
-          </label>
+          </label>}
           <button type="button" className="va-close" onClick={close} aria-label="Close the full view" data-va-close>
             <X size={16} /> Close
           </button>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { detail } from '../components/DetailLayer';
 import { Link } from 'react-router-dom';
 import { Activity, Building2, DollarSign, Download, Grid3x3, Sparkles, TrendingDown } from 'lucide-react';
 import { listGyms, type PlatformGym } from '../lib/platform';
@@ -112,7 +113,11 @@ export default function Usage() {
                     const v = n(g.id, f.key);
                     const a = v ? 0.12 + (v / most(f.key)) * 0.72 : 0;
                     return (
-                      <td key={f.key} className={v ? '' : 'zero'} style={v ? { background: `rgba(124, 58, 237, ${a.toFixed(2)})` } : undefined}
+                      <td key={f.key} className={v ? '' : 'zero'} style={{ cursor: 'pointer', ...(v ? { background: `rgba(124, 58, 237, ${a.toFixed(2)})` } : {}) }}
+                        data-detail={detail({ title: `${g.name} — ${f.label}`, value: `${v.toLocaleString('en-PH')} in ${days} days`, rows: [
+                          ['The busiest gym at this', most(f.key).toLocaleString('en-PH')], ['A day, on average', (v / days).toFixed(1)],
+                          ...(f.key === 'coach' && ai ? [['Estimated cost at list price', usd(spendOf(g.id))] as [string, string]] : []),
+                        ], note: v ? undefined : 'Not used in this window — worth a word with the owner.' })}
                         data-tip={f.key === 'coach'
                           ? `${g.name}: ${v.toLocaleString('en-PH')} coach messages in ${days} days`
                             + (ai ? `, about ${usd(spendOf(g.id))} at list price (an estimate)` : '')

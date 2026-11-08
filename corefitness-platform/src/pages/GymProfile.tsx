@@ -4,6 +4,7 @@ import {
   Activity, ArrowLeft, BarChart3, Clock, Mail, MessageSquare, NotebookPen, Phone, Pin, Receipt, Send, Sparkles, Trash2, UserCog, Users, Wallet,
 } from 'lucide-react';
 import MessageOwner from '../components/MessageOwner';
+import { detail } from '../components/DetailLayer';
 import { supabase } from '../lib/supabaseClient';
 import GymMark from '../components/GymMark';
 import GymDetail from '../components/GymDetail';
@@ -154,7 +155,11 @@ export default function GymProfile() {
               <div className="bars" style={{ gap: 4 }}>
                 {weeks.map((w, i) => (
                   <div key={w.week_start} className={`bar${i === weeks.length - 1 ? ' now' : ''}`}
-                    title={`Week of ${day(w.week_start)}: ${w.checkins} check-ins, ${w.new_members} new members, ${w.workouts} workouts`}>
+                    data-detail={detail({ title: `Week of ${day(w.week_start)}`, value: `${w.checkins.toLocaleString('en-PH')} check-ins`, rows: [
+                      ['A day, on average', (w.checkins / 7).toFixed(1)], ['New members', String(w.new_members)], ['Logged workouts', String(w.workouts)],
+                      ['Taken at its desk', peso(Number(w.payments))],
+                      ['Vs the week before', i ? `${w.checkins - weeks[i - 1].checkins >= 0 ? '+' : ''}${w.checkins - weeks[i - 1].checkins}` : '—'],
+                    ] })}>
                     <span className="bar-fill" style={{ height: `${Math.max(2, (w.checkins / top) * 160)}px`, maxWidth: 22 }} />
                     <span className="bar-label">{i % 4 === 0 ? new Date(`${w.week_start}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }) : ''}</span>
                   </div>
@@ -171,7 +176,8 @@ export default function GymProfile() {
             <h2 className="section-title"><Sparkles size={14} /> What it uses</h2>
             {used.length === 0 && <p className="empty">Nothing used yet.</p>}
             {used.map((f) => (
-              <div key={f.feature} className="log" style={{ display: 'flex', gap: 10 }}>
+              <div key={f.feature} className="log" style={{ display: 'flex', gap: 10, cursor: 'pointer' }}
+                data-detail={detail({ title: f.label, value: `${f.ever.toLocaleString('en-PH')} all time`, rows: [['Last 30 days', f.last_30.toLocaleString('en-PH')], ['Share of all time', f.ever ? `${Math.round((f.last_30 / f.ever) * 100)}% in the last 30 days` : '—']] })}>
                 <span style={{ flex: 1, color: 'var(--text)' }}>{f.label}</span>
                 <span className="muted" style={{ fontSize: 12 }}>{f.last_30.toLocaleString('en-PH')} in 30 days</span>
                 <span style={{ fontSize: 12, fontWeight: 700, width: 60, textAlign: 'right' }}>{f.ever.toLocaleString('en-PH')}</span>

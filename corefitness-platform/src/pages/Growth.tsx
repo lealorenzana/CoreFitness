@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { downloadCsv } from '../lib/csv';
 import { AlertTriangle, BarChart3, Building2, Download, CheckCircle2, Filter, Mail, Repeat, Sparkles, TrendingUp, Users, Wallet } from 'lucide-react';
 import MessageOwner from '../components/MessageOwner';
+import { detail } from '../components/DetailLayer';
 import GymMark from '../components/GymMark';
 import DemoNotice from '../components/DemoNotice';
 import {
@@ -140,21 +141,27 @@ export default function Growth() {
               const label = new Date(`${m.month.slice(0, 10)}T00:00:00`).toLocaleDateString('en-PH', { month: 'short' });
               return (
                 <div key={m.month} className={`bar${i === months.length - 1 ? ' now' : ''}`}
-                  title={`${label}: MRR ${peso(v)} · ${m.gyms} gyms (${m.new_gyms} new, ${m.lost_gyms} suspended) · ${m.members} members · ${peso(m.revenue)} collected`}>
+                  data-detail={detail({ title: `MRR, ${new Date(`${m.month.slice(0, 10)}T00:00:00`).toLocaleDateString('en-PH', { month: 'long', year: 'numeric' })}`, value: peso(v), rows: [
+                    ['Paying gyms', String(m.gyms)], ['New gyms', String(m.new_gyms)], ['Suspended', String(m.lost_gyms)],
+                    ['Members across them', Number(m.members).toLocaleString('en-PH')], ['Collected that month', peso(m.revenue)],
+                  ], note: 'MRR counts each paid plan whose paid time covers this month; collected is what was actually paid in it.' })}>
                   <span className="bar-value">{v ? `₱${short(v)}` : ''}</span>
-                  <span className="bar-fill" style={{ height: `${Math.max(2, (v / topMrr) * 150)}px` }} />
+                  <span className="bar-fill" style={{ height: `${Math.max(1.5, (v / topMrr) * 82)}%` }} />
                   <span className="bar-label">{label}</span>
                 </div>
               );
             })}
           </div>
-          <p className="meta" style={{ marginTop: 8 }}>MRR counts each paid plan whose paid time covers that month. Hover a month for its gyms and members.</p>
+          <p className="meta" style={{ marginTop: 8 }}>MRR counts each paid plan whose paid time covers that month. Click a month for its gyms, members and what was collected.</p>
         </section>
 
         <section className="card">
           <h2 className="section-title"><Filter size={14} /> From applying to paying</h2>
           {stages.map((s, i) => (
-            <div key={s.label} style={{ padding: '7px 0' }}>
+            <div key={s.label} style={{ padding: '7px 0', cursor: 'pointer' }} data-detail={detail({ title: s.label, value: String(s.n), rows: [
+              ...(i > 0 ? [[`From "${stages[i - 1].label}"`, stages[i - 1].n > 0 ? `${Math.round((s.n / stages[i - 1].n) * 100)}% (${s.n} of ${stages[i - 1].n})` : '—'] as [string, string]] : []),
+              ...(i > 0 && stages[0].n > 0 ? [[`From "${stages[0].label}"`, `${Math.round((s.n / stages[0].n) * 100)}%`] as [string, string]] : []),
+            ], note: 'Each step counts gyms that reached it; the percentage is how many of the step before got here.' })}>
               <div className="row" style={{ gap: 8 }}>
                 <span className="grow" style={{ flexBasis: 100, fontSize: 13 }}>{s.label}</span>
                 <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{s.n}</span>
@@ -174,7 +181,9 @@ export default function Growth() {
           {adopt.map((a) => {
             const pct = a.gyms_total ? Math.round((a.gyms_30d / a.gyms_total) * 100) : 0;
             return (
-              <div key={a.feature} style={{ padding: '6px 0' }}>
+              <div key={a.feature} style={{ padding: '6px 0', cursor: 'pointer' }} data-detail={detail({ title: a.label, value: `${pct}%`, rows: [
+                ['Gyms that used it, 30 days', String(a.gyms_30d)], ['Gyms that could', String(a.gyms_total)], ['Gyms that did not', String(Math.max(0, a.gyms_total - a.gyms_30d))],
+              ], note: 'A gym counts once it used this at least once in the last 30 days. Usage has every gym against every feature.' })}>
                 <div className="row" style={{ gap: 8 }}>
                   <span className="grow" style={{ flexBasis: 120, fontSize: 13 }}>{a.label}</span>
                   <span className="muted" style={{ fontSize: 12 }}>{a.gyms_30d} of {a.gyms_total} gyms</span>

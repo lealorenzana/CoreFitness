@@ -17,6 +17,7 @@ import Feedback from './pages/Feedback';
 import Announcements from './pages/Announcements';
 import WhatsNewPage from './pages/WhatsNew';
 import Website from './pages/Website';
+import DetailLayer from './components/DetailLayer';
 import Bell from './components/Bell';
 import RibbonField from './components/RibbonField';
 import Capacity from './pages/Capacity';
@@ -202,6 +203,7 @@ function Shell() {
           <CommandPalette pages={PAGES} />
           <TooltipLayer />
           <ViewAll root=".content" boxes=".card, section, .pf-col, .cap-col, .kpi" fit />
+          <DetailLayer />
         </header>
         <div className="content">
           <div className="p-head" key={`h-${page.path}`}>

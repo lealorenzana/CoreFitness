@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { detail } from '../components/DetailLayer';
 import { Link } from 'react-router-dom';
 import { Building2, Database, FileImage, Gauge, HardDrive, LineChart, Lightbulb, Table2, Users } from 'lucide-react';
 import { capacity, explain, type CapacityRow } from '../lib/platform';
@@ -87,7 +88,7 @@ export default function Capacity() {
     );
   };
 
-  const bars = (items: { key: string; label: React.ReactNode; used: number; sub?: string; tip?: string }[], empty: string) => {
+  const bars = (items: { key: string; label: React.ReactNode; used: number; sub?: string; tip?: string; name?: string; rows?: [string, string][] }[], empty: string) => {
     if (items.length === 0) return <p className="empty"><HardDrive size={22} className="empty-icon" />{empty}</p>;
     const most = Math.max(1, ...items.map((r) => r.used));
     const total = items.reduce((n, r) => n + r.used, 0);
@@ -95,7 +96,11 @@ export default function Capacity() {
       <>
         <div className="cap-list ov-scroll">
           {items.map((r, i) => (
-            <div className="cap-row" key={r.key} data-tip={r.tip}>
+            <div className="cap-row" key={r.key} data-tip={r.tip} style={{ cursor: 'pointer' }}
+              data-detail={detail({ title: r.name ?? r.key, value: size(r.used), rows: [
+                ['Rank in this list', `${i + 1} of ${items.length}`], ['Share of this list', total ? `${Math.round((r.used / total) * 100)}%` : '—'],
+                ...(r.sub ? [['Detail', r.sub] as [string, string]] : []), ...(r.rows ?? []),
+              ], note: r.tip })}>
               <span className="cap-rank">{i + 1}</span>
               <span className="cap-name">{r.label}{r.sub && <small className="cap-sub">{r.sub}</small>}</span>
               <span className="cap-size"><strong>{size(r.used)}</strong><small>{total ? Math.round((r.used / total) * 100) : 0}%</small></span>
@@ -150,15 +155,15 @@ export default function Capacity() {
 
       <section className="card cap-3">
         <h2 className="section-title"><Table2 size={14} /> Biggest tables <InfoDot tip="Size on disk including indexes; rows are Postgres's own estimate, never counted by reading them." /></h2>
-        {bars(tables.map((t) => ({ key: t.key, label: t.what ? <>{t.what} <code className="cap-code">{t.label}</code></> : <code>{t.label}</code>, used: t.used, sub: t.n !== null ? `${count(t.n)} rows` : undefined })), 'Nothing measured.')}
+        {bars(tables.map((t) => ({ name: t.what ? `${t.what} (${t.label})` : t.label, key: t.key, label: t.what ? <>{t.what} <code className="cap-code">{t.label}</code></> : <code>{t.label}</code>, used: t.used, sub: t.n !== null ? `${count(t.n)} rows` : undefined })), 'Nothing measured.')}
       </section>
       <section className="card cap-3">
         <h2 className="section-title"><HardDrive size={14} /> Storage by bucket</h2>
-        {bars(buckets.map((b) => ({ key: b.key, label: b.what ? <>{b.what} <code className="cap-code">{b.label}</code></> : <code>{b.label}</code>, used: b.used, sub: [b.n !== null ? `${count(b.n)} files` : null, b.uploaded ? `newest ${new Date(b.uploaded).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}` : null].filter(Boolean).join(' · ') || undefined })), 'No files stored yet.')}
+        {bars(buckets.map((b) => ({ name: b.what ? `${b.what} (${b.label})` : b.label, key: b.key, label: b.what ? <>{b.what} <code className="cap-code">{b.label}</code></> : <code>{b.label}</code>, used: b.used, sub: [b.n !== null ? `${count(b.n)} files` : null, b.uploaded ? `newest ${new Date(b.uploaded).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}` : null].filter(Boolean).join(' · ') || undefined })), 'No files stored yet.')}
       </section>
       <section className="card cap-3">
         <h2 className="section-title"><Building2 size={14} /> Each gym's footprint <InfoDot tip="Rows the gym owns across every gym table, and its own files under gyms/<id>/. Counts only." /></h2>
-        {bars(gyms.map((g) => ({ key: g.gym_id, label: <Link to={`/gyms/${g.gym_id}`}>{g.name}</Link>, used: g.file_bytes,
+        {bars(gyms.map((g) => ({ name: g.name, key: g.gym_id, label: <Link to={`/gyms/${g.gym_id}`}>{g.name}</Link>, used: g.file_bytes,
           sub: foot ? `${count(g.rows)} rows · ${count(g.files)} files` : undefined })), 'No gym has uploaded anything yet.')}
       </section>
       <section className="card cap-3">
@@ -167,6 +172,7 @@ export default function Capacity() {
           // What, whose, type and when (0239) — before 0239, the bucket and owner as before.
           : bars(files.map((f) => ({
               key: f.key,
+              name: f.what ? `${f.what} — ${f.whose}` : f.label,
               label: f.what ? <>{f.what}<span className="cap-whose"> — {f.whose}</span></> : f.label,
               used: f.used,
               sub: f.what ? [f.file_type ? f.file_type.replace(/^image\//, '').replace(/^application\//, '').toUpperCase() : null,
@@ -205,7 +211,11 @@ function TrendChart({ days }: { days: CapacityDay[] }) {
           <path d={line('storage_bytes', 60, 96)} className="cap-line-st" />
         </svg>
         <div className="cap-hit">
-          {days.map((d) => <span key={d.day} data-tip={`${shortDay(d.day)} — database ${size(d.db_bytes)}, storage ${size(d.storage_bytes)}, ${count(d.mau)} signed in`} />)}
+          {days.map((d, i) => <span key={d.day} data-tip={`${shortDay(d.day)} — database ${size(d.db_bytes)}, storage ${size(d.storage_bytes)}, ${count(d.mau)} signed in`}
+            style={{ cursor: 'pointer' }} data-detail={detail({ title: shortDay(d.day), value: `${size(d.db_bytes)} database`, rows: [
+              ['Storage', size(d.storage_bytes)], ['Files', count(d.storage_objects)], ['People signed in, 30 days', count(d.mau)],
+              ['Database vs the day before', i ? `${d.db_bytes >= days[i - 1].db_bytes ? '+' : '−'}${size(Math.abs(d.db_bytes - days[i - 1].db_bytes))}` : '—'],
+            ] })} />)}
         </div>
       </div>
       <div className="ov-axis"><span>{shortDay(first.day)}</span><span>{shortDay(days[Math.floor(n / 2)].day)}</span><span>{shortDay(last.day)}</span></div>

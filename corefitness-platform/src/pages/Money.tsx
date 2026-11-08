@@ -8,6 +8,8 @@ import PaymentClaims from '../components/PaymentClaims';
 import AiTopupClaims from '../components/AiTopupClaims';
 import OnlinePayments from '../components/OnlinePayments';
 import DatePicker from '../components/DatePicker';
+import Modal from '../components/Modal';
+import { detail } from '../components/DetailLayer';
 import Pagination from '../components/Pagination';
 import { usePaged } from '../lib/usePaged';
 import {
@@ -81,21 +83,39 @@ export default function Money() {
   return (
     <>
       {error && <p className="err">{error}</p>}
+      {settings && (
+        <div className="card money-rules">
+          <div className="row">
+            <span className="grow">
+              <span className="name">Billing rules</span>
+              <span className="meta">Read-only {settings.grace_days} day{settings.grace_days === 1 ? '' : 's'} after the due date · owners reminded {settings.reminder_days.join(', ')} day{settings.reminder_days.length === 1 && settings.reminder_days[0] === 1 ? '' : 's'} before · receipts from {settings.business_name}</span>
+            </span>
+            <Link to="/settings?part=billing" className="btn ghost" style={{ textDecoration: 'none' }}>Change in Settings</Link>
+          </div>
+        </div>
+      )}
       {receipt && <ReceiptSheet receipt={receipt} onClose={() => setReceipt(null)} />}
 
+      {/* Two columns (2026-11-08): what is waiting on the left, each box as tall as what it holds; who is due and every
+          payment on the right, the list taking the height. Equal grid rows had padded empty boxes to the same height. */}
+      <div className="money-grid">
+      <div className="money-col">
       <PaymentClaims onChanged={() => void load()} />
       {/* 0189: AI coach messages gyms paid for, to verify like any payment. */}
       <AiTopupClaims />
       {/* 0191: what gyms paid through PayMongo — recorded by the signed webhook. */}
       <OnlinePayments />
 
-      {recording && (
-        <RecordPayment
-          gym={recording}
-          onCancel={() => setRecording(null)}
-          onDone={() => { setRecording(null); void load(); }}
-        />
-      )}
+      {/* Recording a payment is a window over the page (2026-11-08): as a box in the grid it shuffled every other box. */}
+      <Modal open={!!recording} onClose={() => setRecording(null)} size="lg" label="Record a payment">
+        {recording && (
+          <RecordPayment
+            gym={recording}
+            onCancel={() => setRecording(null)}
+            onDone={() => { setRecording(null); void load(); }}
+          />
+        )}
+      </Modal>
 
       <div className="card">
         <div className="row">
@@ -113,7 +133,10 @@ export default function Money() {
         {revenue && revenue.length > 1 && (
           <div className="ticks" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))' }}>
             {revenue.slice(0, 12).map((m) => (
-              <span key={m.month} className="meta">
+              <span key={m.month} className="meta" style={{ cursor: 'pointer' }}
+                data-detail={detail({ title: `Paid in ${monthName(m.month)}`, value: peso(m.total), rows: [
+                  ['Payments', String(m.payments)], ['Gyms that paid', String(m.gyms)], ['Average payment', m.payments ? peso(Number(m.total) / m.payments) : '—'],
+                ], note: 'By the day each payment was made, not the period it covers.' })}>
                 <strong style={{ color: 'var(--text)' }}>{peso(m.total)}</strong><br />
                 {monthName(m.month)}
               </span>
@@ -122,6 +145,8 @@ export default function Money() {
         )}
       </div>
 
+      </div>
+      <div className="money-col">
       <div className="card">
         <div className="name">Due in the next 30 days <InfoDot tip="Gyms whose paid-until date falls in the next 30 days, or has passed. Owners are reminded before; the grace period is in Settings." /></div>
         <div className="meta">
@@ -202,17 +227,8 @@ export default function Money() {
         </div>
       </div>
 
-      {settings && (
-        <div className="card">
-          <div className="row">
-            <span className="grow">
-              <span className="name">Billing rules</span>
-              <span className="meta">Read-only {settings.grace_days} day{settings.grace_days === 1 ? '' : 's'} after the due date · owners reminded {settings.reminder_days.join(', ')} day{settings.reminder_days.length === 1 && settings.reminder_days[0] === 1 ? '' : 's'} before · receipts from {settings.business_name}</span>
-            </span>
-            <Link to="/settings?part=billing" className="btn ghost" style={{ textDecoration: 'none' }}>Change in Settings</Link>
-          </div>
-        </div>
-      )}
+      </div>
+      </div>
     </>
   );
 }
