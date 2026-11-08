@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { downloadCsv } from '../lib/csv';
-import { AlertTriangle, BarChart3, Building2, Download, CheckCircle2, Filter, Repeat, Sparkles, TrendingUp, Users, Wallet } from 'lucide-react';
+import { AlertTriangle, BarChart3, Building2, Download, CheckCircle2, Filter, Mail, Repeat, Sparkles, TrendingUp, Users, Wallet } from 'lucide-react';
+import MessageOwner from '../components/MessageOwner';
 import GymMark from '../components/GymMark';
 import DemoNotice from '../components/DemoNotice';
 import {
@@ -26,6 +27,9 @@ export default function Growth() {
   const [fun, setFun] = useState<Funnel | null>(null);
   const [adopt, setAdopt] = useState<Adoption[]>([]);
   const [error, setError] = useState<string | null>(null);
+  /** The gym whose owner is being written to (0240). */
+  const [writing, setWriting] = useState<{ id: string; name: string; reasons: string[] } | null>(null);
+  const [sentNote, setSentNote] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -76,6 +80,11 @@ export default function Growth() {
   return (
     <>
       <DemoNotice />
+      {sentNote && <p className="meta" data-sent-note>{sentNote}</p>}
+      {writing && (
+        <MessageOwner open onClose={() => setWriting(null)} gymId={writing.id} gymName={writing.name} reasons={writing.reasons}
+          onSent={(n) => setSentNote(`Sent to ${writing.name}'s owner${n > 1 ? `s (${n})` : ''} — it is in their bell and on their phone.`)} />
+      )}
       <div className="kpis">
         {kpis.map((k) => {
           const Icon = k.icon;
@@ -100,13 +109,19 @@ export default function Growth() {
             Every gym looks healthy: checking in, paid up, owner around.
           </p>
         ) : atRisk.map((g) => (
-          <Link key={g.gym_id} to={`/gyms/${g.gym_id}`} className="todo">
-            <GymMark name={g.name} logoUrl={g.logo_url} accent={g.accent} size={36} />
-            <span className="todo-text" style={{ fontWeight: 600 }}>{g.name}
-              <span className="chips">{g.reasons.map((r) => <span key={r} className="chip warn">{r}</span>)}</span>
-            </span>
-            <span className={`pill ${g.level === 'high' ? 'warn' : ''}`}>{g.level === 'high' ? 'High' : 'Medium'} · {g.score}</span>
-          </Link>
+          // The row opens the gym; Write to the owner sits beside it, never inside the link (0240).
+          <div key={g.gym_id} className="risk-row" data-risk-gym={g.name}>
+            <Link to={`/gyms/${g.gym_id}`} className="todo">
+              <GymMark name={g.name} logoUrl={g.logo_url} accent={g.accent} size={36} />
+              <span className="todo-text" style={{ fontWeight: 600 }}>{g.name}
+                <span className="chips">{g.reasons.map((r) => <span key={r} className="chip warn">{r}</span>)}</span>
+              </span>
+              <span className={`pill ${g.level === 'high' ? 'warn' : ''}`}>{g.level === 'high' ? 'High' : 'Medium'} · {g.score}</span>
+            </Link>
+            <button type="button" className="btn ghost sm" onClick={() => setWriting({ id: g.gym_id, name: g.name, reasons: g.reasons })} data-write-owner>
+              <Mail size={13} /> Write to the owner
+            </button>
+          </div>
         ))}
       </section>
 

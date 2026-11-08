@@ -209,7 +209,8 @@ function Questions({ tickets, extras, owner, gymId, composing, setComposing, rel
   const [msgs, setMsgs] = useState<ThreadMessage[]>([]);
   const [access, setAccess] = useState<TicketAccess | null>(null);
   const [q, setQ] = useState('');
-  const [subject, setSubject] = useState('');
+  // A reply to a message from Core Fitness arrives with ?subject=Re: … (Inbox, 0240).
+  const [subject, setSubject] = useState(() => new URLSearchParams(window.location.search).get('subject') ?? '');
   const [body, setBody] = useState('');
   const [shot, setShot] = useState<File | null>(null);
   const [fileKey, setFileKey] = useState(0);

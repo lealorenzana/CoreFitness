@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertCircle, Archive, ArchiveRestore, ArrowUpRight, Banknote, Bell, Calendar, CheckCheck, Clock, Dumbbell, Gift,
-  Inbox as InboxIcon, Info, ListChecks, Mail, MailOpen, MessageSquare, Trash2, Trophy, UserPlus, X,
+  Inbox as InboxIcon, Info, ListChecks, Mail, MailOpen, MessageSquare, Reply, ShieldCheck, Trash2, Trophy, UserPlus, X,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
@@ -42,6 +42,8 @@ const KINDS: Record<string, { label: string; icon: LucideIcon; tone: Tone }> = {
   message: { label: 'Messages', icon: MessageSquare, tone: 'blue' },
   personal_record: { label: 'Records', icon: Trophy, tone: 'amber' },
   info: { label: 'Information', icon: Info, tone: 'gray' },
+  // Written to the owner by Core Fitness itself (0240) — read here, answered from Help.
+  platform_message: { label: 'From Core Fitness', icon: ShieldCheck, tone: 'violet' },
 };
 const kindOf = (t: string) => KINDS[t] ?? { label: 'Other', icon: Bell, tone: 'gray' as Tone };
 /** The sidebar's names for the pages a message can open. */
@@ -291,7 +293,8 @@ export default function Inbox() {
         <RdCard glow={!opened} className="flex flex-col min-h-0 overflow-hidden" data-reading>
           {opened ? (() => {
             const k = kindOf(opened.type);
-            const dest = openable(opened.action_url) ? opened.action_url! : null;
+            const fromCF = opened.type === 'platform_message';
+            const dest = !fromCF && openable(opened.action_url) ? opened.action_url! : null;
             return (
               <>
                 <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: LINE }}>
@@ -318,6 +321,7 @@ export default function Inbox() {
                 </div>
                 <div className="flex flex-wrap items-center gap-2 px-4 py-3.5" style={{ borderTop: LINE }}>
                   {dest && <RdButton size="sm" variant="primary" icon={ArrowUpRight} onClick={() => navigate(dest)} data-open-page>Open {pageName(dest) ?? 'the page'}</RdButton>}
+                  {fromCF && <RdButton size="sm" variant="primary" icon={Reply} onClick={() => navigate(`/help?tab=questions&subject=${encodeURIComponent(`Re: ${opened.title}`.slice(0, 120))}`)} data-reply-core-fitness>Reply to Core Fitness</RdButton>}
                   {opened.archived_at
                     ? <RdButton size="sm" icon={ArchiveRestore} onClick={() => void run(() => setArchived([opened.id], false), 'Moved back')}>Move back</RdButton>
                     : <RdButton size="sm" icon={Archive} onClick={() => void run(() => setArchived([opened.id], true), 'Archived')}>Archive</RdButton>}

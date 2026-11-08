@@ -225,3 +225,18 @@ a.todo:hover, .fb-row:hover { background: rgba(139,92,246,.07); }
   border-radius: var(--radius) var(--radius) 0 0;
 }
 .card-head .section-title { margin: 0 0 9px; }
+
+/* Writing to a gym's owner (0240): the at-risk row with its button, and the message form. */
+.risk-row { display: flex; align-items: center; gap: 10px; }
+.risk-row > .todo { flex: 1; min-width: 0; }
+.risk-row > .btn { flex: none; white-space: nowrap; }
+.btn.sm { padding: 6px 11px; font-size: 12px; min-height: 0; }
+.msg-owner { display: flex; flex-direction: column; gap: 12px; }
+.msg-owner .field { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: var(--text-2); font-weight: 600; }
+.msg-owner .field em { font-style: normal; font-weight: 400; margin-left: 6px; }
+.msg-owner textarea { width: 100%; resize: vertical; line-height: 1.5; }
+.msg-owner .chip { cursor: pointer; }
+.msg-owner .chip.on { background: var(--grad-v); color: #fff; border-color: transparent; }
+.owner-msg { padding: 10px 0; border-top: 1px solid var(--hairline); }
+.owner-msg:first-of-type { border-top: 0; }
+.owner-msg p { margin: 4px 0 0; white-space: pre-wrap; color: var(--text-2); font-size: 12.5px; }

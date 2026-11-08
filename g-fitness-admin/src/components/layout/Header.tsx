@@ -178,8 +178,9 @@ export default function Header() {
                           <Mail size={16} style={{ color: PRIMARY }} />
                         </div>
                         <div className="flex-1 min-w-0">
+                          {n.type === 'platform_message' && <p className="text-[11px] font-semibold uppercase tracking-wide mb-0.5" style={{ color: PRIMARY }} data-from-core-fitness>From Core Fitness</p>}
                           <p className="text-sm font-medium text-white">{n.title}</p>
-                          {n.message && <p className="text-xs mt-1" style={{ color: TEXT_SECOND }}>{n.message}</p>}
+                          {n.message && <p className="text-xs mt-1 line-clamp-2" style={{ color: TEXT_SECOND }}>{n.message}</p>}
                         </div>
                       </button>
                     ))}

@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
-  Activity, ArrowLeft, BarChart3, Clock, Mail, NotebookPen, Phone, Pin, Receipt, Sparkles, Trash2, UserCog, Users, Wallet,
+  Activity, ArrowLeft, BarChart3, Clock, Mail, MessageSquare, NotebookPen, Phone, Pin, Receipt, Send, Sparkles, Trash2, UserCog, Users, Wallet,
 } from 'lucide-react';
+import MessageOwner from '../components/MessageOwner';
+import { supabase } from '../lib/supabaseClient';
 import GymMark from '../components/GymMark';
 import GymDetail from '../components/GymDetail';
 import ExportGym from '../components/ExportGym';
@@ -51,6 +53,13 @@ export default function GymProfile() {
   const [billBusy, setBillBusy] = useState(false);
   // Tabs (2026-11-02): one subject at a time, each with the whole height — nothing squeezed under the rest.
   const [tab, setTab] = useState<GymTab>('overview');
+  /** What Core Fitness wrote to this gym's owner (0240); null = 0240 not pasted yet. */
+  const [messages, setMessages] = useState<{ sent_at: string; title: string; body: string; read_by: number; recipients: number; sent_by: string | null }[] | null>([]);
+  const [writing, setWriting] = useState(false);
+  const loadMessages = useCallback(async () => {
+    const { data, error: err } = await supabase.rpc('platform_gym_messages', { p_gym: gymId });
+    setMessages(err ? null : (data ?? []));
+  }, [gymId]);
 
   const loadNotes = useCallback(async () => { try { setNotes(await gymNotes(gymId)); } catch { /* before 0135 */ } }, [gymId]);
   const load = useCallback(async () => {
@@ -67,7 +76,8 @@ export default function GymProfile() {
     if (ev.status === 'fulfilled') setEvents(ev.value);
     if (p.status === 'fulfilled') setPayments(p.value);
     await loadNotes();
-  }, [gymId, loadNotes]);
+    await loadMessages();
+  }, [gymId, loadNotes, loadMessages]);
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
   const act = async (fn: () => Promise<void>) => {
@@ -107,6 +117,7 @@ export default function GymProfile() {
           ? <span className="pill warn"><span className="dot" />{gym.lock_reason === 'suspended' ? 'Suspended' : gym.lock_reason === 'trial_ended' ? 'Trial ended — paused' : 'Overdue — read-only'}</span>
           : <span className="pill ok"><span className="dot" />{gym.owners === 0 || !gym.onboarded ? 'Setting up' : 'Live'}</span>}
         <SupportDoor gymId={gym.id} />
+        {writing && <MessageOwner open onClose={() => setWriting(false)} gymId={gym.id} gymName={gym.name} onSent={() => void loadMessages()} />}
         <ExportGym gymId={gym.id} gymName={gym.name} />
       </section>
 
@@ -239,7 +250,9 @@ export default function GymProfile() {
 
       {tab === 'people' && <div className="grid-2">
         <section className="card">
-          <h2 className="section-title"><UserCog size={14} /> Who runs it</h2>
+          <h2 className="section-title row" style={{ gap: 8 }}><UserCog size={14} /> <span className="grow">Who runs it</span>
+            <button type="button" className="btn ghost sm" onClick={() => setWriting(true)} data-write-owner><Send size={13} /> Write to the owner</button>
+          </h2>
           {contacts.length === 0 && <p className="empty">Nobody can sign in yet.</p>}
           {contacts.map((c) => (
             <div key={c.user_id} className="log">
@@ -254,6 +267,17 @@ export default function GymProfile() {
               </span>
             </div>
           ))}
+          <div className="section-title" style={{ marginTop: 14 }}><MessageSquare size={14} /> What Core Fitness wrote to them</div>
+          {messages === null ? <p className="empty">Messages to owners need migration 0240.</p>
+            : messages.length === 0 ? <p className="empty">Nothing yet. Write to the owner sends one to their bell and phone.</p>
+            : messages.map((m) => (
+              <div key={m.sent_at} className="owner-msg" data-owner-msg>
+                <span style={{ color: 'var(--text)', fontWeight: 600 }}>{m.title}</span>
+                <span className="muted" style={{ fontSize: 12 }}> · {new Date(m.sent_at).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                  {m.sent_by ? ` · by ${m.sent_by}` : ''} · {m.read_by > 0 ? 'read' : 'not read yet'}</span>
+                <p>{m.body}</p>
+              </div>
+            ))}
         </section>
 
         <section className="card">
