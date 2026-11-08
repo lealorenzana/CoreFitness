@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Maximize2, X } from 'lucide-react';
+import { Maximize2, Search, X } from 'lucide-react';
 
 /**
  * "View all" for any box that has more than it can show (2026-11-02, the owner's ask).
@@ -15,7 +15,11 @@ import { Maximize2, X } from 'lucide-react';
  * `boxes`: what counts as a box (the scroll area's nearest match is lifted).
  * `root`: where to look.
  */
-interface Spot { el: HTMLElement; top: number; right: number }
+/** A box with more than it shows; `show` = its list area is too short to read (a sliver), so the list hides and a
+ *  centred Show all takes its place (the owner, 2026-11-08: "a button show all, not a scroll with little space"). */
+interface Spot { el: HTMLElement; top: number; right: number; show?: { top: number; left: number; width: number; height: number; n: number } }
+/** Below this a list area shows a sliver, not a list. */
+const SLIVER = 150;
 
 const FLOAT = 'va-floating';
 /** The smallest a reading box is shrunk to (2026-11-02) — below it the text stops being readable, so it scrolls. */
@@ -46,6 +50,9 @@ function unfit(el: HTMLElement) {
 export default function ViewAll({ boxes, root, fit = false }: { boxes: string; root: string; fit?: boolean }) {
   const [spots, setSpots] = useState<Spot[]>([]);
   const [open, setOpen] = useState<HTMLElement | null>(null);
+  /** What to find in the open window (the owner, 2026-11-08: "a search bar to easily find something"). */
+  const [q, setQ] = useState('');
+  const [shown, setShown] = useState<{ n: number; of: number } | null>(null);
   const frame = useRef(0);
 
   const scan = useCallback(() => {
@@ -60,12 +67,25 @@ export default function ViewAll({ boxes, root, fit = false }: { boxes: string; r
         // View all for the full size. Re-measured each pass, so new rows (or fewer) are fitted again.
         const wasFit = el.dataset.vaFit !== undefined;
         if (wasFit) unfit(el);
-        if (el.scrollHeight <= el.clientHeight + 12 || el.clientHeight < 60) continue;
+        const wasCompact = el.dataset.vaCompact !== undefined;
+        if (el.scrollHeight <= el.clientHeight + 12 || el.clientHeight < 24) { if (wasCompact) delete el.dataset.vaCompact; continue; }
         const oy = getComputedStyle(el).overflowY;
         if (oy !== 'auto' && oy !== 'scroll') continue;
         // A column of several boxes (a side rail) keeps its own scroll, as the owner asked: only a single box is fitted.
         if (el.querySelectorAll(boxes).length > 1 || el.closest('[data-va-keep]')) continue;
         const need = Math.floor((el.clientHeight / el.scrollHeight) * 100) / 100;
+        // A sliver: no fitting, no scroll — the list hides (visibility, so the box keeps its size) and Show all sits on it.
+        if (el.clientHeight < SLIVER && !el.querySelector('input, textarea, select')) {
+          el.dataset.vaCompact = '';
+          const box = (el.closest(boxes) as HTMLElement | null) ?? el;
+          if (!area.contains(box) || box.classList.contains(FLOAT) || found.has(box)) continue;
+          const r = el.getBoundingClientRect(), b = box.getBoundingClientRect();
+          if (b.width < 160 || b.bottom < 0 || b.top > innerHeight) continue;
+          const list = el.childElementCount > 1 ? el : (el.firstElementChild as HTMLElement | null) ?? el;
+          found.set(box, { el: box, top: 0, right: 0, show: { top: r.top, left: r.left, width: r.width, height: r.height, n: list.childElementCount } });
+          continue;
+        }
+        if (wasCompact) delete el.dataset.vaCompact;
         if (fit && need >= MIN_FIT && !scrolls(el)) {
           // Padding and gaps do not shrink with the contents, so step down until it really fits.
           let ratio = need;
@@ -101,11 +121,30 @@ export default function ViewAll({ boxes, root, fit = false }: { boxes: string; r
     return () => { mo.disconnect(); removeEventListener('resize', scan); removeEventListener('scroll', scan, true); clearInterval(t); cancelAnimationFrame(frame.current); };
   }, [scan]);
 
+  // The window's list: the element inside it with the most children. Rows that do not contain every word hide.
+  useEffect(() => {
+    if (!open) return;
+    let list: HTMLElement = open, most = 0;
+    for (const n of [open, ...Array.from(open.querySelectorAll<HTMLElement>('*'))]) {
+      if (n.childElementCount > most) { most = n.childElementCount; list = n; }
+    }
+    const rows = Array.from(list.children) as HTMLElement[];
+    const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    let n = 0;
+    for (const r of rows) {
+      const hit = words.every((w) => (r.textContent ?? '').toLowerCase().includes(w));
+      if (hit) { r.style.removeProperty('display'); n++; } else r.style.setProperty('display', 'none');
+    }
+    setShown(words.length ? { n, of: rows.length } : null);
+    return () => { for (const r of rows) r.style.removeProperty('display'); };
+  }, [open, q]);
+
   const close = useCallback(() => {
     document.querySelectorAll('.va-hole').forEach((n) => n.remove());
     requestAnimationFrame(() => scan());
     setOpen((el) => { el?.classList.remove(FLOAT); return null; });
     document.body.classList.remove('va-open');
+    setQ('');
   }, [scan]);
 
   useEffect(() => {
@@ -132,6 +171,7 @@ export default function ViewAll({ boxes, root, fit = false }: { boxes: string; r
     // Full size in the window: undo the fitting inside it.
     unfit(el);
     el.querySelectorAll<HTMLElement>('[data-va-fit]').forEach(unfit);
+    el.querySelectorAll<HTMLElement>('[data-va-compact]').forEach((n) => { delete n.dataset.vaCompact; });
     el.classList.add(FLOAT);
     el.scrollTop = 0;
     document.body.classList.add('va-open');
@@ -140,7 +180,12 @@ export default function ViewAll({ boxes, root, fit = false }: { boxes: string; r
 
   return createPortal(
     <>
-      {!open && spots.map((s, i) => (
+      {!open && spots.map((s, i) => s.show ? (
+        <button key={i} type="button" className="va-show" style={{ top: s.show.top, left: s.show.left, width: s.show.width, height: s.show.height }}
+          onClick={() => lift(s.el)} aria-label="Show all of this box" data-va-show>
+          <span><Maximize2 size={14} /> Show all{s.show.n > 1 ? ` (${s.show.n})` : ''}</span>
+        </button>
+      ) : (
         <button key={i} type="button" className="va-btn" style={{ top: s.top, right: s.right }} onClick={() => lift(s.el)}
           aria-label="View all of this box" data-va>
           <Maximize2 size={12} /> View all
@@ -149,6 +194,11 @@ export default function ViewAll({ boxes, root, fit = false }: { boxes: string; r
       {open && (
         <>
           <div className="va-backdrop" onClick={close} />
+          <label className="va-search" data-va-search>
+            <Search size={15} />
+            <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find in this list…" aria-label="Find in this list" />
+            {shown && <span className="va-search__n">{shown.n} of {shown.of}</span>}
+          </label>
           <button type="button" className="va-close" onClick={close} aria-label="Close the full view" data-va-close>
             <X size={16} /> Close
           </button>

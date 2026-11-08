@@ -150,11 +150,11 @@ export default function Capacity() {
 
       <section className="card cap-3">
         <h2 className="section-title"><Table2 size={14} /> Biggest tables <InfoDot tip="Size on disk including indexes; rows are Postgres's own estimate, never counted by reading them." /></h2>
-        {bars(tables.map((t) => ({ key: t.key, label: <code>{t.label}</code>, used: t.used, sub: t.n !== null ? `${count(t.n)} rows` : undefined })), 'Nothing measured.')}
+        {bars(tables.map((t) => ({ key: t.key, label: t.what ? <>{t.what} <code className="cap-code">{t.label}</code></> : <code>{t.label}</code>, used: t.used, sub: t.n !== null ? `${count(t.n)} rows` : undefined })), 'Nothing measured.')}
       </section>
       <section className="card cap-3">
         <h2 className="section-title"><HardDrive size={14} /> Storage by bucket</h2>
-        {bars(buckets.map((b) => ({ key: b.key, label: <code>{b.label}</code>, used: b.used, sub: b.n !== null ? `${count(b.n)} files` : undefined })), 'No files stored yet.')}
+        {bars(buckets.map((b) => ({ key: b.key, label: b.what ? <>{b.what} <code className="cap-code">{b.label}</code></> : <code>{b.label}</code>, used: b.used, sub: [b.n !== null ? `${count(b.n)} files` : null, b.uploaded ? `newest ${new Date(b.uploaded).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}` : null].filter(Boolean).join(' · ') || undefined })), 'No files stored yet.')}
       </section>
       <section className="card cap-3">
         <h2 className="section-title"><Building2 size={14} /> Each gym's footprint <InfoDot tip="Rows the gym owns across every gym table, and its own files under gyms/<id>/. Counts only." /></h2>
@@ -164,7 +164,15 @@ export default function Capacity() {
       <section className="card cap-3">
         <h2 className="section-title"><FileImage size={14} /> Largest files <InfoDot tip="By size and the gym that owns them. A file's name is never shown — it can be a person's." /></h2>
         {det === null ? <p className="empty"><FileImage size={22} className="empty-icon" />Paste migration 0140 to list them.</p>
-          : bars(files.map((f) => ({ key: f.key, label: f.label, used: f.used })), 'No files stored yet.')}
+          // What, whose, type and when (0239) — before 0239, the bucket and owner as before.
+          : bars(files.map((f) => ({
+              key: f.key,
+              label: f.what ? <>{f.what}<span className="cap-whose"> — {f.whose}</span></> : f.label,
+              used: f.used,
+              sub: f.what ? [f.file_type ? f.file_type.replace(/^image\//, '').replace(/^application\//, '').toUpperCase() : null,
+                             f.uploaded ? `uploaded ${new Date(f.uploaded).toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}` : null,
+                             `in ${f.label.split(' · ')[0]}`].filter(Boolean).join(' · ') : undefined,
+            })), 'No files stored yet.')}
       </section>
     </div>
   );

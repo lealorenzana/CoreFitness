@@ -19,7 +19,11 @@ const nums = <T,>(rows: T[], keys: (keyof T)[]): T[] => (rows ?? []).map((r) => 
 });
 
 export interface CapacityDay { day: string; db_bytes: number; storage_bytes: number; storage_objects: number; mau: number }
-export interface CapacityDetail { kind: 'table' | 'bucket' | 'file'; key: string; label: string; used: number; n: number | null }
+export interface CapacityDetail {
+  kind: 'table' | 'bucket' | 'file'; key: string; label: string; used: number; n: number | null;
+  /** 0239: what it is in plain words, whose it is, its type and when it was uploaded. Absent before 0239. */
+  what?: string | null; whose?: string | null; file_type?: string | null; uploaded?: string | null;
+}
 export interface GymFootprint { gym_id: string; name: string; rows: number; files: number; file_bytes: number }
 export interface LoggedEvent {
   id: number; gym_id: string | null; gym_name: string | null; action: string; summary: string;
