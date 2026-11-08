@@ -45,7 +45,8 @@ export default function RibbonField() {
 
     const draw = (t: number) => {
       const W = canvas.width, H = canvas.height;
-      const ph = t * 0.81;
+      // Slower than the original's 0.81 (the owner, 2026-11-08: "the wave should be slower").
+      const ph = t * 0.3;
       const spin = ph * 1;
       // Sway, zero at ph = 0: sin(x + p) − sin(p) with p = 0.
       const angle = ANGLE + Math.sin(spin * 0.6) * 28 * AMT;

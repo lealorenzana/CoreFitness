@@ -159,7 +159,8 @@ a.todo:hover, .fb-row:hover { background: rgba(139,92,246,.07); }
 
 /* Meters and bars: gradient fills that glow. */
 .meter, .bar { background: rgba(255,255,255,.06); }
-.meter > *, .bar-fill, .ov-fill { background: var(--grad-v) !important; box-shadow: 0 0 12px -2px #8B5CF6; }
+/* Only real bar fills — .ov-fill is a layout class ("take the space left"), and painting it hid an empty state's words. */
+.meter > span, .meter-bar > span, .bar-fill { background: var(--grad-v) !important; box-shadow: 0 0 12px -2px #8B5CF6; }
 
 /* The command palette, tooltips and floating panels: solid glass over the aurora. */
 .pbell__panel, [role="dialog"], .palette, .cmdk, .tooltip { background: rgba(16, 14, 30, .92) !important; backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
@@ -173,7 +174,8 @@ a.todo:hover, .fb-row:hover { background: rgba(139,92,246,.07); }
 /* ---- the background: the Ribbon Field (components/RibbonField.tsx, 2026-11-08) ----------------------- */
 .ribbon { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; background: #080610; }
 /* Drawn at a quarter size, stretched, and softened ("soften" 7) — the oversized layer hides the slices. */
-.ribbon__canvas { position: absolute; inset: -4%; width: 108%; height: 108%; filter: blur(14px) saturate(115%); }
+/* Toned down (the owner, 2026-11-08: "much lighter, not too much"): softer, less saturated, further back. */
+.ribbon__canvas { position: absolute; inset: -4%; width: 108%; height: 108%; filter: blur(28px) saturate(85%); opacity: .45; }
 /* Grain 20 (overlay) and vignette 11, as the gradient's own CSS. */
 .ribbon__grain { position: absolute; inset: 0; opacity: .2; mix-blend-mode: overlay;
   background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/></svg>");
