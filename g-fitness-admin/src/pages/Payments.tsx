@@ -14,7 +14,9 @@ import { Banknote, CalendarRange, ChevronRight, Clock, Download, Plus, Receipt a
 import { showToast } from '../utils/toast';
 import { listPayments, recordPayment, updatePaymentStatus } from '../lib/api/payments';
 import { listMembers } from '../lib/api/members';
-import { listMemberships } from '../lib/api/memberships';
+import { listMemberships, changeMembershipPlan } from '../lib/api/memberships';
+import { listPlans } from '../lib/api/membershipPlans';
+import type { MembershipPlanRow } from '../types/db';
 import { notifyUser } from '../lib/api/notify';
 import {
   listOpenRenewalRequests, declineRenewalRequest, type OpenRenewalRequest,
@@ -35,6 +37,8 @@ interface Payment {
  *  typing an amount blind against a plan they can't see. */
 export interface MemberPlanInfo {
   membershipId: string;
+  /** The plan the membership is on now — the form starts here, and a different pick switches it before recording. */
+  planId: string;
   /** NULL on a non-expiring plan (0024) — recordPayment leaves the expiry unset. */
   durationDays: number | null;
   planName: string;
@@ -81,20 +85,26 @@ export default function Payments() {
   const [memberPhotos, setMemberPhotos] = useState<Record<string, string | null>>({});
   /** "I'm coming to renew" from the phone app (0091). Null before it is live. */
   const [requests, setRequests] = useState<OpenRenewalRequest[] | null>(null);
-  const [preset, setPreset] = useState<{ memberId: string; memberName: string; amount: number; key: string; method?: string; notes?: string } | null>(null);
+  const [preset, setPreset] = useState<{ memberId: string; memberName: string; amount: number; key: string; method?: string; notes?: string; planId?: string } | null>(null);
+  /** The gym's plans, for the form's plan picker (owner, 2026-11-10: "there should be a plan picker"). */
+  const [plans, setPlans] = useState<MembershipPlanRow[]>([]);
+  /** A request being approved in one click — its button is busy so a double tap records once. */
+  const [approving, setApproving] = useState<string | null>(null);
   const [proof, setProof] = useState<string | null>(null);
   const [toDecline, setToDecline] = useState<OpenRenewalRequest | null>(null);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [paymentRows, members, memberships, open] = await Promise.all([
+      const [paymentRows, members, memberships, open, planRows] = await Promise.all([
         listPayments(),
         listMembers(),
         listMemberships(),
         listOpenRenewalRequests(),
+        listPlans().catch(() => [] as MembershipPlanRow[]),
       ]);
       setRequests(open);
+      setPlans(planRows);
 
       const nameById: Record<string, string> = {};
       const photoById: Record<string, string | null> = {};
@@ -115,6 +125,7 @@ export default function Payments() {
           newestCreatedAt[m.member_id] = m.created_at;
           latestMembershipByMember[m.member_id] = {
             membershipId: m.id,
+            planId: m.plan_id,
             // `?? 30` would be wrong here: NULL is a deliberate "never expires",
             // and coalescing it would hand the free tier a 30-day expiry. Only a
             // missing plan join falls back.
@@ -195,10 +206,17 @@ export default function Payments() {
       return;
     }
     try {
+      // A different plan picked (the form's picker, or a renewal asking for another plan): switch the membership
+      // FIRST, then record — recording is what starts the term, from the new plan's days (CLAUDE.md: a plan change
+      // must precede recordPayment). One step for the desk instead of a trip to Members → Membership.
+      const switching = !!data.planId && data.planId !== membership.planId;
+      const newPlan = switching ? plans.find((pl) => pl.id === data.planId) : undefined;
+      if (switching && !newPlan) throw new Error('That plan is no longer offered. Pick another.');
+      if (newPlan) await changeMembershipPlan(membership.membershipId, newPlan.id);
       await recordPayment({
         member_id: data.memberId,
         membership_id: membership.membershipId,
-        duration_days: membership.durationDays,
+        duration_days: newPlan ? newPlan.duration_days : membership.durationDays,
         amount: data.amount,
         method: data.method.toLowerCase(),
         status: 'completed',
@@ -242,8 +260,29 @@ export default function Payments() {
    * row — the same asymmetry notify.ts describes between record and alert.
    */
   /** Record the payment a request asked for — the modal opens filled in. */
+  const methodOf = (r: OpenRenewalRequest) => !r.paid ? 'Cash'
+    : r.paid.kind === 'gcash' ? 'GCash' : r.paid.kind === 'maya' ? 'Maya' : 'Bank transfer';
+  /**
+   * One click (owner, 2026-11-10: "a button clicked then it's approved, so the transaction is fast"): the plan they
+   * asked for, its price (or what they sent online), today, cash at the desk or the method they paid by — the plan
+   * switched if it changed, the payment recorded, the request closed. Edit details opens the same in the form first.
+   */
+  const approveRequest = async (r: OpenRenewalRequest) => {
+    if (approving) return;
+    setApproving(r.id);
+    try {
+      await handleRecordPayment({
+        memberId: r.memberId, memberName: r.memberName, amount: r.paid?.amount ?? r.planPrice,
+        method: methodOf(r), date: todayKey(), planId: r.planId,
+        notes: r.paid
+          ? `Paid online by ${r.paid.method}, ref ${r.paid.reference}${r.paid.paidOn ? ` on ${r.paid.paidOn}` : ''}`
+          : `Paid at the desk for ${r.planName}`,
+      });
+    } finally { setApproving(null); }
+  };
+
   const recordForRequest = (r: OpenRenewalRequest) => {
-    setPreset({ memberId: r.memberId, memberName: r.memberName, amount: r.paid?.amount ?? r.planPrice, key: r.id,
+    setPreset({ memberId: r.memberId, memberName: r.memberName, amount: r.paid?.amount ?? r.planPrice, key: r.id, planId: r.planId,
       ...(r.paid ? {
         method: r.paid.kind === 'gcash' ? 'GCash' : r.paid.kind === 'maya' ? 'Maya' : 'Bank transfer',
         notes: `Paid online by ${r.paid.method}, ref ${r.paid.reference}${r.paid.paidOn ? ` on ${r.paid.paidOn}` : ''}`,
@@ -416,7 +455,7 @@ export default function Payments() {
             <div className="px-4 py-3" style={{ borderBottom: LINE }}>
               <p className="text-[15px] font-semibold text-white">To approve</p>
               <p className="text-[12.5px]" style={{ color: SECOND }}>
-                Members who paid your GCash or bank and sent the reference come first — check it reached you, then approve. Below them, members coming to pay at the desk. Each closes when you record the payment.
+                Members who paid your GCash or bank and sent the reference come first — check it reached you, then approve. Below them, members coming to pay at the desk. One click approves it — the plan they asked for, the payment and the receipt; Edit details to change the amount or method first.
               </p>
             </div>
             <div className="rd-fit-scroll p-4">
@@ -461,12 +500,18 @@ export default function Payments() {
                           {current ? <> — on {current.planName} now</> : ' — no membership yet'}
                         </p>
                         {planChange && (
-                          <p className="text-[12px]" style={{ color: TONE.amber.fg }}>A plan change: switch them to {r.planName} in Members → Membership first, then record the payment.</p>
+                          <p className="text-[12px]" style={{ color: TONE.amber.fg }} data-plan-switch>Approving switches them from {current.planName} to {r.planName}.</p>
                         )}
-                        <div className="flex gap-1.5">
-                          <RdButton size="sm" variant="primary" icon={Banknote} disabled={!!planChange || !current} onClick={() => recordForRequest(r)} data-approve>
-                            {r.paid ? 'Approve payment' : 'Record payment'}
+                        {!current && (
+                          <p className="text-[12px]" style={{ color: TONE.amber.fg }}>No membership yet — give them one in Members first.</p>
+                        )}
+                        <div className="flex flex-wrap gap-1.5">
+                          <RdButton size="sm" variant="primary" icon={Banknote} disabled={!current || approving !== null} onClick={() => void approveRequest(r)} data-approve>
+                            {approving === r.id ? 'Approving…'
+                              : r.paid ? `Approve ${peso(r.paid.amount)} ${methodOf(r)}`
+                              : r.planPrice > 0 ? `Paid ${peso(r.planPrice)} — approve` : 'Approve'}
                           </RdButton>
+                          <RdButton size="sm" variant="ghost" disabled={!current || approving !== null} onClick={() => recordForRequest(r)} data-approve-edit>Edit details</RdButton>
                           <RdButton size="sm" variant="ghost" onClick={() => setToDecline(r)}>Decline</RdButton>
                         </div>
                       </div>
@@ -522,6 +567,7 @@ export default function Payments() {
         onClose={() => { setIsModalOpen(false); setPreset(null); }}
         onSubmit={handleRecordPayment}
         planByMember={memberMembership}
+        plans={plans}
         preset={preset}
         lastMethodByMember={lastMethodByMember}
       />

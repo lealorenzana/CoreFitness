@@ -18,7 +18,8 @@ const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLI
         height: 40,
         background: SURFACE_RAISED,
         border: `1px solid ${BORDER}`,
-        color: '#fff',
+        // The theme's words, not a fixed white: in light mode white on the pale field was invisible (2026-11-10).
+        color: 'var(--color-text-primary, #fff)',
         ...style,
       }}
       onFocus={(e) => {

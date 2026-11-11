@@ -515,8 +515,8 @@ function MembershipTab({ detail, onRefresh }: { detail: MemberDetail; onRefresh:
           <p className="mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
             Asked {formatDate(detail.renewalRequest.createdAt)}{detail.renewalRequest.note ? ` · ${detail.renewalRequest.note}` : ''}.
             {current?.membership_plans?.name && current.membership_plans.name !== detail.renewalRequest.planName
-              ? ` Change their plan to ${detail.renewalRequest.planName} first, then record the payment — that closes the request.`
-              : ' Recording their payment closes the request.'}
+              ? ` Approve it in Payments → To approve: one click moves them to ${detail.renewalRequest.planName} and records the payment.`
+              : ' Approve it in Payments → To approve, or record their payment — either closes the request.'}
           </p>
         </div>
       )}

@@ -3,10 +3,16 @@
  * Payments, Record payment opening prefilled from a request, the Dashboard
  * heatmap reading gym_traffic(), and the member drawer's request banner.
  *
+ * 2026-11-10 (owner: "pay at the front desk should be one click"): Lea is on Premium and asks for Quarterly. The
+ * card says approving switches the plan; Edit details opens the form on Quarterly at its price, with the plan
+ * picker and a "Custom amount" note when the amount is changed; one click on the approve button switches the
+ * membership to Quarterly FIRST, then records ₱4,200 cash (the order the request-closing trigger needs).
+ *
  * Playwright runner's `filename` argument, admin dev server on :5174.
  */
 async (page) => {
   await page.unrouteAll({ behavior: 'ignoreErrors' });
+  await page.addInitScript(() => { window.__CF_NO_TOURS = true; });
   const REF = 'ifwxtekyjgeljerslnzr';
   const KEY = `sb-${REF}-auth-token`;
   const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
@@ -81,12 +87,19 @@ async (page) => {
       { id: 'l2', member_id: 'm1', performed_on: day(0), activity: 'Arms', duration_minutes: null, notes: null, created_at: iso(0), completed_at: null },
     ],
     payments: [], pt_sessions: [], body_measurements: [], notifications: [],
-    membership_plans: [{ id: 'p3', name: 'Premium', price: 1500, duration_days: 30, tier: 'premium', is_active: true }],
-    renewal_requests: [{ id: 'rr1', member_id: 'm1', plan_id: 'p3', note: 'Coming tomorrow', status: 'open', created_at: iso(-0.2),
-      membership_plans: { name: 'Premium', price: 1500, duration_days: 30 } }],
+    membership_plans: [{ id: 'p3', name: 'Premium', price: 1500, duration_days: 30, tier: 'premium', is_active: true },
+      { id: 'p4', name: 'Quarterly', price: 4200, duration_days: 90, tier: 'premium', is_active: true }],
+    // A plan change: on Premium, asking for Quarterly (the owner's screenshot, 2026-11-10).
+    renewal_requests: [{ id: 'rr1', member_id: 'm1', plan_id: 'p4', note: 'Coming tomorrow', status: 'open', created_at: iso(-0.2),
+      membership_plans: { name: 'Quarterly', price: 4200, duration_days: 90 } }],
   };
   const CALLED = [];
+  /** Every write, in order: [method, table, body]. */
+  const WRITES = [];
   const RPC = {
+    // Tenancy (0104): the owner is signed in to a gym — without this the app sends them back to sign in.
+    my_gym_context: [{ gym_id: 'gym-1', gym_name: 'G Fitness', slug: 'g-fitness', role: 'admin', status: 'active',
+      lock_reason: null, short_name: null, logo_url: null, accent: 'violet', gym_count: 1, onboarded: true, onboarding_step: null, gym_state: 'live' }],
     gym_traffic: [{ dow: 1, band: '6pm', visits: 12, weeks: 4 }, { dow: 3, band: '9am', visits: 4, weeks: 4 }],
     resource_save_counts: [{ resource_id: 'w1', saved: 12, done: 5 }],
     exercise_routine_counts: [{ exercise_id: 'e1', routines: 3, members: 2 }],
@@ -111,6 +124,15 @@ async (page) => {
       CALLED.push(fn);
       return json(fn in RPC ? RPC[fn] : []);
     }
+    if (pathname.startsWith('/rest/v1/') && req.method() !== 'GET') {
+      const t = pathname.split('/rest/v1/')[1];
+      let body = null;
+      try { body = JSON.parse(req.postData() || 'null'); } catch { body = null; }
+      WRITES.push([req.method(), t, body]);
+      const row = { id: 'w' + WRITES.length, ...(Array.isArray(body) ? body[0] : body) };
+      const base = t === 'memberships' ? { ...TABLES.memberships[0], ...row } : row;
+      return json(one ? base : [base], req.method() === 'POST' ? 201 : 200);
+    }
     if (pathname.startsWith('/rest/v1/')) {
       const t = pathname.split('/rest/v1/')[1];
       let rows = TABLES[t] ?? [];
@@ -133,17 +155,46 @@ async (page) => {
   // Payments: the queue, and Record payment opening filled in
   await page.goto('http://localhost:5174/payments', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(2500);
+  // The queue is its own tab on Payments (Records · To approve) since the redesign.
+  await page.getByRole('button', { name: /To approve/ }).first().click().catch(() => page.getByText('To approve').first().click());
+  await page.waitForTimeout(1200);
   let t = await text();
-  out.push('queue: ' + grab(t, 'To approve', 170));
+  out.push('queue: ' + grab(t, 'Members who paid', 120));
+  out.push('card says the plan switches: ' + (/Approving switches them from Premium to Quarterly/.test(t) ? 'yes' : 'MISSING'));
+  out.push('no trip to Members → Membership: ' + (!/switch them to Quarterly in Members/.test(t) ? 'yes' : 'MISSING'));
+  const card = page.locator('div.rounded-xl', { hasText: 'Wants Quarterly' }).first();
+  out.push('one-click button names the money: ' + ((await card.locator('[data-approve]').innerText()).includes('4,200') ? 'yes' : 'MISSING'));
+  out.push('approve is not blocked by the plan change: ' + (await card.locator('[data-approve]').isEnabled() ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/admin-renew-queue.png' });
-  // The queue card's button — the page header has its own Record payment, first in the DOM.
-  await page.locator('div.rounded-xl', { hasText: 'Wants Premium' }).first().getByRole('button', { name: /Record payment/ }).click();
+
+  // Edit details: the form on Quarterly at its price, the picker, and a custom amount said so
+  await card.locator('[data-approve-edit]').click();
   await page.waitForTimeout(1200);
   const amount = await page.locator('input[type="number"]').first().inputValue().catch(() => '?');
   const who = await page.getByPlaceholder('Search by name, email, or QR code...').inputValue().catch(() => '?');
-  out.push(`modal prefilled: member="${who}" amount=${amount}`);
+  const picked = await page.locator('[data-plan-picker] select').inputValue().catch(() => '?');
+  out.push(`modal prefilled: member="${who}" amount=${amount} plan=${picked}`);
+  out.push('prefilled on Quarterly at its price: ' + (picked === 'p4' && Number(amount) === 4200 ? 'yes' : 'MISSING'));
+  out.push('the form says the plan switches: ' + ((await page.locator('[data-plan-switch-note]').count()) === 1 ? 'yes' : 'MISSING'));
+  await page.locator('[data-plan-picker] select').selectOption('p3');
+  out.push('picking Premium fills its price: ' + (Number(await page.locator('input[type="number"]').first().inputValue()) === 1500 ? 'yes' : 'MISSING'));
+  await page.locator('[data-plan-picker] select').selectOption('p4');
+  await page.locator('input[type="number"]').first().fill('4000');
+  out.push('a custom amount is allowed and said so: ' + ((await page.locator('[data-custom-amount]').count()) === 1 ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/admin-renew-modal.png' });
-  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Cancel' }).first().click();
+  await page.waitForTimeout(600);
+
+  // One click: switch the plan, then record the cash
+  WRITES.length = 0;
+  await page.locator('div.rounded-xl', { hasText: 'Wants Quarterly' }).first().locator('[data-approve]').click();
+  await page.waitForTimeout(2500);
+  const iPlan = WRITES.findIndex(([m, tb, b]) => m === 'PATCH' && tb === 'memberships' && b && b.plan_id === 'p4');
+  const iPay = WRITES.findIndex(([m, tb]) => m === 'POST' && tb === 'payments');
+  const pay = iPay >= 0 ? WRITES[iPay][2] : null;
+  out.push('writes: ' + WRITES.map(([m, tb, b]) => `${m} ${tb}${b && b.plan_id ? ' plan=' + b.plan_id : ''}${b && b.amount ? ' amount=' + b.amount : ''}`).join(' | '));
+  out.push('one click switches the plan, THEN records ₱4,200 cash: '
+    + (iPlan >= 0 && iPay > iPlan && pay && Number(pay.amount) === 4200 && pay.method === 'cash' ? 'yes' : 'MISSING'));
 
   // Dashboard heatmap reads the shared function
   await page.goto('http://localhost:5174/', { waitUntil: 'domcontentloaded' });

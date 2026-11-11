@@ -2,7 +2,7 @@
  * The owner's fixes (2026-10-28, plan Task F2) against fixtures:
  *   Events — rebuilt on the redesign kit (the Announcements header and tabs, a table that fits, no page scroll);
  *            cancelling asks why, and nothing is written before a reason is given;
- *   Payments → To approve — a member who paid by reference comes first, with "Approve payment";
+ *   Payments → To approve — a member who paid by reference comes first, with one-click "Approve ₱X <method>";
  *   Walk-ins — a guest with pack visits left is a choice to tap, and tapping chooses "Use a pack visit";
  *   Programs — Delete asks why and calls delete_or_retire_program with the reason.
  * Setup copied from admin-renew-check.js. Admin dev server on :5174.
@@ -142,7 +142,7 @@ async (page) => {
   await page.getByRole('tab', { name: /To approve/ }).click();
   await page.waitForTimeout(700);
   const cards = await page.locator('[data-renew] [data-approve]').allInnerTexts();
-  out.push('To approve lists the paid request first, as Approve payment: ' + (cards[0] === 'Approve payment' && cards[1] === 'Record payment' ? 'yes' : 'MISSING ' + JSON.stringify(cards)));
+  out.push('To approve lists the paid request first, as Approve payment: ' + (/^Approve ₱[\d,]+ (GCash|Maya|Bank transfer)$/.test(cards[0] ?? '') && /— approve$/.test(cards[1] ?? '') ? 'yes' : 'MISSING ' + JSON.stringify(cards)));
   out.push('…with its reference: ' + (/GC-12345/.test(await text()) ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/admin-to-approve.png' });
 

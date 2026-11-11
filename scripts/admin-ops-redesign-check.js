@@ -256,7 +256,7 @@ async (page) => {
   await page.getByRole('tab', { name: /To approve/ }).click();
   await page.waitForTimeout(400);
   t = await text();
-  has('coming to renew: the online reference, Approve payment, Decline', /Ref GC-998877/.test(t) && (await page.getByRole('button', { name: /Approve payment/ }).count()) === 1 && (await page.getByRole('button', { name: /Record payment/ }).count()) >= 1
+  has('coming to renew: the online reference, one-click Approve, Edit details, Decline', /Ref GC-998877/.test(t) && (await page.locator('[data-approve]').count()) >= 1 && /^Approve ₱/.test((await page.locator('[data-approve]').first().innerText()).trim()) && (await page.locator('[data-approve-edit]').count()) >= 1
     && (await page.getByRole('button', { name: 'Decline', exact: true }).count()) === 1);
   await page.screenshot({ path: 'shots/ops-payments-renew.png' });
 

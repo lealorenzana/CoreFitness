@@ -1,7 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, CreditCard, User, Calendar, Banknote, Search } from 'lucide-react';
+import { X, CreditCard, User, Calendar, Banknote, Search, Layers } from 'lucide-react';
+import type { MembershipPlanRow } from '../../types/db';
 import Button from './Button';
 import Input from './Input';
 import { listMembers, type MemberWithProfile } from '../../lib/api/members';
@@ -13,6 +14,9 @@ export interface RecordPaymentInput {
   method: string;
   date: string;
   notes: string;
+  /** The plan this payment is for. When it is not the member's current plan, the page switches the membership to it
+   *  before recording (owner, 2026-11-10: "a plan picker that changes the amount to that plan"). */
+  planId?: string;
 }
 
 /**
@@ -35,12 +39,14 @@ interface RecordPaymentModalProps {
   /** memberId -> their current plan. Missing entry = no membership to bill against. */
   planByMember: Record<string, MemberPlanInfo>;
   /** Opened from a renewal request (0091): the member and the amount filled in. */
-  preset?: { memberId: string; memberName: string; amount: number; key: string; method?: string; notes?: string } | null;
+  preset?: { memberId: string; memberName: string; amount: number; key: string; method?: string; notes?: string; planId?: string } | null;
+  /** The gym's plans: the picker offers the ones on sale (active, priced). */
+  plans?: MembershipPlanRow[];
   /** memberId -> how they paid last time (lower case), so a renewal starts from it (E4). */
   lastMethodByMember?: Record<string, string>;
 }
 
-export default function RecordPaymentModal({ isOpen, onClose, onSubmit, planByMember, preset, lastMethodByMember }: RecordPaymentModalProps) {
+export default function RecordPaymentModal({ isOpen, onClose, onSubmit, planByMember, preset, lastMethodByMember, plans = [] }: RecordPaymentModalProps) {
   const [members, setMembers] = useState<MemberWithProfile[]>([]);
 
   useEffect(() => {
@@ -51,6 +57,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, planByMe
 
   const [formData, setFormData] = useState({
     memberId: '',
+    planId: '',
     amount: '',
     method: 'Cash',
     date: todayKey(),
@@ -68,6 +75,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, planByMe
   if (isOpen && preset && appliedPreset !== preset.key) {
     setAppliedPreset(preset.key);
     setFormData((f) => ({ ...f, memberId: preset.memberId, amount: String(preset.amount),
+      planId: preset.planId ?? planByMember[preset.memberId]?.planId ?? '',
       method: preset.method ?? f.method, notes: preset.notes ?? f.notes }));
     setMemberSearch(preset.memberName);
     setShowMemberDropdown(false);
@@ -88,6 +96,12 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, planByMe
 
   const selectedMember = members.find(m => m.profile.id === formData.memberId);
   const selectedPlan = formData.memberId ? planByMember[formData.memberId] : undefined;
+  // Plans on sale: active and priced. The member's current plan stays in the list even if it was retired since.
+  const onSale = plans.filter((pl) => (pl.is_active && !pl.price_unset) || pl.id === selectedPlan?.planId);
+  const chosenPlan = plans.find((pl) => pl.id === formData.planId);
+  const switching = !!selectedPlan && !!chosenPlan && chosenPlan.id !== selectedPlan.planId;
+  const custom = !!chosenPlan && formData.amount !== '' && Number(formData.amount) !== Number(chosenPlan.price);
+  const days = (d: number | null) => (d == null ? 'no expiry' : `${d} days`);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -113,6 +127,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, planByMe
   const resetForm = () => {
     setFormData({
       memberId: '',
+      planId: '',
       amount: '',
       method: 'Cash',
       date: todayKey(),
@@ -139,6 +154,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, planByMe
         method: formData.method,
         date: formData.date,
         notes: formData.notes,
+        planId: formData.planId || undefined,
       });
       resetForm();
       onClose();
@@ -164,6 +180,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, planByMe
     setFormData({
       ...formData,
       memberId: member.profile.id,
+      planId: plan?.planId ?? '',
       amount: plan && plan.planPrice > 0 ? String(plan.planPrice) : formData.amount,
       method,
     });
@@ -324,6 +341,38 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, planByMe
                   )}
                 </div>
 
+                {/* Plan — what this payment is for. Picking one fills its price; the amount below can still be anything. */}
+                {selectedPlan && onSale.length > 0 && (
+                  <div data-plan-picker>
+                    <label className="text-gray-400 text-sm block mb-2 flex items-center gap-2">
+                      <Layers size={16} />
+                      Plan
+                    </label>
+                    <select
+                      value={formData.planId}
+                      onChange={(e) => {
+                        const pl = plans.find((x) => x.id === e.target.value);
+                        setFormData({ ...formData, planId: e.target.value, amount: pl ? String(Number(pl.price)) : formData.amount });
+                        if (errors.amount) setErrors({ ...errors, amount: '' });
+                      }}
+                      aria-label="Plan"
+                      className="w-full bg-dark border border-dark-border rounded-xl px-4 py-3 text-white focus:border-primary-start transition-colors"
+                    >
+                      {onSale.map((pl) => (
+                        <option key={pl.id} value={pl.id}>
+                          {pl.name} — ₱{Number(pl.price).toLocaleString('en-PH')} / {days(pl.duration_days)}
+                          {pl.id === selectedPlan.planId ? ' (current)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                    {switching && (
+                      <p className="text-xs mt-1.5" style={{ color: 'var(--color-secondary)' }} data-plan-switch-note>
+                        Recording switches them from {selectedPlan.planName} to {chosenPlan!.name}; the new term is {days(chosenPlan!.duration_days)} from this payment.
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {/* Amount */}
                 <div>
                   <label className="text-gray-400 text-sm block mb-2 flex items-center gap-2">
@@ -342,6 +391,14 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, planByMe
                     placeholder="0.00"
                     className={errors.amount ? 'border-red-500' : ''}
                   />
+                  {/* Any amount is allowed — a discount, a part-payment, a promo. Say so when it is not the plan's price. */}
+                  {custom && (
+                    <p className="text-xs mt-1.5 text-gray-400" data-custom-amount>
+                      Custom amount — {chosenPlan!.name} is ₱{Number(chosenPlan!.price).toLocaleString('en-PH')}.{' '}
+                      <button type="button" className="underline" style={{ color: 'var(--color-primary-300, #c4b5fd)' }}
+                        onClick={() => setFormData({ ...formData, amount: String(Number(chosenPlan!.price)) })}>Use the plan&rsquo;s price</button>
+                    </p>
+                  )}
                   {errors.amount && (
                     <p className="text-yellow text-xs mt-1">{errors.amount}</p>
                   )}
