@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useSwipeToClose } from '../../lib/useSwipeToClose';
 import { Check, MagnifyingGlass, X } from '@phosphor-icons/react';
 
 /**
@@ -24,10 +25,17 @@ function readOptions(sel: HTMLSelectElement): Opt[] {
 }
 
 function titleOf(sel: HTMLSelectElement): string {
-  const own = sel.labels?.[0]?.textContent?.trim();
-  if (own) return own;
+  // The select's own name first. A <label> that WRAPS the select has every option's text in its textContent — the
+  // province sheet's title was all 80 provinces run together (2026-11-11) — so read the label without the select.
   const aria = sel.getAttribute('aria-label');
   if (aria) return aria;
+  const lab = sel.labels?.[0];
+  if (lab) {
+    const copy = lab.cloneNode(true) as HTMLElement;
+    copy.querySelectorAll('select, option, optgroup').forEach((n) => n.remove());
+    const own = copy.textContent?.replace(/\s+/g, ' ').trim();
+    if (own) return own;
+  }
   const near = sel.closest('label, [data-field]')?.querySelector('span, p, label')?.textContent?.trim();
   return near || 'Choose one';
 }
@@ -69,6 +77,7 @@ export default function SelectEnhancer() {
   }, []);
 
   const close = useCallback(() => setSel(null), []);
+  const swipe = useSwipeToClose(close);
   useEffect(() => {
     if (!sel) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
@@ -95,7 +104,7 @@ export default function SelectEnhancer() {
 
   return createPortal(
     <div className="cf-sel" role="presentation" data-select-sheet onClick={close}>
-      <div className="cf-sel__panel noc-sheet" role="listbox" aria-label={titleOf(sel)} onClick={(e) => e.stopPropagation()}>
+      <div ref={swipe} className="cf-sel__panel noc-sheet" role="listbox" aria-label={titleOf(sel)} onClick={(e) => e.stopPropagation()}>
         <span className="cf-sel__grab" aria-hidden />
         <div className="cf-sel__head">
           <b>{titleOf(sel)}</b>

@@ -4,6 +4,7 @@ import { X, ArrowRight } from '@phosphor-icons/react';
 import type { Notification } from '../../services/notificationService';
 import { fullTimestamp } from '../../utils/notificationDisplay';
 import { NocButton } from './noc';
+import { useSwipeToClose } from '../../lib/useSwipeToClose';
 import { GLASS, SCRIM } from './glass';
 
 /**
@@ -35,6 +36,7 @@ export default function NotificationDetail({
   onOpenAction?: (n: Notification) => void;
 }) {
   const root = typeof document !== 'undefined' ? document.getElementById('modal-root') : null;
+  const swipe = useSwipeToClose(onClose);
 
   const body = (
     <div className="absolute inset-0 z-[250]" style={{ pointerEvents: notification ? 'auto' : 'none' }}>
@@ -58,6 +60,7 @@ export default function NotificationDetail({
               initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 320 }}
               onClick={(e) => e.stopPropagation()}
+              ref={swipe}
               role="dialog" aria-modal="true" aria-label={notification.title}
             >
               <div aria-hidden className="mx-auto" style={{ width: 42, height: 4, borderRadius: 2, marginTop: 12, background: 'rgb(var(--hair-rgb, 233 233 237) / 0.25)' }} />

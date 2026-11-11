@@ -334,7 +334,7 @@ export default function RenewMembership() {
           style={{ fontSize: 13, height: 44, marginBottom: -12, color: 'var(--color-primary-300)' }}>
           ← Plans
         </button>
-        <PageTitle title="At the front desk" subtitle="Nothing is charged in the app" />
+        <PageTitle title={free ? 'At the front desk' : 'How to pay'} subtitle={free ? 'Nothing is charged in the app' : `Every way ${gym?.gym_name ?? 'the gym'} takes it — pick one`} />
 
         {/* Deliberately not a tick in a circle. Nothing has been paid or
             recorded, and the membership is exactly as it was a second ago. */}
@@ -344,13 +344,60 @@ export default function RenewMembership() {
             {selected.name}
           </p>
           <p style={{ fontSize: 15, marginTop: 4, color: 'var(--color-secondary)' }}>
-            {free ? 'No payment' : `${peso(Number(selected.price))} in cash`}
+            {free ? 'No payment' : peso(Number(selected.price))}
             <span style={{ fontSize: 12.5, marginLeft: 8, color: 'var(--color-text-muted)' }}>{describeTerm(selected)}</span>
           </p>
         </Panel>
 
+        {/* Online, when this gym takes it (owner, 2026-11-11: "it only shows paying at the front desk"). */}
+        {!free && payMongo && !switchMidTerm && (
+          <section data-howto-paymongo>
+            <SectionHead title="Pay in the app" />
+            <ol className="flex flex-col" style={{ gap: 10, marginTop: 12 }}>
+              {[
+                'Tap Back to plans below, then Continue.',
+                'Choose Pay online — GCash, Maya, card or QR Ph.',
+                `Pay ${peso(Number(selected.price))}. It is confirmed the moment it goes through, and your plan changes by itself.`,
+              ].map((s, i) => (
+                <li key={i} className="flex" style={{ gap: 12, fontSize: 13.5, lineHeight: 1.5, color: 'var(--color-text-secondary)' }}>
+                  <span className="flex-none" style={{ width: 18, color: 'var(--color-primary-300)' }}>{i + 1}</span>{s}
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
+        {!free && payMethods.length > 0 && (
+          <section data-howto-transfer>
+            <SectionHead title={`Send to the gym's ${payMethods.map((m) => m.label).join(' / ')}`} />
+            <ol className="flex flex-col" style={{ gap: 10, marginTop: 12 }}>
+              {[
+                `Send exactly ${peso(Number(selected.price))} to one of these:`,
+                'Keep the reference number from your receipt (a screenshot helps).',
+                'Tap Back to plans, then Continue, choose Send to the gym, and type the reference.',
+                'The desk checks it reached them and approves — your plan changes then.',
+              ].map((s, i) => (
+                <li key={i} className="flex" style={{ gap: 12, fontSize: 13.5, lineHeight: 1.5, color: 'var(--color-text-secondary)' }}>
+                  <span className="flex-none" style={{ width: 18, color: 'var(--color-primary-300)' }}>{i + 1}</span>{s}
+                </li>
+              ))}
+            </ol>
+            <div className="flex flex-col" style={{ gap: 8, marginTop: 12 }}>
+              {payMethods.map((m) => (
+                <div key={m.id} className="flex items-center" style={{ gap: 12, padding: '10px 12px', borderRadius: 14, border: '1px solid var(--color-hairline)' }}>
+                  {m.qr_image && <img src={m.qr_image} alt={`${m.label} QR code`} style={{ width: 56, height: 56, objectFit: 'contain', background: '#fff', borderRadius: 8, padding: 3, flex: 'none' }} />}
+                  <span className="min-w-0" style={{ fontSize: 13, lineHeight: 1.45 }}>
+                    <b style={{ color: 'var(--color-text-primary)' }}>{m.label}</b>
+                    {m.account_name && <span className="block" style={{ color: 'var(--color-text-secondary)' }}>{m.account_name}</span>}
+                    {m.account_number && <span className="block" style={{ color: 'var(--color-primary-300)', fontWeight: 600 }}>{m.account_number}</span>}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         <section>
-          <SectionHead title="How this works" />
+          <SectionHead title={free ? 'How this works' : 'Or pay at the front desk'} />
           <ol className="flex flex-col" style={{ gap: 10, marginTop: 12 }}>
             {steps.map((s, i) => (
               <li key={i} className="flex" style={{ gap: 12, fontSize: 13.5, lineHeight: 1.5, color: 'var(--color-text-secondary)' }}>
@@ -364,6 +411,11 @@ export default function RenewMembership() {
           )}
         </section>
 
+        {!free && (payMongo || payMethods.length > 0) && (
+          <NocButton variant="fill" onClick={() => { setConfirmed(false); setSheet(true); }} className="w-full" data-howto-pay-now>
+            Back to plans — pay now
+          </NocButton>
+        )}
         <NocButton variant="ghost" onClick={() => navigate('/member/payments')} className="w-full">
           See payment history
         </NocButton>
@@ -625,7 +677,7 @@ export default function RenewMembership() {
             <div style={{
               position: 'sticky', bottom: 12, zIndex: 5, marginRight: 66,
               display: 'flex', alignItems: 'center', gap: 10, padding: 8, paddingLeft: 14,
-              borderRadius: 20, background: 'var(--color-surface-raised)', border: '1px solid var(--color-hairline)',
+              borderRadius: 20, background: 'var(--raised-solid, var(--color-surface-raised))', border: '1px solid var(--color-hairline)',
               boxShadow: '0 12px 32px -12px rgba(0,0,0,0.75)',
             }}>
               <span className="flex-1 min-w-0">

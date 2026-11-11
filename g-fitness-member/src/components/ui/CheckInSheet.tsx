@@ -14,6 +14,7 @@ import { getMemberHome, type MemberHome } from '../../services/memberHomeService
 import { errorMessage } from '../../utils/errorMessage';
 import { getMyDoor, setMyPick, type MyDoor } from '../../lib/api/door';
 import { toast } from './Toast';
+import { useSwipeToClose } from '../../lib/useSwipeToClose';
 import { GLASS, SCRIM } from './glass';
 
 /**
@@ -29,6 +30,7 @@ import { GLASS, SCRIM } from './glass';
  * would scan it and get a rejection, which reads as the app being broken.
  */
 export default function CheckInSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const swipe = useSwipeToClose(onClose);
   const t = useT();
   const [home, setHome] = useState<MemberHome | null>(null);
   const [loading, setLoading] = useState(false);
@@ -188,6 +190,7 @@ export default function CheckInSheet({ open, onClose }: { open: boolean; onClose
           <motion.div
             initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 32 }}
             transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+            ref={swipe}
             role="dialog" aria-modal="true" aria-label="Check-in QR code"
             className="absolute inset-x-0 bottom-0 flex flex-col items-center [&>*]:flex-none"
             style={{

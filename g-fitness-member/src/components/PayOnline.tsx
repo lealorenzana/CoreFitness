@@ -85,7 +85,7 @@ export default function PayOnline({ methods, amount, value, onChange, allowProof
 
       {big && m.qr_image && createPortal(
         <div role="dialog" aria-label={`${m.label} QR code`} onClick={() => setBig(false)}
-          style={{ position: 'fixed', inset: 0, zIndex: 80, background: 'rgba(0,0,0,0.85)', display: 'grid', placeItems: 'center', padding: 24 }}>
+          style={{ position: 'fixed', inset: 0, zIndex: 3000, background: 'rgba(0,0,0,0.85)', display: 'grid', placeItems: 'center', padding: 24 }}>
           <img src={m.qr_image} alt={`${m.label} QR code`} style={{ width: 'min(86vw, 360px)', background: '#fff', borderRadius: 16, padding: 12 }} />
         </div>, document.body)}
     </div>

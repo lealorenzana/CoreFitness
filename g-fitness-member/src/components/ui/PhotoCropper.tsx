@@ -157,7 +157,7 @@ function Cropper({ job: j }: { job: Job }) {
 
   return (
     <div role="dialog" aria-modal="true" aria-label={title} data-photo-cropper
-      style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'grid', placeItems: 'center', padding: 16,
+      style={{ position: 'fixed', inset: 0, zIndex: 3000, display: 'grid', placeItems: 'center', padding: 16,
         background: 'rgba(5,5,10,0.82)', backdropFilter: 'blur(6px)' }}>
       <div style={{ width: 'min(100%, 380px)', borderRadius: 20, padding: 18, background: 'var(--color-surface, #14141F)',
         border: '1px solid var(--color-border, rgba(255,255,255,0.1))', color: 'var(--color-text-primary, #fff)' }}>

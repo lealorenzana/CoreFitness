@@ -100,7 +100,7 @@ function Viewer({ shown: s }: { shown: Shown }) {
     <div role="dialog" aria-modal="true" aria-label={s.label} data-photo-viewer
       onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
       onWheel={(e) => setZ(zoom - e.deltaY * 0.002)}
-      style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.92)', touchAction: 'none',
+      style={{ position: 'fixed', inset: 0, zIndex: 3000, background: 'rgba(0,0,0,0.92)', touchAction: 'none',
         display: 'grid', placeItems: 'center', overflow: 'hidden' }}>
       <img src={s.url} alt={s.label} draggable={false}
         style={{ maxWidth: '100vw', maxHeight: '86vh', objectFit: 'contain', userSelect: 'none', pointerEvents: 'none',

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CaretDown, Check, MagnifyingGlass, X } from '@phosphor-icons/react';
 import type { Exercise } from '../../lib/api/workoutSets';
+import { useSwipeToClose } from '../../lib/useSwipeToClose';
 import { GLASS, SCRIM } from './glass';
 
 /**
@@ -57,6 +58,7 @@ export default function ExercisePicker({
   }, [exercises, query]);
 
   const close = () => { setOpen(false); setQuery(''); };
+  const swipe = useSwipeToClose(close);
   const pick = (id: string) => { onChange(id); close(); };
   const root = document.getElementById('phone-overlay-root');
   const label = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -98,6 +100,7 @@ export default function ExercisePicker({
                   style={SCRIM}
                 />
                 <motion.div
+                  ref={swipe}
                   role="dialog" aria-modal="true" aria-label="Choose an exercise"
                   initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
                   transition={{ type: 'spring', damping: 32, stiffness: 320 }}

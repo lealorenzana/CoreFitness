@@ -333,7 +333,8 @@
 /* Members with many rows (2026-11-08): a laptop (1366×768) showed three members a page — the row was 72px because
    its menu button was 40px tall. A compact row (one line of name, one of detail, a 30px menu) fits five or six. */
 .att [data-member-row] td { padding-top: 5px; padding-bottom: 5px; }
-.att [data-member-row] td:last-child button { width: 30px; height: 30px; min-height: 0; padding: 0; }
+.att [data-member-row] td:last-child button[data-dot-menu] { width: 30px; height: 30px; min-height: 0; padding: 0; }
+.att [data-member-row] td:last-child .a-btn { height: 30px; min-height: 0; }  /* Renew keeps its width and padding — only the ⋯ menu is a 30px square */
 @media (max-height: 820px) {
   .att [data-ms-requests] .a-card { padding-top: 7px !important; padding-bottom: 7px !important; }
 }

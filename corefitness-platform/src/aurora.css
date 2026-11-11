@@ -182,7 +182,8 @@ a.todo:hover, .fb-row:hover { background: rgba(139,92,246,.07); }
 .ribbon { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; background: #080610; }
 /* Drawn at a quarter size, stretched, and softened ("soften" 7) — the oversized layer hides the slices. */
 /* Toned down (the owner, 2026-11-08: "much lighter, not too much"): softer, less saturated, further back. */
-.ribbon__canvas { position: absolute; inset: -4%; width: 108%; height: 108%; filter: blur(28px) saturate(85%); opacity: .45; }
+/* Much softer (owner, 2026-11-11: "more blur, still too intense"): a wide blur melts the bands into a glow. Inset grows with the blur so its soft edge never shows. */
+.ribbon__canvas { position: absolute; inset: -12%; width: 124%; height: 124%; filter: blur(72px) saturate(75%); opacity: .34; }
 /* Grain 20 (overlay) and vignette 11, as the gradient's own CSS. */
 .ribbon__grain { position: absolute; inset: 0; opacity: .2; mix-blend-mode: overlay;
   background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/></svg>");

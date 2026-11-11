@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from '@phosphor-icons/react';
+import { useSwipeToClose } from '../../lib/useSwipeToClose';
 import { GLASS, SCRIM } from './glass';
 
 /**
@@ -31,6 +32,8 @@ export default function GlassSheet({
   /** Pinned under the scrolling body — a form's submit. */
   footer?: ReactNode;
 }) {
+  // Drag it down by the handle (or anywhere, once its list is at the top) to close it (2026-11-11).
+  const swipe = useSwipeToClose(onClose);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -49,6 +52,7 @@ export default function GlassSheet({
     <div className={`${shellRoot ? 'absolute' : 'fixed'} inset-0 flex flex-col justify-end pointer-events-auto`} style={{ zIndex: shellRoot ? 120 : 2000 }}>
       <div aria-hidden className="absolute inset-0" style={SCRIM} onClick={onClose} />
       <div
+        ref={swipe}
         role="dialog"
         aria-modal="true"
         className="relative flex flex-col noc-sheet"
