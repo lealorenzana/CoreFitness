@@ -6,6 +6,7 @@ import {
 } from '../lib/platform';
 import { supabase } from '../lib/supabaseClient';
 import ApplicationDocs from '../components/ApplicationDocs';
+import DocViewer from '../components/DocViewer';
 import ApplicationThread from '../components/ApplicationThread';
 import InviteOwner from '../components/InviteOwner';
 import Ask from '../components/Ask';
@@ -419,6 +420,18 @@ function PayCheck({ app, p, onDone, onCancel }: {
   app: Application; p: AppPayment; onDone: (ok: boolean, reason: string | null) => Promise<void>; onCancel: () => void;
 }) {
   const [refusing, setRefusing] = useState(false);
+  /** 0244: the receipt screenshot the applicant sent with the reference — null when none (or before 0244). */
+  const [proof, setProof] = useState<string | null>(null);
+  const [bigProof, setBigProof] = useState(false);
+  useEffect(() => {
+    if (!p.payment_id) return;
+    let alive = true;
+    void (async () => {
+      const { data } = await supabase.rpc('application_payment_proof', { p_payment: p.payment_id });
+      if (alive) setProof(typeof data === 'string' ? data : null);
+    })();
+    return () => { alive = false; };
+  }, [p.payment_id]);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -432,6 +445,15 @@ function PayCheck({ app, p, onDone, onCancel }: {
       <h3>{app.gym_name}&rsquo;s payment</h3>
       <p className="meta">{peso(p.amount)} for {p.plan_name}{p.months === 12 ? ' (a year)' : ' (a month)'} by {p.method_label}, reference <b>{p.reference}</b>.
         Find it in your own {p.method_label} history before confirming.</p>
+      {proof ? (
+        <button type="button" className="proof-thumb" onClick={() => setBigProof(true)} data-pay-proof aria-label="See the receipt they sent">
+          <img src={proof} alt="" /><span>Their receipt screenshot — tap to look closer</span>
+        </button>
+      ) : <p className="meta" style={{ margin: 0 }}>No screenshot sent — the reference only.</p>}
+      {bigProof && proof && (
+        <DocViewer docs={[{ id: 'proof', label: `${app.gym_name}'s receipt`, url: proof, fileName: 'receipt.jpg', status: '', meta: `${p.method_label} · ref ${p.reference}` }]}
+          start={0} onClose={() => setBigProof(false)} />
+      )}
       {refusing ? (
         <>
           <input value={reason} maxLength={500} placeholder="Why — they read this" aria-label="Why the payment was not found"

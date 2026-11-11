@@ -1121,3 +1121,8 @@ html.anim .ticker b { transform: skewX(calc(var(--vel, 0) * -0.35deg)); transiti
 .send-to__copy { font: inherit; font-size: 12.5px; font-weight: 600; padding: 5px 12px; border-radius: 999px; cursor: pointer;
   border: 1px solid var(--hairline-strong); background: transparent; color: var(--text); }
 .send-to__copy:hover { border-color: var(--violet, #7C3AED); }
+
+/* The receipt screenshot on the application (0244). */
+.proof-pick { display: flex; align-items: center; gap: 12px; margin: 10px 0 2px; cursor: pointer; font-size: 13.5px; color: var(--text); }
+.proof-pick img, .proof-pick__box { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; flex: none; }
+.proof-pick__box { display: grid; place-items: center; font-size: 22px; color: var(--text-2); border: 1px dashed var(--hairline-strong); }

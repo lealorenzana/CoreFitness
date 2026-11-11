@@ -81,7 +81,13 @@ await as(EVE);
 check('somebody else cannot pay for it', !!(await tryExec(`select claim_application_payment('${A.app}', '${id('90')}', 'REF-1001')`)));
 await as(ANA);
 check('a reference needs a real number', /reference number/.test(await tryExec(`select claim_application_payment('${A.app}', '${id('90')}', 'x')`) ?? ''));
-const p1 = (await one(`select claim_application_payment('${A.app}', '${id('90')}', 'REF-1001') id`)).id;
+// 0244: a screenshot of the receipt — only an image, and only the platform reads it back.
+check('0244: a receipt that is not an image is refused', /photo or screenshot/.test(await tryExec(`select claim_application_payment('${A.app}', '${id('90')}', 'REF-1001', 'hello')`) ?? ''));
+const PROOF = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+const p1 = (await one(`select claim_application_payment('${A.app}', '${id('90')}', 'REF-1001', '${PROOF}') id`)).id;
+check('…an applicant can only send it, not read anyone\'s back', (await one(`select application_payment_proof('${p1}') p`)).p === null);
+await as(PA);
+check('…the platform sees the screenshot with the payment', (await one(`select application_payment_proof('${p1}') p`)).p === PROOF);
 await owner();
 const row = await one(`select amount, months, plan_key, status from application_payments where id = '${p1}'`);
 await as(ANA);

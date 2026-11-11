@@ -18,6 +18,24 @@ interface PayState {
  * never this page's), or GCash / Maya / bank to the details Core Fitness
  * publishes, then the reference number for Core Fitness to find and confirm.
  */
+/** A receipt screenshot as a small JPEG data URL (max 1100px, ~0.8 quality) — well under 0244's 1 MB limit. */
+function shrink(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const scale = Math.min(1, 1100 / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+      c.getContext('2d')?.drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL('image/jpeg', 0.8));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('unreadable')); };
+    img.src = url;
+  });
+}
+
 export default function PayPlan({ applicationId, onChanged }: { applicationId: string; onChanged: () => Promise<void> | void }) {
   const [st, setSt] = useState<PayState | null>(null);
   const [methods, setMethods] = useState<Method[]>([]);
@@ -27,6 +45,8 @@ export default function PayPlan({ applicationId, onChanged }: { applicationId: s
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  /** 0244: a screenshot of the receipt, shrunk here to a small JPEG — optional. */
+  const [proof, setProof] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -81,12 +101,17 @@ export default function PayPlan({ applicationId, onChanged }: { applicationId: s
     ev.preventDefault();
     if (!supabase) return;
     setBusy(true); setError(null);
+    // The screenshot travels only when attached, so the form works before 0244 too.
     const { error: e } = await supabase.rpc('claim_application_payment', {
-      p_application: applicationId, p_method: method, p_reference: reference.trim(),
+      p_application: applicationId, p_method: method, p_reference: reference.trim(), ...(proof ? { p_proof: proof } : {}),
     });
     setBusy(false);
-    if (e) { setError(e.message); return; }
-    setReference('');
+    if (e) {
+      setError(proof && /claim_application_payment|function/i.test(e.message)
+        ? 'Sending a screenshot is not available yet — remove it and send the reference alone.' : e.message);
+      return;
+    }
+    setReference(''); setProof(null);
     setNote('Sent. We match it to the transfer and tell you here.');
     await load(); await onChanged();
   };
@@ -169,6 +194,18 @@ export default function PayPlan({ applicationId, onChanged }: { applicationId: s
                 </div>
               )}
               {chosen?.qr_image && <QrZoom src={chosen.qr_image} label={chosen.label} sub={chosen.account_name} />}
+              {/* A screenshot of the receipt (0244, owner 2026-11-11: "an image reference for extra validity"). */}
+              <label className="proof-pick" data-pay-proof>
+                {proof ? <img src={proof} alt="Your receipt" /> : <span className="proof-pick__box" aria-hidden>+</span>}
+                <span>
+                  <b>{proof ? 'Receipt added' : 'Add a screenshot of the receipt'}</b>
+                  <span className="note" style={{ display: 'block', margin: 0 }}>{proof ? 'Tap to change it.' : 'Optional — it helps us find your payment faster.'}</span>
+                </span>
+                <input type="file" accept="image/*" hidden onChange={(ev) => {
+                  const f = ev.target.files?.[0];
+                  if (f) void shrink(f).then(setProof).catch(() => setError('That image could not be read. Try another screenshot.'));
+                }} />
+              </label>
               <div className="cta-row" style={{ marginTop: 6 }}>
                 <button className="cta ghost" type="submit" disabled={busy || reference.trim().length < 4}>{busy ? 'Sending…' : 'Send the reference'}</button>
               </div>

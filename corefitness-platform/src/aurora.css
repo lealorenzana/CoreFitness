@@ -342,3 +342,9 @@ a.todo:hover, .fb-row:hover { background: rgba(139,92,246,.07); }
   .gym-grid > .gym-card .gym-foot .btn { height: 30px; }
 }
 @media (min-width: 1280px) { .gym-grid > .gym-card { padding: 12px 16px; } }
+
+/* An applicant's receipt screenshot in the payment check (0244). */
+.proof-thumb { display: flex; align-items: center; gap: 12px; padding: 8px; border-radius: 12px; border: 1px solid var(--hairline);
+  background: rgba(255,255,255,.03); color: var(--text-2); font-size: 12.5px; cursor: zoom-in; text-align: left; width: 100%; }
+.proof-thumb img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; background: #fff; flex: none; }
+.proof-thumb:hover { border-color: rgba(167,139,250,.6); }

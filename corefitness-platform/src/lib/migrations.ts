@@ -10,7 +10,7 @@ import { supabase } from './supabaseClient';
  * it falls behind its own last row — the drift that hid 0118 and 0119 once.
  */
 export const FIRST = 74;
-export const LAST = 243;
+export const LAST = 244;
 
 export type MigrationState = 'live' | 'missing' | 'unknown';
 
