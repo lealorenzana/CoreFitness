@@ -16,7 +16,8 @@ import { useT } from '../../lib/i18n';
 export default function TodayStrip({
   membershipLine, visitsThisMonth, monthName, week, dayNumbers, todayIndex, planned, nextPlanned, remindAt, showStreak,
 }: {
-  membershipLine: string;
+  /** Since 2026-11-11 the membership has its own row above the strip; without a line the strip leads with the visits. */
+  membershipLine?: string;
   visitsThisMonth: number;
   monthName: string;
   week: boolean[];
@@ -36,7 +37,9 @@ export default function TodayStrip({
     <div data-today-strip>
     <Panel glow="structure" style={{ padding: '13px 14px 12px' }}>
       <div className="flex items-center justify-between" style={{ gap: 12, fontSize: 12.5 }}>
-        <span className="min-w-0 truncate" style={{ color: 'var(--color-text-secondary)' }}>{t(membershipLine)}</span>
+        {membershipLine
+          ? <span className="min-w-0 truncate" style={{ color: 'var(--color-text-secondary)' }}>{t(membershipLine)}</span>
+          : <span className="min-w-0 truncate" style={{ color: 'var(--color-text-secondary)' }}>{t('Your visits')}</span>}
         <span className="flex-none tabular-nums" style={{ color: 'var(--color-text-secondary)' }}>
           <b style={{ color: 'var(--color-text-primary)', fontWeight: 700 }}>{visitsThisMonth}</b>{' '}
           {visitsThisMonth === 1 ? t('visit') : t('visits')} {t('in')} {monthName}

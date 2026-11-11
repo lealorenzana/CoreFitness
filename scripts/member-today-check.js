@@ -137,8 +137,9 @@ async (page) => {
   await go('/member/home', ME);
   await page.waitForTimeout(1500);
   const strip = await text('[data-today-strip]');
-  say('one strip: the membership, visits this month and the week', (await page.locator('[data-today-strip]').count()) === 1
-    && /days left|no expiry|expired|Frozen/.test(strip) && /visits? in/.test(strip) && /of 7 days this week/.test(strip), strip.slice(0, 160));
+  // Since 2026-11-11 the membership is its own row above the strip (checked below); the strip is visits and the week.
+  say('one strip: visits this month and the week', (await page.locator('[data-today-strip]').count()) === 1
+    && /visits? in/.test(strip) && /of 7 days this week/.test(strip) && !/left on/.test(strip), strip.slice(0, 160));
   say('…in place of the month card, the week strip and the streak card',
     !/visits? this month/.test(await text('main')) && (await page.locator('.streak-hero').count()) === 0);
   const groups = await page.locator('[data-timeline-group]').evaluateAll((els) => els.map((e) => e.getAttribute('data-timeline-group')));
@@ -154,6 +155,14 @@ async (page) => {
   say('Terms to read sit below the day', /Updated for you to read/.test(await text('main')));
   say('nothing scrolls sideways', await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await page.screenshot({ path: 'shots/member-today.png' });
+
+  // The membership, one tap from home (owner, 2026-11-11: "I have a hard time finding it").
+  const mrow = await text('[data-today-membership]');
+  say('the membership is its own row on Today, named so', /membership/i.test(mrow) && /days left|No expiry|Expired|Frozen|Last day/i.test(mrow), mrow.slice(0, 120));
+  say('…saying the plan once, then the time left and the end date', (mrow.match(/Premium/g) || []).length === 1 && /until /.test(mrow), mrow.slice(0, 120));
+  await page.locator('[data-today-membership] button, [data-today-membership] [role="button"]').first().click();
+  await page.waitForTimeout(1200);
+  say('…and tapping it opens Membership', /\/member\/membership/.test(page.url()), page.url());
 
   // Checked in this morning.
   DB.attendance = [{ id: 'a2', member_id: MEMBER, check_in_time: iso(0, 7, 30), method: 'qr', activity: 'Cardio' }];

@@ -3,10 +3,10 @@ import DailyArrival from '../components/moments/DailyArrival';
 import WhatsNew from '../components/WhatsNew';
 import PushPrompt from '../components/PushPrompt';
 import { useNavigate } from 'react-router-dom';
-import { Barbell, Lock } from '@phosphor-icons/react';
+import { Barbell, IdentificationCard, Lock } from '@phosphor-icons/react';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { Page } from '../components/ui/page';
-import { NocButton, ProgressBar, StatusPill } from '../components/ui/noc';
+import { LineRow, NocButton, ProgressBar, StatusPill } from '../components/ui/noc';
 import CheckInSheet from '../components/ui/CheckInSheet';
 import TodayStrip from '../components/home/TodayStrip';
 import { useCheckedInToday } from '../hooks/useCheckedInToday';
@@ -173,18 +173,18 @@ export default function Home() {
   const shortDate = (key: string) =>
     new Date(`${key}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-  // ── The month panel's right-hand line: the membership, in one sentence ──
-  const membershipLine = home.frozen
+  // The membership row's line: the plan is in its title, so the line is the time left and the end date.
+  const membershipMeta = home.frozen
     ? 'Frozen · your days are kept'
     : home.expired
-      ? (plan && home.expiryDate ? `${plan} expired` : 'No active membership')
+      ? (home.expiryDate ? `Expired ${shortDate(home.expiryDate)} — renew to come back` : 'No active membership — choose a plan')
       : term.kind === 'unlimited'
-        ? `${plan ?? 'Your plan'} · no expiry`
+        ? 'No expiry'
         : home.cancelled && home.expiryDate
           ? `Cancelled · access to ${shortDate(home.expiryDate)}`
           : term.value === 'Today'
-            ? `Last day of ${plan ?? 'your plan'}`
-            : `${term.value} ${term.unit} left on ${plan ?? 'your plan'}`.replace(/\s+/g, ' ');
+            ? 'Last day today'
+            : `${term.value} ${term.unit} left${home.expiryDate ? ` · until ${shortDate(home.expiryDate)}` : ''}`.replace(/\s+/g, ' ');
 
   // ── Week marks ──
   const planned = extras?.plannedDays ?? null;
@@ -338,8 +338,20 @@ export default function Home() {
 
       {/* ── The strip: membership, this month, this week, the streak ── */}
       <div className="flex flex-col" style={{ gap: 10 }}>
+        {/* Your membership, one tap from home (owner, 2026-11-11: "I have a hard time finding it"). It was only a grey
+            line inside the strip — readable, never tappable, never called "membership". */}
+        <div data-today-membership style={{ border: '1px solid var(--color-hairline)', borderRadius: 16, padding: '2px 12px' }}>
+          <LineRow
+            icon={IdentificationCard}
+            tone={home.frozen || home.expired || home.expiringSoon ? 'act' : 'mine'}
+            title={plan ? `${plan} membership` : 'Your membership'}
+            meta={membershipMeta}
+            action="View"
+            onClick={() => navigate('/member/membership')}
+            last
+          />
+        </div>
         <TodayStrip
-          membershipLine={membershipLine}
           visitsThisMonth={home.checkInsThisMonth}
           monthName={monthName}
           week={home.weekCheckIns}
