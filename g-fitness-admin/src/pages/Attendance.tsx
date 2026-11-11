@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import QRScanner from '../components/ui/QRScanner';
 import DetailSheet from '../components/ui/DetailSheet';
@@ -99,6 +100,13 @@ export default function Attendance() {
   const [hours, setHours] = useState<{ open: number; close: number; closing: string | null }>({ open: 6, close: 21, closing: null });
 
   const [query, setQuery] = useState('');
+  /** The search's results float over the page (owner, 2026-11-11: "the box is so small when searching"). Open while
+   *  there is something typed; a click elsewhere or Esc puts it away, focusing the search brings it back. */
+  const [listOpen, setListOpen] = useState(true);
+  const [anchor, setAnchor] = useState<{ top: number; left: number; width: number; maxH: number } | null>(null);
+  const checkinBox = useRef<HTMLDivElement>(null);
+  const searchRow = useRef<HTMLDivElement>(null);
+  const floatList = useRef<HTMLDivElement>(null);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [activity, setActivity] = useState('');
   const [activityOptions, setActivityOptions] = useState<string[]>([]);
@@ -308,6 +316,33 @@ export default function Attendance() {
     (m.member.qr_code ?? '').toLowerCase() === q ||
     codeHit(m.profile.id)) : [];
   const coachHits = q ? coaches.filter((c) => nameHit(c.name) || codeHit(c.id)) : [];
+  const floating = !!q && listOpen && memberHits.length + coachHits.length > 0;
+  useEffect(() => {
+    if (!floating) return;
+    const place = () => {
+      const row = searchRow.current?.getBoundingClientRect();
+      const box = checkinBox.current?.getBoundingClientRect();
+      if (!row || !box) return;
+      const top = row.bottom + 8;
+      setAnchor({ top, left: box.left + 12, width: box.width - 24, maxH: Math.max(220, Math.min(window.innerHeight * 0.6, window.innerHeight - top - 16)) });
+    };
+    place();
+    const away = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (!floatList.current?.contains(t) && !searchRow.current?.contains(t)) setListOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setListOpen(false); };
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    document.addEventListener('mousedown', away);
+    document.addEventListener('keydown', esc);
+    return () => {
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+      document.removeEventListener('mousedown', away);
+      document.removeEventListener('keydown', esc);
+    };
+  }, [floating]);
 
   /** Enter: a code (or a QR's text) is checked in; a name with exactly one match is that person. */
   const submitQuery = () => {
@@ -385,12 +420,13 @@ export default function Attendance() {
 
       <div className="a-grid flex-none" style={{ gridTemplateColumns: 'minmax(0,1.5fr) minmax(0,1fr)' }}>
         {/* ── Check someone in ── */}
-        <div className="a-card glow" data-checkin-box>
+        <div className="a-card glow" data-checkin-box ref={checkinBox}>
           <div className="a-ct"><h3><ScanLine size={16} />Check someone in</h3><small>scan, type a name, or the code under their QR</small></div>
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 10 }} ref={searchRow}>
             <label className="a-input big" style={{ flex: 1 }}>
               <Search size={19} />
-              <input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && submitQuery()}
+              <input value={query} onChange={(e) => { setQuery(e.target.value); setListOpen(true); }} onFocus={() => setListOpen(true)} onClick={() => setListOpen(true)}
+                onKeyDown={(e) => e.key === 'Enter' && submitQuery()}
                 placeholder="Name, email or code (A3F 92B)" aria-label="Check-in code or name" />
               {query && <span className="a-kbd">Enter ↵</span>}
             </label>
@@ -420,7 +456,19 @@ export default function Attendance() {
             ) : memberHits.length + coachHits.length === 0 ? (
               <p className="a-sub h-full grid place-items-center" style={{ fontSize: 12 }}>No members found</p>
             ) : (
-              <>
+              <button type="button" className="a-sub h-full w-full grid place-items-center" style={{ fontSize: 12 }} onClick={() => setListOpen(true)} data-found-note>
+                {memberHits.length + coachHits.length} found{listOpen ? ' — pick one in the list' : ' — show the list'}
+              </button>
+            )}
+          </div>
+          {floating && anchor && createPortal(
+            <div ref={floatList} className="att a-float-list" role="listbox" aria-label="People found" data-quick-list-float
+              style={{ position: 'fixed', top: anchor.top, left: anchor.left, width: anchor.width, maxHeight: anchor.maxH }}>
+              <div className="a-float-list__head">
+                <span>{memberHits.length + coachHits.length} found{memberHits.length > 20 ? ' · the first 20 — type more to narrow it' : ''}</span>
+                <button type="button" className="a-btn ghost sm" onClick={() => setListOpen(false)}>Close</button>
+              </div>
+              <div className="a-float-list__body">
                 {coachHits.slice(0, 5).map((c) => (
                   <div key={c.id} className="a-row" data-quick-coach>
                     <Av name={c.name} photo={c.photo} />
@@ -452,9 +500,8 @@ export default function Attendance() {
                     </div>
                   );
                 })}
-              </>
-            )}
-          </div>
+              </div>
+            </div>, document.body)}
 
           {/* The next check-in's tag: the four used most today, the rest under More. Amber while set, with None to clear.
               The desk's tag beats a member's own pick. */}

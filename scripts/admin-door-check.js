@@ -161,12 +161,17 @@ async (page) => {
   await box.fill('1'); await page.waitForTimeout(300);
   has('one digit matches nobody by their id, and the page does not grow', (await page.locator('[data-quick-list] > div').count()) === 0 && (await noScroll()) <= 2);
   await box.fill('a'); await page.waitForTimeout(300);
-  const aHits = await page.locator('[data-quick-list] > div').count();
-  has('one letter matches names that start with it, in a box that scrolls itself', aHits === 3 && (await noScroll()) <= 2
-    && await page.locator('[data-quick-list]').evaluate((e) => e.scrollHeight > e.clientHeight && e.getBoundingClientRect().height <= 100));
+  // Since 2026-11-11 what the search finds floats over the page (the 96px box held two names); the page still never grows.
+  const aHits = await page.locator('[data-quick-list-float] .a-row').count();
+  has('one letter matches names that start with it, floating over the page, which does not grow', aHits === 3 && (await noScroll()) <= 2
+    && await page.locator('[data-quick-list-float]').evaluate((e) => getComputedStyle(e).position === 'fixed' && e.getBoundingClientRect().height > 100));
   await box.fill('Andrea'); await page.waitForTimeout(300);
   t = await text();
-  has("typing finds members, with the member's own pick", (await page.locator('[data-quick-list]').innerText()).includes('Andrea Tolentino') && /picked Class/.test(t) && /already in/.test(t));
+  has("typing finds members, with the member's own pick", (await page.locator('[data-quick-list-float]').innerText()).includes('Andrea Tolentino') && /picked Class/.test(t) && /already in/.test(t));
+  await page.keyboard.press('Escape'); await page.waitForTimeout(200);
+  has('Esc puts the list away', (await page.locator('[data-quick-list-float]').count()) === 0);
+  await box.click(); await page.waitForTimeout(200);
+  has('…and the search brings it back', (await page.locator('[data-quick-list-float]').count()) === 1);
   await box.fill('Gabby'); await page.waitForTimeout(300);
   has('…and coaches, marked Coach', (await page.locator('[data-quick-coach]').count()) === 1);
   await box.fill('C1A B00');

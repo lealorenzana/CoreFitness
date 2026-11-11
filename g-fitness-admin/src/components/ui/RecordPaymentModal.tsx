@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, CreditCard, User, Calendar, Banknote, Search, Layers } from 'lucide-react';
 import type { MembershipPlanRow } from '../../types/db';
@@ -68,6 +68,17 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, planByMe
   const [isLoading, setIsLoading] = useState(false);
   const [memberSearch, setMemberSearch] = useState('');
   const [showMemberDropdown, setShowMemberDropdown] = useState(false);
+  /** The search and its list: a click anywhere else closes the list (owner, 2026-11-11: it stayed open over the
+   *  form until a member was picked). */
+  const pickerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!showMemberDropdown) return;
+    const away = (e: MouseEvent) => { if (!pickerRef.current?.contains(e.target as Node)) setShowMemberDropdown(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); setShowMemberDropdown(false); } };
+    document.addEventListener('mousedown', away);
+    document.addEventListener('keydown', esc, true);
+    return () => { document.removeEventListener('mousedown', away); document.removeEventListener('keydown', esc, true); };
+  }, [showMemberDropdown]);
 
   // A preset is applied once per request opened — decided during render, not
   // in an effect, so the form paints already filled.
@@ -240,7 +251,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, planByMe
                     <User size={16} />
                     Select Member
                   </label>
-                  <div className="relative">
+                  <div className="relative" ref={pickerRef} data-member-picker>
                     <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 z-10" />
                     <Input
                       type="text"
@@ -259,14 +270,15 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, planByMe
 
                     {/* Dropdown List */}
                     {showMemberDropdown && (
-                      <div className="absolute top-full left-0 right-0 mt-2 bg-dark border border-dark-border rounded-xl shadow-2xl max-h-60 overflow-y-auto z-20">
+                      <div className="absolute top-full left-0 right-0 mt-2 rounded-xl shadow-2xl max-h-60 overflow-y-auto z-20" data-member-list
+                        style={{ background: 'var(--raised-solid, #1E1B30)', border: '1px solid var(--color-border)' }}>
                         {filteredMembers.length > 0 ? (
                           filteredMembers.map((member) => (
                             <button
                               key={member.profile.id}
                               type="button"
                               onClick={() => handleSelectMember(member)}
-                              className="w-full text-left px-4 py-3 hover:bg-dark-border transition-colors flex items-center gap-3 border-b border-dark-border last:border-b-0"
+                              className="cf-pick-row w-full text-left px-4 py-3 transition-colors flex items-center gap-3"
                             >
                               <div className="w-10 h-10 rounded-full flex items-center justify-center text-black font-bold flex-shrink-0"
                                 style={{ background: 'var(--color-secondary)' }}>

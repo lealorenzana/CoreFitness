@@ -347,7 +347,7 @@ export default function Home() {
             title={plan ? `${plan} membership` : 'Your membership'}
             meta={membershipMeta}
             action="View"
-            onClick={() => navigate('/member/membership')}
+            onClick={() => navigate('/member/membership?tab=membership')}
             last
           />
         </div>
@@ -365,7 +365,7 @@ export default function Home() {
 
         {/* What the plan holds back — one line, and the screen that lists it. */}
         {home.access && !home.access.isFullAccess && !home.frozen && (
-          <button onClick={() => navigate('/member/membership')}
+          <button onClick={() => navigate('/member/membership?tab=membership')}
             className="w-full flex items-center justify-between text-left" style={{ gap: 12, fontSize: 12.5 }}>
             <span style={{ color: 'var(--color-text-secondary)' }}>
               {home.access.excluded.length === 1

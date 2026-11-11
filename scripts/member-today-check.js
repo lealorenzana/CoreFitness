@@ -162,7 +162,7 @@ async (page) => {
   say('…saying the plan once, then the time left and the end date', (mrow.match(/Premium/g) || []).length === 1 && /until /.test(mrow), mrow.slice(0, 120));
   await page.locator('[data-today-membership] button, [data-today-membership] [role="button"]').first().click();
   await page.waitForTimeout(1200);
-  say('…and tapping it opens Membership', /\/member\/membership/.test(page.url()), page.url());
+  say('…and tapping it opens the Membership tab, not the first tab of You', /\/member\/membership\?tab=membership/.test(page.url()) && (await page.getByRole('tab', { name: 'Membership', selected: true }).count()) === 1, page.url());
 
   // Checked in this morning.
   DB.attendance = [{ id: 'a2', member_id: MEMBER, check_in_time: iso(0, 7, 30), method: 'qr', activity: 'Cardio' }];

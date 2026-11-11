@@ -182,6 +182,14 @@ async (page) => {
   await page.locator('input[type="number"]').first().fill('4000');
   out.push('a custom amount is allowed and said so: ' + ((await page.locator('[data-custom-amount]').count()) === 1 ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/admin-renew-modal.png' });
+  // The member list closes when you click elsewhere (owner, 2026-11-11: it stayed open over the form until a pick).
+  await page.getByPlaceholder('Search by name, email, or QR code...').click();
+  await page.waitForTimeout(300);
+  const listUp = await page.locator('[data-member-list]').count();
+  await page.getByText('Payment Method').first().click();
+  await page.waitForTimeout(300);
+  out.push('the member list opens on the search and closes on a click elsewhere: '
+    + (listUp === 1 && (await page.locator('[data-member-list]').count()) === 0 ? 'yes' : `MISSING open=${listUp}`));
   await page.getByRole('button', { name: 'Cancel' }).first().click();
   await page.waitForTimeout(600);
 

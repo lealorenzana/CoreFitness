@@ -409,3 +409,9 @@
 .va-hole { border: 1px dashed #1E1D2D; border-radius: 18px; }
 body.va-open main > div { transform: none !important; }
 body.va-open { overflow: hidden; }
+
+/* A row in a pick list (Record payment's members): a hover that shows in both modes — the old hover:bg-dark-border
+   turned the row into a dark block on the light form (2026-11-11). */
+.cf-pick-row { border-bottom: 1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08); }
+.cf-pick-row:last-child { border-bottom: 0; }
+.cf-pick-row:hover, .cf-pick-row:focus-visible { background: color-mix(in srgb, var(--color-primary) 12%, transparent); outline: none; }
