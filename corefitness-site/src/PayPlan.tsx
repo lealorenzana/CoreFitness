@@ -26,6 +26,7 @@ export default function PayPlan({ applicationId, onChanged }: { applicationId: s
   const [reference, setReference] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const [note, setNote] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -142,11 +143,30 @@ export default function PayPlan({ applicationId, onChanged }: { applicationId: s
                     onChange={(e) => setReference(e.target.value)} />
                 </div>
               </div>
+              {/* Where to send it, plain to see (owner, 2026-11-11): the number was buried mid-sentence. */}
               {chosen && (
-                <p className="note">
-                  Send {peso(amount)} to {chosen.label}{chosen.account_name ? ` · ${chosen.account_name}` : ''}{chosen.account_number ? ` · ${chosen.account_number}` : ''}.
-                  {chosen.instructions ? ` ${chosen.instructions}` : ''}
-                </p>
+                <div className="send-to" data-send-to>
+                  <div className="send-to__row">
+                    <span className="send-to__lbl">Send exactly</span>
+                    <span className="send-to__amt">{peso(amount)}</span>
+                  </div>
+                  <div className="send-to__row">
+                    <span className="send-to__lbl">To {chosen.label}</span>
+                    <span className="send-to__who">{chosen.account_name ?? '—'}</span>
+                  </div>
+                  {chosen.account_number && (
+                    <div className="send-to__row">
+                      <span className="send-to__lbl">{/^\+?\d[\d\s-]{8,}$/.test(chosen.account_number) && /^(\+63|0)9/.test(chosen.account_number.replace(/\s/g, '')) ? 'Number' : 'Account number'}</span>
+                      <span className="send-to__num">
+                        <b data-send-number>{chosen.account_number}</b>
+                        <button type="button" className="send-to__copy" onClick={() => {
+                          void navigator.clipboard?.writeText(chosen.account_number ?? '').then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }).catch(() => undefined);
+                        }}>{copied ? 'Copied' : 'Copy'}</button>
+                      </span>
+                    </div>
+                  )}
+                  {chosen.instructions && <p className="note" style={{ margin: '6px 0 0' }}>{chosen.instructions}</p>}
+                </div>
               )}
               {chosen?.qr_image && <QrZoom src={chosen.qr_image} label={chosen.label} sub={chosen.account_name} />}
               <div className="cta-row" style={{ marginTop: 6 }}>

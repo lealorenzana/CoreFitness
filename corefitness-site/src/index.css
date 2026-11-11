@@ -1108,3 +1108,16 @@ html.anim .ticker b { transform: skewX(calc(var(--vel, 0) * -0.35deg)); transiti
 /* A line the platform can put along the top of the site (0241, Website → Notice): holidays, an outage, news. */
 .site-notice { padding: 7px 16px; text-align: center; font-size: 13px; font-weight: 600; line-height: 1.4;
   background: var(--amber, #F59E0B); color: #1a1205; }
+
+/* Where to send the payment (application, 2026-11-11): amount, name and the number large, with Copy. */
+.send-to { margin: 10px 0 4px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--hairline-strong);
+  background: color-mix(in srgb, var(--violet, #7C3AED) 8%, transparent); display: grid; gap: 8px; }
+.send-to__row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.send-to__lbl { font-size: 12.5px; color: var(--text-2); }
+.send-to__amt { font-size: 22px; font-weight: 800; color: var(--amber-text, #F59E0B); }
+.send-to__who { font-size: 15px; font-weight: 600; color: var(--text); }
+.send-to__num { display: inline-flex; align-items: center; gap: 10px; }
+.send-to__num b { font-size: 19px; letter-spacing: .04em; font-variant-numeric: tabular-nums; color: var(--text); }
+.send-to__copy { font: inherit; font-size: 12.5px; font-weight: 600; padding: 5px 12px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--hairline-strong); background: transparent; color: var(--text); }
+.send-to__copy:hover { border-color: var(--violet, #7C3AED); }

@@ -67,8 +67,8 @@ export default function Website() {
     { icon: Layers, label: 'Prices', what: counts.plans === null ? 'The plans and prices on the site' : `${counts.plans} plans on the price list`, to: '/plans' },
     { icon: Building2, label: 'Gyms listed', what: counts.gyms === null ? 'Which gyms the site lists' : `${counts.gyms} gyms listed — hide or show one on its page`, to: '/gyms' },
     { icon: MessageSquareQuote, label: 'Testimonials', what: counts.quotes === null ? 'Owners’ words you approved' : `${counts.quotes} shown — approve or hide in Feedback`, to: '/feedback' },
-    { icon: FileSignature, label: 'Gym documents', what: 'Terms for gyms, the Data Processing Agreement, the Privacy Policy — publish a version', to: '/settings' },
-    { icon: Phone, label: 'Business contact', what: 'The name, address, email and phone the site and the documents quote', to: '/settings' },
+    { icon: FileSignature, label: 'Gym documents', what: 'Terms for gyms, the Data Processing Agreement, the Privacy Policy — publish a version', to: '/settings?part=docs' },
+    { icon: Phone, label: 'Business contact', what: 'The name, address, email and phone the site and the documents quote', to: '/settings?part=business' },
     { icon: Inbox, label: 'Applications', what: 'What the site’s Register your gym form sends', to: '/applications' },
   ];
 

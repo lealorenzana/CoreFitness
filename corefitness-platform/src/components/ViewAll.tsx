@@ -127,7 +127,13 @@ export default function ViewAll({ boxes, root, fit = false }: { boxes: string; r
         // A heading that already has buttons at its right (Open the site, Write to the owner, CSV): View all sits to
         // their left, on the same line, instead of on top of them (2026-11-08).
         const head = box.querySelector<HTMLElement>(HEADS);
-        const btns = head ? Array.from(head.querySelectorAll<HTMLElement>('button, a')).filter((b) => b.getBoundingClientRect().width > 0) : [];
+        // Only the heading's RIGHT-hand buttons (CSV, Open the site): the "?" right after a title is a button too, and
+        // sitting left of it put View all on the title itself (2026-11-11).
+        const hr = head?.getBoundingClientRect();
+        const btns = head && hr ? Array.from(head.querySelectorAll<HTMLElement>('button, a')).filter((b) => {
+          const br = b.getBoundingClientRect();
+          return br.width > 0 && br.left > hr.left + hr.width * 0.55;
+        }) : [];
         if (btns.length) {
           const left = Math.min(...btns.map((b) => b.getBoundingClientRect().left));
           const bt = btns[0].getBoundingClientRect();
