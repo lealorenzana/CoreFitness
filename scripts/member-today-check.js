@@ -160,7 +160,7 @@ async (page) => {
   const mrow = await text('[data-today-membership]');
   say('the membership is its own row on Today, named so', /membership/i.test(mrow) && /days left|No expiry|Expired|Frozen|Last day/i.test(mrow), mrow.slice(0, 120));
   say('…saying the plan once, then the time left and the end date', (mrow.match(/Premium/g) || []).length === 1 && /until /.test(mrow), mrow.slice(0, 120));
-  await page.locator('[data-today-membership] button, [data-today-membership] [role="button"]').first().click();
+  await page.locator('[data-today-membership]').first().click();
   await page.waitForTimeout(1200);
   say('…and tapping it opens the Membership tab, not the first tab of You', /\/member\/membership\?tab=membership/.test(page.url()) && (await page.getByRole('tab', { name: 'Membership', selected: true }).count()) === 1, page.url());
 

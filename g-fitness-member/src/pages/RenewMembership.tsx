@@ -290,6 +290,22 @@ export default function RenewMembership() {
     && (current.never_expires || (!!current.expiry_date && new Date(`${current.expiry_date}T00:00:00`).getTime() >= new Date(new Date().toDateString()).getTime()))
     && Number(current.membership_plans?.price ?? 0) > 0;
   const switchMidTerm = !!selected && currentRunning && selected.id !== current?.plan_id;
+  /** 0243: what the gym does with a switch paid online mid-term — its owner's rule (Plans → Switching plans online).
+   *  'desk' (and any database before 0243) keeps 0193: online renews the plan you have, the desk switches. */
+  const switchRule = gym?.plan_switch_mode ?? 'desk';
+  const switchOnline = switchMidTerm && switchRule !== 'desk';
+  const longDate = (d: Date) => d.toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' });
+  const daysLeft = current?.expiry_date
+    ? Math.max(0, Math.round((new Date(`${current.expiry_date}T00:00:00`).getTime() - new Date(new Date().toDateString()).getTime()) / 86_400_000))
+    : 0;
+  /** When the new plan starts and ends under the rule — the same arithmetic the database does (0243). */
+  const switchTerm = (() => {
+    if (!selected || !switchOnline) return null;
+    const today = new Date(new Date().toDateString());
+    const start = switchRule === 'start_now' || !current?.expiry_date ? today : new Date(`${current.expiry_date}T00:00:00`);
+    const end = selected.duration_days == null ? null : new Date(start.getTime() + selected.duration_days * 86_400_000);
+    return { start, end };
+  })();
   /** After the desk is told (or sent a reference): the request panel takes over. */
   const sent = async (paid: boolean) => {
     await reload();
@@ -350,7 +366,7 @@ export default function RenewMembership() {
         </Panel>
 
         {/* Online, when this gym takes it (owner, 2026-11-11: "it only shows paying at the front desk"). */}
-        {!free && payMongo && !switchMidTerm && (
+        {!free && payMongo && (!switchMidTerm || switchOnline) && (
           <section data-howto-paymongo>
             <SectionHead title="Pay in the app" />
             <ol className="flex flex-col" style={{ gap: 10, marginTop: 12 }}>
@@ -703,7 +719,20 @@ export default function RenewMembership() {
               </NocButton>
             }
           >
-            {selected && payMongo && Number(selected.price) > 0 && switchMidTerm && (
+            {/* 0243: the gym lets members switch online — say exactly what happens to the days left, BEFORE paying. */}
+            {selected && payMongo && Number(selected.price) > 0 && switchOnline && switchTerm && (
+              <div style={{ marginBottom: 14, padding: '10px 12px', borderRadius: 12, border: '1px solid var(--color-hairline)', fontSize: 12.5, lineHeight: 1.5, color: 'var(--color-text-secondary)' }}
+                data-switch-online={switchRule}>
+                <b style={{ color: 'var(--color-text-primary)' }}>Switching to {selected.name} — {peso(Number(selected.price))}</b>
+                <span className="block" style={{ marginTop: 3 }}>
+                  {switchRule === 'start_now'
+                    ? <>{selected.name} starts today{switchTerm.end ? ` and runs to ${longDate(switchTerm.end)}` : ''}. The {daysLeft} day{daysLeft === 1 ? '' : 's'} left on {current?.membership_plans?.name} end today and are not refunded.</>
+                    : <>Your {daysLeft} {current?.membership_plans?.name} day{daysLeft === 1 ? ' is' : 's are'} kept; {selected.name} starts on {longDate(switchTerm.start)}{switchTerm.end ? ` and runs to ${longDate(switchTerm.end)}` : ''}.</>}
+                </span>
+                <span className="block" style={{ marginTop: 3, color: 'var(--color-text-muted)' }}>{gym?.gym_name ?? 'Your gym'}&rsquo;s rule for switching plans online.</span>
+              </div>
+            )}
+            {selected && payMongo && Number(selected.price) > 0 && switchMidTerm && !switchOnline && (
               <p style={{ fontSize: 12.5, marginBottom: 14, color: 'var(--color-text-secondary)' }} data-switch-at-desk>
                 You are on {current?.membership_plans?.name} until {current?.expiry_date ? new Date(`${current.expiry_date}T00:00:00`).toLocaleDateString('en-PH', { month: 'long', day: 'numeric' }) : 'it ends'}.
                 Paying online renews the plan you have; switching to {selected.name} now is done at the desk, so nothing you have paid is lost.
@@ -720,7 +749,7 @@ export default function RenewMembership() {
             {selected && (
               <PayChooser
                 amount={peso(Number(selected.price))}
-                online={payMongo && Number(selected.price) > 0 && !switchMidTerm
+                online={payMongo && Number(selected.price) > 0 && (!switchMidTerm || switchOnline)
                   ? { purpose: 'membership', details: { plan_id: selected.id }, returnPath: '/member/renew', to: gym?.gym_name ?? 'the gym' } : null}
                 transfer={canPayOnline ? {
                   methods: payMethods, whose: 'the gym’s', approver: 'the desk',

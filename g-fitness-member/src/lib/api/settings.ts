@@ -10,6 +10,8 @@ import { supabase } from '../supabaseClient';
  */
 export interface GymSettingsRow {
   id: boolean;
+  /** 0243: a switch to another plan while a paid one runs, paid online — the owner's rule. Absent before 0243 = 'desk'. */
+  plan_switch_mode?: 'keep_days' | 'start_now' | 'desk';
   gym_name: string;
   address: string | null;
   phone: string | null;

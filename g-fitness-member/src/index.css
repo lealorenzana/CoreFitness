@@ -1932,3 +1932,8 @@ label:has(> .field-input[style*="border: none"]:focus) {
 :root[data-mode="light"] .cal-cell.orb-cell--on { color: #FFFFFF !important; }
 :root[data-mode="light"] .cal-cell.orb-cell--ring { color: var(--color-secondary) !important; }
 :root[data-mode="light"] .cal-cell:disabled { opacity: 0.5 !important; }
+
+/* Today's membership card (2026-11-11): the gym's colour washes across it in dark; light mode is solid — no gradient
+   behind words (owner, 2026-11-06) — so it is one tint of the gym's colour, the urgent one in amber. */
+:root[data-mode="light"] [data-today-membership] { background: color-mix(in srgb, var(--color-primary) 9%, #FFFFFF) !important; }
+:root[data-mode="light"] [data-today-membership][data-urgent="true"] { background: color-mix(in srgb, var(--color-secondary) 10%, #FFFFFF) !important; }

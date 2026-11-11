@@ -415,3 +415,48 @@ body.va-open { overflow: hidden; }
 .cf-pick-row { border-bottom: 1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08); }
 .cf-pick-row:last-child { border-bottom: 0; }
 .cf-pick-row:hover, .cf-pick-row:focus-visible { background: color-mix(in srgb, var(--color-primary) 12%, transparent); outline: none; }
+
+/* ── The owner's sidebar, redesigned (owner, 2026-11-11: "enhance the side bar"). Rows with their icon in a tile; the
+   page you are on is a filled tile in the gym's colour on a soft band with an accent bar; groups show their pages
+   on a guide line that lights when one is open. Gym colours only (var(--color-primary)), never a fixed violet.
+   Light mode stays solid — no gradient behind words (light.css rules, 2026-11-06). */
+.sb-panel { position: relative; }
+.sb-panel::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 200px; pointer-events: none;
+  background: radial-gradient(120% 100% at 0% 0%, color-mix(in srgb, var(--color-primary) 20%, transparent), transparent 70%); }
+.sb-panel > * { position: relative; }
+.sb-mark { box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 45%, transparent), 0 10px 22px -12px var(--color-primary); }
+.sb-name { font-size: 15px; font-weight: 700; color: var(--color-text-primary); letter-spacing: -0.01em; }
+.sb-tag { font-size: 11px; color: var(--color-text-muted); margin-top: 1px; }
+.sb-collapse { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; color: var(--color-text-muted);
+  border: 1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1); transition: background .15s, color .15s; }
+.sb-collapse:hover { color: var(--color-text-primary); background: rgb(var(--hair-rgb, 255 255 255) / 0.06); }
+.sb-nav { display: flex; flex-direction: column; gap: 2px; }
+.sb-item { position: relative; display: flex; align-items: center; gap: 10px; width: 100%; height: 38px; padding: 0 9px;
+  border-radius: 12px; font-size: 13px; font-weight: 500; color: var(--color-text-secondary); text-align: left;
+  transition: background .15s, color .15s; }
+.sb-item:hover { background: rgb(var(--hair-rgb, 255 255 255) / 0.05); color: var(--color-text-primary); }
+.sb-ico { width: 26px; height: 26px; flex: none; display: grid; place-items: center; border-radius: 8px;
+  color: var(--color-text-muted); background: rgb(var(--hair-rgb, 255 255 255) / 0.045); transition: background .15s, color .15s, box-shadow .15s; }
+.sb-item:hover .sb-ico { color: var(--color-primary); }
+.sb-item[data-active="true"] { color: var(--color-text-primary); font-weight: 650;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--color-primary) 24%, transparent), color-mix(in srgb, var(--color-primary) 6%, transparent)); }
+.sb-item[data-active="true"]::before { content: ''; position: absolute; left: -12px; top: 9px; bottom: 9px; width: 3px; border-radius: 0 3px 3px 0; background: var(--color-primary); }
+.sb-item[data-active="true"] .sb-ico { color: #fff; background: var(--fill-primary, var(--color-primary)); box-shadow: 0 6px 14px -6px var(--color-primary); }
+.sb-group[data-holds="true"] { color: var(--color-text-primary); }
+.sb-group[data-holds="true"] .sb-ico { color: var(--color-primary); }
+.sb-chev { color: var(--color-text-muted); transition: transform .2s; }
+.sb-children { margin: 2px 0 4px 21px; padding-left: 10px; border-left: 1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1); display: flex; flex-direction: column; gap: 2px; }
+.sb-children[data-active="true"] { border-left-color: color-mix(in srgb, var(--color-primary) 55%, transparent); }
+.sb-child { height: 32px; font-size: 12.5px; padding: 0 8px; gap: 9px; }
+.sb-child .sb-ico { width: 22px; height: 22px; border-radius: 7px; }
+.sb-child[data-active="true"]::before { left: -11px; }
+.sb-logout { color: var(--color-secondary); }
+.sb-logout .sb-ico { color: var(--color-secondary); background: color-mix(in srgb, var(--color-secondary) 12%, transparent); }
+.sb-logout:hover { color: var(--color-secondary); background: color-mix(in srgb, var(--color-secondary) 8%, transparent); }
+/* Light: solid — the band behind the page you are on is the sidebar's own active tint, no glow behind the name. */
+:root[data-mode="light"] .sb-panel::before { display: none; }
+:root[data-mode="light"] .sb-item[data-active="true"] { background: var(--sidebar-active, color-mix(in srgb, var(--color-primary) 20%, #FFFFFF)); }
+:root[data-mode="light"] .sb-item:hover { background: rgb(var(--hair-rgb, 22 22 38) / 0.06); }
+@media (prefers-reduced-motion: reduce) { .sb-item, .sb-ico, .sb-chev { transition: none; } }
+/* A longer gym name wraps to two lines instead of being cut to "Core Fit…" (2026-11-11). */
+.sb-name { white-space: normal !important; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.2; font-size: 14px; }

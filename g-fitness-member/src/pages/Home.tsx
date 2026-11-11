@@ -3,10 +3,10 @@ import DailyArrival from '../components/moments/DailyArrival';
 import WhatsNew from '../components/WhatsNew';
 import PushPrompt from '../components/PushPrompt';
 import { useNavigate } from 'react-router-dom';
-import { Barbell, IdentificationCard, Lock } from '@phosphor-icons/react';
+import { Barbell, CaretRight, IdentificationCard, Lock } from '@phosphor-icons/react';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { Page } from '../components/ui/page';
-import { LineRow, NocButton, ProgressBar, StatusPill } from '../components/ui/noc';
+import { NocButton, ProgressBar, StatusPill } from '../components/ui/noc';
 import CheckInSheet from '../components/ui/CheckInSheet';
 import TodayStrip from '../components/home/TodayStrip';
 import { useCheckedInToday } from '../hooks/useCheckedInToday';
@@ -184,7 +184,7 @@ export default function Home() {
           ? `Cancelled · access to ${shortDate(home.expiryDate)}`
           : term.value === 'Today'
             ? 'Last day today'
-            : `${term.value} ${term.unit} left${home.expiryDate ? ` · until ${shortDate(home.expiryDate)}` : ''}`.replace(/\s+/g, ' ');
+            : home.expiryDate ? `Active · until ${shortDate(home.expiryDate)}` : `${term.value} ${term.unit} left`.replace(/\s+/g, ' ');
 
   // ── Week marks ──
   const planned = extras?.plannedDays ?? null;
@@ -340,17 +340,55 @@ export default function Home() {
       <div className="flex flex-col" style={{ gap: 10 }}>
         {/* Your membership, one tap from home (owner, 2026-11-11: "I have a hard time finding it"). It was only a grey
             line inside the strip — readable, never tappable, never called "membership". */}
-        <div data-today-membership style={{ border: '1px solid var(--color-hairline)', borderRadius: 16, padding: '2px 12px' }}>
-          <LineRow
-            icon={IdentificationCard}
-            tone={home.frozen || home.expired || home.expiringSoon ? 'act' : 'mine'}
-            title={plan ? `${plan} membership` : 'Your membership'}
-            meta={membershipMeta}
-            action="View"
-            onClick={() => navigate('/member/membership?tab=membership')}
-            last
-          />
-        </div>
+        {/* Your membership, as a card (owner, 2026-11-11: "enhance the UI"): the plan, the days left large, how much of the
+            term is left as a bar, and the whole card opens the Membership tab. The gym's colours, amber when it needs you. */}
+        {(() => {
+          const urgent = home.frozen || home.expired || home.expiringSoon;
+          const total = home.startDate && home.expiryDate
+            ? Math.max(1, Math.round((new Date(`${home.expiryDate}T00:00:00`).getTime() - new Date(`${home.startDate}T00:00:00`).getTime()) / 86_400_000))
+            : null;
+          const left = !home.expired && !home.frozen && home.daysLeft != null && total ? Math.max(0, Math.min(1, home.daysLeft / total)) : null;
+          const tint = urgent ? 'var(--color-secondary)' : 'var(--color-primary)';
+          return (
+            <button type="button" onClick={() => navigate('/member/membership?tab=membership')} data-today-membership data-urgent={urgent}
+              aria-label={`${plan ? `${plan} membership` : 'Your membership'}: ${membershipMeta}. Open Membership`}
+              className="w-full text-left noc-press-soft"
+              style={{
+                position: 'relative', overflow: 'hidden', borderRadius: 18, padding: '13px 14px 12px',
+                background: `linear-gradient(135deg, color-mix(in srgb, ${tint} 16%, var(--raised-solid, var(--color-surface-raised))) 0%, var(--raised-solid, var(--color-surface-raised)) 62%)`,
+                border: `1px solid color-mix(in srgb, ${tint} 34%, transparent)`,
+              }}>
+              <span className="flex items-center" style={{ gap: 12 }}>
+                <span aria-hidden className="grid place-items-center flex-none on-fill" data-tile
+                  style={{ width: 42, height: 42, borderRadius: 13, color: '#fff',
+                    background: urgent ? 'var(--amber-solid, var(--color-secondary))' : 'var(--fill-primary, var(--color-primary))',
+                    boxShadow: `0 8px 18px -8px ${tint}` }}>
+                  <IdentificationCard size={21} weight="duotone" />
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className="block truncate" style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                    {plan ? `${plan} membership` : 'Your membership'}
+                  </span>
+                  <span className="block truncate" style={{ fontSize: 12.5, marginTop: 1, color: urgent ? 'var(--color-secondary)' : 'var(--color-text-secondary)' }}>
+                    {membershipMeta}
+                  </span>
+                </span>
+                {!home.expired && !home.frozen && home.daysLeft != null && term.kind !== 'unlimited' && (
+                  <span className="flex-none text-right tabular-nums" aria-hidden>
+                    <span className="block" style={{ fontSize: 22, fontWeight: 800, lineHeight: 1, color: urgent ? 'var(--color-secondary)' : 'var(--color-text-primary)' }}>{home.daysLeft}</span>
+                    <span className="block" style={{ fontSize: 11, marginTop: 2, color: 'var(--color-text-muted)' }}>{home.daysLeft === 1 ? 'day left' : 'days left'}</span>
+                  </span>
+                )}
+                <CaretRight size={16} className="flex-none" style={{ color: 'var(--color-text-muted)' }} />
+              </span>
+              {left != null && (
+                <span className="block" style={{ marginTop: 11 }} data-membership-left={left.toFixed(2)}>
+                  <ProgressBar fraction={left} tone={urgent ? 'action' : 'structure'} />
+                </span>
+              )}
+            </button>
+          );
+        })()}
         <TodayStrip
           visitsThisMonth={home.checkInsThisMonth}
           monthName={monthName}

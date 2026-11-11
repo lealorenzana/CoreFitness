@@ -296,6 +296,31 @@ async (page) => {
   await page.waitForTimeout(600);
   out.push('dragging the sheet down closes it: ' + ((await sheets()) === 0 ? 'yes' : 'MISSING'));
 
+  // 6. 0243: the gym lets members switch online and keep their days — the sheet says what happens, and offers it
+  DB.gym_settings[0].plan_switch_mode = 'keep_days';
+  await go('/member/renew');
+  await page.getByRole('radio', { name: /Quarterly/ }).click();
+  await page.waitForTimeout(400);
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await page.waitForTimeout(800);
+  const sw = (await page.locator('[data-switch-online]').innerText().catch(() => '')).replace(/\s+/g, ' ');
+  out.push('keep_days: the sheet says the days are kept and when the new plan starts: ' + (/days? (is|are) kept/.test(sw) && /starts on/.test(sw) ? 'yes' : 'MISSING ' + sw.slice(0, 160)));
+  out.push('…the desk-only note is gone: ' + ((await page.locator('[data-switch-at-desk]').count()) === 0 ? 'yes' : 'MISSING'));
+  const payNew = await page.getByRole('button', { name: /Pay ₱4,200 online/ }).count();
+  const renewCur = await page.getByRole('button', { name: /Renew Premium instead/ }).count();
+  out.push('…paying online for the new plan is offered, beside renewing the current one: ' + (payNew === 1 && renewCur === 1 ? 'yes' : `MISSING new=${payNew} renew=${renewCur}`));
+  await page.screenshot({ path: 'shots/pay-switch-keep.png' });
+  DB.gym_settings[0].plan_switch_mode = 'start_now';
+  await go('/member/renew');
+  await page.getByRole('radio', { name: /Quarterly/ }).click();
+  await page.waitForTimeout(400);
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await page.waitForTimeout(800);
+  const sn = (await page.locator('[data-switch-online]').innerText().catch(() => '')).replace(/\s+/g, ' ');
+  out.push('start_now: the sheet says it starts today and the days left end, not refunded — before paying: ' + (/starts today/.test(sn) && /end today and are not refunded/.test(sn) ? 'yes' : 'MISSING ' + sn.slice(0, 160)));
+  delete DB.gym_settings[0].plan_switch_mode;
+  await page.keyboard.press('Escape');
+
   // 5. The province sheet's title
   await go('/member/profile/edit');
   const prov = page.getByRole('combobox', { name: 'Province' }).or(page.locator('select[aria-label="Province"]')).first();

@@ -12,9 +12,7 @@ import { myStaffPermissions, type StaffArea } from '../../lib/api/staffPermissio
 
 const BORDER       = 'var(--color-border)';
 const PRIMARY      = 'var(--color-primary)';
-const PRIMARY_LIGHT = 'var(--color-primary-light)';
 const SECONDARY    = 'var(--color-secondary)';
-const TEXT_SECOND  = 'var(--color-text-secondary)';
 const TEXT_MUTED   = 'var(--color-text-muted)';
 
 /** The group a path lives in, or null for a top-level page. */
@@ -217,7 +215,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {/* ─── Detail Panel (shows when not collapsed) ─── */}
       {!collapsed && (
         <div
-          className="h-full flex flex-col overflow-hidden"
+          className="sb-panel h-full flex flex-col overflow-hidden"
+          data-sidebar-panel
           style={{
             width: DETAIL_W,
             // Light mode: a solid light tint of the gym's own colour (light.css --sidebar-bg), never plain white.
@@ -226,46 +225,35 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           }}
         >
         {/* Brand header with logo */}
-        <div className="px-4 py-4 flex items-center gap-3 flex-shrink-0">
+        <div className="sb-brand px-4 pt-4 pb-3 flex items-center gap-3 flex-shrink-0">
           {/* The gym's own name and logo (0067). These were literals — and
               the header carried a second copy of the name that could disagree
               with this one. `truncate`, not `whitespace-nowrap`: a longer gym
               name should be cut off, not push the nav sideways. */}
           {brand.logoUrl ? (
             <img src={brand.logoUrl} alt=""
-              className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+              className="sb-mark w-11 h-11 rounded-2xl object-cover flex-shrink-0"
               style={{ background: 'var(--color-surface-high)' }} />
           ) : (
-            <span className="on-fill w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-white font-bold text-[13px]"
+            <span className="sb-mark on-fill w-11 h-11 rounded-2xl flex-shrink-0 flex items-center justify-center text-white font-bold text-[14px]"
               style={{ background: PRIMARY }}>
               {brand.initials}
             </span>
           )}
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-white uppercase tracking-wide truncate"
-              data-tip={brand.name}>
+            <p className="sb-name truncate" data-tip={brand.name}>
               {brand.name}
             </p>
-            {brand.tagline && (
-              <p className="text-[9px] uppercase tracking-[0.15em] truncate" style={{ color: TEXT_MUTED }}>
-                {brand.tagline}
-              </p>
-            )}
+            <p className="sb-tag truncate">{brand.tagline || 'Owner’s dashboard'}</p>
           </div>
-        </div>
-        {/* Collapse button — separate row */}
-        <div className="px-4 pb-2 flex-shrink-0">
-          <button
-            onClick={onToggle}
-            className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-medium transition-colors"
-            style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${BORDER}`, color: TEXT_MUTED }}
-          >
-            <ChevronRight size={12} className="rotate-180" /> Collapse
+          {/* Collapse: an icon beside the name (2026-11-11) — a full-width bar spent a whole row on it. */}
+          <button onClick={onToggle} className="sb-collapse flex-shrink-0" aria-label="Collapse the sidebar" data-tip="Collapse the sidebar">
+            <ChevronRight size={15} className="rotate-180" />
           </button>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 pb-3 overflow-y-auto scrollbar-hide space-y-0.5">
+        <nav className="sb-nav flex-1 px-3 pb-3 overflow-y-auto scrollbar-hide">
           {entries.map((entry) => {
             if (!isGroup(entry)) {
               const isActive = location.pathname === entry.path
@@ -275,13 +263,10 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   key={entry.path}
                   to={entry.path}
                   data-tip={NAV_TIPS[entry.path]}
-                  className="flex items-center gap-2.5 px-3 h-9 rounded-lg text-[13px] font-medium transition-colors"
-                  style={{
-                    background: isActive ? 'var(--sidebar-active, var(--color-primary-light))' : 'transparent',
-                    color: isActive ? PRIMARY : TEXT_SECOND,
-                  }}
+                  className="sb-item"
+                  data-active={isActive}
                 >
-                  <entry.icon size={15} style={{ color: isActive ? PRIMARY : TEXT_MUTED }} />
+                  <span className="sb-ico"><entry.icon size={15} /></span>
                   <span className="truncate">{entry.label}</span>
                 </NavLink>
               );
@@ -292,7 +277,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             // A closed group holding the current page still has to look
             // selected, or the nav shows nothing highlighted while you are
             // plainly on one of its pages.
-            const headerColor = holdsActive ? PRIMARY : TEXT_SECOND;
 
             return (
               <div key={entry.label}>
@@ -300,29 +284,23 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   onClick={() => toggleGroup(entry.label)}
                   aria-expanded={expanded}
                   data-tip={NAV_TIPS[entry.label]}
-                  className="w-full flex items-center gap-2.5 px-3 h-9 rounded-lg text-[13px] font-medium transition-colors"
-                  style={{
-                    background: holdsActive && !expanded ? PRIMARY_LIGHT : 'transparent',
-                    color: headerColor,
-                  }}
+                  className="sb-item sb-group"
+                  data-active={holdsActive && !expanded}
+                  data-holds={holdsActive}
                 >
-                  <entry.icon size={15} style={{ color: holdsActive ? PRIMARY : TEXT_MUTED }} />
+                  <span className="sb-ico"><entry.icon size={15} /></span>
                   <span className="truncate flex-1 text-left">{entry.label}</span>
                   <ChevronDown
-                    size={12}
-                    className="flex-shrink-0 transition-transform duration-200"
-                    style={{
-                      color: TEXT_MUTED,
-                      transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)',
-                    }}
+                    size={13}
+                    className="sb-chev flex-shrink-0"
+                    style={{ transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)' }}
                   />
                 </button>
 
                 {expanded && (
                   // The guide line is what makes these read as *inside* the row
                   // above rather than as more top-level links.
-                  <div className="ml-[22px] pl-2 mt-0.5 space-y-0.5"
-                    style={{ borderLeft: `1px solid ${BORDER}` }}>
+                  <div className="sb-children" data-active={holdsActive}>
                     {entry.children.map((child) => {
                       const isActive = location.pathname === child.path
                         || (child.alsoMatches?.includes(location.pathname) ?? false);
@@ -331,13 +309,10 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                           key={child.path}
                           to={child.path}
                           data-tip={NAV_TIPS[child.path]}
-                          className="flex items-center gap-2 px-2.5 h-8 rounded-lg text-[12px] font-medium transition-colors"
-                          style={{
-                            background: isActive ? 'var(--sidebar-active, var(--color-primary-light))' : 'transparent',
-                            color: isActive ? PRIMARY : TEXT_SECOND,
-                          }}
+                          className="sb-item sb-child"
+                          data-active={isActive}
                         >
-                          <child.icon size={13} style={{ color: isActive ? PRIMARY : TEXT_MUTED }} />
+                          <span className="sb-ico"><child.icon size={13} /></span>
                           <span className="truncate">{child.label}</span>
                         </NavLink>
                       );
@@ -351,12 +326,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
         {/* Footer — Logout */}
         <div className="px-3 py-3 flex-shrink-0" style={{ borderTop: `1px solid ${BORDER}` }}>
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-2.5 px-3 h-9 rounded-lg text-[13px] font-medium transition-colors"
-            style={{ color: SECONDARY }}
-          >
-            <LogOut size={15} />
+          <button onClick={handleLogout} className="sb-item sb-logout">
+            <span className="sb-ico"><LogOut size={15} /></span>
             <span>Logout</span>
           </button>
         </div>

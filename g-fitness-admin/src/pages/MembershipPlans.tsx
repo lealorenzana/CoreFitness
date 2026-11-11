@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import PlanFeatureMatrix from '../components/PlanFeatureMatrix';
+import PlanSwitchRule from '../components/PlanSwitchRule';
 import { Av, Pager } from './attendance/parts';
 import './attendance/att.css';
 import { showToast } from '../utils/toast';
@@ -324,6 +325,8 @@ export default function MembershipPlans() {
         </div>
       </div>
 
+      {/* 0243: what a switch paid online mid-term does — the owner's rule. */}
+      {view === 'sell' && <PlanSwitchRule />}
       {view === 'sell' && (
         <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) 360px', flex: 1 }}>
           <div className="a-grid" style={{ gridTemplateRows: 'auto minmax(0, 1fr)' }}>

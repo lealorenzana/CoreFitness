@@ -101,7 +101,10 @@ check('…the member is told, and the desk', (await one(`select count(*)::int n 
 await service();
 check('the same webhook twice records nothing more', (await one(`select paymongo_settle('cs_ren', 'pay_ren', 80000) r`)).r === 'already settled');
 
-// 0193: a different plan while a paid one still runs is the desk's — refused online.
+// 0193: a different plan while a paid one still runs is the desk's — refused online. Since 0243 that is the
+// owner's 'desk' rule (the default is keep_days), so this part sets it.
+await owner();
+await db.exec(`update gym_settings set plan_switch_mode = 'desk' where gym_id = '${GYM}'`);
 await as(MEM);
 check('a switch mid-term is refused online, with the reason and the way', /You are on Monthly Test until .* switch plans at the desk/.test(
   await tryExec(`select paymongo_prepare_member('membership', '{"plan_id":"${P_BIG}"}')`) ?? ''));
@@ -115,6 +118,59 @@ await owner();
 check('…the plan stays, the money is on record, and the desk is told', (await one(`select plan_id from memberships where member_id = '${MEM}'`)).plan_id === P_PLAN
   && (await one(`select count(*)::int n from payments where notes like '%pay_legacy%' and notes like '%not applied%'`)).n === 1
   && (await one(`select count(*)::int n from notifications where user_id = '${DESK}' and title = 'Plan switch paid online'`)).n === 1);
+// ---- 0243: the owner's rule for a switch online, mid-term ----
+const mem = async () => one(`select plan_id, expiry_date::text e, status::text st from memberships where member_id = '${MEM}' order by created_at desc limit 1`);
+const daysFromToday = async (d) => (await one(`select ('${d}'::date - manila_today())::int n`)).n;
+await owner();
+await db.exec(`update memberships set plan_id = '${P_PLAN}', status = 'active', expiry_date = manila_today() + 26 where member_id = '${MEM}';
+  update gym_settings set plan_switch_mode = 'keep_days' where gym_id = '${GYM}'`);
+await as(DESK);
+await db.exec(`update gym_settings set plan_switch_mode = 'start_now' where gym_id = '${GYM}'`);
+await owner();
+check('0243: the desk cannot change the rule (only the owner)', (await one(`select plan_switch_mode m from gym_settings where gym_id = '${GYM}'`)).m === 'keep_days');
+await owner();
+let bad = await tryExec(`update gym_settings set plan_switch_mode = 'anything' where gym_id = '${GYM}'`);
+check('…and it is one of the three', !!bad, String(bad));
+
+// keep_days: the new term starts when the current one ends — nothing paid is lost
+await as(MEM);
+const kd = (await one(`select paymongo_prepare_member('membership', '{"plan_id":"${P_BIG}"}') p`)).p;
+check('keep_days: a mid-term switch can be paid online, at the new plan\'s price', Number(kd.amount) === 2100 && /switch from Monthly Test/.test(kd.description), JSON.stringify(kd));
+await owner();
+check('…the rule is stored on the checkout', (await one(`select details->>'switch' s from paymongo_checkouts where id = '${kd.id}'`)).s === 'keep_days');
+await service();
+await db.exec(`select paymongo_attach('${kd.id}', 'cs_zkeep', 'https://x')`);
+check('…paid: settled', (await one(`select paymongo_settle('cs_zkeep', 'pay_zkeep', 210000, 'qrph') r`)).r === 'settled');
+await owner();
+let mm = await mem();
+check('…switched to the new plan, and its 90 days start after the 26 left (26 + 90 = 116)', mm.plan_id === P_BIG && mm.st === 'active' && (await daysFromToday(mm.e)) === 116, JSON.stringify(mm));
+check('…the payment says so', (await one(`select count(*)::int n from payments where notes like '%pay_zkeep%' and notes like '%days kept%' and plan_name = 'Quarter Test' and status = 'completed'`)).n === 1);
+check('…recorded once, not twice', (await one(`select count(*)::int n from payments where member_id = '${MEM}' and created_at >= (select paid_at from paymongo_checkouts where checkout_session_id = 'cs_zkeep')`)).n === 1);
+
+// start_now: it starts today and the days left end — even if the owner changes the rule after the checkout opened
+await db.exec(`update memberships set plan_id = '${P_PLAN}', status = 'active', expiry_date = manila_today() + 26 where member_id = '${MEM}';
+  update gym_settings set plan_switch_mode = 'start_now' where gym_id = '${GYM}'`);
+await as(MEM);
+const sn = (await one(`select paymongo_prepare_member('membership', '{"plan_id":"${P_BIG}"}') p`)).p;
+await owner();
+await db.exec(`update gym_settings set plan_switch_mode = 'desk' where gym_id = '${GYM}'`);
+await service();
+await db.exec(`select paymongo_attach('${sn.id}', 'cs_znow', 'https://x')`);
+await db.exec(`select paymongo_settle('cs_znow', 'pay_znow', 210000, 'qrph')`);
+await owner();
+mm = await mem();
+check('start_now: the new plan\'s 90 days start today (the 26 left end) — by the rule the member was shown', mm.plan_id === P_BIG && (await daysFromToday(mm.e)) === 90, JSON.stringify(mm));
+check('…the payment says the days left ended, and it is recorded once', (await one(`select count(*)::int n from payments where notes like '%pay_znow%' and notes like '%days left ended%'`)).n === 1
+  && (await one(`select count(*)::int n from payments where member_id = '${MEM}' and amount = 2100 and paid_on = manila_today() and created_at >= (select paid_at from paymongo_checkouts where checkout_session_id = 'cs_zkeep')`)).n === 2);
+
+// desk: refused online again (the rule now)
+await db.exec(`update memberships set plan_id = '${P_PLAN}', status = 'active', expiry_date = manila_today() + 26 where member_id = '${MEM}'`);
+await as(MEM);
+check('desk: a mid-term switch is refused online again', /switch plans at the desk/.test(await tryExec(`select paymongo_prepare_member('membership', '{"plan_id":"${P_BIG}"}')`) ?? ''));
+check('…a same-plan renewal is still fine under every rule', Number((await one(`select paymongo_prepare_member('membership') p`)).p.amount) === 800);
+await owner();
+await db.exec(`update memberships set plan_id = '${P_PLAN}' where member_id = '${MEM}'`);
+
 // Once the plan has ended, a different plan is fine online.
 await db.exec(`update memberships set status = 'expired', expiry_date = manila_today() - 1 where member_id = '${MEM}'`);
 await as(MEM);
@@ -152,6 +208,7 @@ await as(MEM);
 check('…and a renewal online is refused, plainly', /not set up/.test(await tryExec(`select paymongo_prepare_member('membership')`) ?? ''));
 
 await owner();
-check('marker', (await one(`select migration_0192_applied() ok`)).ok === true && (await one(`select migration_0193_applied() ok`)).ok === true);
+check('marker', (await one(`select migration_0192_applied() ok`)).ok === true && (await one(`select migration_0193_applied() ok`)).ok === true
+  && (await one(`select migration_0243_applied() ok`)).ok === true);
 console.log(failures ? `\n${failures} FAILED` : '\nall 0192 checks passed');
 process.exit(failures ? 1 : 0);
