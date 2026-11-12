@@ -12,7 +12,8 @@
 import { liveDb, describe } from './lib/live-db.mjs';
 
 const REPO = process.argv[2];
-const db = await liveDb(REPO);
+// BEFORE=0250 replays the schema without the fix, to prove the goal check can fail.
+const db = await liveDb(REPO, { before: process.env.BEFORE || null });
 const GYM = 'c0f1e55e-0000-4000-8000-000000000001';
 const id = (n) => `a1710000-0000-4000-8000-0000000000${String(n).padStart(2, '0')}`;
 const ADMIN = id(1), MEMBER = id(2), RECENT = id(3), AWAY = id(4);
@@ -86,6 +87,12 @@ check('a progress photo taken tomorrow is refused',
   refused(await code(`insert into progress_photos (gym_id, member_id, path, taken_on) values ('${GYM}', '${MEMBER}', 'x', ${d(1)})`)));
 check('a target date in the past is refused',
   refused(await code(`insert into fitness_goals (gym_id, member_id, title, target_date) values ('${GYM}', '${MEMBER}', 'Run', ${d(-2)})`)));
+// 0250: the check above passed for two months while every real goal failed — 0171's shared
+// trigger read NEW.due_on on fitness_goals. A good goal must actually SAVE, not merely "not 22008".
+const goodGoal = await code(`insert into fitness_goals (gym_id, member_id, title, target_date) values ('${GYM}', '${MEMBER}', 'Run 5k', ${d(30)})`);
+check('a member saves a goal with a target next month', goodGoal === 'ok', goodGoal);
+const noDate = await code(`insert into fitness_goals (gym_id, member_id, title) values ('${GYM}', '${MEMBER}', 'Feel stronger')`);
+check('…and one with no target date', noDate === 'ok', noDate);
 
 // ---- birth dates, for everyone ----
 check('a member born tomorrow is refused',
