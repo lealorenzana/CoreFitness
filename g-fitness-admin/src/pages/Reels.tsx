@@ -215,7 +215,7 @@ export default function Reels() {
             <div data-reels-empty style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start', padding: '10px 0', maxWidth: 520 }}>
               <b style={{ display: 'flex', gap: 8, alignItems: 'center' }}><Clapperboard size={16} />No reels yet</b>
               <p className="a-sub" style={{ lineHeight: 1.5 }}>A reel is a short video for your members — a tip, a class highlight, a hello from a coach. Paste a link or upload a small video
-                (up to 25 MB each, kept within your plan's storage; links use none). Members see reels on Today and in More, and can give each a heart.</p>
+                (up to 15 MB each, kept within your plan's storage; links use none). Members see reels on Today and in More, and can give each a heart.</p>
               <button type="button" className="a-btn violet" onClick={() => openAdd()}><Plus size={14} />Add a reel</button>
             </div>
           ) : visible.length === 0 ? (
@@ -301,7 +301,7 @@ export default function Reels() {
                   style={{ ...lbl, background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}><Upload size={14} />{adding.file ? 'Choose another video' : 'Choose a video'}</button>
                 {adding.file && <p className="text-[12px] mt-2" style={lbl} data-reel-file-name>{adding.file.name} · {megabytes(adding.file.size)}</p>}
                 {fileProblem && <p role="alert" data-reel-file-problem className="text-[12px] mt-1" style={{ color: 'var(--a-a300, var(--color-warning))' }}>{fileProblem}</p>}
-                <p className="text-[12px] mt-2 flex gap-1.5" style={muted}><Info size={13} className="flex-none mt-0.5" />MP4, MOV or WebM, up to 25 MB{storage ? ` — your gym has used ${storage} of storage` : ''}. Its cover is taken from the start of the video.</p>
+                <p className="text-[12px] mt-2 flex gap-1.5" style={muted}><Info size={13} className="flex-none mt-0.5" />MP4, MOV or WebM, up to 15 MB{storage ? ` — your gym has used ${storage} of storage` : ''}. Its cover is taken from the start of the video.</p>
               </div>
             )}
 

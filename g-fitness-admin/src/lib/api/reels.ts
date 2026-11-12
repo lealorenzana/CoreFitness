@@ -17,8 +17,8 @@ import { reelEmbedUrl, reelLinkCover, reelLinkSource, type ReelSource } from '..
  */
 
 const BUCKET = 'reels';
-/** Must match the bucket's file_size_limit (25 MB). */
-export const REEL_MAX_BYTES = 25 * 1024 * 1024;
+/** Must match the bucket's file_size_limit (15 MB since 0248; 25 MB before). */
+export const REEL_MAX_BYTES = 15 * 1024 * 1024;
 export const REEL_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
 
 export interface Reel {
@@ -165,7 +165,7 @@ export function videoCoverFrame(file: File): Promise<Blob | null> {
 /** Why this file cannot be a reel, in words — or null when it can. */
 export function reelFileProblem(file: File): string | null {
   if (!REEL_VIDEO_TYPES.includes(file.type)) return 'Choose an MP4, MOV or WebM video.';
-  if (file.size > REEL_MAX_BYTES) return `That video is ${(file.size / 1048576).toFixed(0)} MB. The limit is 25 MB — trim it or export it smaller.`;
+  if (file.size > REEL_MAX_BYTES) return `That video is ${(file.size / 1048576).toFixed(0)} MB. The limit is 15 MB — trim it, or export it at 720p.`;
   return null;
 }
 

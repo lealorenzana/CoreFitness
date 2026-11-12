@@ -214,7 +214,7 @@ await db.exec(`delete from storage.objects where bucket_id = 'reels' and name = 
 await owner();
 check('the owner can', (await one(`select count(*)::int n from storage.objects where name = 'gyms/${GYM}/reels/t.mp4'`)).n === 0);
 const b = await one(`select public, file_size_limit, allowed_mime_types from storage.buckets where id = 'reels'`);
-check('the bucket is public, 25 MB, video and cover images only', b.public === true && Number(b.file_size_limit) === 26214400 && b.allowed_mime_types.includes('video/mp4') && !b.allowed_mime_types.includes('text/html'));
+check('the bucket is public, 15 MB (0248), video and cover images only', b.public === true && Number(b.file_size_limit) === 15728640 && b.allowed_mime_types.includes('video/mp4') && !b.allowed_mime_types.includes('text/html'));
 
 // ---- switched off again ----
 await as(AD);

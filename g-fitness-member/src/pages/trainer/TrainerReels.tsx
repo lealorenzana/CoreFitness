@@ -180,7 +180,7 @@ function PostSheet({ open, onClose, onPosted }: { open: boolean; onClose: () => 
           </div>
         ) : (
           <div>
-            <Field label={t('Video')} hint={`${t('MP4, MOV or WebM, up to 25 MB.')}${limit != null ? ` ${t('The gym has used')} ${limit} ${t('of its storage.')}` : ''}`}>
+            <Field label={t('Video')} hint={`${t('MP4, MOV or WebM, up to 15 MB.')}${limit != null ? ` ${t('The gym has used')} ${limit} ${t('of its storage.')}` : ''}`}>
               <input type="file" accept={REEL_VIDEO_TYPES.join(',')} disabled={busy} data-reel-file
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                 style={{ fontSize: 13, color: 'var(--color-text-secondary)', maxWidth: '100%' }} />
