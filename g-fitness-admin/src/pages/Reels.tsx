@@ -7,10 +7,10 @@ import './attendance/att.css';
 import { showToast } from '../utils/toast';
 import { moduleOn, useGymModules } from '../hooks/useGymModules';
 import {
-  listReels, gymStorage, storageWords, fetchReelCover, postLinkReel, postUploadedReel, editReel, removeReel, reelFileProblem, REEL_VIDEO_TYPES,
+  listReels, gymStorage, storageWords, fetchReelCover, changeReelCover, postLinkReel, postUploadedReel, editReel, removeReel, reelFileProblem, REEL_VIDEO_TYPES,
   type Reel,
 } from '../lib/api/reels';
-import { INSTAGRAM_CROP, reelLinkSource, reelEmbedUrl, REEL_SOURCE_WORDS, REEL_LINK_HINT } from '../lib/reelEmbed';
+import { INSTAGRAM_CROP, reelLinkSource, reelEmbedUrl, reelOutsideWhy, REEL_SOURCE_WORDS, REEL_LINK_HINT } from '../lib/reelEmbed';
 
 /**
  * Reels (0245) — short videos the gym puts up for its members: a pasted link
@@ -65,7 +65,8 @@ export default function Reels() {
   const [adding, setAdding] = useState<AddForm | null>(null);
   const [linkError, setLinkError] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [editing, setEditing] = useState<{ id: string; title: string; caption: string; hidden: boolean } | null>(null);
+  const [editing, setEditing] = useState<{ id: string; title: string; caption: string; hidden: boolean; cover: File | null; hasCover: boolean } | null>(null);
+  const editCoverInput = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<Reel | null>(null);
   const [toDelete, setToDelete] = useState<Reel | null>(null);
   const videoInput = useRef<HTMLInputElement>(null);
@@ -144,6 +145,7 @@ export default function Reels() {
     setBusy(true);
     try {
       await editReel(editing.id, { title: editing.title.trim(), caption: editing.caption.trim(), hidden: editing.hidden });
+      if (editing.cover) await changeReelCover(editing.id, editing.cover);
       showToast('Saved', 'success');
       setEditing(null);
       await load();
@@ -238,7 +240,7 @@ export default function Reels() {
                     <div style={{ display: 'flex', gap: 6, marginTop: 'auto', alignItems: 'center' }}>
                       <button type="button" className="a-btn ghost sm" onClick={() => setPreview(r)} aria-label={`Preview ${r.title}`}><Play size={13} /></button>
                       {r.canManage && <>
-                        <button type="button" className="a-btn ghost sm" onClick={() => setEditing({ id: r.id, title: r.title, caption: r.caption ?? '', hidden: r.hidden })} aria-label={`Edit ${r.title}`}><Pencil size={13} /></button>
+                        <button type="button" className="a-btn ghost sm" onClick={() => setEditing({ id: r.id, title: r.title, caption: r.caption ?? '', hidden: r.hidden, cover: null, hasCover: !!r.cover })} aria-label={`Edit ${r.title}`}><Pencil size={13} /></button>
                         <button type="button" className="a-btn ghost sm" onClick={() => void toggleHidden(r)} aria-label={`${r.hidden ? 'Show' : 'Hide'} ${r.title}`}>{r.hidden ? <Eye size={13} /> : <EyeOff size={13} />}</button>
                         <button type="button" className="a-btn ghost sm" style={{ marginLeft: 'auto' }} onClick={() => setToDelete(r)} aria-label={`Remove ${r.title}`}><Trash2 size={13} /></button>
                       </>}
@@ -284,7 +286,11 @@ export default function Reels() {
                     onChange={(e) => { setLinkError(false); setAdd({ url: e.target.value }); }} /></label>
                 {linkError && <p role="alert" data-reel-link-error className="text-[12px]" style={{ color: 'var(--a-a300, var(--color-warning))' }}>That link cannot be a reel. {REEL_LINK_HINT} (it starts with https://).</p>}
                 {!linkError && adding.url.trim() && reelLinkSource(adding.url) && !reelEmbedUrl(adding.url) && (
-                  <p className="text-[12px] flex gap-1.5" style={muted}><Info size={13} className="flex-none mt-0.5" />This is a short share link, so it opens in {REEL_SOURCE_WORDS[reelLinkSource(adding.url)!]} instead of playing inside the app. The full link from the video's own page plays inside.</p>
+                  <p className="text-[12px] flex gap-1.5" style={muted} data-reel-outside-hint><Info size={13} className="flex-none mt-0.5" />{reelOutsideWhy(adding.url) === 'photo'
+                    ? 'This is a photo post, not a video, so members see its first picture and swipe through the rest in TikTok.'
+                    : reelLinkSource(adding.url) === 'facebook'
+                      ? 'Facebook keeps share links in its own app. To play it here, open the reel on Facebook, tap ⋯ → Copy link on the reel itself (facebook.com/reel/…) and paste that. Add a cover picture below either way — Facebook gives none.'
+                      : `This is a short share link, so it opens in ${REEL_SOURCE_WORDS[reelLinkSource(adding.url)!]} instead of playing inside the app. The full link from the video's own page plays inside.`}</p>
                 )}
               </>
             ) : (
@@ -341,6 +347,16 @@ export default function Reels() {
               <input type="checkbox" checked={editing.hidden} onChange={(e) => setEditing({ ...editing, hidden: e.target.checked })} style={{ marginTop: 3 }} />
               <span>Hidden from members<br /><span className="text-[12px]" style={muted}>It stays here with its likes, and comes back when you show it again.</span></span>
             </label>
+            <div className="text-[12px]" style={lbl} data-edit-cover>Cover picture
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                <input ref={editCoverInput} type="file" accept="image/*" hidden aria-label="New cover picture"
+                  onChange={(e) => { const f = e.target.files?.[0] ?? null; setEditing((x) => (x ? { ...x, cover: f } : x)); e.target.value = ''; }} />
+                <button type="button" disabled={busy} onClick={() => editCoverInput.current?.click()} className="px-3 py-2 rounded-lg text-[12.5px] font-semibold inline-flex items-center gap-1.5 disabled:opacity-50"
+                  style={{ ...lbl, background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}><ImagePlus size={14} />{editing.hasCover || editing.cover ? 'Change the picture' : 'Add a picture'}</button>
+                {editing.cover && <span className="text-[12px]" style={lbl}>{editing.cover.name}</span>}
+              </div>
+              <span className="block text-[12px] mt-1" style={muted}>Shown before it plays — and for a reel that opens in its own app, it is what members see.</span>
+            </div>
           </div>
         )}
       </Modal>
@@ -370,7 +386,7 @@ export default function Reels() {
             ) : (
               <>
                 <div style={{ width: 240, maxWidth: '100%' }}><Cover r={preview} /></div>
-                <p className="text-[12px]" style={{ ...muted, textAlign: 'center' }}>This link does not play inside the app. Members get the same button.</p>
+                <p className="text-[12px]" style={{ ...muted, textAlign: 'center' }}>{reelOutsideWhy(preview.url) === 'photo' ? 'A photo post, not a video: members see this picture and swipe through the rest in TikTok.' : `${REEL_SOURCE_WORDS[preview.source]} keeps this one in its own app. Members see this picture and the same button.`}</p>
                 <a href={preview.url} target="_blank" rel="noopener noreferrer" data-reel-open
                   className="px-4 py-2 rounded-lg text-[13px] font-semibold text-white on-fill inline-flex items-center gap-1.5" style={{ background: 'var(--fill-primary, var(--color-primary))' }}>
                   <ExternalLink size={14} />Open in {REEL_SOURCE_WORDS[preview.source]}</a>

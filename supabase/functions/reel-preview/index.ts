@@ -66,6 +66,8 @@ async function fetchPage(start: URL): Promise<{ html: string; final: URL } | nul
       continue;
     }
     if (!res.ok) { await res.body?.cancel(); return null; }
+    // A sign-in wall (Facebook sends servers to /login) is not the link's page.
+    if (/^\/(login|checkpoint)(\/|$)/i.test(u.pathname)) { await res.body?.cancel(); return null; }
     const html = (await res.text()).slice(0, 1_500_000);
     return { html, final: u };
   }

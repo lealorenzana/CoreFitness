@@ -107,6 +107,32 @@ export function reelEmbedUrl(url: string | null | undefined): string | null {
  */
 export const INSTAGRAM_CROP = { header: 54, ratio: 1.25, below: 360 };
 
+/**
+ * Why a link reel opens in its own app instead of playing here — so the screen can
+ * say it plainly. Null when it plays here.
+ *   - 'photo': a TikTok photo post (a slideshow, not a video). No player shows those.
+ *   - 'share': a short share link (vm.tiktok.com, fb.watch, facebook.com/share/…) that
+ *     hides the video's id behind a redirect.
+ *   - 'post': anything else the site will not hand to a player (a Facebook post).
+ */
+export type OutsideWhy = 'photo' | 'share' | 'post';
+export function reelOutsideWhy(url: string | null | undefined): OutsideWhy | null {
+  if (reelEmbedUrl(url)) return null;
+  const u = parse(url);
+  if (!u || !reelLinkSource(url)) return null;
+  const parts = u.pathname.split('/').filter(Boolean);
+  if (/tiktok\.com$/.test(u.hostname) && parts.includes('photo')) return 'photo';
+  if (/^(vm|vt)\.tiktok\.com$/.test(u.hostname) || u.hostname === 'fb.watch' || parts[0] === 'share') return 'share';
+  return 'post';
+}
+
+/** What to tell a member, in a sentence, when a link opens outside. */
+export function reelOutsideWords(url: string | null | undefined, site: string): string {
+  const why = reelOutsideWhy(url);
+  if (why === 'photo') return `A photo post — swipe through all the photos in ${site}.`;
+  return `${site} keeps this one in its own app.`;
+}
+
 /** A cover the link itself gives us: YouTube's own thumbnail. Nothing for the others — a browser cannot read theirs. */
 export function reelLinkCover(url: string | null | undefined): string | null {
   const u = parse(url);

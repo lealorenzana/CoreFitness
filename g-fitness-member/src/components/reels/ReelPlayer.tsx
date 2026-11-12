@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { ArrowLeft, CaretDown, CaretUp, Heart, Play, SpeakerHigh, SpeakerSlash } from '@phosphor-icons/react';
 import { toggleReelLike, type Reel } from '../../lib/api/reels';
-import { INSTAGRAM_CROP, reelEmbedUrl, REEL_SOURCE_WORDS } from '../../lib/reelEmbed';
+import { INSTAGRAM_CROP, reelEmbedUrl, reelOutsideWhy, reelOutsideWords, REEL_SOURCE_WORDS } from '../../lib/reelEmbed';
 import { toast } from '../ui/Toast';
 import { useT } from '../../lib/i18n';
 
@@ -162,10 +162,10 @@ function ReelSlide({ reel, active, like, onLike, muted, onMute, onBlocked, onPre
               className="inline-flex items-center justify-center noc-press on-fill"
               style={{ height: 46, padding: '0 20px', borderRadius: 'var(--radius-btn, 10px)', fontSize: 14.5, fontWeight: 700,
                 background: 'var(--color-secondary)', color: 'var(--color-bg)' }}>
-              {`${t('Open in')} ${source}`}
+              {reelOutsideWhy(reel.url) === 'photo' ? `${t('See the photos in')} ${source}` : `${t('Open in')} ${source}`}
             </a>
             <p style={{ fontSize: 12.5, color: 'rgb(255 255 255 / 0.82)', background: 'rgb(0 0 0 / 0.6)', padding: '3px 8px', borderRadius: 6 }}>
-              {`${t('This one plays in the')} ${source} ${t('app')}.`}
+              {t(reelOutsideWords(reel.url, source))}
             </p>
           </div>
         )}
@@ -192,6 +192,14 @@ function ReelSlide({ reel, active, like, onLike, muted, onMute, onBlocked, onPre
             </button>
           )}
           {byline && <p className="truncate" style={{ fontSize: 12, marginTop: 4, color: 'rgb(255 255 255 / 0.65)' }}>{byline}</p>}
+          {/* A site's player can refuse (TikTok answers "429 Too Many Requests" to a busy network):
+              the way out is always one tap away, never a dead screen. */}
+          {embed && (
+            <a href={reel.url} target="_blank" rel="noopener noreferrer" data-reel-open-small
+              className="inline-block" style={{ fontSize: 12, marginTop: 4, fontWeight: 600, color: 'var(--color-secondary-300, var(--color-secondary))' }}>
+              {`${t('Not playing? Open in')} ${source}`}
+            </a>
+          )}
         </div>
         <div className="flex-none flex items-center" style={{ gap: 4 }}>
           <button type="button" onClick={onLike} aria-pressed={like.liked} data-reel-like

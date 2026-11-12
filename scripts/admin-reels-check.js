@@ -108,12 +108,18 @@ async (page) => {
       fbShare: m.reelEmbedUrl('https://www.facebook.com/share/p/1DYmJhPcf3/'),
       fbReel: m.reelEmbedUrl('https://www.facebook.com/reel/1234567890'),
       crop: m.INSTAGRAM_CROP,
+      photoWhy: m.reelOutsideWhy('https://www.tiktok.com/@a/photo/7681426118015995157?q=gym'),
+      photoWords: m.reelOutsideWords('https://www.tiktok.com/@a/photo/7681426118015995157', 'TikTok'),
+      fbWhy: m.reelOutsideWhy('https://www.facebook.com/share/p/1DYmJhPcf3/'),
+      videoWhy: m.reelOutsideWhy('https://www.tiktok.com/@a/video/7539171941316381959'),
     };
   });
   say('YouTube plays at once and loops', /youtube-nocookie\.com\/embed\/_GziHDdJY10\?.*autoplay=1.*loop=1.*playlist=_GziHDdJY10/.test(emb.yt ?? ''), String(emb.yt));
   say("TikTok uses its video player (not the post card), playing at once and looping", /^https:\/\/www\.tiktok\.com\/player\/v1\/7539171941316381959\?autoplay=1&loop=1/.test(emb.tt ?? '') && !/embed\/v2/.test(emb.tt ?? ''), String(emb.tt));
   say('a TikTok short link and a Facebook share link still open in their own app', emb.ttShort === null && emb.fbShare === null);
   say('a Facebook reel link plays in the video plugin', /facebook\.com\/plugins\/video\.php\?href=.*autoplay=true/.test(emb.fbReel ?? ''), String(emb.fbReel));
+  say('a TikTok photo post is told apart, and says to swipe through it in TikTok', emb.photoWhy === 'photo' && /photo post/.test(emb.photoWords), JSON.stringify([emb.photoWhy, emb.photoWords]));
+  say('a Facebook share link is a share; a TikTok video plays here', emb.fbWhy === 'share' && emb.videoWhy === null);
   say("Instagram's embed is cropped to its video (header pushed out, likes below the box)", /instagram\.com\/reel\/DeRcEBZsdbT\/embed$/.test(emb.ig ?? '') && emb.crop.header === 54 && emb.crop.ratio > 1 && emb.crop.below >= 300, JSON.stringify(emb.crop));
   say('the YouTube reel shows its 2 likes', /2/.test(await page.locator('[data-reel="Three stretches before you lift"] [data-reel-likes]').innerText()));
   await page.waitForTimeout(800);

@@ -1,6 +1,6 @@
 import { supabase } from '../supabaseClient';
 import { currentGymId } from '../gymContext';
-import { reelLinkCover, reelLinkSource, type ReelSource } from '../reelEmbed';
+import { reelEmbedUrl, reelLinkCover, reelLinkSource, type ReelSource } from '../reelEmbed';
 
 /**
  * Reels (0245): short videos the gym puts up for its members.
@@ -83,6 +83,28 @@ async function linkPreview(url: string): Promise<{ coverPath: string | null; url
   } catch { return { coverPath: null, url: null }; }
 }
 
+/**
+ * The full address a share link led to, kept only when it is better: it plays here
+ * and the typed link did not. A site's sign-in wall is never better (2026-11-12: a
+ * Facebook share link was traded for facebook.com/login — the reel went dead).
+ */
+function betterUrl(typed: string, found: string | null): string | null {
+  if (!found || /\/(login|checkpoint)(\/|\?|$)/i.test(found)) return null;
+  if (reelLinkSource(found) !== reelLinkSource(typed)) return null;
+  return reelEmbedUrl(found) && !reelEmbedUrl(typed) ? found : null;
+}
+
+/** A new cover picture for a reel the caller may change (the old one is deleted). */
+export async function changeReelCover(reelId: string, image: Blob): Promise<void> {
+  const path = await uploadReelCover(image);
+  const { data, error } = await supabase.rpc('set_reel_cover', { p_reel: reelId, p_cover_path: path, p_url: null });
+  if (error) {
+    void supabase.storage.from(BUCKET).remove([path]);
+    throw new Error(error.message);
+  }
+  if (typeof data === 'string' && data) void supabase.storage.from(BUCKET).remove([data]);
+}
+
 const randomName = () => (crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`);
 
 async function folder(): Promise<string> {
@@ -162,7 +184,7 @@ export async function postLinkReel(r: NewReel & { url: string; cover?: Blob | nu
     if (coverPath) void supabase.storage.from(BUCKET).remove([coverPath]);
     coverPath = own;
   }
-  const url = found.url && reelLinkSource(found.url) === source ? found.url : typed;
+  const url = betterUrl(typed, found.url) ?? typed;
   const { data, error } = await supabase.rpc('post_reel', {
     p_title: r.title, p_caption: r.caption, p_url: url, p_video_path: null, p_cover_path: coverPath,
   });
@@ -181,7 +203,7 @@ export async function fetchReelCover(reel: Pick<Reel, 'id' | 'url' | 'source' | 
   if (!reel.canManage || reel.cover || reel.source === 'upload' || reel.source === 'youtube') return false;
   const found = await linkPreview(reel.url);
   if (!found.coverPath && !found.url) return false;
-  const url = found.url && reelLinkSource(found.url) === reel.source && found.url !== reel.url ? found.url : null;
+  const url = betterUrl(reel.url, found.url);
   if (!found.coverPath && !url) return false;
   const { data, error } = await supabase.rpc('set_reel_cover', { p_reel: reel.id, p_cover_path: found.coverPath, p_url: url });
   if (error) {
