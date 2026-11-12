@@ -145,11 +145,12 @@
 .gc-row[data-mine='true'] .gc-bubble-line { flex-direction: row-reverse; }
 .gc-bubble { -webkit-touch-callout: none; touch-action: manipulation; }
 @media (hover: none) { .gc-bubble { -webkit-user-select: none; user-select: none; } }
+/* React and reply sit beside every bubble, always visible (owner, 2026-11-12). */
+.gc-acts { display: flex; align-items: center; gap: 0; flex: none; }
+.gc-row[data-mine='true'] .gc-acts { flex-direction: row-reverse; }
 .gc-react-btn { width: 30px; height: 30px; border-radius: 50%; display: grid !important; place-items: center; flex: none;
-  color: var(--gc-muted) !important; opacity: 0; transition: opacity .12s; }
-.gc-react-btn:hover { background: var(--gc-raised); color: var(--gc-text) !important; }
-.gc-row:hover .gc-react-btn, .gc-react-btn[data-picked='true'], .gc-react-btn[aria-expanded='true'], .gc-react-btn:focus-visible { opacity: 1; }
-@media (hover: none) { .gc-row:hover .gc-react-btn:not([data-picked='true']):not([aria-expanded='true']) { opacity: 0; } }
+  color: var(--gc-muted) !important; }
+.gc-react-btn:hover, .gc-react-btn[aria-expanded='true'] { background: var(--gc-raised); color: var(--gc-text) !important; }
 .gc-quick { display: flex; align-items: center; gap: 2px; padding: 4px; margin: 0 0 4px; border-radius: 24px;
   background: var(--surface-solid, var(--a-surface-solid, var(--gc-surface))); border: 1px solid var(--gc-line);
   box-shadow: 0 8px 24px rgb(0 0 0 / .28); animation: gc-pop .14s ease-out both; width: max-content; max-width: calc(100vw - 24px); overflow-x: auto; }

@@ -327,7 +327,8 @@ export default function GymChatView({ chat, toast, title, lead, t = same, startO
               onMenu={(x) => { setQuick(null); setMenu(x); }} onJump={jumpTo} onOpenPhoto={setViewer}
               onReact={(emoji) => { setQuick(null); chat.react(m, emoji).catch(say); }}
               picked={tapped === m.id} onPick={() => { setQuick(null); setTapped((p) => (p === m.id ? null : m.id)); }}
-              quick={quick === m.id} onQuick={() => setQuick((q) => (q === m.id ? null : m.id))} emojis={meta.emojis} />
+              quick={quick === m.id} onQuick={() => setQuick((q) => (q === m.id ? null : m.id))} emojis={meta.emojis}
+              onReply={meta.can_post ? () => { setQuick(null); setReplyTo(m); inputRef.current?.focus(); } : undefined} />
           );
         })}
         {pending.map((p) => <PendingRow key={p.id} p={p} t={t} onRetry={chat.retry} onDiscard={chat.discard} />)}
@@ -491,12 +492,14 @@ interface RowProps {
   t: (s: string) => string;
   onMenu: (m: ChatMessage) => void; onJump: (id: string) => void; onOpenPhoto: (url: string) => void; onReact: (emoji: string) => void;
   picked: boolean; onPick: () => void; quick: boolean; onQuick: () => void; emojis: string[];
+  /** Absent when the person may not post (announcements-only, stopped from posting). */
+  onReply?: () => void;
 }
 
 /** How long a press must last to count as a hold (Messenger's is about half a second). */
 const HOLD_MS = 450;
 
-function MessageRow({ m, newDay, firstOfRun, lastOfRun, urls, t, onMenu, onJump, onOpenPhoto, onReact, picked, onPick, quick, onQuick, emojis }: RowProps) {
+function MessageRow({ m, newDay, firstOfRun, lastOfRun, urls, t, onMenu, onJump, onOpenPhoto, onReact, picked, onPick, quick, onQuick, emojis, onReply }: RowProps) {
   const role = ROLE_WORDS[m.role];
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const held = useRef(false);
@@ -518,10 +521,18 @@ function MessageRow({ m, newDay, firstOfRun, lastOfRun, urls, t, onMenu, onJump,
   const onMove = (e: React.PointerEvent) => {
     if (start.current && Math.hypot(e.clientX - start.current.x, e.clientY - start.current.y) > 10) cancel();
   };
+  // Always beside the bubble, like Messenger: react, and reply.
   const react = (
-    <button type="button" className="gc-react-btn" data-picked={picked} aria-label={t('React')} aria-expanded={quick} data-chat-react-btn onClick={onQuick}>
-      <Smile size={17} />
-    </button>
+    <span className="gc-acts">
+      <button type="button" className="gc-react-btn" aria-label={t('React')} aria-expanded={quick} data-chat-react-btn onClick={onQuick}>
+        <Smile size={17} />
+      </button>
+      {onReply && (
+        <button type="button" className="gc-react-btn" aria-label={t('Reply')} data-chat-reply-btn onClick={onReply}>
+          <CornerUpLeft size={16} />
+        </button>
+      )}
+    </span>
   );
   return (
     <>

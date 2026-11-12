@@ -209,8 +209,15 @@ async (page) => {
   say('nothing opens a menu by itself', (await page.locator('[data-chat-menu]').count()) === 0);
   await page.locator('[data-mid="m1"] .gc-bubble').click();
   await page.waitForTimeout(300);
-  say('a quick tap opens no menu, and shows the react button', (await page.locator('[data-chat-menu]').count()) === 0
-    && (await page.locator('[data-mid="m1"] [data-chat-react-btn]').evaluate((b) => getComputedStyle(b).opacity)) === '1');
+  say('a quick tap opens no menu', (await page.locator('[data-chat-menu]').count()) === 0);
+  const acts = await page.evaluate(() => [...document.querySelectorAll('[data-chat-message]')].filter((r) => !r.querySelector('[data-removed]'))
+    .map((r) => { const s = r.querySelector('[data-chat-react-btn]'); const p = r.querySelector('[data-chat-reply-btn]');
+      return !!s && !!p && getComputedStyle(s).opacity === '1' && getComputedStyle(p).opacity === '1' && s.getBoundingClientRect().width > 0; }));
+  say('every message shows its react and reply buttons, without a tap or hover', acts.length > 0 && acts.every(Boolean), JSON.stringify(acts));
+  await page.locator('[data-mid="m2"] [data-chat-reply-btn]').click();
+  await page.waitForTimeout(250);
+  say('the reply button starts a reply to that message', /Replying to Gabby/.test(await page.locator('[data-chat-replying]').innerText().catch(() => '')));
+  await page.getByRole('button', { name: 'Cancel the reply' }).click();
   await page.locator('[data-mid="m1"] [data-chat-react-btn]').click();
   await page.waitForTimeout(300);
   const qb = page.locator('[data-mid="m1"] [data-chat-quick]');
@@ -289,6 +296,7 @@ async (page) => {
   await page.locator('[data-mid="m2"] .gc-bubble').click({ delay: 650 });
   await page.waitForTimeout(300);
   say('…and the menu has no Reply', !(await page.locator('[data-chat-menu] .gc-menu button').allInnerTexts()).some((x) => /Reply/.test(x)));
+  say('…nor a reply button beside messages, but still the react button', (await page.locator('[data-chat-reply-btn]').count()) === 0 && (await page.locator('[data-chat-react-btn]').count()) > 0);
 
   // ── Not theirs (an expired member) ──
   chat = { open: false };
