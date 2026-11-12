@@ -62,6 +62,36 @@ Deno.serve(async (req: Request) => {
     const admin = createClient(supabaseUrl, serviceRoleKey);
     const body = await req.json().catch(() => null);
 
+    // A gym chat message (0246): one call tells everyone in the chat. Nothing the
+    // caller sends is trusted except the id — claim_gym_chat_push() takes the
+    // message once, while fresh, and answers who hears about it (not the sender,
+    // not people who muted the chat, not the people mentioned: their Inbox row
+    // already pushed) and what each device is told.
+    if (typeof body?.chatMessageId === "string") {
+      const { data: rows, error: claimErr } = await admin.rpc("claim_gym_chat_push", { p_message: body.chatMessageId });
+      const subs = (rows ?? []) as { endpoint: string; p256dh: string; auth_key: string; sub_id: string; url: string; title: string; body: string }[];
+      if (claimErr || subs.length === 0) return json({ sent: 0, skipped: "already pushed, too old, unknown, or nobody to tell" }, 200);
+      webpush.setVapidDetails(vapidSubject, vapidPublic, vapidPrivate);
+      let sent = 0;
+      const expired: string[] = [];
+      await Promise.all(subs.map(async (s) => {
+        try {
+          // One tag for the whole chat: a busy chat replaces its own alert instead of stacking fifty.
+          await webpush.sendNotification(
+            { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth_key } },
+            JSON.stringify({ title: s.title, body: s.body, url: s.url, tag: "gym-chat" }),
+            { TTL: 3600, urgency: "high" },
+          );
+          sent++;
+        } catch (err) {
+          const status = (err as { statusCode?: number }).statusCode;
+          if (status === 404 || status === 410) expired.push(s.sub_id);
+        }
+      }));
+      if (expired.length > 0) await admin.from("push_subscriptions").delete().in("id", expired);
+      return json({ sent, pruned: expired.length }, 200);
+    }
+
     let userId: string | undefined;
     let title: string | undefined;
     let message: string | undefined;

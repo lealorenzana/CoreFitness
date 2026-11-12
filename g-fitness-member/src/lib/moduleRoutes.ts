@@ -37,10 +37,16 @@ const ROUTES: [string, FeatureKey][] = [
   ['/member/squad', 'squads'],
   ['/member/refer', 'referrals'],
   ['/member/pause-or-cancel', 'requests'],
+  // 0245: the gym's short videos — watching, and a coach posting.
+  ['/member/reels', 'reels'],
   // trainer
   // Schedule holds 1-on-1 sessions and hours too, so it is never gated by Classes (simplify, 2026-10-28).
   ['/trainer/packages', 'coaching'],
   ['/trainer/achievements', 'engagement'],
+  ['/trainer/reels', 'reels'],
+  // 0246: the gym chat.
+  ['/member/gym-chat', 'gym_chat'],
+  ['/trainer/gym-chat', 'gym_chat'],
 ];
 
 /** The switch a path belongs to, or null when it is always open. */
@@ -62,4 +68,5 @@ export const MODULE_NAMES: Record<FeatureKey, string> = {
   online_pay: 'online payments', chat: 'coach chat', rooms: 'coaching rooms', programs: 'programs', photos: 'progress photos',
   equipment: 'the equipment list', points: 'points and rewards', events: 'gym events',
   squads: 'teams', seasons: 'seasons', quests: 'weekly quests', referrals: 'inviting friends', targets: 'targets',
+  reels: 'reels', gym_chat: 'the gym chat',
 };

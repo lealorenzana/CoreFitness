@@ -38,7 +38,11 @@ export type FeatureKey =
   // 0186: points (earning and the rewards shop), a child of Engagement; Seasons live under it.
   | 'points'
   // 0220: one-off gym events members sign up for, a child of Push; off unless the gym turns it on.
-  | 'events';
+  | 'events'
+  // 0245: reels — short videos the gym posts; off unless the gym turns it on.
+  | 'reels'
+  // 0246: the gym's one group chat; off unless the gym turns it on.
+  | 'gym_chat';
 
 /**
  * What this gym calls its people and its sessions (0114).

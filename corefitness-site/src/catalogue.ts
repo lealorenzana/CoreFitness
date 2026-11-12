@@ -105,6 +105,8 @@ export const CATALOGUE: CatalogueGroup[] = [
       ['Dashboard and reports', 'Revenue, attendance, retention and who is at risk — zero when there is nothing, never a guess.'],
       ['Notifications in one place', 'What needs you now, and every message sent to you, read and unread.'],
       ['Announcements', 'To everyone, the free tier, paying members or chosen plans.'],
+      ['A gym chat', 'One group chat for your whole gym, if you switch it on — you can remove a message, stop someone posting, or make it announcements-only.'],
+      ['Reels', 'Short videos for your members: paste a YouTube, TikTok, Facebook or Instagram link, or upload your own.'],
       ['Staff permissions', 'Choose which areas each front-desk account may touch, enforced by the database.'],
       ['Activity log', 'Everything staff did, and when, written by the system itself.'],
       ['Your brand', 'Your logo, your two colours, even your own words for members, coaches and classes.'],

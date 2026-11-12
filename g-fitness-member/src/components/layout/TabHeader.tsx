@@ -1,13 +1,14 @@
 import type { ReactNode } from 'react';
 import { PointsChip } from '../ui/lively';
 import { useNavigate } from 'react-router-dom';
-import { GearSix } from '@phosphor-icons/react';
+import { ChatsCircle, GearSix } from '@phosphor-icons/react';
 import Notifications from '../Notifications';
 import Avatar from '../ui/Avatar';
 import { type Tab } from './memberNav';
 import AssistantButton from './AssistantButton';
 import { useTabHeaderOverride, type HeaderOverride } from './tabHeaderStore';
 import { useMyIdentity } from '../../hooks/useMyIdentity';
+import { useChatUnread } from '../../hooks/useChatUnread';
 import { dateLocale, tr, useLanguage, useT, type Lang } from '../../lib/i18n';
 
 /**
@@ -95,10 +96,22 @@ export default function TabHeader({ tab }: { tab: Tab }) {
   // was a second greeting pushing the content down (member's request, 2026-09-17).
   const isToday = tab.id === 'today';
   const me = useMyIdentity();
+  const chat = useChatUnread();
 
   const actions = (
     <div className="flex items-center flex-none" style={{ gap: 12 }}>
       <AssistantButton />
+      {/* The gym chat (0246): only where the gym has switched it on. */}
+      {chat.on && (
+        <IconButton label={chat.unread ? `Gym chat, ${chat.unread} new` : 'Gym chat'} onClick={() => navigate('/member/gym-chat')}
+          badge={chat.unread > 0 ? (
+            <span data-chat-unread className="on-fill" style={{ position: 'absolute', top: -5, right: -6, minWidth: 17, height: 17, padding: '0 4px', borderRadius: 9,
+              display: 'grid', placeItems: 'center', fontSize: 12, fontWeight: 700, lineHeight: 1,
+              background: 'var(--fill-action, var(--color-secondary))', color: '#fff' }}>{chat.unread > 9 ? '9+' : chat.unread}</span>
+          ) : undefined}>
+          <ChatsCircle size={17} />
+        </IconButton>
+      )}
       <Notifications />
       <IconButton label="Settings" onClick={() => navigate('/member/settings')}>
         <GearSix size={17} />

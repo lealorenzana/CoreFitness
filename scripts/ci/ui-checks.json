@@ -712,6 +712,22 @@
     {
       "file": "admin-from-site-check.js",
       "app": "admin"
+    },
+    {
+      "file": "admin-reels-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "member-reels-check.js",
+      "app": "member"
+    },
+    {
+      "file": "member-gym-chat-check.js",
+      "app": "member"
+    },
+    {
+      "file": "admin-gym-chat-check.js",
+      "app": "admin"
     }
   ]
 }

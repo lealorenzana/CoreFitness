@@ -52,7 +52,7 @@ const TRAINER_TAB_PATHS: string[][] = [
    '/trainer/rooms', '/trainer/members'],
   ['/trainer/schedule', '/trainer/availability'],
   ['/trainer/profile', '/trainer/settings', '/trainer/achievements',
-   '/trainer/change-password', '/trainer/change-email'],
+   '/trainer/change-password', '/trainer/change-email', '/trainer/reels', '/trainer/gym-chat'],
 ];
 
 /** The tab a path belongs to, or null. */

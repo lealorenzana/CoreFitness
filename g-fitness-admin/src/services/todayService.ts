@@ -8,6 +8,7 @@ import { cashDay } from '../lib/api/cash';
 import { retentionRadar, type AtRisk } from '../lib/api/retention';
 import { dashboardService, type ExpiringMember } from './dashboardService';
 import { behindOnDues, coachDues, getHouseRules } from '../lib/api/coachingRules';
+import { openChatReports } from '../lib/api/gymChat';
 
 /**
  * The owner's morning (dashboard A1, 2026-10-18): what needs them, what is
@@ -45,6 +46,8 @@ export interface NeedsYou {
   expiring: ExpiringMember[] | null;
   /** Coaches with an unpaid month before this one (0235) — null when the gym charges no dues, or the read failed. */
   coachDues: { count: number; names: string[] } | null;
+  /** Messages members reported in the gym chat (0246) — null when the chat is off, or the read failed. */
+  chatReports: { count: number } | null;
 }
 
 const daysAgo = (iso: string) => Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86400000));
@@ -94,8 +97,14 @@ export async function loadNeedsYou(): Promise<NeedsYou> {
     return { count: late.length, names: late.slice(0, 2).map((x) => x.trainerName.split(' ')[0]) };
   })().catch(() => null);
 
-  const [b, s, p, r, e, d] = await Promise.all([bookings, signups, payments, requests, expiring, coachDuesBehind]);
-  return { bookings: b, signups: s, payments: p, requests: r, expiring: e, coachDues: d };
+  // The same list the chat's Reports button opens. Empty (not an error) while the chat is off.
+  const chatReports = (async () => {
+    const open = await openChatReports();
+    return { count: new Set(open.map((x) => x.message_id)).size };
+  })().catch(() => null);
+
+  const [b, s, p, r, e, d, c] = await Promise.all([bookings, signups, payments, requests, expiring, coachDuesBehind, chatReports]);
+  return { bookings: b, signups: s, payments: p, requests: r, expiring: e, coachDues: d, chatReports: c };
 }
 
 // ── Today ─────────────────────────────────────────────────────────────────────

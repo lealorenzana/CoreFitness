@@ -118,7 +118,8 @@ async (page) => {
   // More: ten rows, each with an icon and what it is for.
   const say = (label, ok, extra = '') => out.push(`${label}: ${ok ? 'yes' : 'MISSING ' + extra}`);
   const H = { 'Access-Control-Allow-Origin': '*' };
-  let modules = {};
+  // Reels (0245) are off at every gym until the owner turns them on, so the ten rows are a gym as it starts.
+  let modules = { reels: false };
   await page.route('**/rest/v1/rpc/my_gym_app', (r) => r.fulfill({ status: 200, contentType: 'application/json', headers: H,
     body: JSON.stringify([{ gym_id: 'gym-1', gym_name: 'Core Fitness Lab', slug: 'lab', short_name: null, logo_url: null, accent: 'violet',
       points_name: null, points_name_short: null, welcome_message: null, tagline: null, vocabulary: null, modules }]) }));
@@ -140,7 +141,7 @@ async (page) => {
   await page.waitForTimeout(1200);
   say('a row opens its screen and closes More', /\/member\/rewards/.test(page.url()) && (await sheet().count()) === 0, page.url());
 
-  modules = { shop: false, engagement: false };
+  modules = { shop: false, engagement: false, reels: false };
   await go('/member/home', ME);
   await page.waitForTimeout(1200);
   await openMore();

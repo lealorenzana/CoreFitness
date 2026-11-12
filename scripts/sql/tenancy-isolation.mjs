@@ -140,6 +140,8 @@ const gymTables = (await db.query('select unnest(tenancy_gym_tables()) as t')).r
 const GLOBAL = [
   // 0138: the platform's billing settings and its receipt counter — no gym_id, the platform's alone.
   'platform_billing', 'platform_receipt_counters', 'platform_capacity_snapshots',
+  // 0238: the register of demo gyms for the load test; 0241: the website's words — both the platform's alone.
+  'demo_gyms', 'site_texts',
   'profiles', 'push_subscriptions', 'notification_prefs', 'features', 'achievement_metrics',
   'exercises', 'workout_resources', 'client_errors', 'gyms', 'gym_roles', 'platform_admins', 'gym_applications',
   'platform_events', 'gym_payments', 'platform_plans', 'platform_features', 'platform_plan_features',
@@ -1069,8 +1071,8 @@ check('a gym admin cannot make themselves the platform',
 await as(P.adminA);
 check('a gym that has renamed nothing still has words for its points',
   (await one('select points_name from gym_words()')).points_name === 'CORE Points');
-check('every part of the system starts switched on but the four 0220 switched off',
-  (await db.query("select feature_key from my_gym_modules() where state <> 'on' order by 1")).rows.map((r) => r.feature_key).join() === ['classes', 'events', 'seasons', 'squads'].join());
+check('every part of the system starts switched on but the four 0220 switched off, and reels and the gym chat (0245, 0246)',
+  (await db.query("select feature_key from my_gym_modules() where state <> 'on' order by 1")).rows.map((r) => r.feature_key).join() === ['classes', 'events', 'gym_chat', 'reels', 'seasons', 'squads'].join());
 
 check('an owner can switch a part of the system off, and their app stops drawing it',
   await (async () => {

@@ -5,6 +5,7 @@ import { clearGymContext } from './gymContext';
 import { clearBrandingCache } from '../hooks/useBranding';
 import { clearGymWordsCache } from '../hooks/useGymWords';
 import { clearGymModulesCache } from '../hooks/useGymModules';
+import { clearChatCache } from './api/gymChat';
 import { clearGymFirstDayCache } from '../hooks/useGymFirstDay';
 import { clearTourCache } from '../components/tour/Tour';
 
@@ -41,6 +42,7 @@ export function clearAdminCaches(): void {
   clearBrandingCache();
   clearGymWordsCache();
   clearGymModulesCache();
+  clearChatCache();
   clearGymFirstDayCache();
   clearTourCache();
   // The gym's colours and premium theme on the page (GymLook) — the next account's gym has its own.

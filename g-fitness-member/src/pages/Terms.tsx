@@ -173,7 +173,7 @@ const buildSections = (state: RefundTermsState): LegalSection[] => [
   {
     id: 'conduct',
     title: '8. Conduct',
-    body: 'Harassment and abusive behaviour are not tolerated, and can end a membership immediately. Ending it does not cancel the refund rules in section 3 — a suspension is recorded with a reason, and the amount owed is worked out the same way it would be for anyone else.',
+    body: 'Harassment and abusive behaviour are not tolerated, and can end a membership immediately. Ending it does not cancel the refund rules in section 3 — a suspension is recorded with a reason, and the amount owed is worked out the same way it would be for anyone else. If your gym runs a gym chat, the same conduct applies there: everyone in the chat reads what you post. You can remove your own messages; the owner and the front desk can remove any message and can stop a person from posting, and in both cases you are told the reason. You can report a message to the gym, and you can mute the chat\'s alerts.',
   },
   {
     id: 'account',

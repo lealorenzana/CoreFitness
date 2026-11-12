@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Barbell, Books, Buildings, CalendarBlank, CaretRight, Clock, GearSix, Question, Handshake, Trophy, UserCircle, type Icon } from '@phosphor-icons/react';
+import { Barbell, Books, Buildings, CalendarBlank, CaretRight, ChatsCircle, Clock, FilmSlate, GearSix, Question, Handshake, Trophy, UserCircle, type Icon } from '@phosphor-icons/react';
 import GlassSheet from '../../../components/ui/GlassSheet';
 import Avatar from '../../../components/ui/Avatar';
 import { LineRow } from '../../../components/ui/noc';
@@ -22,6 +22,10 @@ const WORK: Dest[] = [
 const REST: Dest[] = [
   { label: 'Profile', blurb: 'Photo, bio and ratings', path: '/trainer/profile', icon: UserCircle },
   { label: 'Achievements', blurb: 'Badges you have earned', path: '/trainer/achievements', icon: Trophy, module: 'engagement' },
+  // 0245: short videos for the gym's members, posted from the phone.
+  { label: 'Reels', blurb: 'Post a short video for the gym', path: '/trainer/reels', icon: FilmSlate, module: 'reels' },
+  // 0246: the gym's group chat (also on the rail, with its unread count).
+  { label: 'Gym chat', blurb: 'The group chat for everyone at the gym', path: '/trainer/gym-chat', icon: ChatsCircle, module: 'gym_chat' },
   { label: 'Equipment', blurb: 'What the gym has, and what needs fixing', path: '/trainer/equipment', icon: Barbell, module: 'equipment' },
   // Coaches work at more than one gym; this is how they switch.
   { label: 'Gyms', blurb: 'Switch to another gym you coach at', path: '/choose-gym', icon: Buildings },

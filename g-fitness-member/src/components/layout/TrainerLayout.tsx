@@ -45,6 +45,8 @@ export default function TrainerLayout() {
   // The hub (TrainerHub) is the app's home, Discord style: no header, no gutter, no bar.
   const hub = location.pathname === '/trainer/home';
   const root = hub ? null : trainerTabRootFor(location.pathname);
+  // The reels player (0245) takes the whole screen, as the member's does: no gutter, no page scroll.
+  const immersive = /^\/trainer\/(reels\/watch|gym-chat)\/?$/.test(location.pathname);
 
   useScrollMemory(mainRef, location.pathname + location.search);
 
@@ -61,12 +63,12 @@ export default function TrainerLayout() {
       <Toaster />
 
       {root && <TrainerTabHeader tab={root} />}
-      <GymLockBanner ctx={gym} />
+      {!immersive && <GymLockBanner ctx={gym} />}
 
       <main
         ref={mainRef}
-        className="flex-1 min-h-0 overflow-y-auto scrollbar-hide relative"
-        style={hub ? { backgroundColor: 'transparent' } : {
+        className={`flex-1 min-h-0 scrollbar-hide relative ${immersive ? 'overflow-hidden' : 'overflow-y-auto'}`}
+        style={hub || immersive ? { backgroundColor: 'transparent' } : {
           backgroundColor: 'transparent',
           paddingLeft: 'var(--gutter)',
           paddingRight: 'var(--gutter)',

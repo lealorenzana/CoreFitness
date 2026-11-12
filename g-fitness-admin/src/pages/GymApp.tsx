@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import {
-  Bell, Bot, Building2, Calendar, CalendarHeart, Camera, Check, Coins, Copy, CreditCard, DoorOpen, Dumbbell, Flag, Globe, HeartHandshake,
-  Lock, MessageSquare, PartyPopper, NotebookPen, Palette, Printer, QrCode, RefreshCw, Salad, Share2, ShoppingBag, Smartphone,
+  Bell, Bot, Building2, Calendar, CalendarHeart, Camera, Check, Clapperboard, Coins, Copy, CreditCard, DoorOpen, Dumbbell, Flag, Globe, HeartHandshake,
+  Lock, MessageSquare, MessagesSquare, PartyPopper, NotebookPen, Palette, Printer, QrCode, RefreshCw, Salad, Share2, ShoppingBag, Smartphone,
   ToggleRight, Trophy, Tv, Type, UserCheck, UserPlus, Users, type LucideIcon,
 } from 'lucide-react';
 import './attendance/att.css';
@@ -70,7 +70,7 @@ const MODULE_ICONS: Record<string, LucideIcon> = {
   classes: Calendar, coaching: HeartHandshake, progress: NotebookPen, workouts: NotebookPen, photos: Camera, progress_photos: Camera,
   meals: Salad, meal_plans: Salad, engagement: Coins, points: Coins, challenges: Flag, squads: Users, seasons: Trophy,
   shop: ShoppingBag, referrals: UserPlus, push: Bell, assistant: Bot, rooms: MessageSquare, equipment: Dumbbell, lobby_tv: Tv,
-  events: CalendarHeart,
+  events: CalendarHeart, reels: Clapperboard, gym_chat: MessagesSquare,
 };
 
 export default function GymApp() {

@@ -1,7 +1,7 @@
 import { hasOwnWords, moduleOn, word, type FeatureKey, type GymApp, type GymVocabulary } from '../../lib/gymApp';
 import type { Icon } from '@phosphor-icons/react';
 import {
-  Barbell, Bell, Buildings, GearSix, Gift, House, Question, Sparkle, Storefront, User, UserCircle, UserPlus, Wrench,
+  Barbell, Bell, Buildings, ChatsCircle, FilmSlate, GearSix, Gift, House, Question, Sparkle, Storefront, User, UserCircle, UserPlus, Wrench,
 } from '@phosphor-icons/react';
 
 /**
@@ -71,7 +71,7 @@ export const TABS: Tab[] = [
 const TAB_PATHS: string[][] = [
   // Today is only "right now": the day, what arrived, what the gym announced,
   // and the assistant you ask about it.
-  ['/member/home', '/member/notifications', '/member/chatbot'],
+  ['/member/home', '/member/notifications', '/member/chatbot', '/member/reels', '/member/gym-chat'],
   // Train: Workout, Coach (and Classes when on), and every screen they open —
   // including the aliases old notification rows still point at.
   ['/member/book-class', '/member/training', '/member/book', '/member/bookings',
@@ -243,6 +243,8 @@ export const EVERYTHING: { group: string; items: Destination[] }[] = [
       { label: 'Assistant', path: '/member/chatbot', module: 'assistant', icon: Sparkle, blurb: 'Questions about training and the gym' },
       { label: 'Shop', path: '/member/shop', module: 'shop', icon: Storefront, blurb: 'What the gym sells' },
       { label: 'Equipment', path: '/member/equipment', module: 'equipment', icon: Wrench, blurb: 'What the gym has, how to use it' },
+      { label: 'Reels', path: '/member/reels', module: 'reels', icon: FilmSlate, blurb: 'Short videos from your gym' },
+      { label: 'Gym chat', path: '/member/gym-chat', module: 'gym_chat', icon: ChatsCircle, blurb: 'The group chat for everyone at your gym' },
       { label: 'Invite a friend', path: '/member/refer', module: 'referrals', icon: UserPlus, blurb: 'Share your gym' },
       // Which gym this app is showing. One gym: the screen is where you join
       // another. Several: it is how you switch (docs/TENANCY.md).

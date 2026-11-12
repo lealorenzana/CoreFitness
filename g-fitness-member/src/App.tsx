@@ -88,6 +88,9 @@ const TrainerExercises = lazyPage(() => import('./pages/trainer/TrainerExercises
 const TrainerPackages = lazyPage(() => import('./pages/trainer/TrainerPackages'));
 const TrainerProfile = lazyPage(() => import('./pages/trainer/TrainerProfile'));
 const TrainerEditProfile = lazyPage(() => import('./pages/trainer/TrainerEditProfile'));
+const Reels = lazyPage(() => import('./pages/Reels'));
+const GymChat = lazyPage(() => import('./pages/GymChat'));
+const TrainerReels = lazyPage(() => import('./pages/trainer/TrainerReels'));
 const Achievements = lazyPage(() => import('./pages/Achievements'));
 const NotificationsAll = lazyPage(() => import('./pages/NotificationsAll'));
 const GymPlan = lazyPage(() => import('./pages/GymPlan'));
@@ -332,6 +335,11 @@ function App() {
           <Route path="settings" element={<TrainerSettings />} />
           <Route path="help" element={<Help />} />
           <Route path="exercises" element={<TrainerExercises />} />
+          {/* Reels (0245): the coach posts and manages; watch is the member's player. */}
+          <Route path="reels" element={<TrainerReels />} />
+          <Route path="reels/watch" element={<Reels fallback="/trainer/reels" />} />
+          {/* The gym chat (0246): coaches are in it too. */}
+          <Route path="gym-chat" element={<GymChat fallback="/trainer/home" />} />
           {/* Same component as the member route below — it reads the path to
               pick which catalogue to draw and which shell to return to. */}
           <Route path="achievements" element={<Achievements />} />
@@ -405,6 +413,10 @@ function App() {
           <Route path="friends/*" element={<Navigate to="/member/home" replace />} />
           <Route path="squad" element={<Squad />} />
           <Route path="refer" element={<Refer />} />
+          {/* Reels (0245): the gym's short videos, full screen. */}
+          <Route path="reels" element={<Reels />} />
+          {/* The gym chat (0246): one group chat for the whole gym, full screen. */}
+          <Route path="gym-chat" element={<GymChat fallback="/member/home" />} />
           <Route path="refer/invited" element={<ReferInvited />} />
           <Route path="challenges/completed" element={<Challenges completedOnly />} />
           <Route path="activity" element={<AccountActivity />} />

@@ -7,7 +7,7 @@ import {
 } from 'recharts';
 import {
   ChevronRight, ChevronDown, CalendarClock, UserPlus, ReceiptText, PauseCircle, Hourglass,
-  QrCode, Banknote, Check, Dumbbell, Award,
+  QrCode, Banknote, Check, Dumbbell, Award, Flag,
 } from 'lucide-react';
 
 import DetailSheet from '../components/ui/DetailSheet';
@@ -359,6 +359,15 @@ export default function Dashboard() {
         title={`${plural(d.count, 'coach', 'coaches')} behind on dues`}
         detail={`${d.names.join(', ')}${rest > 0 ? `, +${rest}` : ''}`}
         action="View" onClick={() => navigate('/trainers?view=pay')} />) });
+  }
+  // Gym chat (0246): messages members reported — the same list the chat's Reports button opens.
+  if (needs?.chatReports && needs.chatReports.count > 0) {
+    const c = needs.chatReports;
+    tasks.push({ key: 'chatreports', count: c.count, node: (
+      <TaskRow key="chatreports" testId="chatreports" icon={Flag}
+        title={`${plural(c.count, 'chat message')} reported`}
+        detail="members flagged them in the gym chat"
+        action="Review" onClick={() => navigate('/gym-chat?reports=1')} />) });
   }
   const todo = tasks.reduce((s, t) => s + t.count, 0);
   const needsFailed = needs !== null && [needs.bookings, needs.signups, needs.payments, needs.requests, needs.expiring].some((x) => x === null);

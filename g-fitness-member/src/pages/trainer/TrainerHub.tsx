@@ -9,8 +9,9 @@ import { arrivalLeft, claimCoachOpening, coachOpening, startArrival } from '../.
 import { buzz, holdMoments, loadMomentPrefs, play, showMoment } from '../../lib/moments';
 import { splashGone } from '../../lib/momentWatch';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Bell, ChatCircleDots, MagnifyingGlass, Plus, QrCode, Sun, X } from '@phosphor-icons/react';
+import { Bell, ChatCircleDots, ChatsCircle, MagnifyingGlass, Plus, QrCode, Sun, X } from '@phosphor-icons/react';
 import Avatar from '../../components/ui/Avatar';
+import { useChatUnread } from '../../hooks/useChatUnread';
 import GlassSheet from '../../components/ui/GlassSheet';
 import CoachCheckInSheet from '../../components/ui/CoachCheckInSheet';
 import { SkeletonList } from '../../components/ui/Skeleton';
@@ -69,6 +70,7 @@ export default function TrainerHub() {
   const navigate = useNavigate();
   const app = useGymApp();
   const classesOn = moduleOn(app, 'classes');
+  const gymChat = useChatUnread();
   const [params, setParams] = useSearchParams();
   const railRef = useRef<HTMLElement>(null);
   const panelRef = useRef<HTMLElement>(null);
@@ -228,6 +230,12 @@ export default function TrainerHub() {
         <RailButton label="Personal training" on={view === 'pt'} onClick={showPt} badge={unreadAll} dataAttr="pt">
           <RailOrb on={view === 'pt'}><ChatCircleDots size={23} weight={view === 'pt' ? 'fill' : 'regular'} /></RailOrb>
         </RailButton>
+        {/* The gym's group chat (0246), where the gym runs one. */}
+        {gymChat.on && (
+          <RailButton label="Gym chat" on={false} onClick={() => navigate('/trainer/gym-chat')} badge={gymChat.unread} dataAttr="gym-chat">
+            <RailOrb on={false}><ChatsCircle size={23} /></RailOrb>
+          </RailButton>
+        )}
         <span aria-hidden style={{ width: 28, height: 2, borderRadius: 2, background: 'var(--color-border)' }} />
         {/* One round photo per package trainee (simplify, 2026-10-28). */}
         {packaged.map((x) => (

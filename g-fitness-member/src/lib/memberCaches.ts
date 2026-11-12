@@ -15,6 +15,7 @@ import { clearCoachOpening } from './api/coachMoments';
 import { clearTourCache } from '../components/tour/Tour';
 import { applyPremiumTheme } from './premiumThemes';
 import { clearColorMode } from './colorMode';
+import { clearChatCache } from './api/gymChat';
 
 /**
  * Every in-memory cache that belongs to *this member in this gym*, emptied.
@@ -81,6 +82,7 @@ export function clearMemberCaches(): void {
   applyPremiumTheme(null);
   // Light/dark was this account's choice (0234); the next one starts from the device's.
   clearColorMode();
+  clearChatCache();
   // The points chip's last-shown balance (wave 2).
   clearLivelyCache();
   // Whether this gym runs Friends (0217).

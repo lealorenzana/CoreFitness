@@ -57,7 +57,7 @@ function ChatheadGate({ pathname }: { pathname: string }) {
 }
 
 /** Screens that draw their own full-screen chrome. */
-const IMMERSIVE = /^\/member\/track\/session\//;
+const IMMERSIVE = /^\/member\/(track\/session\/|reels\/?$|gym-chat\/?$)/;
 /**
  * Screens that fill the page area exactly and scroll inside themselves — the
  * assistant, whose transcript scrolls and whose composer sits on the bar

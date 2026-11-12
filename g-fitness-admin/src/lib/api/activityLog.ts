@@ -43,7 +43,8 @@ const ACTION_GROUPS: Record<ActivityGroup, string[]> = {
   schedule:    ['class.', 'event.'],
   // 0165: what was built after 0037.
   shop:        ['shop.'],
-  coaching:    ['room.', 'classwork.', 'program.', 'ai.'],
+  // 0245: reel.posted, reel.removed. 0246: the gym chat's moderation (chat.removed, chat.silenced, chat.unsilenced, chat.mode) sits beside the rooms'.
+  coaching:    ['room.', 'classwork.', 'program.', 'ai.', 'reel.', 'chat.'],
   engagement:  ['reward.', 'referral.', 'squad.', 'season.', 'streak.', 'winback.', 'achievement.'],
   team:        ['credential.', 'gym.'],
 };

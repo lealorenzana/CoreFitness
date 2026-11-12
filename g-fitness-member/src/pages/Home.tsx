@@ -30,6 +30,7 @@ import GymGoalStrip from '../components/workout/GymGoalStrip';
 import DueStrip from '../components/rooms/DueStrip';
 import TermsUpdateStrip from '../components/legal/TermsUpdateStrip';
 import FinishPlanCard from '../components/home/FinishPlanCard';
+import ReelsStrip from '../components/home/ReelsStrip';
 import { rampFor } from '../lib/gymTheme';
 import { useTour } from '../components/tour/Tour';
 import { tourFor } from '../lib/tours';
@@ -426,6 +427,9 @@ export default function Home() {
           </NocButton>
         )}
       </div>
+
+      {/* The gym's reels (0245): a line of tiles, nothing at all when it has none or the switch is off. */}
+      <ReelsStrip />
 
       {/* ── The day: Now, Today, a date, Later — each label once, at the top of its group ── */}
       <section aria-label="Your day" className="noc-rows" data-today-timeline>

@@ -34,6 +34,7 @@ const sections: LegalSection[] = [
       'Payments — amount, method and date, whether recorded at the desk or paid in the app. No card or bank details: the gym never receives them.',
       'Anything you choose to log: workouts, measurements, goals, and how you rate a coach.',
       'If your gym asks you to sign its waiver: which version you signed and when, and your answers to the seven health questions that come with it. Health answers are sensitive personal information under RA 10173, and are treated as such below.',
+      'If your gym runs a gym chat: the messages and photos you post there, your reactions, and any message you report. If it posts reels: which ones you liked.',
       'If you turn on notifications, the token your phone needs to receive them. You can turn it off again in Settings.',
     ],
   },
@@ -47,6 +48,7 @@ const sections: LegalSection[] = [
       'The coaches you train with now — a coaching term, a 1-on-1 or a class of theirs in the last 60 days — are told when you make a streak milestone or finish a challenge, and when you set a record or reach a target if you share workouts or goals with trainers, so they can congratulate you. They see what you reached, never more than your switches already allow.',
       'Your answers to the health questions are seen by the gym owner and the front desk only — not by trainers, whatever your other switches say. A "yes" tells the desk to talk to you before you train hard. It does not stop you training, and nothing in the app changes your workouts because of it.',
       'If you switch gyms (Gyms → Switch gym), and only once you agree on that screen, your workouts and sets, records, routines, weekly plan, body readings, targets, progress photos, earned level and training badges move to the new gym when it accepts you — each gym keeps its own records, so the new gym then holds them. Your payments, visits, points and visit badges stay with the old gym, which is told only that you switched to another gym, never which.',
+      'The gym chat, if your gym runs one, is a group: everyone in it — the gym\'s active members, its coaches, the front desk and the owner — sees your name, your photo, what you post, your reactions and that you have seen the newest message. Photos posted there open only for people in the chat. A message you report is seen with your name by the owner and the front desk only. When you remove a message, or the gym removes one, its words and photo are erased and only "Message removed" stays in its place. A like on a reel is counted for everyone; who liked it is not shown.',
       'Nobody else. The gym does not sell, rent or trade any of it.',
     ],
   },
@@ -83,7 +85,7 @@ const sections: LegalSection[] = [
   {
     id: 'kept',
     title: '7. How long it is kept',
-    body: 'For as long as you are a member, and afterwards for as long as the gym needs its own financial and attendance records. What you logged for yourself — workouts, measurements, goals — is kept with your account so your history is still there if you come back — until you delete your account, when it is erased 7 days later (section 6).',
+    body: 'For as long as you are a member, and afterwards for as long as the gym needs its own financial and attendance records. What you logged for yourself — workouts, measurements, goals — is kept with your account so your history is still there if you come back — until you delete your account, when it is erased 7 days later (section 6). That includes what you posted in the gym chat and any reels you posted: they are erased with the account.',
   },
   {
     id: 'minors',

@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Users, CheckSquare, Target, Banknote,
   CreditCard, Dumbbell, CalendarDays, Calendar, Settings,
   Bell, BookOpen, History, MessagesSquare, ShoppingBag, LifeBuoy,
-  Trophy, ListChecks, Gift, Flag, TrendingUp, Smartphone, MailPlus, CalendarRange, Handshake, Wrench, Inbox,
+  Trophy, ListChecks, Gift, Flag, TrendingUp, Smartphone, MailPlus, CalendarRange, Handshake, Wrench, Inbox, Clapperboard, MessageCircle,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { StaffArea } from '../../lib/api/staffPermissions';
@@ -155,6 +155,8 @@ export const NAV: Entry[] = [
     module: 'push',
     area: 'communications',
   },
+  // The gym's one group chat (0246): the owner and every desk account are in it. No `area`.
+  { label: 'Gym chat', path: '/gym-chat', icon: MessageCircle, module: 'gym_chat' },
   {
     label: 'Training',
     icon: BookOpen,
@@ -162,6 +164,8 @@ export const NAV: Entry[] = [
       { label: 'Exercises', path: '/exercises', icon: ListChecks, adminOnly: true },
       { label: 'Programs', path: '/programs', icon: CalendarRange, adminOnly: true, module: 'programs' },
       { label: 'Resources', path: '/resources', icon: BookOpen },
+      // Short videos for members (0245): owner, desk and coaches post. No `area` — every desk account may post its own.
+      { label: 'Reels', path: '/reels', icon: Clapperboard, module: 'reels' },
       // The gym's equipment and members' problem reports (0184).
       { label: 'Equipment', path: '/equipment', icon: Wrench, module: 'equipment' },
       // The trainers' rooms (0128): the desk reads and moderates.
@@ -205,6 +209,8 @@ export const NAV_TIPS: Record<string, string> = {
   '/exercises': "The exercise library: your gym's own photos, cues and hidden exercises",
   '/programs': "Multi-week programs members follow, built by you",
   '/resources': 'Articles and videos saved for members',
+  '/reels': 'Short videos your gym posts for members: links or small uploads, with their likes',
+  '/gym-chat': 'The group chat for your whole gym: read, post, pin, remove a message, stop someone posting',
   '/rooms': "Coaches' rooms: their posts, classwork and members — read and moderate",
   '/gym-app': "How the member app looks: your logo, colours, words and join poster",
   '/settings': 'Gym details, hours, rules, waivers and staff accounts',
@@ -215,7 +221,7 @@ export const NAV_TIPS: Record<string, string> = {
   Billing: 'Payments, the shop and membership plans',
   Reports: 'Revenue, retention and the activity log',
   Engagement: 'Challenges, rewards and badges',
-  Training: 'Exercises, programs, resources and coaches\' rooms',
+  Training: 'Exercises, programs, resources, reels and coaches\' rooms',
 };
 
 /** Whether this account may see a nav row: admin-only rows, switched-off parts

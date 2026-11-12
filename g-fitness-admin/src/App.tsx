@@ -16,6 +16,8 @@ import Revenue from './pages/Revenue';
 import Payments from './pages/Payments';
 import MembershipPlans from './pages/MembershipPlans';
 import Resources from './pages/Resources';
+import Reels from './pages/Reels';
+import GymChat from './pages/GymChat';
 import Trainers from './pages/Trainers';
 import Settings from './pages/Settings';
 import GymApp from './pages/GymApp';
@@ -111,6 +113,10 @@ function App() {
             {/* Staff may curate the library — it is a reversible content change,
                 not a change to pricing, accounts, or who has access. */}
             <Route path="resources" element={<Resources />} />
+            {/* Reels (0245): owner, front desk and coaches post; the database decides who changes which. */}
+            <Route path="reels" element={<ProtectedRoute><Reels /></ProtectedRoute>} />
+            {/* The gym chat (0246): the owner and the desk are in it; SQL decides what each may do. */}
+            <Route path="gym-chat" element={<ProtectedRoute><GymChat /></ProtectedRoute>} />
             <Route path="trainers" element={<ProtectedRoute adminOnly><Trainers /></ProtectedRoute>} />
             {/* What this gym's own app says, runs and how members join it
                 (0110). Admin-only: it is the gym's identity and its shape,
