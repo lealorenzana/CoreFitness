@@ -195,6 +195,14 @@ export async function clearPushOnSignOut(): Promise<void> {
   // Declared without an initialiser: the catch below returns, so `sub` is
   // always assigned before it is read, and a dead `= null` trips
   // no-useless-assignment.
+  // Every registration of this account, not only this phone's (0249): signing out ends
+  // every session, and a phone whose push address changed since it registered left
+  // its old one behind — still delivering to a signed-out phone (owner, 2026-11-12).
+  try {
+    const { data } = await supabase.auth.getUser();
+    if (data.user) await supabase.from('push_subscriptions').delete().eq('user_id', data.user.id);
+  } catch { /* the database also refuses to push to a signed-out account (0249) */ }
+
   let sub: PushSubscription | null;
   try {
     sub = await currentSubscription();

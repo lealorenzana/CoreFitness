@@ -277,6 +277,15 @@ check('the push goes to the owner and the desk — not the sender, the muted, th
   push.length === 2 && JSON.stringify(urls) === JSON.stringify(['/gym-chat', '/gym-chat']), JSON.stringify(push.map((p) => p.endpoint)));
 check('…titled with who and which gym', /^mia T · .+ chat$/.test(push[0]?.title ?? '') && push[0].body === 'Who is training tonight? @coach', push[0]?.title);
 check('a message is pushed once', (await all(`select * from claim_gym_chat_push('${msg('50')}')`)).length === 0);
+// 0249: the owner signs out everywhere (sessions exist for the others) — the next message skips only them.
+await db.exec(`create table if not exists auth.sessions (id uuid primary key default gen_random_uuid(), user_id uuid, not_after timestamptz);
+  insert into auth.sessions (user_id) select unnest(array['${ST}', '${T}', '${M2}']::uuid[]);`);
+await as(M);
+await db.exec(send('51', 'Anyone at the gym?'));
+await owner();
+push = await all(`select * from claim_gym_chat_push('${msg('51')}')`);
+check('0249: the owner, signed out everywhere, gets no chat push; the signed-in desk and coach do', JSON.stringify(push.map((p) => p.url).sort()) === JSON.stringify(['/gym-chat', '/trainer/gym-chat']), JSON.stringify(push.map((p) => p.url)));
+await db.exec(`insert into auth.sessions (user_id) values ('${AD}')`);
 check('the mentioned coach got it through the Inbox instead', (await one(`select count(*)::int n from notifications where user_id = '${T}' and action_url = '/trainer/gym-chat' and title like '%mentioned you%'`)).n === 1);
 await db.exec(`update gym_chat_messages set created_at = now() - interval '5 minutes', pushed_at = null where id = '${msg('42')}'`);
 check('an old message is never pushed late', (await all(`select * from claim_gym_chat_push('${msg('42')}')`)).length === 0);

@@ -50,5 +50,28 @@ check('a signed-in user cannot claim a push', refused);
 await db.exec(`reset role`);
 check('…so it is still there for the push function', (await one(`select pushed_at from notifications where id = '${fresh}'`)).pushed_at === null);
 
+// ---- 0249: no push to someone signed out everywhere ----
+await db.exec(`reset role;
+  create table if not exists auth.sessions (id uuid primary key default gen_random_uuid(), user_id uuid, not_after timestamptz);
+  insert into push_subscriptions (user_id, endpoint, p256dh, auth) values ('${M}', 'https://push.test/old', 'k', 'a'), ('${M}', 'https://push.test/new', 'k', 'a');
+  insert into notifications (gym_id, user_id, type, title, message) values ('${GYM}', '${M}', 'system', 'Signed out', 'now');`);
+const so = (await one(`select id from notifications where title = 'Signed out'`)).id;
+await db.exec(`set role service_role`);
+check('0249: signed out everywhere, the push is not sent', !(await one(`select * from claim_notification_push('${so}')`)));
+await db.exec(`reset role`);
+check('…the notification is still kept, and marked so it is not retried', (await one(`select pushed_at from notifications where id = '${so}'`)).pushed_at !== null);
+check('…and every leftover registration of the account is removed', (await one(`select count(*)::int n from push_subscriptions where user_id = '${M}'`)).n === 0);
+await db.exec(`insert into auth.sessions (user_id) values ('${M}');
+  insert into notifications (gym_id, user_id, type, title, message) values ('${GYM}', '${M}', 'system', 'Signed in', 'now');`);
+const si = (await one(`select id from notifications where title = 'Signed in'`)).id;
+await db.exec(`set role service_role`);
+check('signed in somewhere, the push goes', (await one(`select * from claim_notification_push('${si}')`))?.title === 'Signed in');
+await db.exec(`reset role; update auth.sessions set not_after = now() - interval '1 minute' where user_id = '${M}';
+  insert into notifications (gym_id, user_id, type, title, message) values ('${GYM}', '${M}', 'system', 'Ran out', 'now');`);
+const ro = (await one(`select id from notifications where title = 'Ran out'`)).id;
+await db.exec(`set role service_role`);
+check('a session that has run out counts as signed out', !(await one(`select * from claim_notification_push('${ro}')`)));
+await db.exec(`reset role`);
+
 console.log(failures ? `\n${failures} FAILED` : '\nall 0170 checks passed');
 process.exit(failures ? 1 : 0);
