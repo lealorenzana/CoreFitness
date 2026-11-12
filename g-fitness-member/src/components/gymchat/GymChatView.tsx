@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ArrowDown, Bell, BellOff, Camera, Copy, CornerUpLeft, Flag, Megaphone, Pin, PinOff, Send, Trash2, Users, X } from 'lucide-react';
+import { ArrowDown, Bell, BellOff, Camera, Copy, CornerUpLeft, Flag, Megaphone, MoreHorizontal, Pin, PinOff, Send, Smile, Trash2, Users, X } from 'lucide-react';
 import type { GymChat, PendingMessage } from '../../hooks/useGymChat';
 import {
   chatPeople, chatPhotoUrls, dismissChatReport, openChatReports, pinChatMessage, removeChatMessage, reportChatMessage,
@@ -97,6 +97,10 @@ export default function GymChatView({ chat, toast, title, lead, t = same, startO
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [viewer, setViewer] = useState<string | null>(null);
   const [pinAt, setPinAt] = useState(0);
+  /** Like Messenger: a tap picks a bubble (its react button and time show), a hold opens the full menu. */
+  const [tapped, setTapped] = useState<string | null>(null);
+  /** The message whose quick row of reactions is open, from its react button. */
+  const [quick, setQuick] = useState<string | null>(null);
 
   const say = useCallback((e: unknown) => toast(e instanceof Error ? e.message : t('That did not work. Try again.'), 'error'), [toast, t]);
 
@@ -320,8 +324,10 @@ export default function GymChatView({ chat, toast, title, lead, t = same, startO
             || new Date(next.created_at).getTime() - new Date(m.created_at).getTime() > 5 * 60_000;
           return (
             <MessageRow key={m.id} m={m} newDay={newDay} firstOfRun={firstOfRun} lastOfRun={lastOfRun} urls={urls} t={t}
-              onMenu={setMenu} onJump={jumpTo} onOpenPhoto={setViewer}
-              onReact={(emoji) => { chat.react(m, emoji).catch(say); }} />
+              onMenu={(x) => { setQuick(null); setMenu(x); }} onJump={jumpTo} onOpenPhoto={setViewer}
+              onReact={(emoji) => { setQuick(null); chat.react(m, emoji).catch(say); }}
+              picked={tapped === m.id} onPick={() => { setQuick(null); setTapped((p) => (p === m.id ? null : m.id)); }}
+              quick={quick === m.id} onQuick={() => setQuick((q) => (q === m.id ? null : m.id))} emojis={meta.emojis} />
           );
         })}
         {pending.map((p) => <PendingRow key={p.id} p={p} t={t} onRetry={chat.retry} onDiscard={chat.discard} />)}
@@ -484,23 +490,65 @@ interface RowProps {
   m: ChatMessage; newDay: boolean; firstOfRun: boolean; lastOfRun: boolean; urls: Record<string, string>;
   t: (s: string) => string;
   onMenu: (m: ChatMessage) => void; onJump: (id: string) => void; onOpenPhoto: (url: string) => void; onReact: (emoji: string) => void;
+  picked: boolean; onPick: () => void; quick: boolean; onQuick: () => void; emojis: string[];
 }
 
-function MessageRow({ m, newDay, firstOfRun, lastOfRun, urls, t, onMenu, onJump, onOpenPhoto, onReact }: RowProps) {
+/** How long a press must last to count as a hold (Messenger's is about half a second). */
+const HOLD_MS = 450;
+
+function MessageRow({ m, newDay, firstOfRun, lastOfRun, urls, t, onMenu, onJump, onOpenPhoto, onReact, picked, onPick, quick, onQuick, emojis }: RowProps) {
   const role = ROLE_WORDS[m.role];
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const held = useRef(false);
+  const start = useRef<{ x: number; y: number } | null>(null);
+  const cancel = () => { if (timer.current) clearTimeout(timer.current); timer.current = null; start.current = null; };
+  useEffect(() => cancel, []);
+  // Hold: the full menu (reactions, reply, copy, pin, report, remove). A finger that moves is scrolling, not holding.
+  const onDown = (e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    held.current = false;
+    start.current = { x: e.clientX, y: e.clientY };
+    timer.current = setTimeout(() => {
+      held.current = true;
+      timer.current = null;
+      if ('vibrate' in navigator) navigator.vibrate?.(12);
+      onMenu(m);
+    }, HOLD_MS);
+  };
+  const onMove = (e: React.PointerEvent) => {
+    if (start.current && Math.hypot(e.clientX - start.current.x, e.clientY - start.current.y) > 10) cancel();
+  };
+  const react = (
+    <button type="button" className="gc-react-btn" data-picked={picked} aria-label={t('React')} aria-expanded={quick} data-chat-react-btn onClick={onQuick}>
+      <Smile size={17} />
+    </button>
+  );
   return (
     <>
       {newDay && <div className="gc-day">{dayWord(m.created_at, t)}</div>}
-      <div className="gc-row" data-mine={m.mine} data-first={firstOfRun} data-mid={m.id} data-chat-message>
+      <div className="gc-row" data-mine={m.mine} data-first={firstOfRun} data-mid={m.id} data-picked={picked} data-chat-message>
         {!m.mine && <Avatar name={m.name} photo={m.photo} ghost={!lastOfRun} />}
         <div className="gc-col">
+          {quick && !m.removed && (
+            <div className="gc-quick" role="group" aria-label={t('React')} data-chat-quick>
+              {emojis.map((e) => (
+                <button key={e} type="button" data-mine={m.reactions.some((r) => r.mine && r.emoji === e)} onClick={() => onReact(e)}>{e}</button>
+              ))}
+              <button type="button" className="gc-quick-more" aria-label={t('More')} onClick={() => onMenu(m)}><MoreHorizontal size={18} /></button>
+            </div>
+          )}
           {firstOfRun && !m.mine && (
             <div className="gc-who"><span>{m.name || t('Someone')}</span>{role && <span className="gc-badge">{t(role)}</span>}</div>
           )}
           {m.removed ? (
             <div className="gc-bubble" data-removed="true">{m.removed_by_gym ? t('Removed by the gym') : t('Message removed')}</div>
           ) : (
-            <button type="button" className="gc-bubble" aria-label={t('Message options')} onClick={() => onMenu(m)}>
+            <div className="gc-bubble-line">
+            <button type="button" className="gc-bubble" aria-label={t('Message — hold for options')}
+              onPointerDown={onDown} onPointerMove={onMove} onPointerUp={cancel} onPointerLeave={cancel} onPointerCancel={cancel}
+              onContextMenu={(e) => { e.preventDefault(); cancel(); onMenu(m); }}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onMenu(m); } }}
+              onClick={(e) => { if (held.current) { held.current = false; e.preventDefault(); return; } onPick(); }}>
               {m.reply && (
                 <span className="gc-quote" role="link" tabIndex={0} onClick={(e) => { e.stopPropagation(); onJump(m.reply!.id); }}
                   onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); onJump(m.reply!.id); } }}>
@@ -510,6 +558,8 @@ function MessageRow({ m, newDay, firstOfRun, lastOfRun, urls, t, onMenu, onJump,
               {m.photo_path && <Photo path={m.photo_path} urls={urls} onOpen={onOpenPhoto} />}
               {m.body && <Body text={m.body} marked={m.mentions.length > 0} />}
             </button>
+            {react}
+            </div>
           )}
           {m.reactions.length > 0 && (
             <div className="gc-reacts">
@@ -520,7 +570,7 @@ function MessageRow({ m, newDay, firstOfRun, lastOfRun, urls, t, onMenu, onJump,
               ))}
             </div>
           )}
-          {lastOfRun && <div className="gc-meta">{clock(m.created_at)}{m.pinned ? ` · ${t('Pinned')}` : ''}</div>}
+          {(lastOfRun || picked) && <div className="gc-meta">{clock(m.created_at)}{m.pinned ? ` · ${t('Pinned')}` : ''}</div>}
         </div>
       </div>
     </>

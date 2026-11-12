@@ -205,8 +205,26 @@ async (page) => {
   await page.waitForTimeout(3600);
   say('a poll after sending does not draw the message twice', (await page.getByText('Bringing chalk', { exact: true }).count()) === 1);
 
-  // ── The message menu: a member on someone else's message ──
-  await page.locator('[data-mid="m2"] .gc-bubble').click();
+  // ── Like Messenger: a tap shows the react button and the time; a hold opens the menu ──
+  say('nothing opens a menu by itself', (await page.locator('[data-chat-menu]').count()) === 0);
+  await page.locator('[data-mid="m1"] .gc-bubble').click();
+  await page.waitForTimeout(300);
+  say('a quick tap opens no menu, and shows the react button', (await page.locator('[data-chat-menu]').count()) === 0
+    && (await page.locator('[data-mid="m1"] [data-chat-react-btn]').evaluate((b) => getComputedStyle(b).opacity)) === '1');
+  await page.locator('[data-mid="m1"] [data-chat-react-btn]').click();
+  await page.waitForTimeout(300);
+  const qb = page.locator('[data-mid="m1"] [data-chat-quick]');
+  say('the react button opens a quick row of the seven reactions, and More', (await qb.locator('button').count()) === 8);
+  const fits = await qb.evaluate((el) => { const r = el.getBoundingClientRect(); return el.scrollWidth <= el.clientWidth + 1 && r.right <= innerWidth && r.left >= 0; });
+  say('…and the whole row fits on the phone, More included', fits);
+  await page.screenshot({ path: 'shots/member-gym-chat-quick.png' });
+  const reactsBefore = calls('gym_chat_react').length;
+  await qb.locator('button', { hasText: '👍' }).click();
+  await page.waitForTimeout(600);
+  say('…a reaction from it: one call, and the row closes', calls('gym_chat_react').length === reactsBefore + 1
+    && calls('gym_chat_react').at(-1)[1].p_message === 'm1' && calls('gym_chat_react').at(-1)[1].p_emoji === '👍' && (await page.locator('[data-chat-quick]').count()) === 0);
+  // ── The message menu (a hold): a member on someone else's message ──
+  await page.locator('[data-mid="m2"] .gc-bubble').click({ delay: 650 });
   await page.waitForTimeout(400);
   const menu = page.locator('[data-chat-menu]');
   const items = (await menu.locator('.gc-menu button').allInnerTexts()).map((x) => x.trim());
@@ -214,9 +232,9 @@ async (page) => {
   say('…and the seven reactions', (await menu.locator('.gc-emojis button').count()) === 7);
   await menu.locator('.gc-emojis button', { hasText: '🔥' }).click();
   await page.waitForTimeout(700);
-  say('a reaction: one call, and the count moves', calls('gym_chat_react').length === 1 && calls('gym_chat_react')[0][1].p_emoji === '🔥'
+  say('a reaction: one call, and the count moves', calls('gym_chat_react').length === 2 && calls('gym_chat_react')[1][1].p_emoji === '🔥'
     && /🔥\s*3/.test(await page.locator('[data-mid="m2"] .gc-react').innerText()));
-  await page.locator('[data-mid="m2"] .gc-bubble').click();
+  await page.locator('[data-mid="m2"] .gc-bubble').click({ delay: 650 });
   await page.locator('[data-chat-menu]').getByRole('button', { name: 'Reply' }).click();
   await page.waitForTimeout(300);
   say('Reply shows what is being answered above the box', /Replying to Gabby/.test(await page.locator('[data-chat-replying]').innerText()));
@@ -224,7 +242,7 @@ async (page) => {
   await page.locator('[data-chat-send]').click();
   await page.waitForTimeout(800);
   say('…and the reply is sent with what it answers', calls('gym_chat_send').at(-1)[1].p_reply_to === 'm2');
-  await page.locator('[data-mid="m2"] .gc-bubble').click();
+  await page.locator('[data-mid="m2"] .gc-bubble').click({ delay: 650 });
   await page.locator('[data-chat-menu]').getByRole('button', { name: 'Report to the gym' }).click();
   await page.waitForTimeout(300);
   const sendReport = page.locator('[data-chat-reason]').getByRole('button', { name: 'Send the report' });
@@ -234,7 +252,7 @@ async (page) => {
   await page.waitForTimeout(700);
   say('…then one call with the message and the reason', calls('gym_chat_report').length === 1
     && calls('gym_chat_report')[0][1].p_message === 'm2' && calls('gym_chat_report')[0][1].p_reason === 'Not kind', JSON.stringify(calls('gym_chat_report')));
-  await page.locator('[data-mid="m5"] .gc-bubble').click();
+  await page.locator('[data-mid="m5"] .gc-bubble').click({ delay: 650 });
   await page.waitForTimeout(300);
   const mine = (await page.locator('[data-chat-menu] .gc-menu button').allInnerTexts()).map((x) => x.trim());
   say('on my own message: Remove my message, no Report', mine.includes('Remove my message') && !mine.includes('Report to the gym'), mine.join('|'));
@@ -268,7 +286,7 @@ async (page) => {
   await go('/member/gym-chat');
   say('announcements-only: the reason replaces the box', /Only the gym posts here right now/.test(await page.locator('[data-chat-cannot-post]').innerText().catch(() => ''))
     && (await page.getByRole('textbox', { name: 'Message' }).count()) === 0);
-  await page.locator('[data-mid="m2"] .gc-bubble').click();
+  await page.locator('[data-mid="m2"] .gc-bubble').click({ delay: 650 });
   await page.waitForTimeout(300);
   say('…and the menu has no Reply', !(await page.locator('[data-chat-menu] .gc-menu button').allInnerTexts()).some((x) => /Reply/.test(x)));
 

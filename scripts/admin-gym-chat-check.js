@@ -112,15 +112,23 @@ async (page) => {
   say('a bubble is padded, filled, and its words are light in dark mode', box.pad >= 8 && !/rgba\(0, 0, 0, 0\)|transparent/.test(box.bg) && lum(box.c) > 0.7, JSON.stringify(box));
   await page.screenshot({ path: 'shots/admin-gym-chat.png' });
 
+  // ── A mouse: the react button shows on hover; a right-click opens the menu ──
+  await page.locator('[data-mid="m3"] .gc-bubble').hover();
+  await page.waitForTimeout(250);
+  say('hovering a message shows its react button', (await page.locator('[data-mid="m3"] [data-chat-react-btn]').evaluate((b) => getComputedStyle(b).opacity)) === '1');
+  await page.locator('[data-mid="m3"] .gc-bubble').click({ button: 'right' });
+  await page.waitForTimeout(300);
+  say('a right-click opens the menu', (await page.locator('[data-chat-menu]').count()) === 1);
+  await closeLayer('[data-chat-menu]');
   // ── The owner's menu on a member's message ──
-  await page.locator('[data-mid="m2"] .gc-bubble').click();
+  await page.locator('[data-mid="m2"] .gc-bubble').click({ delay: 650 });
   await page.waitForTimeout(400);
   const items = (await page.locator('[data-chat-menu] .gc-menu button').allInnerTexts()).map((x) => x.trim());
   say("the owner's menu: Reply, Copy, Pin, Report, Remove", items.join('|') === 'Reply|Copy the words|Pin for everyone|Report to the gym|Remove this message', items.join('|'));
   await page.locator('[data-chat-menu]').getByRole('button', { name: 'Pin for everyone' }).click();
   await page.waitForTimeout(600);
   say('Pin: one call, pinned', calls('gym_chat_pin').length === 1 && calls('gym_chat_pin')[0][1].p_message === 'm2' && calls('gym_chat_pin')[0][1].p_pinned === true);
-  await page.locator('[data-mid="m2"] .gc-bubble').click();
+  await page.locator('[data-mid="m2"] .gc-bubble').click({ delay: 650 });
   await page.locator('[data-chat-menu]').getByRole('button', { name: 'Remove this message' }).click();
   await page.waitForTimeout(300);
   const removeBtn = page.locator('[data-chat-reason]').getByRole('button', { name: 'Remove it' });
@@ -129,7 +137,7 @@ async (page) => {
   await removeBtn.click();
   await page.waitForTimeout(700);
   say('…then one call with the reason', calls('gym_chat_remove').length === 1 && calls('gym_chat_remove')[0][1].p_message === 'm2' && calls('gym_chat_remove')[0][1].p_reason === 'No selling in the chat');
-  await page.locator('[data-mid="m1"] .gc-bubble').click();
+  await page.locator('[data-mid="m1"] .gc-bubble').click({ delay: 650 });
   await page.locator('[data-chat-menu]').getByRole('button', { name: 'Remove my message' }).click();
   await page.waitForTimeout(700);
   say('removing my own needs no reason', calls('gym_chat_remove').length === 2 && calls('gym_chat_remove')[1][1].p_reason === null && (await page.locator('[data-chat-reason]').count()) === 0);

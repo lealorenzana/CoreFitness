@@ -138,3 +138,24 @@
 .gc-state b { display: block; color: var(--gc-text); font-size: 16px; margin-bottom: 6px; }
 .gc-viewer { position: absolute; inset: 0; z-index: 6; background: rgb(0 0 0 / .92); display: grid; place-items: center; }
 .gc-viewer img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+/* Reacting like Messenger: a hold opens the menu, a smiley beside the bubble opens a quick row.
+   The smiley shows on hover (a mouse) or on the tapped bubble (a finger). */
+.gc-bubble-line { display: flex; align-items: center; gap: 6px; max-width: 100%; min-width: 0; }
+.gc-row[data-mine='true'] .gc-bubble-line { flex-direction: row-reverse; }
+.gc-bubble { -webkit-touch-callout: none; touch-action: manipulation; }
+@media (hover: none) { .gc-bubble { -webkit-user-select: none; user-select: none; } }
+.gc-react-btn { width: 30px; height: 30px; border-radius: 50%; display: grid !important; place-items: center; flex: none;
+  color: var(--gc-muted) !important; opacity: 0; transition: opacity .12s; }
+.gc-react-btn:hover { background: var(--gc-raised); color: var(--gc-text) !important; }
+.gc-row:hover .gc-react-btn, .gc-react-btn[data-picked='true'], .gc-react-btn[aria-expanded='true'], .gc-react-btn:focus-visible { opacity: 1; }
+@media (hover: none) { .gc-row:hover .gc-react-btn:not([data-picked='true']):not([aria-expanded='true']) { opacity: 0; } }
+.gc-quick { display: flex; align-items: center; gap: 2px; padding: 4px; margin: 0 0 4px; border-radius: 24px;
+  background: var(--surface-solid, var(--a-surface-solid, var(--gc-surface))); border: 1px solid var(--gc-line);
+  box-shadow: 0 8px 24px rgb(0 0 0 / .28); animation: gc-pop .14s ease-out both; width: max-content; max-width: calc(100vw - 24px); overflow-x: auto; }
+.gc-quick button { width: 33px; height: 33px; border-radius: 50%; display: grid !important; place-items: center; font-size: 19px; flex: none; }
+.gc-quick button:hover { background: var(--gc-raised); }
+.gc-quick button[data-mine='true'] { background: var(--gc-raised); outline: 2px solid var(--gc-accent); }
+.gc-quick .gc-quick-more { color: var(--gc-text2) !important; }
+@keyframes gc-pop { from { transform: scale(.85); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .gc-quick { animation: none; } }
