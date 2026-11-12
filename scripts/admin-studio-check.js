@@ -276,6 +276,15 @@ async (page) => {
     if (f.length) out.push(`light check on ${s}: MISSING ${f.slice(0, 3).join(' | ')}`);
     await shot(`${String(seen.length + 4).padStart(2, '0')}-${s}-light`);
     if (s === 'ready') break;
+    // The points' name is asked here, on Points and rewards — not on Your words (owner, 2026-11-12).
+    if (s === 'rewards') {
+      say('Points and rewards asks what the points are called', (await page.locator('[data-points-name]').getByText('Your points are called').count()) === 1);
+      await page.locator('[data-points-name] input').first().fill('Lab Coins');
+      await nextBtn().click();
+      await page.waitForTimeout(1200);
+      say('…and Save and continue saves that name', RPC_CALLS.some(([f, b]) => f === 'save_gym_words' && b.p_points_name === 'Lab Coins'), JSON.stringify(RPC_CALLS.filter(([f]) => f === 'save_gym_words').map(([, b]) => b)).slice(0, 200));
+      continue;
+    }
     if (s === 'password') { await page.locator('input[type="password"]').first().fill('newpass123'); await page.locator('input[type="password"]').nth(1).fill('newpass123'); }
     const skip = page.getByRole('button', { name: 'Skip for now' });
     if (s !== 'door' && s !== 'password' && await skip.count()) await skip.click(); else await nextBtn().click();

@@ -83,7 +83,7 @@ const STEPS: { key: Step; chapter: Chapter; title: string; blurb: string; icon: 
   { key: 'gym', chapter: 'identity', title: 'Name your gym', blurb: 'What your members, your receipts and your sign will say — and where you are.', icon: Building2 },
   { key: 'hours', chapter: 'identity', title: 'When you are open', blurb: 'Your hours, and the days you close.', icon: Clock, optional: true },
   { key: 'look', chapter: 'identity', title: 'Your colours', blurb: 'Two colours, and watch your app and this dashboard change on the right.', icon: Palette },
-  { key: 'words', chapter: 'identity', title: 'Your words', blurb: 'What you call your points, your coaches, your members and your classes.', icon: Type, optional: true },
+  { key: 'words', chapter: 'identity', title: 'Your words', blurb: 'What you call your coaches, your members and your classes — and a line for your members’ home screen.', icon: Type, optional: true },
   { key: 'runs', chapter: 'run', title: 'What you run', blurb: 'A few questions. Each answer switches that part of the app on or off — nothing is deleted.', icon: LayoutGrid, optional: true },
   { key: 'bookings', chapter: 'run', title: 'Who approves bookings', blurb: 'Instant, your coaches, your desk — or not in the app at all.', icon: CalendarDays, optional: true },
   { key: 'coaching', chapter: 'run', title: 'How coaching works', blurb: 'How members get a coach, for how long, who is paid — and your house rules for coaching.', icon: Dumbbell, optional: true },
@@ -199,8 +199,12 @@ export default function Setup() {
 
   // The AI coach step only where the gym's plan sells it (the plan hides, 0141).
   const coach = modules.find((m) => m.feature_key === 'assistant');
+  // Points and rewards (its name, its rewards, how it is earned) only for a gym that said yes to
+  // points on What you run. A database with no switches (before 0110) keeps the step.
+  const points = modules.find((m) => m.feature_key === 'points');
   const steps = STEPS.filter((s) =>
-    (s.key !== 'password' || needsPassword) && (s.key !== 'coach' || (!!coach && coach.state !== 'not_sold')));
+    (s.key !== 'password' || needsPassword) && (s.key !== 'coach' || (!!coach && coach.state !== 'not_sold'))
+    && (s.key !== 'rewards' || !points || points.enabled));
   const index = Math.max(0, steps.findIndex((s) => s.key === step));
   const isLast = index === steps.length - 1;
   const current = steps[index];
@@ -359,7 +363,7 @@ export default function Setup() {
       else if (step === 'gym') await saveGym();
       else if (step === 'hours') await saveHours();
       else if (step === 'look') await saveLook();
-      else if (step === 'words') await saveWords();
+      else if (step === 'words' || step === 'rewards') await saveWords();   // the points' name is asked on rewards
       else if (step === 'plans') await savePlans();
       else if (step === 'door') await saveDoor();
       else if (step === 'password') await savePassword();
@@ -429,7 +433,7 @@ export default function Setup() {
   }
 
   const monogram = (gym.short_name || gym.gym_name || '?').slice(0, 2).toUpperCase();
-  const selfSaving: Step[] = ['runs', 'bookings', 'coaching', 'walkins', 'checkin', 'coach', 'refunds', 'payments', 'waiver', 'rules', 'team', 'equipment', 'rewards', 'members'];
+  const selfSaving: Step[] = ['runs', 'bookings', 'coaching', 'walkins', 'checkin', 'coach', 'refunds', 'payments', 'waiver', 'rules', 'team', 'equipment', 'members'];
   const chapters = CHAPTERS.map((ch) => {
     const list = steps.filter((s) => s.chapter === ch.key);
     return { ...ch, list, done: list.filter((s) => done.includes(s.key)).length };
@@ -608,11 +612,9 @@ export default function Setup() {
                 )}
 
                 {step === 'words' && (<>
+                  {/* What the points are called is asked on Points and rewards, after What you run has
+                      asked whether the gym runs points at all (owner, 2026-11-12). */}
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <label className="ob-field"><span>Your points are called</span>
-                      <input className="ob-in" maxLength={30} value={gym.points_name} placeholder="Points" onChange={(e) => setGym({ ...gym, points_name: e.target.value })} /></label>
-                    <label className="ob-field"><span>In the middle of a sentence</span>
-                      <input className="ob-in" maxLength={30} value={gym.points_name_short} placeholder="points" onChange={(e) => setGym({ ...gym, points_name_short: e.target.value })} /></label>
                     <label className="ob-field sm:col-span-2"><span>A line on your members&rsquo; home screen (optional)</span>
                       <input className="ob-in" maxLength={280} value={gym.welcome_message} placeholder="Open 5am–10pm. Ask the desk about the new racks."
                         onChange={(e) => setGym({ ...gym, welcome_message: e.target.value })} /></label>
@@ -637,6 +639,7 @@ export default function Setup() {
                       ? <p className="ob-hint" style={{ margin: 0 }}>Every part is on. Switch parts off later on Your app → What you run.</p>
                       : <>
                         <RunQuestions modules={modules} onSet={async (k, v) => { tick(); await setModule(k, v); }} />
+                        <p className="ob-hint" style={{ margin: '10px 0 0' }}>You can change any answer later on Your app → What you run.</p>
                         <details className="mt-3" data-every-switch>
                           <summary className="text-sm font-bold cursor-pointer" style={{ color: 'var(--ob-sub)' }}>Show every switch</summary>
                           <div className="mt-2"><ModuleSwitches modules={modules} onToggle={(m) => { tick(); void toggleModule(m); }} hideUnsold /></div>
@@ -655,7 +658,17 @@ export default function Setup() {
                 {step === 'rules' && <div className="ob-hosted att"><HouseRulesTab /></div>}
                 {step === 'team' && <TeamStep />}
                 {step === 'equipment' && <EquipmentStep />}
-                {step === 'rewards' && <RewardsStep pointsName={gym.points_name} />}
+                {step === 'rewards' && (<>
+                  <div className="ob-hosted" data-points-name>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <label className="ob-field"><span>Your points are called</span>
+                        <input className="ob-in" maxLength={30} value={gym.points_name} placeholder="Points" onChange={(e) => setGym({ ...gym, points_name: e.target.value })} /></label>
+                      <label className="ob-field"><span>In the middle of a sentence</span>
+                        <input className="ob-in" maxLength={30} value={gym.points_name_short} placeholder="points" onChange={(e) => setGym({ ...gym, points_name_short: e.target.value })} /></label>
+                    </div>
+                  </div>
+                  <RewardsStep pointsName={gym.points_name} />
+                </>)}
                 {step === 'members' && <MembersStep slug={savedSlug} joinCode={joinCode} />}
 
                 {step === 'plans' && (<>

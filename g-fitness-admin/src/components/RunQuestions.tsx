@@ -16,6 +16,8 @@ const QUESTIONS: { key: string; ask: string; what: string }[] = [
   { key: 'squads', ask: 'Teams?', what: 'Members form small teams that train toward a weekly target together.' },
   { key: 'seasons', ask: 'A monthly season?', what: 'A monthly board of points with tiers and prizes.' },
   { key: 'events', ask: 'Gym events?', what: 'One-off events members sign up for — a fun run, a seminar, an open day.' },
+  { key: 'gym_chat', ask: 'A group chat for your gym?', what: 'One chat for your members, coaches, front desk and you. You can remove a message, stop someone posting, or make it announcements-only.' },
+  { key: 'reels', ask: 'Reels?', what: 'Short videos for your members — paste a YouTube, TikTok, Facebook or Instagram link, or upload your own.' },
   { key: 'online_pay', ask: 'Online payments?', what: 'Members pay in the app through your own PayMongo account. No: cash and transfers at the desk.' },
   { key: 'lobby_tv', ask: 'A lobby TV?', what: 'Today’s sessions and announcements on a screen in your gym.' },
 ];

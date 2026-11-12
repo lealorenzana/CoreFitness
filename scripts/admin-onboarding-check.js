@@ -46,6 +46,9 @@ async (page) => {
     mod('push', 'Announcements', 'on', true, 6),
     mod('events', 'Events', 'off', false, 7, 'push'),
     mod('online_pay', 'Online payments', 'off', false, 8),
+    // 0245/0246: reels and the gym chat — on every plan, off until the owner says yes.
+    mod('reels', 'Reels', 'off', false, 10),
+    mod('gym_chat', 'Gym chat', 'off', false, 11),
     mod('lobby_tv', 'Lobby TV', 'not_sold', false, 9),
   ];
   const CALLS = [];
@@ -105,9 +108,12 @@ async (page) => {
   await page.setViewportSize({ width: 1400, height: 950 });
   await page.goto('http://localhost:5174/admin/setup', { waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: /Save and continue/ }).waitFor({ timeout: 15000 });
-  for (let i = 0; i < 4; i++) await next();          // gym → hours → look → words → runs
+  for (let i = 0; i < 3; i++) await next();          // gym → hours → look → words
+  // The points' name is not asked here: the gym has not yet said whether it runs points (owner, 2026-11-12).
+  say('Your words asks about people and classes, not about points', /Your coaches/.test(await text()) && (await page.getByText('Your points are called').count()) === 0);
+  await next();                                       // → runs
   const asked = await page.locator('[data-run-question]').evaluateAll((els) => els.map((e) => e.getAttribute('data-run-question')));
-  say('What you run asks questions, only for what the plan includes', JSON.stringify(asked) === JSON.stringify(['classes', 'points', 'seasons', 'events', 'online_pay', 'moments']), JSON.stringify(asked));
+  say('What you run asks questions, only for what the plan includes', JSON.stringify(asked) === JSON.stringify(['classes', 'points', 'seasons', 'events', 'gym_chat', 'reels', 'online_pay', 'moments']), JSON.stringify(asked));
   let t = await text();
   say('…each with one line on what it does, and where to change it later', /Do you run group classes\?/.test(t) && /personal training only/.test(t) && /Your app → What you run/.test(t));
   const pressed = async (key) => page.locator(`[data-run-question="${key}"] [aria-checked="true"]`).innerText();
@@ -129,6 +135,22 @@ async (page) => {
   say('No to celebrations turns the moments and their sounds off', PATCHES.some((p) => p.celebrations === false && p.celebration_sounds === false), JSON.stringify(PATCHES));
   say('…and the answer shows at once', (await pressed('classes')) === 'Yes' && (await pressed('moments')) === 'No');
   say('a question not answered writes nothing (seasons, online payments)', !CALLS.some(([f, b]) => f === 'set_gym_module' && (b.p_feature === 'seasons' || b.p_feature === 'online_pay')));
+  // 0245/0246: the gym chat and reels are asked too, and start at No.
+  say('the gym chat and reels are asked, and start at No', (await pressed('gym_chat')) === 'No' && (await pressed('reels')) === 'No'
+    && /group chat for your gym/.test(await text()) && /YouTube, TikTok, Facebook or Instagram/.test(await text()));
+  await page.locator('[data-run-question="gym_chat"] [data-answer="yes"]').click();
+  await page.waitForTimeout(500);
+  say('Yes to the gym chat writes that switch, and reels (not answered) is left alone',
+    CALLS.some(([f, b]) => f === 'set_gym_module' && b.p_feature === 'gym_chat' && b.p_enabled === true)
+    && !CALLS.some(([f, b]) => f === 'set_gym_module' && b.p_feature === 'reels'));
+  // No to points (answered above): the Points and rewards step is gone from Team and floor. Yes brings it back.
+  const teamSteps = async () => (await page.locator('[data-chapter="team"] .ob-chap-sub').innerText()).trim();
+  say('No to points takes the Points and rewards step out (Team and floor: 2 steps)', (await teamSteps()) === '0 of 2', await teamSteps());
+  await page.locator('[data-run-question="points"] [data-answer="yes"]').click();
+  await page.waitForTimeout(600);
+  say('Yes to points puts it back (3 steps)', (await teamSteps()) === '0 of 3', await teamSteps());
+  await page.locator('[data-run-question="points"] [data-answer="no"]').click();
+  await page.waitForTimeout(600);
   await page.locator('[data-every-switch] summary').click();
   await page.waitForTimeout(300);
   say('every switch is still there, under Show every switch', /Online payments/.test(await page.locator('[data-every-switch]').innerText()));
