@@ -2,7 +2,9 @@
  * Reels (0245) on the owner's and desk's app, against fixtures:
  *   three reels from gym_reels_feed (real column names): a YouTube Short with 2 likes,
  *   a TikTok short link that cannot play inside the app, and a hidden upload;
- *   the Uploads chip reads "1 of 10" from reel_upload_limit; a bad link in Add a reel
+ *   the gym's storage reads "62 MB of 2 GB" from my_gym_storage (0247) and Uploads counts 1;
+ *   how each site's link plays (reelEmbed.ts): YouTube and TikTok at once and looping, TikTok in its
+ *   video player, Instagram cropped to its video; a bad link in Add a reel
  *   shows the hint; a cover that will not load becomes the plain tile, never a broken image;
  *   only rows with can_manage carry Edit/Hide/Remove; the page does not scroll;
  *   in light mode a tile's title is not near-white; a front-desk account sees the sidebar row.
@@ -51,6 +53,7 @@ async (page) => {
   const RPC = {
     gym_reels_feed: FEED,
     reel_upload_limit: 10,
+    my_gym_storage: [{ plan_name: 'Starter', limit_bytes: 2048 * 1048576, used_bytes: 62 * 1048576 }],
     my_gym_app: [{ modules: { reels: true } }],
   };
 
@@ -91,7 +94,27 @@ async (page) => {
     /Opens in TikTok/.test(await page.locator('[data-reel="Coach Mia says hello"]').innerText())
     && (await page.locator('[data-reel="Three stretches before you lift"] [data-reel-opens]').count()) === 0);
   const up = (await page.locator('[data-chip="uploads"]').innerText()).replace(/\s+/g, ' ');
-  say('the Uploads chip reads 1 of 10', /1 of 10/.test(up), `(${up})`);
+  say('the Uploads chip counts the one upload', /Uploads 1$/.test(up), `(${up})`);
+  const store = await page.locator('[data-reel-storage]').innerText().catch(() => '');
+  say("the gym's storage is shown against its plan", /Storage 62 MB of 2 GB/.test(store), `(${store})`);
+  // How each site's link plays — the module itself, through the dev server.
+  const emb = await page.evaluate(async () => {
+    const m = await import('/src/lib/reelEmbed.ts');
+    return {
+      yt: m.reelEmbedUrl('https://youtube.com/shorts/_GziHDdJY10?si=abc'),
+      tt: m.reelEmbedUrl('https://www.tiktok.com/@chadnerf/video/7539171941316381959?is_from_webapp=1'),
+      ttShort: m.reelEmbedUrl('https://vm.tiktok.com/ZSabc/'),
+      ig: m.reelEmbedUrl('https://www.instagram.com/reel/DeRcEBZsdbT/?utm_source=ig_web_copy_link'),
+      fbShare: m.reelEmbedUrl('https://www.facebook.com/share/p/1DYmJhPcf3/'),
+      fbReel: m.reelEmbedUrl('https://www.facebook.com/reel/1234567890'),
+      crop: m.INSTAGRAM_CROP,
+    };
+  });
+  say('YouTube plays at once and loops', /youtube-nocookie\.com\/embed\/_GziHDdJY10\?.*autoplay=1.*loop=1.*playlist=_GziHDdJY10/.test(emb.yt ?? ''), String(emb.yt));
+  say("TikTok uses its video player (not the post card), playing at once and looping", /^https:\/\/www\.tiktok\.com\/player\/v1\/7539171941316381959\?autoplay=1&loop=1/.test(emb.tt ?? '') && !/embed\/v2/.test(emb.tt ?? ''), String(emb.tt));
+  say('a TikTok short link and a Facebook share link still open in their own app', emb.ttShort === null && emb.fbShare === null);
+  say('a Facebook reel link plays in the video plugin', /facebook\.com\/plugins\/video\.php\?href=.*autoplay=true/.test(emb.fbReel ?? ''), String(emb.fbReel));
+  say("Instagram's embed is cropped to its video (header pushed out, likes below the box)", /instagram\.com\/reel\/DeRcEBZsdbT\/embed$/.test(emb.ig ?? '') && emb.crop.header === 54 && emb.crop.ratio > 1 && emb.crop.below >= 300, JSON.stringify(emb.crop));
   say('the YouTube reel shows its 2 likes', /2/.test(await page.locator('[data-reel="Three stretches before you lift"] [data-reel-likes]').innerText()));
   await page.waitForTimeout(800);
   say('a cover that will not load becomes the plain tile', (await page.locator('[data-reel="Three stretches before you lift"] [data-reel-cover="plain"]').count()) === 1

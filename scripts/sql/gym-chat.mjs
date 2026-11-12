@@ -312,6 +312,19 @@ check('the desk can (a removed message\'s photo)', (await one(`select count(*)::
 check('the bucket is private, 3 MB, images only', await (async () => { const b = await one(`select public, file_size_limit, allowed_mime_types from storage.buckets where id = 'chat'`);
   return b.public === false && Number(b.file_size_limit) === 3145728 && !b.allowed_mime_types.some((t) => !t.startsWith('image/')); })());
 
+// ---- 0247: no chat photo while the gym is at its plan's storage ----
+await owner();
+await db.exec(`update gyms set plan = 'starter' where id = '${GYM}'; update platform_plans set storage_mb = 100 where key = 'starter';
+  insert into storage.objects (bucket_id, name, metadata) values ('reels', 'gyms/${GYM}/reels/big.mp4', '{"size": 104857600}');`);
+await as(M);
+check('at the storage limit a chat photo is refused, words still send', (await put(`gyms/${GYM}/chat/${M}/full.jpg`)) !== null && !!(await one(send('70', 'Still talking'))).j.id);
+await owner();
+await db.exec(`delete from storage.objects where name = 'gyms/${GYM}/reels/big.mp4'; update platform_plans set storage_mb = null where key = 'starter';`);
+await as(M);
+check('with room again, the photo goes up', (await put(`gyms/${GYM}/chat/${M}/room.jpg`)) === null);
+await owner();
+await db.exec(`delete from storage.objects where bucket_id = 'chat'`);
+
 // ---- another gym ----
 await as(OTHER);
 s = await sync();

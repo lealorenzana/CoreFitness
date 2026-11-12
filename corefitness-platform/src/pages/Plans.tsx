@@ -4,7 +4,7 @@ import Modal from '../components/Modal';
 import Tiles from '../components/Tiles';
 import {
   explain, listGyms, listPlanFeatures, listPlatformFeatures, listPlatformPlans, retirePlan, savePlan, setPlanFeature,
-  setPlanAiCaps, setPlanPhotoLimit,
+  setPlanAiCaps, setPlanPhotoLimit, setPlanStorage, storageWords,
   type PlanFeatureCell, type PlatformFeature, type PlatformGym, type PlatformPlan,
 } from '../lib/platform';
 
@@ -97,6 +97,10 @@ export default function Plans() {
       // as a key on every plan row once 0121 is pasted).
       if (editing.max_photos !== undefined) {
         await setPlanPhotoLimit(editing.key, editing.max_photos);
+      }
+      // 0247's storage, likewise only once the column exists.
+      if (editing.storage_mb !== undefined) {
+        await setPlanStorage(editing.key, editing.storage_mb ?? null);
       }
       // 0163's AI coach ceiling, likewise only once the columns exist.
       if (editing.ai_daily_cap !== undefined) {
@@ -233,6 +237,14 @@ export default function Plans() {
                   onChange={(e) => setEditing({ ...editing, max_photos: e.target.value === '' ? null : Number(e.target.value) })} />
               </div>
             )}
+            {editing.storage_mb !== undefined && (
+              <div>
+                <label htmlFor="pl-st">Storage (GB)</label>
+                <input id="pl-st" type="number" min={0.1} step={0.5} value={editing.storage_mb == null ? '' : Math.round((editing.storage_mb / 1024) * 100) / 100}
+                  placeholder="no limit" data-plan-storage
+                  onChange={(e) => setEditing({ ...editing, storage_mb: e.target.value === '' ? null : Math.max(100, Math.round(Number(e.target.value) * 1024)) })} />
+              </div>
+            )}
             {editing.ai_daily_cap !== undefined && (
               <>
                 <div>
@@ -302,6 +314,7 @@ export default function Plans() {
             <span className="chip">{plan.max_members === null ? 'Any number of members' : `Up to ${plan.max_members} members`}</span>
             {plan.ai_daily_cap != null && <span className="chip">AI coach {plan.ai_daily_cap}/day{plan.ai_monthly_cap != null ? ` · ${plan.ai_monthly_cap.toLocaleString('en-PH')}/month` : ''}</span>}
             <span className="chip">{plan.max_staff === null ? 'Any number on the desk' : `Up to ${plan.max_staff} on the desk`}</span>
+            {plan.storage_mb !== undefined && <span className="chip" data-plan-storage-chip>{plan.storage_mb === null ? 'No storage limit' : `${storageWords(plan.storage_mb)} storage`}</span>}
             {plan.max_photos !== undefined && <span className="chip">{plan.max_photos === null ? 'Any number of photos' : `Up to ${plan.max_photos} photos`}</span>}
           </div>
           <div className="plan-unlocks">
@@ -365,6 +378,9 @@ function ComparePlans({ plans, features, on, onToggle, onSuggest }: {
             <tr><td>Free days</td>{plans.map((p) => <td key={p.key}>{p.trial_days ?? '—'}</td>)}</tr>
             <tr><td>Members</td>{plans.map((p) => <td key={p.key}>{p.max_members ?? 'Any'}</td>)}</tr>
             <tr><td>Desk accounts</td>{plans.map((p) => <td key={p.key}>{p.max_staff ?? 'Any'}</td>)}</tr>
+            {plans.some((p) => p.storage_mb !== undefined) && (
+              <tr><td>Storage for videos and photos</td>{plans.map((p) => <td key={p.key}>{storageWords(p.storage_mb)}</td>)}</tr>
+            )}
             {features.map((f) => (
               <tr key={f.key} className={differs(f.key) ? 'diff' : ''}>
                 <td title={f.description}>{f.label}</td>

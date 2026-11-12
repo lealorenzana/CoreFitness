@@ -10,7 +10,7 @@ import ErrorState from '../../components/ui/ErrorState';
 import { toast } from '../../components/ui/Toast';
 import { ReelCover } from '../../components/reels/ReelPlayer';
 import {
-  editReel, listReels, postLinkReel, postUploadedReel, reelFileProblem, reelUploadLimit, removeReel, REEL_VIDEO_TYPES, type Reel,
+  editReel, listReels, postLinkReel, postUploadedReel, reelFileProblem, gymStorage, storageWords, removeReel, REEL_VIDEO_TYPES, type Reel,
 } from '../../lib/api/reels';
 import { reelEmbedUrl, reelLinkSource, REEL_LINK_HINT, REEL_SOURCE_WORDS } from '../../lib/reelEmbed';
 import { useT } from '../../lib/i18n';
@@ -118,14 +118,14 @@ function PostSheet({ open, onClose, onPosted }: { open: boolean; onClose: () => 
   const [caption, setCaption] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [limit, setLimit] = useState<number | null>(null);
+  const [limit, setLimit] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open || mode !== 'upload' || limit != null) return;
     let alive = true;
     void (async () => {
-      const n = await reelUploadLimit().catch(() => null);
-      if (alive) setLimit(n);
+      const s = await gymStorage().catch(() => null);
+      if (alive && s) setLimit(storageWords(s));
     })();
     return () => { alive = false; };
   }, [open, mode, limit]);
@@ -180,7 +180,7 @@ function PostSheet({ open, onClose, onPosted }: { open: boolean; onClose: () => 
           </div>
         ) : (
           <div>
-            <Field label={t('Video')} hint={`${t('MP4, MOV or WebM, up to 25 MB.')}${limit != null ? ` ${t('The gym keeps up to')} ${limit} ${t('uploaded videos.')}` : ''}`}>
+            <Field label={t('Video')} hint={`${t('MP4, MOV or WebM, up to 25 MB.')}${limit != null ? ` ${t('The gym has used')} ${limit} ${t('of its storage.')}` : ''}`}>
               <input type="file" accept={REEL_VIDEO_TYPES.join(',')} disabled={busy} data-reel-file
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                 style={{ fontSize: 13, color: 'var(--color-text-secondary)', maxWidth: '100%' }} />

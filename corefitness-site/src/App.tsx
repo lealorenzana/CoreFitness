@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from './supabase';
-import { toTier, type PublicPlanRow, type Tier } from './pricing';
+import { storageWords, toTier, withStorage, type PublicPlanRow, type Tier } from './pricing';
 import StatusPage from './Status';
 import Account from './Account';
 import { GoogleButton } from './google';
@@ -225,17 +225,19 @@ export default function App() {
   useEffect(() => {
     void (async () => {
       if (!supabase) { setGyms([]); setGymsFailed(true); setTiers([]); return; }
-      const [gymRes, planRes] = await Promise.all([
+      const [gymRes, planRes, storageRes] = await Promise.all([
         supabase.rpc('list_gyms', { p_search: null }),
         // The price list, from the same rows the platform owner edits and
         // `gyms.plan` points at (0108). Before that migration is pasted this
         // function does not exist; the section then says so rather than
         // printing numbers from a file that nobody is maintaining any more.
         supabase.rpc('platform_price_list'),
+        // 0247: what each plan includes in storage. Absent before the migration: the line is then left out.
+        supabase.rpc('platform_plan_storage'),
       ]);
       setGymsFailed(!Array.isArray(gymRes.data));
       setGyms(Array.isArray(gymRes.data) ? (gymRes.data as Gym[]) : []);
-      setTiers(Array.isArray(planRes.data) ? (planRes.data as PublicPlanRow[]).map(toTier) : []);
+      setTiers(Array.isArray(planRes.data) ? withStorage((planRes.data as PublicPlanRow[]).map(toTier), storageRes.data) : []);
     })();
   }, []);
 
@@ -437,6 +439,7 @@ export default function App() {
                       <ul>
                         <li><Icon name="check" /> {t.maxMembers !== null ? `Up to ${t.maxMembers.toLocaleString('en-PH')} members` : 'Any number of members'}
                           {t.maxStaff !== null ? `, ${t.maxStaff} staff accounts` : t.maxMembers === null ? ' and staff' : ''}</li>
+                        {t.storageMb !== undefined && <li data-plan-storage><Icon name="check" /> {t.storageMb === null ? 'No limit on storage for your videos and photos' : `${storageWords(t.storageMb)} for your videos and photos`}</li>}
                         {t.aiMonthly !== null && <li><Icon name="check" /> {t.aiMonthly.toLocaleString('en-PH')} AI assistant messages a month, more as you need them</li>}
                         {t.includes.map((line) => <li key={line}><Icon name="check" /> {line}</li>)}
                       </ul>

@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { ArrowLeft, CaretDown, CaretUp, Heart, Play, SpeakerHigh, SpeakerSlash } from '@phosphor-icons/react';
 import { toggleReelLike, type Reel } from '../../lib/api/reels';
-import { reelEmbedUrl, REEL_SOURCE_WORDS } from '../../lib/reelEmbed';
+import { INSTAGRAM_CROP, reelEmbedUrl, REEL_SOURCE_WORDS } from '../../lib/reelEmbed';
 import { toast } from '../ui/Toast';
 import { useT } from '../../lib/i18n';
 
@@ -57,8 +57,9 @@ export default function ReelPlayer({ reels, startId, onBack, onLikeChange }: {
   const [likes, setLikes] = useState<Record<string, LikeState>>(() =>
     Object.fromEntries(reels.map((r) => [r.id, { liked: r.liked, likes: r.likes }])));
   const pending = useRef(new Set<string>());
-  // Muted until the member asks for sound — a phone may autoplay only a muted video.
-  const [muted, setMuted] = useState(true);
+  // With sound when the phone allows it (the member tapped to get here); a phone that refuses
+  // a video with sound makes it muted (`onBlocked`), and the corner button gives it back.
+  const [muted, setMuted] = useState(false);
 
   // Open at the asked-for reel, before the first paint.
   const [startAt] = useState(active);
@@ -116,7 +117,7 @@ export default function ReelPlayer({ reels, startId, onBack, onLikeChange }: {
         style={{ scrollSnapType: 'y mandatory', overscrollBehavior: 'contain' }}>
         {reels.map((r, i) => (
           <ReelSlide key={r.id} reel={r} active={r.id === active} like={likes[r.id] ?? { liked: r.liked, likes: r.likes }}
-            onLike={() => void like(r.id)} muted={muted} onMute={() => setMuted((m) => !m)}
+            onLike={() => void like(r.id)} muted={muted} onMute={() => setMuted((m) => !m)} onBlocked={() => setMuted(true)}
             onPrev={i > 0 ? () => step(-1) : undefined} onNext={i < reels.length - 1 ? () => step(1) : undefined} />
         ))}
       </div>
@@ -124,9 +125,9 @@ export default function ReelPlayer({ reels, startId, onBack, onLikeChange }: {
   );
 }
 
-function ReelSlide({ reel, active, like, onLike, muted, onMute, onPrev, onNext }: {
+function ReelSlide({ reel, active, like, onLike, muted, onMute, onBlocked, onPrev, onNext }: {
   reel: Reel; active: boolean; like: LikeState; onLike: () => void;
-  muted: boolean; onMute: () => void; onPrev?: () => void; onNext?: () => void;
+  muted: boolean; onMute: () => void; onBlocked: () => void; onPrev?: () => void; onNext?: () => void;
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
@@ -140,7 +141,15 @@ function ReelSlide({ reel, active, like, onLike, muted, onMute, onPrev, onNext }
       className="flex flex-col" style={{ height: '100%', scrollSnapAlign: 'start', scrollSnapStop: 'always' }}>
       <div className="flex-1 min-h-0 relative overflow-hidden" style={{ background: '#000' }}>
         {active && reel.source === 'upload' ? (
-          <UploadPlayer src={reel.url} poster={reel.cover} muted={muted} onMute={onMute} />
+          <UploadPlayer src={reel.url} poster={reel.cover} muted={muted} onMute={onMute} onBlocked={onBlocked} />
+        ) : active && embed && reel.source === 'instagram' ? (
+          // Instagram's own header and likes are cropped away: only its video shows (reelEmbed.ts).
+          <div className="absolute inset-x-0" data-reel-crop
+            style={{ top: '50%', transform: 'translateY(-50%)', aspectRatio: `1 / ${INSTAGRAM_CROP.ratio}`, maxHeight: '100%', overflow: 'hidden' }}>
+            <iframe src={embed} title={reel.title} scrolling="no"
+              style={{ position: 'absolute', left: 0, top: -INSTAGRAM_CROP.header, width: '100%', height: `calc(100% + ${INSTAGRAM_CROP.header + INSTAGRAM_CROP.below}px)`, border: 0 }}
+              allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen />
+          </div>
         ) : active && embed ? (
           <iframe src={embed} title={reel.title} className="absolute inset-0 w-full h-full" style={{ border: 0 }}
             allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen />
@@ -209,7 +218,7 @@ function ReelSlide({ reel, active, like, onLike, muted, onMute, onPrev, onNext }
 }
 
 /** An uploaded reel: plays muted when it arrives, a tap pauses or plays it, the corner button gives it sound. */
-function UploadPlayer({ src, poster, muted, onMute }: { src: string; poster: string | null; muted: boolean; onMute: () => void }) {
+function UploadPlayer({ src, poster, muted, onMute, onBlocked }: { src: string; poster: string | null; muted: boolean; onMute: () => void; onBlocked: () => void }) {
   const t = useT();
   const ref = useRef<HTMLVideoElement>(null);
   const [paused, setPaused] = useState(false);
@@ -218,6 +227,15 @@ function UploadPlayer({ src, poster, muted, onMute }: { src: string; poster: str
     if (!v) return;
     if (v.paused) void v.play().catch(() => undefined); else v.pause();
   };
+  // Plays as soon as it is on screen. A phone may refuse a video with sound that nobody
+  // tapped for: then it starts muted, and the corner button gives it sound.
+  useEffect(() => {
+    const v = ref.current;
+    if (!v) return;
+    void v.play().catch(() => { v.muted = true; onBlocked(); void v.play().catch(() => undefined); });
+    // Only when the video changes: `onBlocked` is a new function each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [src]);
   return (
     <>
       <video ref={ref} src={src} poster={poster ?? undefined} playsInline loop autoPlay muted={muted}

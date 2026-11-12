@@ -23,18 +23,29 @@ self.addEventListener('push', (event) => {
   }
 
   const title = payload.title || 'Core Fitness';
-  const options = {
-    body: payload.body || '',
-    icon: '/pwa-192x192.png',
-    badge: '/pwa-192x192.png',
-    // Collapses repeats of the same kind rather than stacking six identical
-    // banners the way the old in-app toast did.
-    tag: payload.tag || 'core-fitness',
-    renotify: Boolean(payload.tag),
-    data: { url: payload.url || '/member/home' },
-  };
+  const url = payload.url || '/member/home';
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  // The app is open and on screen: it draws its own banner (PushBanner.tsx), so the
+  // phone's copy arrives quietly. Otherwise the phone alerts as it is set to — a
+  // banner over other apps is Android's "Pop on screen" setting for this app.
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      const open = clientList.filter((c) => c.visibilityState === 'visible');
+      for (const c of open) c.postMessage({ type: 'cf-push', title, body: payload.body || '', url });
+      return self.registration.showNotification(title, {
+        body: payload.body || '',
+        icon: '/pwa-192x192.png',
+        badge: '/pwa-192x192.png',
+        // Collapses repeats of the same kind rather than stacking six identical
+        // banners the way the old in-app toast did.
+        tag: payload.tag || 'core-fitness',
+        renotify: Boolean(payload.tag) && open.length === 0,
+        silent: open.length > 0,
+        vibrate: open.length > 0 ? undefined : [120, 60, 120],
+        data: { url },
+      });
+    })
+  );
 });
 
 self.addEventListener('notificationclick', (event) => {

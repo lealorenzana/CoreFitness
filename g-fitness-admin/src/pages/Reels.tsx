@@ -7,10 +7,10 @@ import './attendance/att.css';
 import { showToast } from '../utils/toast';
 import { moduleOn, useGymModules } from '../hooks/useGymModules';
 import {
-  listReels, reelUploadLimit, postLinkReel, postUploadedReel, editReel, removeReel, reelFileProblem, REEL_VIDEO_TYPES,
+  listReels, gymStorage, storageWords, fetchReelCover, postLinkReel, postUploadedReel, editReel, removeReel, reelFileProblem, REEL_VIDEO_TYPES,
   type Reel,
 } from '../lib/api/reels';
-import { reelLinkSource, reelEmbedUrl, REEL_SOURCE_WORDS, REEL_LINK_HINT } from '../lib/reelEmbed';
+import { INSTAGRAM_CROP, reelLinkSource, reelEmbedUrl, REEL_SOURCE_WORDS, REEL_LINK_HINT } from '../lib/reelEmbed';
 
 /**
  * Reels (0245) — short videos the gym puts up for its members: a pasted link
@@ -54,7 +54,9 @@ function Cover({ r, height }: { r: Reel; height?: number }) {
 export default function Reels() {
   const on = moduleOn(useGymModules(), 'reels');
   const [rows, setRows] = useState<Reel[]>([]);
-  const [limit, setLimit] = useState<number | null>(null);
+  /** "120 MB of 2 GB" — the gym's uploads against its plan (0247). Null until read, or unreadable. */
+  const [storage, setStorage] = useState<string | null>(null);
+  const triedCovers = useRef(false);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
@@ -72,9 +74,18 @@ export default function Reels() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      // The limit is a label on a chip: failing to read it must not hide the reels.
-      const [list, max] = await Promise.all([listReels(), reelUploadLimit().catch(() => null)]);
-      setRows(list); setLimit(max); setFailed(null);
+      // The storage is a label: failing to read it must not hide the reels.
+      const [list, store] = await Promise.all([listReels(), gymStorage().catch(() => null)]);
+      setRows(list); setStorage(store ? storageWords(store) : null); setFailed(null);
+      // Link reels posted without a picture get the link's own, once a visit, quietly (0247).
+      if (!triedCovers.current && list.some((r) => r.canManage && !r.cover && r.source !== 'upload' && r.source !== 'youtube')) {
+        triedCovers.current = true;
+        void (async () => {
+          let got = false;
+          for (const r of list) got = (await fetchReelCover(r)) || got;
+          if (got) setRows(await listReels());
+        })();
+      }
     } catch (err) {
       setFailed(err instanceof Error ? err.message : 'The reels could not be read.');
     } finally {
@@ -182,8 +193,9 @@ export default function Reels() {
             placeholder="Paste a YouTube, TikTok, Facebook or Instagram link, then press Enter" aria-label="Paste a link" /></label>
         <button type="button" className={`a-chip ${filter === 'all' ? 'v' : ''}`} onClick={() => setFilter('all')} data-chip="all">All <em>{rows.length}</em></button>
         <button type="button" className={`a-chip ${filter === 'links' ? 'v' : ''}`} onClick={() => setFilter('links')} data-chip="links">Links <em>{links}</em></button>
-        <button type="button" className={`a-chip ${filter === 'uploads' ? 'v' : ''}`} onClick={() => setFilter('uploads')} data-chip="uploads">Uploads <em>{limit === null ? uploads : `${uploads} of ${limit}`}</em></button>
+        <button type="button" className={`a-chip ${filter === 'uploads' ? 'v' : ''}`} onClick={() => setFilter('uploads')} data-chip="uploads">Uploads <em>{uploads}</em></button>
         <button type="button" className={`a-chip ${filter === 'hidden' ? 'v' : ''}`} onClick={() => setFilter('hidden')} data-chip="hidden">Hidden <em>{hidden}</em></button>
+        {storage && <span className="a-pill" data-reel-storage data-tip="Videos, covers and photos your gym has uploaded, against what your Core Fitness plan includes. Links use none.">Storage {storage}</span>}
         <label className="a-input" style={{ padding: '7px 11px', fontSize: 12, width: 190, marginLeft: 'auto' }}><Search size={14} />
           <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search title or who posted…" aria-label="Search reels" /></label>
       </div>
@@ -201,7 +213,7 @@ export default function Reels() {
             <div data-reels-empty style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start', padding: '10px 0', maxWidth: 520 }}>
               <b style={{ display: 'flex', gap: 8, alignItems: 'center' }}><Clapperboard size={16} />No reels yet</b>
               <p className="a-sub" style={{ lineHeight: 1.5 }}>A reel is a short video for your members — a tip, a class highlight, a hello from a coach. Paste a link or upload a small video
-                (up to 25 MB{limit === null ? '' : `, ${limit} uploads per gym`}; links are not counted). Members see reels on Today and in More, and can give each a heart.</p>
+                (up to 25 MB each, kept within your plan's storage; links use none). Members see reels on Today and in More, and can give each a heart.</p>
               <button type="button" className="a-btn violet" onClick={() => openAdd()}><Plus size={14} />Add a reel</button>
             </div>
           ) : visible.length === 0 ? (
@@ -283,7 +295,7 @@ export default function Reels() {
                   style={{ ...lbl, background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}><Upload size={14} />{adding.file ? 'Choose another video' : 'Choose a video'}</button>
                 {adding.file && <p className="text-[12px] mt-2" style={lbl} data-reel-file-name>{adding.file.name} · {megabytes(adding.file.size)}</p>}
                 {fileProblem && <p role="alert" data-reel-file-problem className="text-[12px] mt-1" style={{ color: 'var(--a-a300, var(--color-warning))' }}>{fileProblem}</p>}
-                <p className="text-[12px] mt-2 flex gap-1.5" style={muted}><Info size={13} className="flex-none mt-0.5" />MP4, MOV or WebM, up to 25 MB{limit === null ? '' : ` — ${uploads} of ${limit} uploads used`}. Its cover is taken from the start of the video.</p>
+                <p className="text-[12px] mt-2 flex gap-1.5" style={muted}><Info size={13} className="flex-none mt-0.5" />MP4, MOV or WebM, up to 25 MB{storage ? ` — your gym has used ${storage} of storage` : ''}. Its cover is taken from the start of the video.</p>
               </div>
             )}
 
@@ -337,9 +349,21 @@ export default function Reels() {
       <Modal isOpen={!!preview} onClose={() => setPreview(null)} title={preview?.title ?? 'Preview'} subtitle={preview ? REEL_SOURCE_WORDS[preview.source] : undefined} size="sm" hideFooter>
         {preview && (
           <div data-reel-preview style={{ display: 'grid', justifyItems: 'center', gap: 10 }}>
+            {preview.source !== 'upload' && previewEmbed && (
+              <p className="text-[12px]" style={{ ...muted, textAlign: 'center', order: 2 }} data-reel-preview-out>
+                Not playing? {REEL_SOURCE_WORDS[preview.source]} sometimes refuses a computer that has opened many videos.{' '}
+                <a href={preview.url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--a-p300)', fontWeight: 600 }}>Open in {REEL_SOURCE_WORDS[preview.source]}</a>
+              </p>
+            )}
             {preview.source === 'upload' ? (
               <video src={preview.url} poster={preview.cover ?? undefined} controls playsInline
                 style={{ width: 320, maxWidth: '100%', aspectRatio: '9 / 16', maxHeight: '62vh', borderRadius: 12, background: '#000', objectFit: 'contain' }} />
+            ) : previewEmbed && preview.source === 'instagram' ? (
+              // Instagram's own header and likes are cropped away, as on the phone (reelEmbed.ts).
+              <div data-reel-crop style={{ position: 'relative', width: 320, maxWidth: '100%', aspectRatio: `1 / ${INSTAGRAM_CROP.ratio}`, overflow: 'hidden', borderRadius: 12, background: '#000' }}>
+                <iframe src={previewEmbed} title={preview.title} scrolling="no" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen
+                  style={{ position: 'absolute', left: 0, top: -INSTAGRAM_CROP.header, width: '100%', height: `calc(100% + ${INSTAGRAM_CROP.header + INSTAGRAM_CROP.below}px)`, border: 0 }} />
+              </div>
             ) : previewEmbed ? (
               <iframe src={previewEmbed} title={preview.title} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen
                 style={{ width: 320, maxWidth: '100%', aspectRatio: '9 / 16', maxHeight: '62vh', border: 0, borderRadius: 12, background: '#000' }} />

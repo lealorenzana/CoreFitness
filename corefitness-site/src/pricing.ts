@@ -24,7 +24,20 @@ export interface Tier {
   /** 0189: staff accounts (null = no limit) and AI coach messages a month (null = not set). */
   maxStaff: number | null;
   aiMonthly: number | null;
+  /** 0247: megabytes of uploads the plan includes. undefined = not read (before 0247); null = no limit. */
+  storageMb?: number | null;
 }
+
+/** 2048 → "2 GB"; 500 → "500 MB". */
+export const storageWords = (mb: number): string =>
+  mb >= 1024 ? `${Number.isInteger(mb / 1024) ? mb / 1024 : (mb / 1024).toFixed(1)} GB` : `${mb} MB`;
+
+/** Each plan's storage folded into the price list (two reads, because the price list predates 0247). */
+export const withStorage = (tiers: Tier[], rows: unknown): Tier[] => {
+  if (!Array.isArray(rows)) return tiers;
+  const by = new Map((rows as { plan_key: string; storage_mb: number | null }[]).map((r) => [r.plan_key, r.storage_mb]));
+  return tiers.map((t) => (by.has(t.key) ? { ...t, storageMb: by.get(t.key) ?? null } : t));
+};
 
 /** A row of `public_plans()`, before it is turned into a Tier. */
 export interface PublicPlanRow {

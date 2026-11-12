@@ -49,6 +49,8 @@ export interface PlatformPlan {
   max_staff: number | null;
   /** 0121. Photos a gym may upload (exercise guides); NULL = unlimited. Absent before 0121. */
   max_photos?: number | null;
+  /** 0247: megabytes of uploads (reel videos, chat photos, the gym's own pictures); NULL = no limit. Absent before 0247. */
+  storage_mb?: number | null;
   /** 0163: the AI coach ceiling; undefined before 0163, null = no ceiling. */
   ai_daily_cap?: number | null;
   ai_monthly_cap?: number | null;
@@ -251,6 +253,14 @@ export const savePlan = (p: {
 });
 
 /** 0121: the photo limit is its own call, so save_platform_plan's signature stays as it is. */
+/** 0247: megabytes a gym on this plan may keep in uploads; null = no limit. */
+export const setPlanStorage = (plan: string, mb: number | null) =>
+  call<void>('set_platform_plan_storage', { p_plan: plan, p_mb: mb });
+
+/** 2048 → "2 GB"; 500 → "500 MB"; null → "No limit". */
+export const storageWords = (mb: number | null | undefined): string =>
+  mb == null ? 'No limit' : mb >= 1024 ? `${Number.isInteger(mb / 1024) ? mb / 1024 : (mb / 1024).toFixed(1)} GB` : `${mb} MB`;
+
 export const setPlanPhotoLimit = (plan: string, max: number | null) =>
   call<void>('set_platform_plan_photo_limit', { p_plan: plan, p_max: max });
 

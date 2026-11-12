@@ -1,6 +1,6 @@
 import { supabase } from '../supabaseClient';
 import { currentGymId } from '../gymContext';
-import { reelLinkCover, type ReelSource } from '../reelEmbed';
+import { reelLinkCover, reelLinkSource, type ReelSource } from '../reelEmbed';
 
 /**
  * Reels (0245): short videos the gym puts up for its members.
@@ -8,7 +8,12 @@ import { reelLinkCover, type ReelSource } from '../reelEmbed';
  * **Identical in both apps** — diff before changing one. Every write is an RPC;
  * the tables have no write policy. Files live in the public `reels` bucket at
  * `gyms/<gym>/reels/<random>.<ext>`; only the gym's owner, desk and coaches
- * write there, and the database refuses an 11th uploaded video.
+ * write there. What a gym may keep is its Core Fitness plan's storage (0247,
+ * `gymStorage`), not a count of videos; links use none.
+ *
+ * A link's cover is fetched from the link's own page by the `reel-preview`
+ * function (a browser cannot read another site) and copied into the bucket —
+ * best effort: a site that will not answer leaves the plain tile.
  */
 
 const BUCKET = 'reels';
@@ -44,11 +49,38 @@ export async function listReels(): Promise<Reel[]> {
   }));
 }
 
-/** How many uploaded videos the gym may keep (links are not counted). */
-export async function reelUploadLimit(): Promise<number> {
-  const { data, error } = await supabase.rpc('reel_upload_limit');
-  if (error) throw new Error(error.message);
-  return Number(data ?? 10);
+/** What the gym has uploaded against what its plan allows (0247). `limitBytes` null = no limit. */
+export interface GymStorage { planName: string | null; limitBytes: number | null; usedBytes: number }
+
+/** Null for someone who does not upload (a member), or before 0247. */
+export async function gymStorage(): Promise<GymStorage | null> {
+  const { data, error } = await supabase.rpc('my_gym_storage');
+  if (error) return null;
+  const row = (Array.isArray(data) ? data[0] : data) as { plan_name: string | null; limit_bytes: number | string | null; used_bytes: number | string } | undefined;
+  if (!row) return null;
+  return { planName: row.plan_name, limitBytes: row.limit_bytes === null ? null : Number(row.limit_bytes), usedBytes: Number(row.used_bytes) };
+}
+
+/** 1536 MB → "1.5 GB"; 120 MB → "120 MB". */
+export function bytesWords(n: number): string {
+  const mb = n / 1048576;
+  if (mb >= 1024) { const gb = mb / 1024; return `${gb >= 10 || Number.isInteger(gb) ? Math.round(gb) : gb.toFixed(1)} GB`; }
+  return `${mb >= 10 ? Math.round(mb) : Math.max(0, Math.round(mb * 10) / 10)} MB`;
+}
+
+/** "120 MB of 2 GB", or "120 MB" on a plan with no limit. */
+export function storageWords(s: GymStorage): string {
+  return s.limitBytes === null ? bytesWords(s.usedBytes) : `${bytesWords(s.usedBytes)} of ${bytesWords(s.limitBytes)}`;
+}
+
+/** What a link shows when shared: its picture (already copied into the bucket) and its full address. Never throws. */
+async function linkPreview(url: string): Promise<{ coverPath: string | null; url: string | null }> {
+  try {
+    const { data, error } = await supabase.functions.invoke('reel-preview', { body: { url } });
+    if (error || !data) return { coverPath: null, url: null };
+    const d = data as { coverPath?: unknown; url?: unknown };
+    return { coverPath: typeof d.coverPath === 'string' ? d.coverPath : null, url: typeof d.url === 'string' ? d.url : null };
+  } catch { return { coverPath: null, url: null }; }
 }
 
 const randomName = () => (crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -119,9 +151,20 @@ export interface NewReel { title: string; caption: string; }
 
 /** Post a pasted link. `cover` is an optional picture for sites that give us none. */
 export async function postLinkReel(r: NewReel & { url: string; cover?: Blob | null }): Promise<string> {
-  const coverPath = r.cover ? await uploadReelCover(r.cover) : null;
+  const typed = r.url.trim();
+  const source = reelLinkSource(typed);
+  // YouTube gives its own thumbnail and needs no lookup; the others are asked for their share picture
+  // and for the full address a short share link leads to (so it can play inside the app).
+  const found = source && source !== 'youtube' ? await linkPreview(typed) : { coverPath: null, url: null };
+  let coverPath = found.coverPath;
+  if (r.cover) {
+    const own = await uploadReelCover(r.cover);
+    if (coverPath) void supabase.storage.from(BUCKET).remove([coverPath]);
+    coverPath = own;
+  }
+  const url = found.url && reelLinkSource(found.url) === source ? found.url : typed;
   const { data, error } = await supabase.rpc('post_reel', {
-    p_title: r.title, p_caption: r.caption, p_url: r.url.trim(), p_video_path: null, p_cover_path: coverPath,
+    p_title: r.title, p_caption: r.caption, p_url: url, p_video_path: null, p_cover_path: coverPath,
   });
   if (error) {
     if (coverPath) void supabase.storage.from(BUCKET).remove([coverPath]);
@@ -130,10 +173,34 @@ export async function postLinkReel(r: NewReel & { url: string; cover?: Blob | nu
   return data as string;
 }
 
+/**
+ * For a link reel posted without a picture: fetch the link's own and attach it.
+ * True when the reel now has a cover. Only for someone who may change the reel.
+ */
+export async function fetchReelCover(reel: Pick<Reel, 'id' | 'url' | 'source' | 'cover' | 'canManage'>): Promise<boolean> {
+  if (!reel.canManage || reel.cover || reel.source === 'upload' || reel.source === 'youtube') return false;
+  const found = await linkPreview(reel.url);
+  if (!found.coverPath && !found.url) return false;
+  const url = found.url && reelLinkSource(found.url) === reel.source && found.url !== reel.url ? found.url : null;
+  if (!found.coverPath && !url) return false;
+  const { data, error } = await supabase.rpc('set_reel_cover', { p_reel: reel.id, p_cover_path: found.coverPath, p_url: url });
+  if (error) {
+    if (found.coverPath) void supabase.storage.from(BUCKET).remove([found.coverPath]);
+    return false;
+  }
+  if (typeof data === 'string' && data) void supabase.storage.from(BUCKET).remove([data]);
+  return !!found.coverPath;
+}
+
 /** Upload a video and post it. The file is removed again if the database refuses the reel. */
 export async function postUploadedReel(r: NewReel & { file: File; cover?: Blob | null }): Promise<string> {
   const problem = reelFileProblem(r.file);
   if (problem) throw new Error(problem);
+  // Said in words before the upload starts, instead of a refusal after a minute of uploading.
+  const store = await gymStorage();
+  if (store && store.limitBytes !== null && store.usedBytes + r.file.size > store.limitBytes) {
+    throw new Error(`Your gym has used ${storageWords(store)} of storage${store.planName ? ` on ${store.planName}` : ''}, and this video is ${bytesWords(r.file.size)}. Remove a video you no longer need, or move to a plan with more storage — links use none.`);
+  }
   const ext = r.file.type === 'video/webm' ? 'webm' : r.file.type === 'video/quicktime' ? 'mov' : 'mp4';
   const path = `${await folder()}/${randomName()}.${ext}`;
   const up = await supabase.storage.from(BUCKET).upload(path, r.file, { contentType: r.file.type, cacheControl: '31536000' });

@@ -5,10 +5,17 @@
  * before changing one. The database decides which sites count
  * (`reel_link_source`); this decides *how* each plays:
  *
- *   - YouTube (Shorts, watch, youtu.be) → the no-cookie player.
- *   - TikTok → its embed player, from a full link (`/@name/video/<id>`).
- *   - Instagram → the post's own `/embed` page.
+ *   - YouTube (Shorts, watch, youtu.be) → the no-cookie player, playing at once and looping.
+ *   - TikTok → its video player (`/player/v1/<id>`), which fills the frame, plays
+ *     at once and loops. The older `/embed/v2` card drew TikTok's whole post — and
+ *     answered "429 Too Many Requests" on a computer (owner, 2026-11-12).
+ *   - Instagram → the post's own `/embed` page. Instagram draws its header and its
+ *     likes around the video and offers no switch for them; the screen crops the
+ *     frame to the video (`INSTAGRAM_CROP`). It does not play until tapped.
  *   - Facebook → the video plugin, from a reel, watch or video link.
+ *
+ * Nothing here can remove what a site draws *inside* its own player (TikTok's
+ * like and share counts): that page belongs to them.
  *
  * A link we cannot turn into a player returns `embed: null` — a short share
  * link (vm.tiktok.com, fb.watch, facebook.com/share/…) hides the video's id
@@ -66,12 +73,15 @@ export function reelEmbedUrl(url: string | null | undefined): string | null {
 
   if (source === 'youtube') {
     const id = youTubeId(u);
-    return id ? `https://www.youtube-nocookie.com/embed/${id}?playsinline=1&rel=0` : null;
+    // playlist=<id> is what makes YouTube loop a single video.
+    return id ? `https://www.youtube-nocookie.com/embed/${id}?playsinline=1&rel=0&autoplay=1&loop=1&playlist=${id}` : null;
   }
   if (source === 'tiktok') {
     const i = parts.indexOf('video');
     const id = i >= 0 ? parts[i + 1] : null;
-    return id && /^\d{6,25}$/.test(id) ? `https://www.tiktok.com/embed/v2/${id}` : null;
+    return id && /^\d{6,25}$/.test(id)
+      ? `https://www.tiktok.com/player/v1/${id}?autoplay=1&loop=1&rel=0&music_info=0&description=0&native_context_menu=0&fullscreen_button=0&closed_caption=0`
+      : null;
   }
   if (source === 'instagram') {
     const kind = parts[0] === 'p' ? 'p' : 'reel';
@@ -85,8 +95,17 @@ export function reelEmbedUrl(url: string | null | undefined): string | null {
     || (parts.includes('videos') && /^\d+$/.test(parts[parts.indexOf('videos') + 1] ?? ''));
   if (!hasId) return null;
   const clean = `https://www.facebook.com${u.pathname}${parts[0] === 'watch' ? `?v=${u.searchParams.get('v')}` : ''}`;
-  return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(clean)}&show_text=false`;
+  return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(clean)}&show_text=false&autoplay=true`;
 }
+
+/**
+ * How to show Instagram's embed as just its video: the frame is pushed up by the
+ * header's height inside a box the shape of the video, and what Instagram draws
+ * below (View more, likes, comment) falls outside the box. Measured on the live
+ * embed (2026-11-12): a 54px header, then a media box 1.25× as tall as it is wide
+ * (Instagram letterboxes a tall reel inside it) when the frame has room below.
+ */
+export const INSTAGRAM_CROP = { header: 54, ratio: 1.25, below: 360 };
 
 /** A cover the link itself gives us: YouTube's own thumbnail. Nothing for the others — a browser cannot read theirs. */
 export function reelLinkCover(url: string | null | undefined): string | null {

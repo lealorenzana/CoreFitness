@@ -85,8 +85,67 @@ check("a file in another gym's folder is refused", /not in this gym/.test((await
 check('…and one whose address does not match the file', /does not match/.test((await tryExec(post('Mismatch', 'https://elsewhere.test/v.mp4', P(0)))) ?? ''));
 for (let i = 1; i <= 10; i++) await db.exec(post(`Upload ${i}`, U(i), P(i)));
 check('ten uploads fit', (await one(`select count(*)::int n from gym_reels where source = 'upload'`)).n === 10);
-check('the eleventh is refused, and says links are not counted', /already has 10 uploaded videos/.test((await tryExec(post('Upload 11', U(11), P(11)))) ?? ''));
-check('a link still posts past the upload limit', !!(await one(post('Another link', 'https://fb.watch/abc/'))).id);
+// ---- 0247: the plan's storage is the limit, not a count ----
+check('an eleventh upload is no longer refused for being the eleventh', !!(await one(post('Upload 11', U(11), P(11)))).id);
+await db.exec(`select remove_reel(id) from gym_reels where video_path = '${P(11)}'`);
+await owner();
+const PA = id('1a');
+await db.exec(`
+  insert into auth.users (id, email, raw_user_meta_data) values ('${PA}', 'pa@reels-test.com', '{}');
+  insert into profiles (id, first_name, last_name, email, status, role) values ('${PA}', 'Plat', 'Form', 'pa@reels-test.com', 'active', 'admin') on conflict (id) do nothing;
+  insert into platform_admins (user_id) values ('${PA}') on conflict do nothing;
+  update gyms set plan = 'starter' where id = '${GYM}';`);
+const starts = await all(`select plan_key, storage_mb from platform_plan_storage() order by 1`);
+const mb = (k) => starts.find((r) => r.plan_key === k)?.storage_mb;
+check('plans start with their storage: trial 500 MB, Starter 2 GB, Growth 10 GB, Pro 50 GB', mb('trial') === 500 && mb('starter') === 2048 && mb('growth') === 10240 && mb('pro') === 51200, JSON.stringify(starts));
+await as(AD);
+check("a gym's owner cannot set a plan's storage", /Only Core Fitness/.test((await tryExec(`select set_platform_plan_storage('starter', 999999)`)) ?? ''));
+await as(PA);
+check('the platform cannot set a silly number', /between 100 MB and 1 TB/.test((await tryExec(`select set_platform_plan_storage('starter', 5)`)) ?? ''));
+await db.exec(`select set_platform_plan_storage('starter', 100)`);
+const file = (name, bytes, bucket = 'reels') => `insert into storage.objects (bucket_id, name, metadata) values ('${bucket}', '${name}', '{"size": ${bytes}}')`;
+await owner();
+await db.exec(`${file(`gyms/${GYM}/reels/a.mp4`, 60 * 1048576)}; ${file(`gyms/${GYM}/chat/${M}/p.jpg`, 1048576, 'chat')}; ${file(`gyms/${GYM}/logos/l.jpg`, 1048576, 'media')};
+  ${file(`gyms/${GYM2}/reels/other.mp4`, 500 * 1048576)}; ${file(`someone/else.mp4`, 500 * 1048576)};`);
+await as(AD);
+let st = await one(`select * from my_gym_storage()`);
+check("the owner sees the gym's use against its plan: its own reels, chat photos and pictures, nobody else's",
+  st?.plan_name === 'Starter' && Number(st.limit_bytes) === 100 * 1048576 && Number(st.used_bytes) === 62 * 1048576, JSON.stringify(st));
+await as(M);
+check('a member is not shown it', (await all(`select * from my_gym_storage()`)).length === 0);
+await as(T);
+check('under the limit, a coach uploads and posts', (await tryExec(file(`gyms/${GYM}/reels/b.mp4`, 30 * 1048576))) === null
+  && !!(await one(post('Coach upload', `https://x/storage/gyms/${GYM}/reels/b.mp4`, `gyms/${GYM}/reels/b.mp4`))).id);
+await owner();
+await db.exec(file(`gyms/${GYM}/reels/c.mp4`, 20 * 1048576));   // 112 MB of 100
+await as(T);
+const full = await tryExec(post('Over the line', `https://x/storage/gyms/${GYM}/reels/c.mp4`, `gyms/${GYM}/reels/c.mp4`));
+check('the video that crosses the limit is refused, in words that say what to do', /storage is full/.test(full ?? '') && /links use none/.test(full ?? ''), String(full));
+check('…and at the limit, a new file is refused before it is stored', (await tryExec(file(`gyms/${GYM}/reels/d.mp4`, 1048576))) !== null);
+check('a link still posts with the storage full', !!(await one(post('Another link', 'https://fb.watch/abc/'))).id);
+await as(PA);
+check('the platform sees every gym against its plan', (await all(`select * from platform_gym_storage()`)).some((g) => g.gym_id === GYM && Number(g.used_bytes) === 112 * 1048576));
+await db.exec(`select set_platform_plan_storage('starter', null)`);
+await as(T);
+check('no limit on the plan means no limit', (await tryExec(file(`gyms/${GYM}/reels/d.mp4`, 1048576))) === null);
+await as(AD);
+check('an owner cannot ask about every gym', (await all(`select * from platform_gym_storage()`)).length === 0);
+await db.exec(`select remove_reel(id) from gym_reels where title = 'Coach upload'`);
+
+// ---- 0247: a cover from the link's own page ----
+await as(T);
+check("a coach cannot set the cover of the owner's reel", (await tryExec(`select set_reel_cover('${r1}', 'gyms/${GYM}/reels/cov.jpg')`)) !== null);
+check("…and on their own, not a picture from another gym's folder", /not in this gym/.test((await tryExec(`select set_reel_cover('${r3}', 'gyms/${GYM2}/reels/cov.jpg')`)) ?? ''));
+check('a first cover replaces nothing', (await one(`select set_reel_cover('${r3}', 'gyms/${GYM}/reels/cov1.jpg') old`)).old === null);
+check('a second hands back the first to delete', (await one(`select set_reel_cover('${r3}', 'gyms/${GYM}/reels/cov2.jpg') old`)).old === `gyms/${GYM}/reels/cov1.jpg`);
+check("the full address must be the same site as the reel's link", /not the same site/.test((await tryExec(`select set_reel_cover('${r3}', null, 'https://www.tiktok.com/@a/video/7300000000000000001')`)) ?? ''));
+await db.exec(`select set_reel_cover('${r3}', null, 'https://www.instagram.com/reel/Cfull999/')`);
+await owner();
+const cov = await one(`select url, cover_path from gym_reels where id = '${r3}'`);
+check('the full address and the cover are kept', cov.url === 'https://www.instagram.com/reel/Cfull999/' && cov.cover_path === `gyms/${GYM}/reels/cov2.jpg`, JSON.stringify(cov));
+await as(M);
+check('a member sets no cover', (await tryExec(`select set_reel_cover('${r1}', 'gyms/${GYM}/reels/x.jpg')`)) !== null);
+await as(AD);
 
 // ---- members watch and like ----
 await as(M);
@@ -126,11 +185,10 @@ const gone = (await one(`select remove_reel('${r2}') files`)).files;
 check("the owner removes the desk's reel", (await one(`select count(*)::int n from gym_reels where id = '${r2}'`)).n === 0 && gone.length === 0);
 const files = (await one(`select remove_reel(id) files from gym_reels where video_path = '${P(1)}'`)).files;
 check('removing an upload hands back its file to delete', files.length === 1 && files[0] === P(1), JSON.stringify(files));
-check('…and frees a slot', !!(await one(post('Upload again', U(12), P(12)))).id);
 await owner();
 check('posting and removing are in the activity log',
   (await one(`select count(*)::int n from activity_log where action = 'reel.posted'`)).n >= 14
-  && (await one(`select count(*)::int n from activity_log where action = 'reel.removed'`)).n === 2);
+  && (await one(`select count(*)::int n from activity_log where action = 'reel.removed'`)).n === 4);
 check("removing a reel removes its likes", (await one(`select count(*)::int n from reel_likes l where not exists (select 1 from gym_reels r where r.id = l.reel_id)`)).n === 0);
 
 // ---- another gym ----
@@ -174,7 +232,7 @@ check('every plan has reels', (await one(`select bool_and(enabled) ok from platf
 await db.exec(`set role anon`);
 check('a visitor cannot call the writers', (await tryExec(post('Anon', YT))) !== null && (await tryExec(`select * from gym_reels_feed()`)) !== null);
 await owner();
-check('0245 is marked applied', (await one(`select migration_0245_applied() ok`)).ok === true);
+check('0245 and 0247 are marked applied', (await one(`select migration_0245_applied() and migration_0247_applied() ok`)).ok === true);
 
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

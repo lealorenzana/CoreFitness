@@ -12,6 +12,7 @@ import {
   getGymFeatures, getSubscription, gymReceipt, myGymPayments,
   type GymFeature, type GymReceipt, type GymReceiptRow, type GymSubscription,
 } from '../lib/api/subscription';
+import { bytesWords, gymStorage, type GymStorage } from '../lib/api/reels';
 
 const peso = (n: string | number) => '₱' + Number(n).toLocaleString('en-PH', { maximumFractionDigits: 2 });
 const day = (d: string) => new Date(d + 'T00:00:00+08:00').toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -58,6 +59,8 @@ export default function Subscription() {
   const [payments, setPayments] = useState<GymReceiptRow[]>([]);
   const [features, setFeatures] = useState<GymFeature[]>([]);
   const [loaded, setLoaded] = useState(false);
+  /** 0247: uploads used against the plan's storage. Null before the migration, or unreadable — the card is then left out. */
+  const [store, setStore] = useState<GymStorage | null>(null);
   const [receipt, setReceipt] = useState<GymReceipt | null>(null);
   /** The application that made this gym (0187) — its business documents, renewed from here. */
   const [application, setApplication] = useState<GymApplication | null>(null);
@@ -67,7 +70,8 @@ export default function Subscription() {
   const [tick, setTick] = useState(0);
   useEffect(() => {
     void (async () => {
-      const [s, p, f, a] = await Promise.all([getSubscription(), myGymPayments(), getGymFeatures(), myGymApplication()]);
+      const [s, p, f, a, st] = await Promise.all([getSubscription(), myGymPayments(), getGymFeatures(), myGymApplication(), gymStorage().catch(() => null)]);
+      setStore(st);
       setSub(s); setPayments(p); setFeatures(f); setApplication(a); setLoaded(true);
       // 0198: paid at last — the trial's lock is gone, so the whole app comes back.
       if (s && s.lock_reason === null && (await getGymContext())?.lockReason === 'trial_ended') {
@@ -128,7 +132,7 @@ export default function Subscription() {
         </div>
       </div>
 
-      <div className="a-grid" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', flex: 'none' }}>
+      <div className="a-grid" style={{ gridTemplateColumns: `repeat(${store ? 4 : 3}, minmax(0, 1fr))`, flex: 'none' }}>
         <div className="a-card">
           <div className="a-lbl">Your plan</div>
           <div className="flex gap-2 items-baseline">
@@ -148,6 +152,18 @@ export default function Subscription() {
         </div>
         {meter('Active members', sub.members, sub.max_members, 'member')}
         {meter('Owners and front desk', sub.staff, sub.max_staff, 'seat')}
+        {store && (
+          <div className="a-card" data-plan-storage>
+            <div className="a-lbl">Storage</div>
+            <b style={{ fontSize: 22 }}>{bytesWords(store.usedBytes)}{store.limitBytes !== null ? <span className="a-sub" style={{ fontSize: 13 }}> of {bytesWords(store.limitBytes)}</span> : <span className="a-sub" style={{ fontSize: 13 }}> · no limit</span>}</b>
+            {store.limitBytes !== null && store.limitBytes > 0 && <div className="a-meter" style={{ marginTop: 8 }}><i style={{ width: `${Math.min(100, (store.usedBytes / store.limitBytes) * 100)}%`, background: store.usedBytes >= store.limitBytes ? 'var(--a-amber)' : undefined }} /></div>}
+            <div className="a-sub" style={{ marginTop: 6 }}>
+              {store.limitBytes === null ? 'this plan has no ceiling'
+                : store.usedBytes >= store.limitBytes ? 'full — remove a video, or ask Core Fitness for a bigger plan'
+                : 'reel videos, chat photos and your gym’s pictures — links use none'}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) 360px', flex: 1 }}>

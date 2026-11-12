@@ -1,3 +1,4 @@
+import PushBanner from '../PushBanner';
 import { useSyncExternalStore } from 'react';
 import { subscribeSaved, syncTick } from '../../lib/offlineReads';
 import { Suspense } from 'react';
@@ -114,6 +115,8 @@ export default function Layout() {
   return (
     <PhoneChassis>
       <Toaster />
+      {/* A push while the app is open slides down from the top. */}
+      <PushBanner />
 
       {root && <TabHeader tab={root} />}
       {!immersive && <GymLockBanner ctx={gym} />}

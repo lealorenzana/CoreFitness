@@ -185,7 +185,8 @@ export async function uploadChatPhoto(file: File, userId: string): Promise<strin
   if (small.size > 3 * 1024 * 1024) throw new Error('That photo is too large, even shrunk. Try another.');
   const path = `gyms/${gym}/chat/${userId}/${newMessageId()}.jpg`;
   const { error } = await supabase.storage.from(BUCKET).upload(path, small, { contentType: 'image/jpeg', cacheControl: '3600' });
-  if (error) throw new Error(error.message);
+  // The file rules refuse a photo when the person may not post, or when the gym is at its plan's storage (0247).
+  if (error) throw new Error(/row-level security|policy/i.test(error.message) ? 'That photo could not be added. Your gym may be out of storage — tell the front desk.' : error.message);
   return path;
 }
 
