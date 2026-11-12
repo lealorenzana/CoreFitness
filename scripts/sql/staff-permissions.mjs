@@ -47,6 +47,9 @@ await db.exec(`
   on conflict (gym_id, user_id) do update set role = excluded.role, status = excluded.status;
   update profiles set active_gym_id = '${GYM_A}' where id in ('${OWN}', '${DESK}', '${CASHIER}', '${M}');
   insert into member_profiles (profile_id, gym_id, qr_code) values ('${M}', '${GYM_A}', 'QR-SPM') on conflict do nothing;
+  -- 0251: the database checks a member in only on a usable membership, as the desk always did.
+  insert into memberships (member_id, gym_id, plan_id, status, start_date, expiry_date, never_expires)
+    values ('${M}', '${GYM_A}', (select id from membership_plans where gym_id = '${GYM_A}' order by created_at limit 1), 'active', manila_today() - 1, null, true);
   insert into shop_products (gym_id, name, category, price, track_stock, stock, low_stock_at) values ('${GYM_A}', 'Water', 'Drinks', 20, false, 0, 0);
 `);
 const water = (await one(`select id from shop_products where name = 'Water' and gym_id = '${GYM_A}'`)).id;
@@ -69,6 +72,7 @@ check('an unknown area is refused', !!(await tryExec(`select set_staff_permissio
 check('the owner narrows the cashier to the shop and check-ins', !(await tryExec(`select set_staff_permissions('${CASHIER}', array['shop','checkins'])`)));
 
 // ---- the cashier ----------------------------------------------------------------------------------------
+await asOwner(); await db.exec(`delete from attendance where member_id = '${M}'`);   // 0251: one check-in a day
 await as(CASHIER);
 check('the cashier sees their areas', JSON.stringify((await one(`select my_staff_permissions() as a`)).a) === JSON.stringify(['checkins', 'shop']));
 check('…still checks people in', !(await tryExec(checkin(2))));

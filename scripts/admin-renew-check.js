@@ -86,7 +86,10 @@ async (page) => {
       { id: 'l1', member_id: 'm1', performed_on: day(-2), activity: 'Leg day', duration_minutes: 50, notes: null, created_at: iso(-2), completed_at: iso(-2) },
       { id: 'l2', member_id: 'm1', performed_on: day(0), activity: 'Arms', duration_minutes: null, notes: null, created_at: iso(0), completed_at: null },
     ],
-    payments: [], pt_sessions: [], body_measurements: [], notifications: [],
+    // One past payment, so the Records search can be asked for its invoice number (staging QA, DASH-PAYMENTS).
+    payments: [{ id: 'pay1', gym_id: 'gym-1', member_id: 'm1', membership_id: 'ms1', amount: 1500, method: 'Cash', status: 'completed',
+      plan_name: 'Premium', invoice_number: 'CF-2026-00042', paid_on: day(-10), due_date: null, notes: null, recorded_by: 'u1', created_at: iso(-10) }],
+    pt_sessions: [], body_measurements: [], notifications: [],
     membership_plans: [{ id: 'p3', name: 'Premium', price: 1500, duration_days: 30, tier: 'premium', is_active: true },
       { id: 'p4', name: 'Quarterly', price: 4200, duration_days: 90, tier: 'premium', is_active: true }],
     // A plan change: on Premium, asking for Quarterly (the owner's screenshot, 2026-11-10).
@@ -203,6 +206,19 @@ async (page) => {
   out.push('writes: ' + WRITES.map(([m, tb, b]) => `${m} ${tb}${b && b.plan_id ? ' plan=' + b.plan_id : ''}${b && b.amount ? ' amount=' + b.amount : ''}`).join(' | '));
   out.push('one click switches the plan, THEN records ₱4,200 cash: '
     + (iPlan >= 0 && iPay > iPlan && pay && Number(pay.amount) === 4200 && pay.method === 'cash' ? 'yes' : 'MISSING'));
+
+  // Records → By member: the box says "Member, plan or invoice" — it searched names only (staging QA, DASH-PAYMENTS).
+  await page.goto('http://localhost:5174/payments', { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(2500);
+  const search = page.getByPlaceholder('Member, plan or invoice');
+  const shows = async (q) => { await search.fill(q); await page.waitForTimeout(600); return (await page.locator('main').innerText()).includes('Lea Lorenzana'); };
+  // RdSelect is a button that shows the chosen option's words, not a native <select>.
+  out.push('records open By member: ' + ((await page.locator('main button', { hasText: /^\s*By member\s*$/ }).count()) > 0 ? 'yes' : 'MISSING'));
+  out.push('By member finds the member by invoice number: ' + (await shows('00042') ? 'yes' : 'MISSING'));
+  out.push('…and by plan: ' + (await shows('premium') ? 'yes' : 'MISSING'));
+  out.push('…and still by name: ' + (await shows('lorenzana') ? 'yes' : 'MISSING'));
+  out.push('…and shows nobody for a miss: ' + (!(await shows('zzzz-nobody')) ? 'yes' : 'MISSING'));
+  await search.fill('');
 
   // Dashboard heatmap reads the shared function
   await page.goto('http://localhost:5174/', { waitUntil: 'domcontentloaded' });

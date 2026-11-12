@@ -37,6 +37,10 @@ await db.exec(`
     delete from gym_roles where user_id = '${u}';
     insert into gym_roles (gym_id, user_id, role, status) values ('${g}', '${u}', '${role}', 'active') on conflict do nothing;`).join('\n')}
   insert into member_profiles (profile_id, gym_id) values ('${M}', '${GYM}'), ('${M2}', '${GYM}') on conflict do nothing;
+  -- 0251: the database checks a member in only on a usable membership, as the desk always did.
+  insert into memberships (member_id, gym_id, plan_id, status, start_date, expiry_date, never_expires)
+    select m, '${GYM}', (select id from membership_plans where gym_id = '${GYM}' order by created_at limit 1), 'active', manila_today() - 1, null, true
+      from unnest(array['${M}', '${M2}']::uuid[]) m;
   update gym_settings set activity_options = array['Gym floor','Class','Cardio'] where gym_id = '${GYM}';`);
 const checkIn = (member, activity = null) =>
   one(`insert into attendance (member_id, method, recorded_by, activity, activity_by, source)

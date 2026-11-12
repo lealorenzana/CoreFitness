@@ -344,9 +344,12 @@ export default function Payments() {
   // Autofill (E4): a renewal starts from how the member paid last time — rows are newest first.
   const lastMethodByMember: Record<string, string> = {};
   for (const p of payments) if (!(p.memberId in lastMethodByMember)) lastMethodByMember[p.memberId] = p.method;
-  const flat = payments.filter((p) => (filterStatus === 'all' || p.status === filterStatus)
-    && (!q.trim() || `${p.memberName} ${p.plan} ${p.invoiceNumber}`.toLowerCase().includes(q.trim().toLowerCase())));
-  const groupsShown = memberGroups.filter((g) => !q.trim() || g.memberName.toLowerCase().includes(q.trim().toLowerCase()));
+  const needle = q.trim().toLowerCase();
+  const paymentMatches = (p: Payment) => `${p.memberName} ${p.plan} ${p.invoiceNumber}`.toLowerCase().includes(needle);
+  const flat = payments.filter((p) => (filterStatus === 'all' || p.status === filterStatus) && (!needle || paymentMatches(p)));
+  // By member: the box says "Member, plan or invoice", so a member shows when any of their
+  // payments matches — it searched names only (staging QA, DASH-PAYMENTS, 2026-11-13).
+  const groupsShown = memberGroups.filter((g) => !needle || g.memberName.toLowerCase().includes(needle) || g.payments.some(paymentMatches));
   const rowsTotal = view === 'members' ? groupsShown.length : flat.length;
   const page = Math.min(currentPage, Math.max(1, Math.ceil(rowsTotal / fit.perPage)));
   const slice = <T,>(list: T[]) => list.slice((page - 1) * fit.perPage, page * fit.perPage);

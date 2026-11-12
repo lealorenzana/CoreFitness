@@ -181,6 +181,12 @@ function accessLines(ctx: AssistantContext): string {
   return parts.join('');
 }
 
+function visitsAnswer(ctx: AssistantContext): string {
+  if (ctx.checkInsThisMonth == null) return NO_CONTEXT;
+  if (ctx.checkInsThisMonth === 0) return 'No gym visits recorded this month yet. A visit is logged when the front desk scans you in.';
+  return `You've been in **${ctx.checkInsThisMonth} ${ctx.checkInsThisMonth === 1 ? 'time' : 'times'}** this month. Your full history is under Profile → Attendance.`;
+}
+
 function membershipAnswer(ctx: AssistantContext): string {
   if (!ctx.planName) {
     return "You don't have an active membership on record yet. The front desk can set one up — it starts the moment they record your payment.";
@@ -443,6 +449,12 @@ const RULES: { match: RegExp; reply: (ctx: AssistantContext) => string; kind?: R
     reply: membershipAnswer,
   },
   {
+    // Before the check-in code rule: "How many times did I check in this month?" matched
+    // its bare `check in` and was answered with the code (staging QA, AST-VISITS, 2026-11-13).
+    match: /\b(?:how many (?:times )?(?:did|have) i|how many check ?-?ins?|check(?:ed)? ?-?ins? (?:this|last) (?:month|week))\b/,
+    reply: visitsAnswer,
+  },
+  {
     match: /\b(?:my code|check ?-?in code|qr|scan|check(?:ed)? ?-?in|code ko)\b/,
     reply: (ctx) =>
       ctx.memberId
@@ -461,12 +473,7 @@ const RULES: { match: RegExp; reply: (ctx: AssistantContext) => string; kind?: R
     // legs" — a programming question — and answered it with this month's
     // check-in count. The phrase has to actually be about visiting.
     match: /\b(?:visits?|attendance|been to the gym|how many times have i|ilang beses|pumunta)\b/,
-    reply: (ctx) =>
-      ctx.checkInsThisMonth == null
-        ? NO_CONTEXT
-        : ctx.checkInsThisMonth === 0
-          ? 'No gym visits recorded this month yet. A visit is logged when the front desk scans you in.'
-          : `You've been in **${ctx.checkInsThisMonth} ${ctx.checkInsThisMonth === 1 ? 'time' : 'times'}** this month. Your full history is under Profile → Attendance.`,
+    reply: visitsAnswer,
   },
   {
     // The app genuinely has these screens, so this is a real answer, not a
