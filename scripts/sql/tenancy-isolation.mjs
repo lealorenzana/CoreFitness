@@ -141,7 +141,7 @@ const GLOBAL = [
   // 0138: the platform's billing settings and its receipt counter — no gym_id, the platform's alone.
   'platform_billing', 'platform_receipt_counters', 'platform_capacity_snapshots',
   // 0238: the register of demo gyms for the load test; 0241: the website's words — both the platform's alone.
-  'demo_gyms', 'site_texts',
+  'demo_gyms', 'site_texts', 'push_endpoint',
   'profiles', 'push_subscriptions', 'notification_prefs', 'features', 'achievement_metrics',
   'exercises', 'workout_resources', 'client_errors', 'gyms', 'gym_roles', 'platform_admins', 'gym_applications',
   'platform_events', 'gym_payments', 'platform_plans', 'platform_features', 'platform_plan_features',

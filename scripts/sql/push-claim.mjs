@@ -73,5 +73,29 @@ await db.exec(`set role service_role`);
 check('a session that has run out counts as signed out', !(await one(`select * from claim_notification_push('${ro}')`)));
 await db.exec(`reset role`);
 
+// ---- 0252: the hand-off reads its address from push_endpoint (staging QA, NOTIF-PUSH-HANDOFF) ----
+const src = await one(`select string_agg(prosrc, ' ') s from pg_proc where proname in ('trg_push_notification', 'gym_chat_send')`);
+check('neither the notification trigger nor the chat send names a project URL any more', !/supabase\.co/.test(src.s));
+check('both hand off through push_hand_off()', (src.s.match(/push_hand_off\(/g) ?? []).length === 2);
+const ep = await one(`select url from push_endpoint`);
+check('production keeps its own address (seeded)', /ifwxtekyjgeljerslnzr\.supabase\.co\/functions\/v1\/send-push$/.test(ep?.url ?? ''), ep?.url);
+let bad = null;
+try { await db.exec(`update push_endpoint set url = 'https://evil.example.com/x'`); } catch (e) { bad = e.message; }
+check('a copy can only point it at a Supabase send-push address', !!bad);
+await db.exec(`update push_endpoint set url = 'https://hmntmopvrmpufzvvjrsg.supabase.co/functions/v1/send-push'`);
+check('…which a copy (staging) sets to itself', /hmntmopvrmpufzvvjrsg/.test((await one(`select url from push_endpoint`)).url));
+await db.exec(`update push_endpoint set url = 'https://ifwxtekyjgeljerslnzr.supabase.co/functions/v1/send-push'`);
+await db.exec(`select set_config('request.jwt.claim.sub', '${M}', false); set role authenticated`);
+let seen = 'readable';
+try { await db.query(`select * from push_endpoint`); } catch { seen = 'refused'; }
+check('a signed-in user cannot read or change it', seen === 'refused');
+let call = 'callable';
+try { await db.query(`select push_hand_off('{}'::jsonb)`); } catch { call = 'refused'; }
+check('…nor call the hand-off directly', call === 'refused');
+await db.exec(`reset role`);
+await db.exec(`insert into notifications (gym_id, user_id, type, title, message) values ('${GYM}', '${M}', 'system', 'Still saved', 'with no pg_net here')`);
+check('a notification is still saved when the hand-off cannot send', !!(await one(`select 1 x from notifications where title = 'Still saved'`)));
+check('marker 0252', (await one(`select migration_0252_applied() ok`)).ok === true);
+
 console.log(failures ? `\n${failures} FAILED` : '\nall 0170 checks passed');
 process.exit(failures ? 1 : 0);
