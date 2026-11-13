@@ -117,7 +117,7 @@ export default function AdminLogin() {
     })();
   }, [fromSite]);
   const switchAccount = async () => {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: 'local' });
     clearGymContext();
     clearAdminCaches();
     setAlready(null);
@@ -152,7 +152,7 @@ export default function AdminLogin() {
         navigate('/admin/application');
         return;
       }
-      await supabase.auth.signOut();
+      await supabase.auth.signOut({ scope: 'local' });
       clearGymContext();
       showToast('This account does not have admin access', 'error');
       setIsLoading(false);

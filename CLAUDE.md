@@ -51,7 +51,7 @@ remains" was claimed twice and wrong twice**, both times hiding in *chrome* — 
 **Both apps read `my_gym_context()`/`gym_people` (0104), never the legacy columns.** **`staff`** is front desk (0011/0012): payments, check-ins, not pricing, trainers,
 accounts, settings or the audit log. `<ProtectedRoute adminOnly>` is convenience; **RLS is the
 boundary.** The member app also caches a legacy user object into `localStorage['user']` for the ~6 pages
-still on `getCurrentUser()` — **never real auth state**; `syncUserCache()` rebuilds it on boot. **Sessions last until Logout.** **Only
+still on `getCurrentUser()` — **never real auth state**; `syncUserCache()` rebuilds it on boot. **Sessions last until Logout, and Log out ends this device only** (`signOut({ scope: 'local' })` — the default 'global' logged phones out when the computer logged out; Settings has *Log out on all devices*). **Only
 members self-register** — the signup trigger hardcodes `'member'`, so Login hides Sign Up on Trainer. **Everyone else is invited, and an invitation is a login (0202)**: `invite-account` emails a one-time password and the right app (front desk → admin); the account has no gym until its first-sign-in form calls `complete_invitation()` — both apps gate on `invite_pending` in the user metadata.
 **Approving a registration grants the free tier, `active`, via `startFreeMembership()`** — by *tier*,
 never the plan tapped at signup: they have paid nothing, and the gym is cash-only. Idempotent, because

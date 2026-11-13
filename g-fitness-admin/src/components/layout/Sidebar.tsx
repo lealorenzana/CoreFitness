@@ -126,7 +126,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: 'local' });
     toast.success('Logged out successfully');
     navigate('/admin/login');
   };

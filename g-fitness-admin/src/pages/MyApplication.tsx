@@ -34,7 +34,7 @@ export default function MyApplication() {
   }, [navigate]);
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
-  const signOut = async () => { await supabase.auth.signOut(); clearGymContext(); navigate('/admin/login', { replace: true }); };
+  const signOut = async () => { await supabase.auth.signOut({ scope: 'local' }); clearGymContext(); navigate('/admin/login', { replace: true }); };
   const openGym = async () => {
     const ctx = await getGymContext(true);
     if (ctx?.role === 'admin' && ctx.status === 'active') navigate(ctx.onboarded ? '/admin/dashboard' : '/admin/setup');

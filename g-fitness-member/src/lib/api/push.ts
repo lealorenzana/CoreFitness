@@ -225,16 +225,23 @@ export async function disablePush(): Promise<void> {
  *     sign out — refusing to log out is worse than a stale row, especially on
  *     the shared phone this bug is about.
  */
-export async function clearPushOnSignOut(): Promise<void> {
+export async function clearPushOnSignOut(everywhere = false): Promise<void> {
   // Declared without an initialiser: the catch below returns, so `sub` is
   // always assigned before it is read, and a dead `= null` trips
   // no-useless-assignment.
   // Every registration of this account, not only this phone's (0249): signing out ends
   // every session, and a phone whose push address changed since it registered left
   // its old one behind — still delivering to a signed-out phone (owner, 2026-11-12).
+  // Since 2026-11-14 Log out ends THIS device only (the owner: a global sign-out on the computer was
+  // logging the phone out "randomly"), so only this device's rows go: its endpoint below, and any older
+  // row this same browser left (same user agent: a push address that changed since it registered).
+  // "Log out on all devices" still removes every row of the account.
   try {
     const { data } = await supabase.auth.getUser();
-    if (data.user) await supabase.from('push_subscriptions').delete().eq('user_id', data.user.id);
+    if (data.user) {
+      if (everywhere) await supabase.from('push_subscriptions').delete().eq('user_id', data.user.id);
+      else await supabase.from('push_subscriptions').delete().eq('user_id', data.user.id).eq('user_agent', navigator.userAgent.slice(0, 300));
+    }
   } catch { /* the database also refuses to push to a signed-out account (0249) */ }
 
   let sub: PushSubscription | null;

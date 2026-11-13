@@ -194,7 +194,8 @@ export default function Settings() {
   /** The AI coach's read-my-training consent; null until known, and the row is hidden unless the coach is allowed or consent is on, so it can always be withdrawn. */
   const [coachOn, setCoachOn] = useState<boolean | null>(null);
   const [exporting, setExporting] = useState(false);
-  const [confirmLogout, setConfirmLogout] = useState(false);
+  // 'here' = this phone only (the default since 2026-11-14); 'all' = every device of the account.
+  const [confirmLogout, setConfirmLogout] = useState<false | 'here' | 'all'>(false);
   const support = pushSupport();
   const [params, setParams] = useSearchParams();
   const asked = params.get('section');
@@ -592,9 +593,13 @@ export default function Settings() {
                   <LineRow key={l.label} title={l.label} meta={l.description} action="Open" actionTone="structure"
                     onClick={() => navigate(l.to)} />
                 ))}
-                <button onClick={() => setConfirmLogout(true)} className="w-full flex items-center text-left noc-press-soft"
+                <button onClick={() => setConfirmLogout('here')} className="w-full flex items-center text-left noc-press-soft"
                   style={{ gap: 10, padding: '13px 0', fontSize: 14.5, color: 'var(--color-text-secondary)' }}>
                   <SignOut size={17} aria-hidden /> {t('Log out')}
+                </button>
+                <button onClick={() => setConfirmLogout('all')} className="w-full flex items-center text-left noc-press-soft" data-logout-everywhere
+                  style={{ gap: 10, padding: '4px 0 13px', fontSize: 12.5, color: 'var(--color-text-muted)' }}>
+                  {t('Log out on all devices')}
                 </button>
               </div>
             </section>
@@ -640,13 +645,15 @@ export default function Settings() {
           </>
         )}
         <Modal
-          isOpen={confirmLogout}
+          isOpen={!!confirmLogout}
           onClose={() => setConfirmLogout(false)}
-          title="Log out"
-          subtitle="You will need your email and password to get back in."
-          confirmLabel="Log out"
+          title={confirmLogout === 'all' ? 'Log out on all devices' : 'Log out'}
+          subtitle={confirmLogout === 'all'
+            ? 'Every phone and computer signed in to this account is signed out. Use this if a phone was lost.'
+            : 'Only this phone is signed out. You will need your email and password to get back in.'}
+          confirmLabel={confirmLogout === 'all' ? 'Log out everywhere' : 'Log out'}
           cancelLabel="Stay signed in"
-          onConfirm={async () => { await logout(); navigate('/'); }}
+          onConfirm={async () => { await logout(confirmLogout === 'all'); navigate('/'); }}
         >
           <span />
         </Modal>
@@ -688,20 +695,26 @@ export default function Settings() {
             ))}
           </span>
         </div>
-        <button onClick={() => setConfirmLogout(true)} className="w-full flex items-center text-left noc-press-soft"
-          style={{ gap: 10, padding: '16px 0', fontSize: 14.5, fontWeight: 600, color: 'var(--color-secondary)' }}>
+        <button onClick={() => setConfirmLogout('here')} className="w-full flex items-center text-left noc-press-soft"
+          style={{ gap: 10, padding: '16px 0 6px', fontSize: 14.5, fontWeight: 600, color: 'var(--color-secondary)' }}>
           <SignOut size={17} aria-hidden /> {t('Log out')}
+        </button>
+        <button onClick={() => setConfirmLogout('all')} className="w-full flex items-center text-left noc-press-soft" data-logout-everywhere
+          style={{ gap: 10, padding: '4px 0 16px', fontSize: 12.5, color: 'var(--color-text-muted)' }}>
+          {t('Log out on all devices')}
         </button>
       </section>
 
       <Modal
-        isOpen={confirmLogout}
+        isOpen={!!confirmLogout}
         onClose={() => setConfirmLogout(false)}
-        title="Log out"
-        subtitle="You will need your email and password to get back in."
-        confirmLabel="Log out"
+        title={confirmLogout === 'all' ? 'Log out on all devices' : 'Log out'}
+        subtitle={confirmLogout === 'all'
+          ? 'Every phone and computer signed in to this account is signed out. Use this if a phone was lost.'
+          : 'Only this phone is signed out. You will need your email and password to get back in.'}
+        confirmLabel={confirmLogout === 'all' ? 'Log out everywhere' : 'Log out'}
         cancelLabel="Stay signed in"
-        onConfirm={async () => { await logout(); navigate('/'); }}
+        onConfirm={async () => { await logout(confirmLogout === 'all'); navigate('/'); }}
       >
         <span />
       </Modal>

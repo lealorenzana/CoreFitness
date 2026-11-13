@@ -16,7 +16,7 @@ export default function Suspended({ reason, since }: { reason: string; since: st
         <p className="text-xs" style={{ marginTop: 8, lineHeight: 1.5 }}>
           We sent this to your email too. If you think it is a mistake, reply to that email.
         </p>
-        <button type="button" onClick={() => void supabase.auth.signOut().then(() => window.location.assign('/admin/login'))}
+        <button type="button" onClick={() => void supabase.auth.signOut({ scope: 'local' }).then(() => window.location.assign('/admin/login'))}
           style={{ marginTop: 16, padding: '10px 16px', borderRadius: 10, border: '1px solid var(--color-border)' }}>
           Sign out
         </button>

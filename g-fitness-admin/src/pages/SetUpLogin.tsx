@@ -32,7 +32,7 @@ export default function SetUpLogin() {
     })();
   }, [navigate]);
 
-  const signOut = async () => { await supabase.auth.signOut(); clearGymContext(); clearAdminCaches(); navigate('/admin/login', { replace: true }); };
+  const signOut = async () => { await supabase.auth.signOut({ scope: 'local' }); clearGymContext(); clearAdminCaches(); navigate('/admin/login', { replace: true }); };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();

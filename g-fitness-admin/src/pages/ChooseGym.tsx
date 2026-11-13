@@ -37,7 +37,7 @@ export default function ChooseGym() {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: 'local' });
     clearGymContext();
     window.location.assign('/admin/login');
   };

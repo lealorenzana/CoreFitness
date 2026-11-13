@@ -70,7 +70,7 @@ export const finishSignIn = async (userId: string): Promise<LoginResult> => {
     .eq('id', userId)
     .single();
   if (profileError || !profile) {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: 'local' });
     return { success: false, error: 'Could not load account profile' };
   }
   // 0236: a photo chosen at sign-up on this phone goes up at the first sign-in (never blocks it).
@@ -133,11 +133,14 @@ const PER_USER_KEYS = [
  * their name, their next session — before the first query comes back and
  * replaces it. The same leak as the push subscription, in a different place.
  */
-export const logout = async (): Promise<void> => {
-  await clearPushOnSignOut();
+export const logout = async (everywhere = false): Promise<void> => {
+  await clearPushOnSignOut(everywhere);
   // The offline copy of the session goes first, so nothing can sign back in with it.
   forgetOfflineSession();
-  await supabase.auth.signOut();
+  // THIS device only, unless asked (2026-11-14). supabase-js signs out 'global' by default, which
+  // revoked every session of the account: logging out on the computer sent the phone to the login
+  // page at its next refresh ("Refresh Token Not Found" in the auth logs) — the "random" logouts.
+  await supabase.auth.signOut({ scope: everywhere ? 'global' : 'local' });
   PER_USER_KEYS.forEach((k) => localStorage.removeItem(k));
   // Every per-member, per-gym cache, in one list — the same list `switchGym()`
   // uses. They were two hand-kept lists and they had drifted: switching gyms
