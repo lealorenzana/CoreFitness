@@ -9,6 +9,7 @@ import { installErrorReporter } from './lib/errorReporter';
 import { forgetGymWhenAccountChanges } from './lib/accountWatch';
 import ErrorBoundary from './components/ErrorBoundary';
 import { feelLikeAnApp } from './lib/appFeel';
+import { refreshPushKey } from './lib/api/push';
 import './lib/outboxSenders';
 
 // Registers the service worker and reloads onto a new deploy — see appUpdate.ts.
@@ -22,6 +23,8 @@ feelLikeAnApp();
 
 // Light or dark before the first paint: the device's setting until the account's choice is read (0234).
 applyColorMode();
+// A push subscription made with older keys is replaced quietly, for members AND coaches (push.ts).
+setTimeout(() => { void refreshPushKey(); }, 4000);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { BellRinging } from '@phosphor-icons/react';
 import { NocButton, Panel } from './ui/noc';
 import { toast } from './ui/Toast';
-import { enablePush, isPushEnabled, pushSupport } from '../lib/api/push';
+import { enablePush, isPushEnabled, pushSupport, refreshPushKey } from '../lib/api/push';
 import { errorMessage } from '../utils/errorMessage';
 import { useT } from '../lib/i18n';
 
@@ -27,6 +27,7 @@ export default function PushPrompt() {
   useEffect(() => {
     if (dismissedThisSession || !pushSupport().supported) return;
     void (async () => {
+      await refreshPushKey();   // a subscription from an older key is replaced quietly (keys rotated 2026-11-14)
       if (await isPushEnabled()) return;
       const perm = typeof Notification !== 'undefined' ? Notification.permission : 'default';
       setState(perm === 'denied' ? 'blocked' : 'ask');

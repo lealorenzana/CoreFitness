@@ -123,13 +123,47 @@ export async function enablePush(): Promise<void> {
   if (permission !== 'granted') throw new Error('Notification permission was not granted');
 
   const reg = await readyRegistration();
-  const sub =
-    (await reg.pushManager.getSubscription()) ??
-    (await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY!),
-    }));
+  let sub = await reg.pushManager.getSubscription();
+  // A subscription made with an older key cannot receive pushes signed with the current one
+  // (the push service refuses them) — replace it rather than reuse it.
+  if (sub && !madeWithCurrentKey(sub)) {
+    await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
+    await sub.unsubscribe().catch(() => {});
+    sub = null;
+  }
+  sub ??= await reg.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY!),
+  });
+  await saveSubscription(sub);
+}
 
+/** True unless the browser says this subscription was made with a different server key. */
+function madeWithCurrentKey(sub: PushSubscription): boolean {
+  const used = sub.options?.applicationServerKey;
+  if (!used || !VAPID_PUBLIC_KEY) return true;   // the browser does not say: nothing to compare
+  const a = new Uint8Array(used);
+  const b = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+  return a.length === b.length && a.every((x, i) => x === b[i]);
+}
+
+/**
+ * When the push keys are rotated (2026-11-14), every phone that had notifications on still holds a
+ * subscription made with the OLD key — and the app used to see "a subscription exists", call push
+ * on, and never notice that nothing arrived any more. Run when the app opens: if notifications are
+ * already allowed and this phone's subscription was made with another key, replace it quietly
+ * (permission is already granted, so the member is asked nothing). Never throws.
+ */
+export async function refreshPushKey(): Promise<void> {
+  try {
+    if (!pushSupport().supported || Notification.permission !== 'granted') return;
+    const sub = await currentSubscription();
+    if (!sub || madeWithCurrentKey(sub)) return;
+    await enablePush();
+  } catch { /* a stale subscription stays; Settings can still turn push off and on */ }
+}
+
+async function saveSubscription(sub: PushSubscription): Promise<void> {
   const { data: auth } = await supabase.auth.getUser();
   const userId = auth.user?.id;
   if (!userId) throw new Error('You need to be signed in to turn on notifications');
