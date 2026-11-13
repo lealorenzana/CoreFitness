@@ -430,3 +430,32 @@ select:not([multiple]):not([size]) {
 :root[data-mode="light"] .cf-asel__panel { box-shadow: 0 22px 50px -18px rgba(40, 30, 90, 0.35), 0 2px 8px rgba(40, 30, 90, 0.08); }
 .cf-asel__opt:disabled { opacity: 0.4; }
 .cf-asel__none { font-size: 13px; color: var(--color-text-muted); padding: 12px 10px; }
+
+/* ── The sidebar in light, v3 (the owner, 2026-11-14: "in light mode the color of the gym theme color the owner
+   uses … the icons are too close"). A STRONG tint of the gym's own colour (about twice the earlier 15%), dark
+   words, icons in the gym's deep shade on soft white tiles, and the page you are on a SOLID pill in the gym's
+   deep shade with white words. Dark mode keeps every colour as it was; the extra room (44px rows, 4px apart)
+   lives in index.css for both modes. Always var(--color-primary)/--fill-primary — never a fixed colour. */
+:root[data-mode="light"] {
+  --sidebar-bg:     color-mix(in srgb, var(--color-primary) 28%, #F5F4FA);
+  --sidebar-rail:   color-mix(in srgb, var(--color-primary) 36%, #EFEEF6);
+  --sidebar-active: var(--fill-primary);
+}
+:root[data-mode="light"] .sb-item { color: #2A2C3D; }
+:root[data-mode="light"] .sb-ico { color: var(--fill-primary); background: rgb(255 255 255 / 0.62); }
+:root[data-mode="light"] .sb-item:hover { color: #15161F; background: color-mix(in srgb, var(--fill-primary) 13%, transparent); }
+:root[data-mode="light"] .sb-item:hover .sb-ico { color: var(--fill-primary); background: rgb(255 255 255 / 0.85); }
+:root[data-mode="light"] .sb-item[data-active="true"] { background: var(--fill-primary); color: #FFFFFF;
+  box-shadow: 0 10px 20px -12px var(--fill-primary); }
+:root[data-mode="light"] .sb-item[data-active="true"]::before { background: var(--fill-primary); }
+:root[data-mode="light"] .sb-item[data-active="true"] .sb-ico { color: #FFFFFF; background: rgb(255 255 255 / 0.2); box-shadow: none; }
+:root[data-mode="light"] .sb-group[data-holds="true"] { color: #15161F; font-weight: 600; }
+:root[data-mode="light"] .sb-group[data-holds="true"] .sb-ico { color: #FFFFFF; background: var(--fill-primary); }
+:root[data-mode="light"] .sb-chev { color: #4A4D61; }
+:root[data-mode="light"] .sb-children { border-left-color: color-mix(in srgb, var(--fill-primary) 28%, transparent); }
+:root[data-mode="light"] .sb-children[data-active="true"] { border-left-color: var(--fill-primary); }
+:root[data-mode="light"] .sb-name { color: #15161F; }
+:root[data-mode="light"] .sb-tag { color: #3F4256; }
+:root[data-mode="light"] .sb-collapse { color: #3F4256; border-color: color-mix(in srgb, var(--fill-primary) 30%, transparent); background: rgb(255 255 255 / 0.5); }
+:root[data-mode="light"] .sb-logout, :root[data-mode="light"] .sb-logout:hover { color: var(--fill-action); }
+:root[data-mode="light"] .sb-logout .sb-ico { color: var(--fill-action); background: rgb(255 255 255 / 0.62); }
