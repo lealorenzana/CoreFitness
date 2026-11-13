@@ -43,7 +43,12 @@ await db.exec(`
   insert into gym_waivers (gym_id, version, title, body, published_at) values ('${GYM}', 1, 'Waiver', 'Train at your own risk.', now()) on conflict do nothing;`);
 
 let n = 0;
-const newClass = async (cap = 10, at = `now() + interval '${n + 2} days'`) => (await owner(), await one(`insert into classes (gym_id, name, trainer_id, capacity, scheduled_at, duration_minutes)
+// Every default class falls on NEXT Monday in Manila, 09:00 + n hours — one Manila week, the
+// week the quota counts (date_trunc('week', scheduled_at at time zone 'Asia/Manila'), 0017).
+// `now() + n days` crossed into the following week on a Friday or Saturday, so the quota
+// check saw one booking, not two, and let the third through.
+const nextMonday = `((date_trunc('week', now() at time zone 'Asia/Manila') + interval '7 days 9 hours') at time zone 'Asia/Manila')`;
+const newClass = async (cap = 10, at = `${nextMonday} + interval '${n} hours'`) => (await owner(), await one(`insert into classes (gym_id, name, trainer_id, capacity, scheduled_at, duration_minutes)
   values ('${GYM}', 'Class ${++n}', '${T}', ${cap}, ${at}, 60) returning id`)).id;
 
 let c = await newClass();
