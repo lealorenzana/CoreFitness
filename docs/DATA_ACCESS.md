@@ -329,3 +329,8 @@ cannot drift apart. No assignment table for a fact the bookings already state.
   sweep's once-ever rule is right for a sweep and wrong for a person chasing
   someone. It returns whether a message was created, so the screen can say
   "already reminded today" instead of claiming to have sent one.
+
+## `gym_settings.opening_time` / `closing_time` are text, not time (since 0013)
+Comparing them to a `time` fails (`operator does not exist: time < text`). Cast with
+`nullif(opening_time::text, '')::time` — 0259's `fill_slots_from_hours` does. A `text[]`/array test in SQL is
+`'x' = any(col)`, never `'x' = any((select col …))` (that compares against a set of arrays).

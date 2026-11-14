@@ -277,3 +277,16 @@ reads correctly. Useless for showing a database rule works — that is what
   `window.location.assign()`, so a test driving it proves nothing about cache clearing. `logout()`
   is followed by `navigate()` and does *not* reload — that is the path where a stale module cache
   is a real leak between two people on one phone.
+
+## Traps from the gym-styles work (2026-11-14/15)
+- **`NocButton`, `Panel` and `LineRow` drop `data-*` props.** A check that looks for `[data-x]` on one of them finds
+  nothing; wrap the component in a `<div data-x>` and select that.
+- **A check must be able to fail.** `|| true` (or an assertion on a value the fixture always returns) passed while
+  the feature was broken. Before trusting a new check, break the thing once and watch it go red.
+- **No test may depend on the time of day.** A cancel cut-off test passed in the morning and failed at night;
+  build the case around a fixed slot (e.g. midnight) so the clock cannot change the answer.
+- **SQL suites take `BEFORE=NNNN`** (`liveDb(REPO, { before: process.env.BEFORE || null })`) — a new suite must
+  fail at `BEFORE=<its migration>` to prove it tests that migration.
+- **The react-hooks lint rejects `Date.now()` in render** ("impure function") — `useState(() => Date.now())`.
+- **A pre-existing failing check is not yours to silence.** Spin it off as its own task (admin-light /
+  admin-paymongo, fixed in 359b3f97) rather than editing it to pass.
