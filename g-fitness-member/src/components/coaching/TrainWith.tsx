@@ -5,8 +5,8 @@ import { NocButton, StatusPill } from '../ui/noc';
 import { toast } from '../ui/Toast';
 import { errorMessage } from '../../utils/errorMessage';
 import {
-  coachingPrices, getCoachingSettings, monthsLabel, myCoachings, OPEN_STATUSES, peso, requestCoaching,
-  type Coaching, type CoachingSettings,
+  coachingApproval, coachingPrices, getCoachingSettings, monthsLabel, myCoachings, OPEN_STATUSES, peso, requestCoaching,
+  type Coaching, type CoachingApproval, type CoachingSettings,
 } from '../../lib/api/coaching';
 
 /**
@@ -26,6 +26,8 @@ export default function TrainWith({ trainerId, firstName, presence }: {
   const [sheet, setSheet] = useState(false);
   const [months, setMonths] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  const [approval, setApproval] = useState<CoachingApproval>('coach');
+  useEffect(() => { void coachingApproval().then(setApproval); }, []);
 
   useEffect(() => {
     void (async () => {
@@ -57,7 +59,7 @@ export default function TrainWith({ trainerId, firstName, presence }: {
     setBusy(true);
     try {
       await requestCoaching(trainerId, 'pt', months);
-      toast.success(`${firstName} has your request`);
+      toast.success(approval === 'desk' ? 'The front desk has your request' : `${firstName} has your request`);
       setSheet(false);
       navigate('/member/book-class?tab=coach');
     } catch (e) {
@@ -69,13 +71,17 @@ export default function TrainWith({ trainerId, firstName, presence }: {
 
   return (
     <>
+      {/* The owner's words (2026-11-14): "I want this coach". */}
       <NocButton variant="structure" onClick={() => setSheet(true)}>
-        Train with {firstName}
+        I want {firstName} as my coach
       </NocButton>
-      <GlassSheet open={sheet} onClose={() => setSheet(false)} title={`Train with ${firstName}`}
-        subtitle={presence === 'on_leave' ? `${firstName} is on leave right now — they answer when back.` : 'Choose how long. You can end it early.'}
+      <GlassSheet open={sheet} onClose={() => setSheet(false)} title={`${firstName} as your coach`}
+        subtitle={`${presence === 'on_leave' ? `${firstName} is on leave right now. ` : ''}Choose how long. ${
+          approval === 'desk' ? 'The front desk decides and tells you.'
+          : approval === 'coach_desk' ? `${firstName} says yes, then the front desk confirms.`
+          : `${firstName} accepts or declines.`} You can end it early.`}
         footer={<NocButton className="w-full" disabled={busy || months == null || (settings.feeMode === 'gym_priced' && months != null && priceOf(months) == null)}
-          onClick={() => void ask()}>{busy ? 'Sending…' : 'Ask'}</NocButton>}>
+          onClick={() => void ask()}>{busy ? 'Sending…' : 'Send my request'}</NocButton>}>
         <div className="flex flex-col" style={{ gap: 8 }} role="radiogroup" aria-label="How long">
           {settings.lengths.map((m) => (
             <button key={m} type="button" role="radio" aria-checked={months === m} data-length={m} onClick={() => setMonths(m)}

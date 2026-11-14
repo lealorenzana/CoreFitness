@@ -12,7 +12,8 @@ import ConnectPayMongo from '../../components/payments/ConnectPayMongo';
 import { errorMessage } from '../../utils/errorMessage';
 import {
   addPaymentMethod, coachingSweep, confirmCoachingPayment, endCoaching, getCoachingSettings, monthsLabel,
-  myCoachings, peso, removePaymentMethod, respondCoaching, trainerPaymentMethods,
+  coachAnswers, coachingApproval, myCoachings, peso, removePaymentMethod, respondCoaching, trainerPaymentMethods,
+  type CoachingApproval,
   type Coaching, type CoachingSettings, type TrainerPaymentMethod,
 } from '../../lib/api/coaching';
 import { getCurrentTrainerId } from '../../services/trainerService';
@@ -46,6 +47,8 @@ export default function TrainerPackages() {
   const [methods, setMethods] = useState<TrainerPaymentMethod[]>([]);
   const [prices, setPrices] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
+  /** Who approves a member's pick (0258): under 'desk' the coach waits; under 'coach, then desk' only their first yes. */
+  const [approval, setApproval] = useState<CoachingApproval>('coach');
   // ?offer=<member> (a trainee's place: "Offer them a package") opens the sheet for them.
   const [offering, setOffering] = useState(() => params.get('offer') !== null);
   const [method, setMethod] = useState({ kind: 'gcash' as TrainerPaymentMethod['kind'], label: 'GCash', accountName: '', accountNumber: '' });
@@ -54,7 +57,8 @@ export default function TrainerPackages() {
 
   const load = useCallback(async () => {
     await coachingSweep();
-    const [s, l, id, hr] = await Promise.all([getCoachingSettings(), myCoachings(), getCurrentTrainerId(), getHouseRules()]);
+    const [s, l, id, hr, ap] = await Promise.all([getCoachingSettings(), myCoachings(), getCurrentTrainerId(), getHouseRules(), coachingApproval()]);
+    setApproval(ap);
     setSettings(s);
     setHouseRules(hr);
     setList(l);
@@ -74,7 +78,9 @@ export default function TrainerPackages() {
   }
 
   const mine = (list ?? []).filter((c) => c.iAm === 'coach');
-  const requests = mine.filter((c) => c.status === 'requested');
+  const requests = mine.filter((c) => coachAnswers(c, approval));
+  // Asked for, but the desk's to settle now (0258): said, never buttons.
+  const withDesk = mine.filter((c) => c.status === 'requested' && !coachAnswers(c, approval));
   const toConfirm = mine.filter((c) => c.status === 'payment_sent' && c.feeMode === 'trainer_direct');
   const unpaid = mine.filter((c) => c.status === 'awaiting_payment' || (c.status === 'payment_sent' && c.feeMode !== 'trainer_direct'));
   const invited = mine.filter((c) => c.status === 'invited');
@@ -161,6 +167,15 @@ export default function TrainerPackages() {
                     </span>
                   </span>
                 </div>
+              ))}
+            </div>
+          )}
+          {withDesk.length > 0 && (
+            <div data-with-desk style={{ marginTop: 12 }}>
+              {withDesk.map((c, i) => (
+                <LineRow key={c.id} icon={HandWaving} tone="info" last={i === withDesk.length - 1}
+                  title={`${c.memberName.split(' ')[0]} asked for a ${monthsLabel(c.months)} package`}
+                  meta={c.coachOkAt ? 'You said yes — the front desk confirms next' : 'The front desk decides at this gym — you are told when it is yours'} />
               ))}
             </div>
           )}

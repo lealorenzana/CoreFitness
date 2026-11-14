@@ -15,6 +15,8 @@ export interface CoachingRow {
   status: 'invited' | 'requested' | 'awaiting_payment' | 'payment_sent' | 'active' | 'ended' | 'declined' | 'cancelled';
   fee_mode: FeeMode; price: number | null; pay_reference: string | null; starts_on: string | null; ends_on: string | null;
   started_by: 'member' | 'desk' | 'coach'; created_at: string;
+  /** 0258: when the coach said yes under 'coach, then desk'; absent before 0258. */
+  coach_ok_at?: string | null;
 }
 
 /** NULL before 0181: the screens offer nothing. */
@@ -40,6 +42,15 @@ export const assignCoaching = (memberId: string, trainerId: string, months: numb
 export const confirmCoachingPayment = (id: string, received: boolean, method: string | null) =>
   rpc('confirm_coaching_payment', { p_id: id, p_received: received, p_method: method });
 export const endCoaching = (id: string, reason: string | null) => rpc('end_coaching', { p_id: id, p_reason: reason });
+/** The desk's answer to a member's pick of a coach (0258). A price only under 'paid to the coach' when the coach set none. */
+export const deskDecideCoaching = (id: string, accept: boolean, price: number | null = null) =>
+  rpc('desk_decide_coaching', { p_id: id, p_accept: accept, p_price: price });
+export type CoachingApproval = 'coach' | 'desk' | 'coach_desk';
+/** Who approves a member's pick (0258); 'coach' before it is live — today's behaviour. */
+export async function coachingApproval(): Promise<CoachingApproval> {
+  const { data, error } = await supabase.rpc('my_coaching_approval');
+  return !error && (data === 'desk' || data === 'coach_desk') ? data : 'coach';
+}
 export const coachingSweep = () => supabase.rpc('coaching_sweep').then(() => undefined, () => undefined);
 
 export async function coachingPrices(): Promise<{ kind: 'pt' | 'group'; months: number; price: number }[]> {
@@ -50,11 +61,14 @@ export async function coachingPrices(): Promise<{ kind: 'pt' | 'group'; months: 
 
 /** Every coaching at the gym, newest first. NULL on a failed read. */
 export async function listCoachings(): Promise<CoachingRow[] | null> {
-  const { data, error } = await supabase.from('coachings')
-    .select('id, member_id, trainer_id, kind, months, status, fee_mode, price, pay_reference, starts_on, ends_on, started_by, created_at')
-    .order('created_at', { ascending: false }).limit(300);
+  const cols = 'id, member_id, trainer_id, kind, months, status, fee_mode, price, pay_reference, starts_on, ends_on, started_by, created_at';
+  const read = (sel: string) => supabase.from('coachings').select(sel).order('created_at', { ascending: false }).limit(300);
+  let res = await read(`${cols}, coach_ok_at`);
+  // Before 0258 there is no coach_ok_at: the same list without it.
+  if (res.error) res = await read(cols);
+  const { data, error } = res;
   if (error) return null;
-  return ((data ?? []) as CoachingRow[]).map((r) => ({ ...r, price: r.price == null ? null : Number(r.price) }));
+  return ((data ?? []) as unknown as CoachingRow[]).map((r) => ({ ...r, price: r.price == null ? null : Number(r.price) }));
 }
 
 /** One member's open or latest coaching, for the drawer. */

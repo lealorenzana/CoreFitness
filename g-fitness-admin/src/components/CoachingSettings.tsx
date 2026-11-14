@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Check } from 'lucide-react';
 import { showToast } from '../utils/toast';
+import { supabase } from '../lib/supabaseClient';
 import CoachingRules from './CoachingRules';
 import {
   coachingPrices, getCoachingSettings, MODE_WORDS, saveCoachingSettings, setCoachingPrice,
@@ -80,6 +81,9 @@ export default function CoachingSettings() {
         </div>
       </div>
 
+      {/* Who approves a member's pick (0258): only meaningful when members pick their own coach. */}
+      {s.modes.includes('pick_pt') && <CoachingApproval />}
+
       <div>
         <p className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>Lengths members choose from</p>
         <div className="mt-2 flex flex-wrap gap-2">
@@ -145,6 +149,64 @@ export default function CoachingSettings() {
 
       {/* The gym's own rules (0235): pause on a freeze, the gym's share, coach dues. */}
       <CoachingRules feeMode={s.feeMode} />
+    </div>
+  );
+}
+
+type Approval = 'coach' | 'desk' | 'coach_desk';
+const APPROVALS: { key: Approval; title: string; blurb: string }[] = [
+  { key: 'coach', title: 'The coach decides', blurb: 'The coach accepts or declines. You see every request on Personal training.' },
+  { key: 'desk', title: 'The desk decides', blurb: 'You or the front desk accept or decline, on Personal training. The coach is told when assigned.' },
+  { key: 'coach_desk', title: 'Coach, then desk', blurb: 'The coach says yes first, then you or the desk confirm — only then is the coach assigned. A decline by either is final.' },
+];
+
+/**
+ * Who approves a member's pick of a coach (0258, gym styles phase 2): the coach, the desk, or the coach then the
+ * desk. Saved the moment it is picked. Renders nothing before 0258 is live — a setting nothing reads is a lie.
+ */
+function CoachingApproval() {
+  const [mode, setMode] = useState<Approval | null>(null);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    void (async () => {
+      const { data, error } = await supabase.rpc('my_coaching_approval');
+      if (!error && (data === 'coach' || data === 'desk' || data === 'coach_desk')) setMode(data);
+    })();
+  }, []);
+  if (!mode) return null;
+  const pick = async (next: Approval) => {
+    const before = mode;
+    setMode(next);
+    setSaving(true);
+    const { error } = await supabase.rpc('set_coaching_approval', { p_mode: next });
+    setSaving(false);
+    if (error) { setMode(before); showToast(error.message, 'error'); return; }
+    showToast('Saved — it applies to the next request.', 'success');
+  };
+  return (
+    <div data-coaching-approval>
+      <p className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>Who approves a member’s pick of a coach</p>
+      <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>When a member taps “I want … as my coach”.</p>
+      <div className="mt-2 grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Who approves a member's pick of a coach">
+        {APPROVALS.map((a) => {
+          const on = mode === a.key;
+          return (
+            <button key={a.key} type="button" role="radio" aria-checked={on} disabled={saving} data-approval={a.key}
+              onClick={() => { if (!on) void pick(a.key); }}
+              className="flex items-start gap-3 rounded-lg border px-3.5 py-3 text-left"
+              style={{ borderColor: on ? 'var(--color-primary)' : 'var(--color-border)', background: 'var(--color-bg)' }}>
+              <span className="mt-0.5 shrink-0">
+                {on ? <Check size={16} style={{ color: 'var(--color-primary)' }} />
+                  : <span className="block h-4 w-4 rounded-full border" style={{ borderColor: 'var(--color-border)' }} />}
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>{a.title}</span>
+                <span className="block text-xs mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>{a.blurb}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -18,9 +18,9 @@ import { errorMessage } from '../../utils/errorMessage';
 import { addDays, todayKey } from '../../utils/dates';
 import { listPublicTrainers, trainerName, type PublicTrainer } from '../../lib/api/directory';
 import {
-  coachingSweep, endCoaching, getCoachingSettings, monthsLabel, myCoachings, OPEN_STATUSES, peso,
+  coachingApproval, coachingSweep, endCoaching, getCoachingSettings, monthsLabel, myCoachings, OPEN_STATUSES, peso,
   respondCoaching, setCoachingStandin, STATUS_WORDS, submitCoachingPayment, trainerPaymentMethods,
-  type Coaching, type CoachingSettings, type TrainerPaymentMethod,
+  type Coaching, type CoachingApproval, type CoachingSettings, type TrainerPaymentMethod,
 } from '../../lib/api/coaching';
 import { coachingPauses, type CoachingPause } from '../../lib/api/coachingRules';
 
@@ -61,6 +61,9 @@ export default function MyPackage({ next, onCurrent }: {
   const [openedAt] = useState(() => Date.now()); // how far through the package, as of opening the screen
   const [standinOpen, setStandinOpen] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
+  /** Who approves a member's pick (0258), for the waiting line. */
+  const [approval, setApproval] = useState<CoachingApproval>('coach');
+  useEffect(() => { void coachingApproval().then(setApproval); }, []);
   /** Manage package (2026-11-14): stand-in, switch coach, end — one sheet, also opened from the chat's settings (?manage=1). */
   const [manageOpen, setManageOpen] = useState(() => new URLSearchParams(window.location.search).get('manage') === '1');
   const [endReason, setEndReason] = useState('');
@@ -152,7 +155,9 @@ export default function MyPackage({ next, onCurrent }: {
           {current.status === 'requested' && (
             <Panel>
               <p style={{ fontSize: 13.5, color: 'var(--color-text-secondary)' }}>
-                {current.trainerName.split(' ')[0]} has your request. You will be told the moment they answer.
+                {approval === 'desk' ? 'The front desk has your request. You will be told the moment they answer.'
+                  : current.coachOkAt ? `${current.trainerName.split(' ')[0]} said yes. The front desk confirms next — you will be told.`
+                  : `${current.trainerName.split(' ')[0]} has your request.${approval === 'coach_desk' ? ' After their yes, the front desk confirms.' : ''} You will be told the moment they answer.`}
               </p>
               <NocButton variant="ghost" className="w-full" disabled={busy} onClick={() => void run(() => endCoaching(current.id), 'Request cancelled')} style={{ marginTop: 10 }}>Cancel the request</NocButton>
             </Panel>

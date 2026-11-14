@@ -31,6 +31,7 @@ async (page) => {
   const g = { gym_id: 'gym-a', gym_name: 'gabby pogi 123', slug: 'gabby-pogi-123', short_name: 'gabby', accent: 'violet' };
   const ymd = (d) => new Date(Date.now() + 8 * 3600000 - d * 86400000).toISOString().slice(0, 10);
   const CALLS = [];
+  const APPROVAL = { mode: 'coach' };
   let MODULES = { classes: false };
   const SETTINGS = { modes: ['classes', 'pick_pt', 'desk_assigns', 'coach_invites'], lengths: [1, 3, 6], fee: 'gym_priced' };
   const COACHINGS = [
@@ -79,6 +80,9 @@ async (page) => {
         account_number: '0917 555 0101', qr_image: PNG, instructions: 'Send the exact amount.' }]);
       if (fn === 'my_gym_payment_claims') return json(CLAIMS);
       if (fn === 'coaching_settings') return json([{ modes: SETTINGS.modes, lengths: SETTINGS.lengths, fee_mode: SETTINGS.fee }]);
+      if (fn === 'my_coaching_approval') return json(APPROVAL.mode);
+      if (fn === 'set_coaching_approval') { CALLS.push([fn, body]); APPROVAL.mode = body.p_mode; return json(null); }
+      if (fn === 'desk_decide_coaching') { CALLS.push([fn, body]); return json('active'); }
       if (fn === 'set_coaching_settings') { CALLS.push([fn, body]); SETTINGS.modes = body.p_modes; SETTINGS.lengths = body.p_lengths; SETTINGS.fee = body.p_fee_mode; return json(null); }
       if (fn === 'set_coaching_price') { CALLS.push([fn, body]); return json(null); }
       if (fn === 'confirm_coaching_payment' || fn === 'assign_coaching' || fn === 'end_coaching') { CALLS.push([fn, body]); return json('ok'); }
@@ -185,6 +189,30 @@ async (page) => {
   await page.waitForTimeout(800);
   t = await text();
   say('Settings → Personal training offers no group option', /Members pick a coach/.test(t) && !/as a group/.test(t), t.slice(0, 200));
+  // 0258: who approves a member's pick — the owner's three choices, saved at once.
+  say('…and who approves a member’s pick of a coach, the coach by default', (await page.locator('[data-approval="coach"][aria-checked="true"]').count()) === 1
+    && (await page.locator('[data-coaching-approval] [role="radio"]').count()) === 3);
+  await page.locator('[data-approval="coach_desk"]').click();
+  await page.waitForTimeout(800);
+  const sa = CALLS.find(([f]) => f === 'set_coaching_approval');
+  say('…choosing "Coach, then desk" saves it', sa && sa[1].p_mode === 'coach_desk', JSON.stringify(sa));
+  await page.screenshot({ path: 'shots/admin-coaching-approval.png' });
+
+  // To decide under 'coach, then desk': waiting for the coach (decline only), then the desk confirms.
+  await go('/personal-training');
+  t = await text();
+  say('coach then desk: the ask waits for its coach first — no Confirm yet', /waiting for .* first/.test(t)
+    && (await page.locator('[data-decide-row="asked"] [data-ask-confirm]').count()) === 0
+    && (await page.locator('[data-decide-row="asked"] [data-ask-decline]').count()) === 1, t.slice(0, 300));
+  COACHINGS.find((c) => c.id === 'k3').coach_ok_at = new Date().toISOString();
+  await go('/personal-training');
+  t = await text();
+  say('…once the coach said yes, the desk confirms', /said yes — you confirm/.test(t) && (await page.locator('[data-decide-row="asked"] [data-ask-confirm]').count()) === 1, t.slice(0, 300));
+  await page.locator('[data-decide-row="asked"] [data-ask-confirm]').click();
+  await page.waitForTimeout(1000);
+  const dd = CALLS.find(([f]) => f === 'desk_decide_coaching');
+  say('…Confirm sends the desk’s yes', dd && dd[1].p_id === 'k3' && dd[1].p_accept === true, JSON.stringify(dd));
+  APPROVAL.mode = 'coach';
   await go('/gym-app?tab=runs');
   say('Your app lists the Events switch', (await page.locator('[data-module="events"]').count()) === 1 || /events/i.test(await text()));
   return out.join('\n');

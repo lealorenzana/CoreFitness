@@ -11,7 +11,7 @@ import { setPtSessionStatus } from '../lib/api/ptSessions';
 import { sweepStaleRequests } from '../lib/api/bookings';
 import { notifyUser } from '../lib/api/notify';
 import { loadBookingQueue, type QueueRow } from '../services/bookingQueueService';
-import { coachingSweep, confirmCoachingPayment, listCoachings, type CoachingRow } from '../lib/api/coaching';
+import { coachingApproval, coachingSweep, confirmCoachingPayment, deskDecideCoaching, listCoachings, type CoachingApproval, type CoachingRow } from '../lib/api/coaching';
 import { listMembers } from '../lib/api/members';
 import { listTrainers } from '../lib/api/trainers';
 import { useGymModules, moduleOn } from '../hooks/useGymModules';
@@ -60,15 +60,18 @@ export default function PersonalTraining() {
   const [data, setData] = useState<Decide | null | undefined>(undefined);
   const [names, setNames] = useState<Record<string, { name: string; photo: string | null }>>({});
   const [busy, setBusy] = useState('');
+  /** Who approves a member's pick of a coach (0258). */
+  const [approval, setApproval] = useState<CoachingApproval>('coach');
 
   const load = useCallback(async () => {
     try {
       await Promise.all([sweepStaleRequests().catch(() => undefined), Promise.resolve(coachingSweep()).catch(() => undefined)]);
-      const [queue, coachings, settings, ms, ts] = await Promise.all([
+      const [queue, coachings, settings, ms, ts, ap] = await Promise.all([
         loadBookingQueue(), listCoachings().catch(() => null),
         supabase.from('gym_settings').select('pt_booking_approval').maybeSingle(),
-        listMembers().catch(() => []), listTrainers().catch(() => []),
+        listMembers().catch(() => []), listTrainers().catch(() => []), coachingApproval(),
       ]);
+      setApproval(ap);
       const mode = ((settings.data as { pt_booking_approval: Mode | null } | null)?.pt_booking_approval ?? 'coach') as Mode;
       // The same rule Bookings uses: the gym decides unless the coach does, and
       // always when the coach is not active (0203) — so nothing is stranded.
@@ -91,7 +94,28 @@ export default function PersonalTraining() {
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
   const name = (id: string | null) => (id ? names[id]?.name ?? 'Someone' : '—');
-  const count = data ? data.sessions.length + data.payments.length : 0;
+  // A package ask is the desk's to answer when the gym says so (0258): 'desk' always; 'coach, then desk' once the coach said yes.
+  const deskMay = (r: CoachingRow) => approval === 'desk' || (approval === 'coach_desk' && !!r.coach_ok_at);
+  const count = data ? data.sessions.length + data.payments.length + data.asked.filter(deskMay).length : 0;
+  const answerAsk = async (r: CoachingRow, accept: boolean) => {
+    let price: number | null = null;
+    if (accept && r.fee_mode === 'trainer_direct' && r.price == null) {
+      const said = window.prompt(`What ${name(r.trainer_id)} charges for ${r.months} month${r.months === 1 ? '' : 's'} (₱0 if nothing)`);
+      if (said == null) return;
+      price = Number(said.replace(/[^\d.]/g, ''));
+      if (!Number.isFinite(price)) { showToast('Enter an amount in pesos', 'error'); return; }
+    }
+    setBusy(r.id);
+    try {
+      await deskDecideCoaching(r.id, accept, price);
+      showToast(accept ? `${name(r.trainer_id)} is now ${name(r.member_id)}’s coach` : 'Declined — the member has been told', 'success');
+      await load();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'That could not be saved', 'error');
+    } finally {
+      setBusy('');
+    }
+  };
 
   const decide = async (r: QueueRow, decision: 'approved' | 'rejected') => {
     setBusy(r.id);
@@ -145,7 +169,7 @@ export default function PersonalTraining() {
         <div className="a-card" style={{ flex: 1, padding: 0 }} data-to-decide>
           {data === undefined ? <p className="a-sub" style={{ padding: 18 }}>Loading…</p>
             : data === null ? <p className="a-sub" style={{ padding: 18, color: 'var(--a-a300)' }}>What waits could not be loaded. Refresh to try again.</p>
-            : count + data.asked.length === 0 ? <p className="a-sub text-center" style={{ padding: 26 }} data-decide-empty>Nothing waits for you — requests and payments show here as they come in.</p>
+            : data.sessions.length + data.payments.length + data.asked.length === 0 ? <p className="a-sub text-center" style={{ padding: 26 }} data-decide-empty>Nothing waits for you — requests and payments show here as they come in.</p>
             : (
               <div className="a-scroll" style={{ flex: 1 }}>
                 <table className="a-table">
@@ -180,9 +204,16 @@ export default function PersonalTraining() {
                         <td><div className="a-who"><Av name={name(r.member_id)} photo={names[r.member_id]?.photo} small /><b>{name(r.member_id)}</b></div></td>
                         <td>Asked for a {r.months}-month package</td>
                         <td>{name(r.trainer_id)}</td>
-                        <td><span className="a-sub">{waited(r.created_at)} · the coach decides</span></td>
-                        <td style={{ textAlign: 'right' }}>
-                          <button type="button" className="a-btn ghost sm" onClick={() => navigate('/personal-training?tab=packages')}>See packages</button>
+                        <td><span className="a-sub">{waited(r.created_at)} · {approval === 'desk' ? 'you decide'
+                          : approval === 'coach_desk' ? (r.coach_ok_at ? `${name(r.trainer_id)} said yes — you confirm` : `waiting for ${name(r.trainer_id)} first`)
+                          : 'the coach decides'}</span></td>
+                        <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                          {approval === 'coach' ? (
+                            <button type="button" className="a-btn ghost sm" onClick={() => navigate('/personal-training?tab=packages')}>See packages</button>
+                          ) : (<>
+                            <button type="button" className="a-btn ghost sm" disabled={busy === r.id} onClick={() => void answerAsk(r, false)} data-ask-decline>Decline</button>{' '}
+                            {deskMay(r) && <button type="button" className="a-btn violet sm" disabled={busy === r.id} onClick={() => void answerAsk(r, true)} data-ask-confirm>Confirm</button>}
+                          </>)}
                         </td>
                       </tr>
                     ))}

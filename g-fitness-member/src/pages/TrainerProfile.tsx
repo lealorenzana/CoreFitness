@@ -18,6 +18,7 @@ import { Stars, StarInput } from '../components/ui/StarRating';
 import type { ClassRow } from '../types/db';
 import { Page, PageTitle } from '../components/ui/page';
 import TrainWith from '../components/coaching/TrainWith';
+import CoachHours from '../components/coaching/CoachHours';
 import { Eyebrow, LineRow, NocButton, Panel, SeeAll } from '../components/ui/noc';
 import { useBookingModes } from '../hooks/useBookingModes';
 
@@ -247,6 +248,8 @@ export default function TrainerProfile() {
           )}
           {/* A coaching term with them (0181), when the gym lets members pick. */}
           <TrainWith trainerId={trainer.id} firstName={trainer.first_name} presence={trainer.presence} />
+          {/* Their weekly hours, to look at before picking (gym styles phase 2) — nothing here books. */}
+          <CoachHours trainerId={trainer.id} firstName={trainer.first_name} />
 
           {/* ── Evaluating this coach ──
               Not eligible yet, and SAYING SO. This was `{eligible && …}` and

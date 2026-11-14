@@ -32,6 +32,8 @@ export interface Coaching {
   groupCode: string | null;
   /** Who is reading: the member, their coach, or a stand-in. */
   iAm: 'member' | 'coach' | 'standin';
+  /** 0258: when the coach said yes under 'coach, then desk' — the desk confirms next. Null before 0258. */
+  coachOkAt: string | null;
 }
 
 export interface TrainerPaymentMethod {
@@ -52,9 +54,20 @@ export async function getCoachingSettings(): Promise<CoachingSettings | null> {
 
 /** NULL on a failed read, so a screen can say so instead of "no coach". */
 /** Packages waiting on this coach (simplify, 2026-10-28): asked for, or paid to the coach and to check. */
+/** Who approves a member's pick of a coach (0258); 'coach' before it is live — the old behaviour. */
+export type CoachingApproval = 'coach' | 'desk' | 'coach_desk';
+export async function coachingApproval(): Promise<CoachingApproval> {
+  const { data, error } = await supabase.rpc('my_coaching_approval');
+  return !error && (data === 'desk' || data === 'coach_desk') ? data : 'coach';
+}
+/** A package ask the coach answers (0258): not when the desk decides, and not again after their own yes. */
+export const coachAnswers = (c: Coaching, approval: CoachingApproval) =>
+  c.iAm === 'coach' && c.status === 'requested' && approval !== 'desk' && !c.coachOkAt;
+
 export async function loadPackageAsks(): Promise<Coaching[]> {
-  return ((await myCoachings()) ?? []).filter((c) => c.iAm === 'coach'
-    && (c.status === 'requested' || (c.status === 'payment_sent' && c.feeMode === 'trainer_direct')));
+  const [list, approval] = await Promise.all([myCoachings(), coachingApproval()]);
+  return (list ?? []).filter((c) => coachAnswers(c, approval)
+    || (c.iAm === 'coach' && c.status === 'payment_sent' && c.feeMode === 'trainer_direct'));
 }
 
 export async function myCoachings(): Promise<Coaching[] | null> {
@@ -80,6 +93,7 @@ export async function myCoachings(): Promise<Coaching[] | null> {
       from: r.standin_from as string, to: r.standin_to as string } : null,
     groupCode: (r.group_code as string | null) ?? null,
     iAm: r.i_am as 'member' | 'coach' | 'standin',
+    coachOkAt: (r.coach_ok_at as string | null) ?? null,
   }));
 }
 

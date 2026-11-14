@@ -5,7 +5,7 @@ import GlassSheet from '../../../components/ui/GlassSheet';
 import Avatar from '../../../components/ui/Avatar';
 import { LineRow } from '../../../components/ui/noc';
 import { PRESENCE_LABEL, type Presence } from '../../../lib/api/presence';
-import { myCoachings } from '../../../lib/api/coaching';
+import { loadPackageAsks } from '../../../lib/api/coaching';
 import { useGymApp } from '../../../hooks/useGymApp';
 import { moduleOn, type FeatureKey } from '../../../lib/gymApp';
 
@@ -57,10 +57,9 @@ export default function YouSheet({ open, onClose, me, presence, tones, onPresenc
     if (!open || !coachingOn) return;
     let alive = true;
     void (async () => {
-      const list = await myCoachings().catch(() => null);
-      if (!alive || !list) return;
-      setCoachingNeeds(list.filter((c) => c.iAm === 'coach'
-        && (c.status === 'requested' || (c.status === 'payment_sent' && c.feeMode === 'trainer_direct'))).length);
+      const asks = await loadPackageAsks().catch(() => null);
+      if (!alive || !asks) return;
+      setCoachingNeeds(asks.length);
     })();
     return () => { alive = false; };
   }, [open, coachingOn]);

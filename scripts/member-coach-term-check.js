@@ -48,6 +48,10 @@ async (page) => {
   let n = 0;
   const uid = (p) => `${p}-${++n}`;
   const DB = {
+    trainer_availability: [
+      { id: 'av1', trainer_id: 't1', day_of_week: 1, start_time: '06:00:00', end_time: '09:00:00', slot_minutes: 60, created_at: iso(-9, 9, 0) },
+      { id: 'av2', trainer_id: 't1', day_of_week: 6, start_time: '08:00:00', end_time: '12:00:00', slot_minutes: 60, created_at: iso(-9, 9, 0) },
+    ],
     profiles: [ME],
     member_profiles: [{ profile_id: 'm1', experience_level: 'beginner', qr_code: 'QR', created_at: iso(-90, 9, 0), profiles: ME }],
     membership_plans: [PREMIUM, QUARTER],
@@ -145,14 +149,15 @@ async (page) => {
     member_count: 1, post_count: 0, last_post_at: null, comments_on: true, archived: false, join_code: null, is_mine: false, full_access: true };
   const CALLS = {};
   let n2 = 0;
-  const STATE = { status: null };
+  const STATE = { status: null, approval: 'coach', coachOk: null };
   const coachingRow = () => ({ id: 'k1', member_id: 'm1', member_name: 'Lea Lorenzana', member_photo: null, trainer_id: 't1',
     trainer_name: 'Rae Santos', trainer_photo: null, kind: 'pt', room_id: 'rm1', months: 3, status: STATE.status,
     fee_mode: 'trainer_direct', price: 1500, pay_reference: null, pay_sent_at: null,
     starts_on: STATE.status === 'active' ? dstr(-5) : null, ends_on: STATE.status === 'active' ? dstr(85) : null,
     started_by: 'member', created_at: iso(-5, 9, 0), standin_id: null, standin_trainer_id: null, standin_name: null,
-    standin_from: null, standin_to: null, group_code: null, i_am: 'member' });
+    standin_from: null, standin_to: null, group_code: null, i_am: 'member', coach_ok_at: STATE.coachOk });
   const FN = {
+    my_coaching_approval: () => STATE.approval,
     coaching_settings: () => [{ modes: ['classes', 'pick_pt', 'desk_assigns', 'coach_invites'], lengths: [1, 3, 6], fee_mode: 'trainer_direct' }],
     my_coachings: () => (STATE.status ? [coachingRow()] : []),
     // 0192: this coach takes payments online into their own PayMongo account.
@@ -300,16 +305,33 @@ async (page) => {
   // ---- a coach's profile: Train with them ----
   await go('/member/trainer/t1');
   let t = await text();
-  out.push('the profile offers Train with them: ' + (/Train with Rae/.test(t) ? 'yes' : 'MISSING'));
-  await page.getByRole('button', { name: /^Train with Rae$/ }).click();
+  out.push('the profile offers "I want Rae as my coach": ' + (/I want Rae as my coach/.test(t) ? 'yes' : 'MISSING'));
+  // Her weekly hours, to look at before picking (gym styles phase 2) — Monday first, view only.
+  const hours = await page.locator('[data-coach-hours]').innerText().catch(() => '');
+  out.push('…with her weekly hours, Monday first, view only: ' + (/Weekly hours/.test(hours) && /Monday\s+6:00\s?AM – 9:00\s?AM/.test(hours)
+    && hours.indexOf('Monday') < hours.indexOf('Saturday') && (await page.locator('[data-coach-hours] button').count()) === 0 ? 'yes' : 'MISSING ' + hours.replace(/\s+/g, ' ')));
+  await page.getByRole('button', { name: /^I want Rae as my coach$/ }).click();
   await page.waitForTimeout(600);
   t = await text();
   out.push("the gym's lengths, and that the coach is paid directly: " + (/1 month/.test(t) && /3 months/.test(t) && /You pay Rae directly/.test(t) ? 'yes' : 'MISSING'));
   await page.locator('[data-length="3"]').click();
-  await page.getByRole('button', { name: /^Ask$/ }).click();
+  out.push('…says who decides (the coach, here): ' + (/Rae accepts or declines/.test(await text()) ? 'yes' : 'MISSING'));
+  await page.getByRole('button', { name: /^Send my request$/ }).click();
   await page.waitForTimeout(1200);
   out.push('asking sends the coach, 1-on-1 and the length: ' + (CALLS.request_coaching?.p_trainer === 't1' && CALLS.request_coaching?.p_kind === 'pt' && CALLS.request_coaching?.p_months === 3 ? 'yes' : 'MISSING ' + JSON.stringify(CALLS.request_coaching)));
   out.push('…and lands on Train → Coach: ' + (/\/member\/book-class\?tab=coach$/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
+
+  // ---- 0258: coach, then desk — the member is told who answers next ----
+  STATE.approval = 'coach_desk'; STATE.status = 'requested';
+  await go('/member/book-class?tab=coach');
+  out.push('coach then desk, waiting for the coach: says the desk confirms after: ' + (/Rae has your request\. After their yes, the front desk confirms/.test(await text()) ? 'yes' : 'MISSING'));
+  STATE.coachOk = iso(0, 9, 0);
+  await go('/member/book-class?tab=coach');
+  out.push('…after the coach’s yes: the desk confirms next: ' + (/Rae said yes\. The front desk confirms next/.test(await text()) ? 'yes' : 'MISSING'));
+  STATE.approval = 'desk'; STATE.coachOk = null;
+  await go('/member/book-class?tab=coach');
+  out.push('desk decides: the front desk has the request: ' + (/The front desk has your request/.test(await text()) ? 'yes' : 'MISSING'));
+  STATE.approval = 'coach';
 
   // ---- Your coach: waiting for payment ----
   STATE.status = 'awaiting_payment';

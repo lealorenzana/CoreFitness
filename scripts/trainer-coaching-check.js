@@ -170,5 +170,20 @@ async (page) => {
   out.push('how members pay this coach, and that the gym never sees it: ' + (/How members pay you/.test(t) && /0917 000 1111/.test(t) && /never sees this money/.test(t) ? 'yes' : 'MISSING'));
   out.push('a coach paid directly can connect their own PayMongo: ' + ((await page.locator('[data-connect-paymongo]').count()) === 1
     && /Get paid online/.test(await page.locator('[data-connect-paymongo]').innerText()) ? 'yes' : 'MISSING'));
+
+  // ---- 0258: who approves a member's pick ----
+  const reopen = async () => { await page.goto('http://localhost:5173/trainer/packages?tab=needs', { waitUntil: 'domcontentloaded' }); await page.waitForTimeout(2200); };
+  RPC.my_coaching_approval = 'desk';
+  await reopen();
+  out.push('desk decides: the coach has no Accept on the ask: ' + ((await page.getByRole('button', { name: /^Accept$/ }).count()) === 0 ? 'yes' : 'MISSING'));
+  out.push('…and is told the desk decides: ' + (/The front desk decides at this gym/.test(await page.locator('[data-with-desk]').innerText().catch(() => '')) ? 'yes' : 'MISSING'));
+  RPC.my_coaching_approval = 'coach_desk';
+  COACHINGS[0] = { ...COACHINGS[0], coach_ok_at: iso(0, 9, 0) };
+  await reopen();
+  out.push('coach then desk, after their yes: no second Accept, and the desk is next: ' + ((await page.getByRole('button', { name: /^Accept$/ }).count()) === 0
+    && /You said yes — the front desk confirms next/.test(await page.locator('[data-with-desk]').innerText().catch(() => '')) ? 'yes' : 'MISSING'));
+  COACHINGS[0] = { ...COACHINGS[0], coach_ok_at: null };
+  await reopen();
+  out.push('coach then desk, before their yes: the coach answers first: ' + ((await page.getByRole('button', { name: /^Accept$/ }).count()) >= 1 ? 'yes' : 'MISSING'));
   return out.join(String.fromCharCode(10));
 }
