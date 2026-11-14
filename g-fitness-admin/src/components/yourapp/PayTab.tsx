@@ -1,3 +1,4 @@
+import PageGuide from '../guides/PageGuide';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Check, CreditCard, ExternalLink, Smartphone } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -89,6 +90,7 @@ export default function PayTab() {
           <>
             <div className="a-ct">
               <h3><CreditCard size={16} />Members pay you in the app</h3>
+              <PageGuide id="online-pay" />
               {acc ? <span className="a-pill v">{acc.live ? 'connected' : 'connected · test mode'}</span> : <span className="a-pill">not connected</span>}
             </div>
             {acc ? (

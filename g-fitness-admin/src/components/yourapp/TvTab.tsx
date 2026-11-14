@@ -1,3 +1,4 @@
+import PageGuide from '../guides/PageGuide';
 import { useEffect, useRef, useState } from 'react';
 import { Check, ExternalLink, ImagePlus, Lock, Monitor, Tv } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -67,7 +68,7 @@ export default function TvTab() {
   return (
     <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0, 0.9fr) minmax(0, 1.1fr)', flex: 1 }} data-tv-tab>
       <div className="a-card a-scroll">
-        <div className="a-ct"><h3><Tv size={16} />Lobby TV</h3>
+        <div className="a-ct"><h3><Tv size={16} />Lobby TV</h3><PageGuide id="lobby-tv" />
           {gate.allowed ? <span className="a-pill v">on your plan</span> : <span className="a-pill"><Lock size={11} />{gate.sold ? 'switched off' : 'not on your plan'}</span>}</div>
         {!gate.allowed && (
           <div className="a-hint" style={{ marginBottom: 10 }}><Lock size={15} />

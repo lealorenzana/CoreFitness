@@ -1,3 +1,4 @@
+import PageGuide from '../components/guides/PageGuide';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Copy, Mail, Upload, X, Users, CheckCircle2, Clock, UserPlus, FileText, Info, Send, Lock, Trash2, ArrowRight, RotateCw, Smartphone, Monitor, KeyRound, AlertTriangle } from 'lucide-react';
 import { usePaged } from '../hooks/usePaged';
@@ -168,7 +169,7 @@ export default function Invitations() {
 
   return (
     <div className="rd-fit" data-invitations>
-      <RdHeader title="Invitations" subtitle="Invite members, coaches and front desk. Each gets a login by email, chooses their own password at first sign-in, and arrives already approved." />
+      <RdHeader title="Invitations" subtitle="Invite members, coaches and front desk. Each gets a login by email, chooses their own password at first sign-in, and arrives already approved." actions={<PageGuide id="invite" />} />
 
       <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
         <StatTile icon={Users} label="Pending invitations" compact value={counts.waiting} sub="Invites waiting to be accepted"

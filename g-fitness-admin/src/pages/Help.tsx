@@ -15,6 +15,7 @@ import {
 } from '../lib/api/feedback';
 import { replayTour } from '../components/tour/Tour';
 import { TOURS } from '../lib/tours';
+import { GuideList, type Lang as GuideLang } from '../components/guides/GuidePlayer';
 
 const when = (iso: string) => new Date(iso).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 const day = (iso: string) => new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -30,7 +31,7 @@ const QUICK: { title: string; where: string; to: string }[] = [
   { title: 'Your join link and poster', where: 'Your app → Joining', to: '/gym-app?tab=join' },
   { title: 'Paying Core Fitness', where: 'Your plan', to: '/subscription' },
 ];
-type Tab = 'questions' | 'ideas' | 'rate' | 'tours';
+type Tab = 'questions' | 'ideas' | 'rate' | 'tours' | 'guides';
 
 /**
  * Help (2026-10-25): Support (0137, 0162) and Feedback (0188) on one page, to
@@ -48,10 +49,11 @@ type Tab = 'questions' | 'ideas' | 'rate' | 'tours';
  */
 export default function Help() {
   const [params, setParams] = useSearchParams();
-  const tab: Tab = params.get('tab') === 'ideas' ? 'ideas' : params.get('tab') === 'rate' ? 'rate' : params.get('tab') === 'tours' ? 'tours' : 'questions';
+  const tab: Tab = params.get('tab') === 'ideas' ? 'ideas' : params.get('tab') === 'rate' ? 'rate' : params.get('tab') === 'tours' ? 'tours' : params.get('tab') === 'guides' ? 'guides' : 'questions';
   const navigate = useNavigate();
   const setTab = (t: Tab) => setParams((prev) => { const n = new URLSearchParams(prev); n.set('tab', t); return n; }, { replace: true });
 
+  const [guideLang, setGuideLang] = useState<GuideLang>('en');
   const [owner, setOwner] = useState(false);
   const [gymId, setGymId] = useState<string | null>(null);
   const [tickets, setTickets] = useState<Ticket[] | null | undefined>(null);
@@ -100,9 +102,25 @@ export default function Help() {
             <Star size={14} />Rate us</button>
           <button type="button" role="tab" aria-selected={tab === 'tours'} className={tab === 'tours' ? 'on' : ''} onClick={() => setTab('tours')}>
             <PlayCircle size={14} />Tours</button>
+          <button type="button" role="tab" aria-selected={tab === 'guides'} className={tab === 'guides' ? 'on' : ''} onClick={() => setTab('guides')} data-help-guides-tab>
+            <PlayCircle size={14} />Guides</button>
         </div>
         <button type="button" className="a-btn violet" onClick={() => { setTab('questions'); setComposing(true); }}><Plus size={15} />Ask a question</button>
       </div>
+
+      {/* The animated set-up guides (2026-11-14): every feature that needs setting up, in English and Filipino. */}
+      {tab === 'guides' && (
+        <div className="a-card" data-help-guides style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+          <div className="a-ct"><h3><PlayCircle size={16} />Guides</h3><small>short animated how-tos — online payments, the kiosk, the lobby TV and the rest</small>
+            <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6 }}>
+              {(['en', 'fil'] as GuideLang[]).map((l) => (
+                <button key={l} type="button" className={`a-btn sm ${guideLang === l ? 'violet' : 'ghost'}`} onClick={() => setGuideLang(l)}>{l === 'en' ? 'English' : 'Filipino'}</button>
+              ))}
+            </span>
+          </div>
+          <GuideList forWho="owner" lang={guideLang} onGo={(path) => navigate(path)} />
+        </div>
+      )}
 
       {/* The tours (guides G4): each main page's, with Replay. */}
       {tab === 'tours' && (

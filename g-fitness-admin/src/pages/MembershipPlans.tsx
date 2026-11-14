@@ -1,3 +1,4 @@
+import PageGuide from '../components/guides/PageGuide';
 import { useEffect, useMemo, useState, type DragEvent } from 'react';
 import {
   Plus, Check, X, Users, Tag, LockOpen, Archive, Pencil, Copy, GripVertical, Smartphone, RotateCcw, Trash2, Lock, Bell,
@@ -280,6 +281,7 @@ export default function MembershipPlans() {
     <div className="att" data-plans>
       <div className="a-head">
         <div className="min-w-0"><h1>Plans</h1><p>What you sell, what each plan unlocks in the app, and who is on it</p></div>
+        <PageGuide id="plans" />
         <nav className="a-tabs" aria-label="Plans views" data-rd-tabs style={{ marginLeft: 'auto' }}>
           <button type="button" className={view === 'sell' ? 'on' : ''} onClick={() => setView('sell')}><Tag size={14} />Plans on sale <em>{onSale.length}</em></button>
           <button type="button" className={view === 'unlock' ? 'on' : ''} onClick={() => setView('unlock')} data-view="unlock"><LockOpen size={14} />What each unlocks</button>

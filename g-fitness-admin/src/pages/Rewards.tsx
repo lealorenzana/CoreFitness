@@ -1,3 +1,4 @@
+import PageGuide from '../components/guides/PageGuide';
 import { useEffect, useMemo, useState } from 'react';
 import {
   Plus, Gift, Check, X, AlertTriangle, Clock, History, Coins, Package, HandHeart, Pin, Pencil, Star, Eye, EyeOff,
@@ -551,6 +552,7 @@ export default function Rewards() {
     <div className="rd-fit" data-rewards>
       <RdHeader title="Rewards" subtitle="What members can spend their CORE Points on, and who is waiting on you."
         actions={<>
+          <PageGuide id="rewards" />
           <PageTabs<Tab> label="Rewards sections" value={tab} onChange={setTab} tabs={[
             { key: 'requests', label: 'Requests', count: pending.length + ready.length, icon: Clock },
             { key: 'catalogue', label: 'Catalogue', icon: Gift },

@@ -1,3 +1,4 @@
+import PageGuide from '../components/guides/PageGuide';
 import { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, BarChart3, Package, ShoppingCart } from 'lucide-react';
 import { RdHeader, RdCard, PageTabs } from '../components/ui/rd';
@@ -76,13 +77,14 @@ export default function Shop() {
           Counter sales today: <b className="text-white">{formatCurrency(live.reduce((s, x) => s + x.total, 0))}</b> — {live.length} {live.length === 1 ? 'sale' : 'sales'}
           {low.length > 0 && <> — <button type="button" className="underline" style={{ color: '#FBBF24' }} onClick={() => setTab('products')}>{low.length} running low</button></>}
         </>}
-        actions={
+        actions={<>
+          <PageGuide id="shop" />
           <PageTabs<Tab> label="Shop sections" value={tab} onChange={setTab} tabs={[
             { key: 'sell', label: 'Sell', icon: ShoppingCart },
             { key: 'products', label: 'Products', icon: Package, count: low.length },
             { key: 'sales', label: 'Sales', icon: BarChart3 },
           ]} />
-        }
+        </>}
       />
 
       {tab === 'sell' && (

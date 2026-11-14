@@ -1,3 +1,4 @@
+import PageGuide from '../components/guides/PageGuide';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, ExternalLink, Trash2, Eye, EyeOff, Search, Link2, Pencil, Play, Heart, Info, Upload, ImagePlus, Clapperboard, RefreshCw } from 'lucide-react';
@@ -187,6 +188,7 @@ export default function Reels() {
     <div className="att" data-reels>
       <div className="a-head">
         <div className="min-w-0"><h1>Reels</h1><p>Short videos your gym posts for its members — a link from YouTube, TikTok, Facebook or Instagram, or a small video of your own</p></div>
+        <PageGuide id="reels" />
         <button type="button" className="a-btn violet" style={{ marginLeft: 'auto' }} onClick={() => openAdd()} data-add-reel><Plus size={15} />Add a reel</button>
       </div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 'none', flexWrap: 'wrap' }}>

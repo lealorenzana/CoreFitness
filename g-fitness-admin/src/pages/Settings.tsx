@@ -1,3 +1,4 @@
+import PageGuide from '../components/guides/PageGuide';
 import StaffAccounts from '../components/staff/StaffAccounts';
 import DeleteAccount from '../components/DeleteAccount';
 import { setAccountStatus } from '../lib/api/accountEvents';
@@ -497,6 +498,7 @@ export default function Settings() {
               {activeTab === 'checkin' && (
                 <>
                   {head('Checking in', 'How members and coaches get in, and what a check-in can be tagged with')}
+                  <div style={{ margin: '0 0 10px' }}><PageGuide id="door-checkin" /> <PageGuide id="kiosk" label="Set up the kiosk" /></div>
                   <div id="checking-in"><DoorSettings /></div>
                   <div className="a-ct" style={{ marginTop: 16 }}><h3><Tags size={16} />Check-in activities</h3></div>
                   <p className="a-sub">What the front desk can tag a check-in with — and what members pick from on their QR screen. Members can always check in without one.</p>
@@ -525,13 +527,14 @@ export default function Settings() {
               {activeTab === 'walk-ins' && (
                 <>
                   {head('Walk-ins', 'For people without a membership: paid in cash at the desk (Attendance → Walk-ins) or, if you take payments in the app, bought by the member themselves')}
+                  <div style={{ margin: '0 0 10px' }}><PageGuide id="day-pass" /></div>
                   <WalkInGuide open />
                   <DayPassSettings />
                 </>
               )}
               {activeTab === 'refunds' && <RefundPolicyTab />}
               {activeTab === 'payments' && <OnlinePaymentsTab />}
-              {activeTab === 'waiver' && <WaiverTab />}
+              {activeTab === 'waiver' && <><div style={{ margin: '0 0 10px' }}><PageGuide id="waiver" /></div><WaiverTab /></>}
               {activeTab === 'house-rules' && <HouseRulesTab />}
               {activeTab === 'staff' && (
                 <StaffAccounts accounts={accounts} meId={me?.id ?? null} onStatus={(account, next) => setStaffAction({ account, next })} onChanged={load} />

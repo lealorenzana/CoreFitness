@@ -1,3 +1,4 @@
+import PageGuide from '../components/guides/PageGuide';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import GymChatView from '../components/gymchat/GymChatView';
@@ -38,6 +39,7 @@ export default function GymChat() {
     <div className="att" data-gym-chat-page>
       <div className="a-head">
         <div className="min-w-0"><h1>Gym chat</h1><p>One group chat for your whole gym — members, coaches, the front desk and you</p></div>
+        <PageGuide id="gym-chat" />
       </div>
       {on ? <Chat title={gymName} /> : (
         <div className="a-card" style={{ flex: 1 }}>

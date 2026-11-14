@@ -1,3 +1,4 @@
+import PageGuide from '../components/guides/PageGuide';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
@@ -536,7 +537,10 @@ export default function Attendance() {
               <div className="a-screen"><span className="a-qrm"><QrCode size={24} /></span></div>
               <div><div className="flex items-center justify-between gap-2"><b>Kiosk</b>
                 <span className={`a-status ${kioskRows.length ? '' : 'off'}`} style={{ position: 'static' }} data-kiosk-status>{kioskRows.length ? `${kioskRows.length} today · last ${clock(lastKiosk!)}` : 'No scans yet'}</span></div><div className="a-sub">Members scan their own QR on a tablet by the door{door?.coachCheckin ? ' — coaches too' : ''}.</div></div>
-              <button type="button" className="a-btn amber" style={{ marginTop: 'auto' }} onClick={() => navigate('/kiosk')}><Tablet size={16} />Open kiosk</button>
+              <div className="flex items-center gap-2" style={{ marginTop: 'auto', flexWrap: 'wrap' }}>
+                <button type="button" className="a-btn amber" onClick={() => navigate('/kiosk')}><Tablet size={16} />Open kiosk</button>
+                <PageGuide id="kiosk" label="How it works" />
+              </div>
             </div>
             <div className="a-door" data-door-screen="tv">
               <div className="a-screen"><div className="a-tv"><span /><span /><span /><span /><span /></div></div>
