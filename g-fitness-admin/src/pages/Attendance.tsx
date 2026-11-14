@@ -259,6 +259,18 @@ export default function Attendance() {
       alreadyInToday: inToday.has(member.profile.id), adminId, activity: activity || undefined, where: 'desk', picked: picks.get(member.profile.id),
     });
     if (!result.ok && isOffline(result.message)) return saveOffline(member.profile.id, member.profile.first_name, method);
+    if (!result.ok && result.reason === 'slot') {
+      // The owner may let the desk let someone in past a slot (0259); the database checks that, and every other rule.
+      if (!window.confirm(`${result.message}
+
+Let ${member.profile.first_name} in anyway?`)) return;
+      const { error } = await supabase.rpc('desk_let_in', { p_member: member.profile.id });
+      if (error) { showToast(error.message, 'error'); return; }
+      showToast(`${member.profile.first_name} let in past the time slot`, 'success');
+      setQuery('');
+      await loadData();
+      return;
+    }
     if (!result.ok) { showToast(result.message, 'error'); return; }
     showToast(result.points === null
       ? `${member.profile.first_name} checked in successfully!`

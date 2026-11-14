@@ -1071,8 +1071,9 @@ check('a gym admin cannot make themselves the platform',
 await as(P.adminA);
 check('a gym that has renamed nothing still has words for its points',
   (await one('select points_name from gym_words()')).points_name === 'CORE Points');
-check('every part of the system starts switched on but the four 0220 switched off, and reels and the gym chat (0245, 0246)',
-  (await db.query("select feature_key from my_gym_modules() where state <> 'on' order by 1")).rows.map((r) => r.feature_key).join() === ['classes', 'events', 'gym_chat', 'reels', 'seasons', 'squads'].join());
+check('every part of the system starts switched on but the four 0220 switched off, reels and the gym chat (0245, 0246), and time slots (0259)',
+  (await db.query("select feature_key from my_gym_modules() where state <> 'on' order by 1")).rows.map((r) => r.feature_key).join()
+    === ['classes', 'events', 'gym_chat', 'reels', 'seasons', 'slots', 'squads'].filter((k) => k !== 'slots' || !process.env.BEFORE || process.env.BEFORE > '0259').join());
 
 check('an owner can switch a part of the system off, and their app stops drawing it',
   await (async () => {

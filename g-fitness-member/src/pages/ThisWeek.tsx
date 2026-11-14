@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CalendarCheck, HourglassMedium, UsersThree } from '@phosphor-icons/react';
+import { CalendarCheck, Clock, HourglassMedium, UsersThree } from '@phosphor-icons/react';
 import { Page, PageTitle } from '../components/ui/page';
 import { LineRow, SectionHead, StatusPill } from '../components/ui/noc';
 import { SkeletonList } from '../components/ui/Skeleton';
@@ -40,7 +40,12 @@ export default function ThisWeek() {
             {d.closed && (
               <p data-week-closed style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: d.items.length ? 6 : 0 }}>{t('The gym is closed.')}</p>
             )}
-            {d.items.length === 0 && !d.closed && (
+            {d.slots.map((x, i) => (
+              <LineRow key={`slot-${x.starts}`} last={i === d.slots.length - 1 && d.items.length === 0} icon={Clock} tone="mine"
+                title={`${time(`${d.ymd}T${x.starts}`)} – ${time(`${d.ymd}T${x.ends}`)} · ${t('Your time')}`} meta={t('Your place is kept')}
+                onClick={() => navigate('/member/slots')} />
+            ))}
+            {d.items.length === 0 && d.slots.length === 0 && !d.closed && (
               <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{t('Nothing booked.')}</p>
             )}
             {d.items.map((r, i) => (

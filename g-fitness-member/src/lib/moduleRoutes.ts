@@ -46,6 +46,7 @@ const ROUTES: [string, FeatureKey][] = [
   ['/trainer/reels', 'reels'],
   // 0246: the gym chat.
   ['/member/gym-chat', 'gym_chat'],
+  ['/member/slots', 'slots'],
   ['/trainer/gym-chat', 'gym_chat'],
 ];
 
@@ -68,5 +69,5 @@ export const MODULE_NAMES: Record<FeatureKey, string> = {
   online_pay: 'online payments', chat: 'coach chat', rooms: 'coaching rooms', programs: 'programs', photos: 'progress photos',
   equipment: 'the equipment list', points: 'points and rewards', events: 'gym events',
   squads: 'teams', seasons: 'seasons', quests: 'weekly quests', referrals: 'inviting friends', targets: 'targets',
-  reels: 'reels', gym_chat: 'the gym chat',
+  reels: 'reels', gym_chat: 'the gym chat', slots: 'time slots',
 };

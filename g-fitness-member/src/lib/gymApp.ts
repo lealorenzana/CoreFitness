@@ -42,7 +42,9 @@ export type FeatureKey =
   // 0245: reels — short videos the gym posts; off unless the gym turns it on.
   | 'reels'
   // 0246: the gym's one group chat; off unless the gym turns it on.
-  | 'gym_chat';
+  | 'gym_chat'
+  // 0259: time slots and a crowd limit; off unless the gym turns it on.
+  | 'slots';
 
 /**
  * What this gym calls its people and its sessions (0114).
@@ -154,6 +156,9 @@ export function clearGymApp(): void {
  */
 export function moduleOn(app: GymApp | null, key: FeatureKey | undefined): boolean {
   if (!key) return true;
+  // A switch newer than the database reads as OFF when it is off by default (0259 time slots): never draw screens
+  // for a part the database cannot run yet.
+  if (key === 'slots') return app?.modules?.slots === true;
   const own = app?.modules?.[key];
   if (own !== undefined) return own;
   // A database without 0141 sends no answer for a child: it follows its parent,

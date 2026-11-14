@@ -757,6 +757,14 @@
     {
       "file": "admin-gym-styles-check.js",
       "app": "admin"
+    },
+    {
+      "file": "member-book-time-check.js",
+      "app": "member"
+    },
+    {
+      "file": "admin-time-slots-check.js",
+      "app": "admin"
     }
   ]
 }

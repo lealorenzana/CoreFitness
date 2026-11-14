@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabaseClient';
 import { addDays, dateKey, localDateKey } from '../utils/dates';
 import { getCurrentMemberId, listMyBookings, type MyBooking } from './bookingService';
+import { listSlots } from '../lib/api/slots';
 
 /**
  * This week (gym styles phase 1, 2026-11-14 — the owner: "members' clear This week schedule"): Monday to Sunday,
@@ -16,6 +17,8 @@ export interface WeekDay {
   isPast: boolean;
   closed: boolean;
   items: MyBooking[];
+  /** 0259: the time slots booked that day (start, end), when the gym runs slots. */
+  slots: { starts: string; ends: string }[];
 }
 
 export interface ThisWeek {
@@ -45,7 +48,8 @@ export async function loadThisWeek(now = new Date()): Promise<ThisWeek> {
     getCurrentMemberId(),
     supabase.from('gym_settings').select('opening_time, closing_time, closed_days').maybeSingle(),
   ]);
-  const rows = memberId ? await listMyBookings(memberId) : [];
+  const [rows, slotList] = await Promise.all([memberId ? listMyBookings(memberId) : Promise.resolve([]), listSlots(monday, 6).catch(() => null)]);
+  const mySlots = (slotList ?? []).filter((x) => x.myBooking);
   const s = (settings.data ?? null) as { opening_time: string | null; closing_time: string | null; closed_days: number[] | null } | null;
   const closed = Array.isArray(s?.closed_days) ? s!.closed_days : [];
 
@@ -57,6 +61,7 @@ export async function loadThisWeek(now = new Date()): Promise<ThisWeek> {
     return {
       ymd, weekday, isToday: ymd === today, isPast: ymd < today, closed: closed.includes(weekday),
       items: live.filter((r) => localDateKey(r.startsAt!) === ymd).sort((a, b) => a.startsAt!.localeCompare(b.startsAt!)),
+      slots: mySlots.filter((x) => x.date === ymd).map((x) => ({ starts: x.starts, ends: x.ends })),
     };
   });
   const nowMs = now.getTime();

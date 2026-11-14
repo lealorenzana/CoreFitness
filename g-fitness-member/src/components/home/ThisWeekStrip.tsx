@@ -37,14 +37,14 @@ export default function ThisWeekStrip() {
       </span>
       <span className="grid" style={{ gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 4 }} aria-hidden>
         {week.days.map((d) => (
-          <span key={d.ymd} className="flex flex-col items-center" style={{ gap: 5 }} data-week-day={d.ymd} data-has={d.items.length > 0} data-closed={d.closed}>
+          <span key={d.ymd} className="flex flex-col items-center" style={{ gap: 5 }} data-week-day={d.ymd} data-has={d.items.length + d.slots.length > 0} data-closed={d.closed}>
             <span className="grid place-items-center" style={{
               width: 30, height: 30, borderRadius: 15, fontSize: 12.5, fontWeight: 700,
               color: d.isToday ? 'var(--color-text-primary)' : d.isPast ? 'var(--color-text-muted)' : 'var(--color-text-secondary)',
               border: d.isToday ? '2px solid var(--color-primary)' : '2px solid transparent',
             }}>{LETTER[d.weekday]}</span>
             <span style={{ height: 8, fontSize: 10, lineHeight: '8px', color: 'var(--color-text-muted)' }}>
-              {d.closed ? '×' : d.items.length > 0
+              {d.closed ? '×' : d.items.length + d.slots.length > 0
                 ? <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: 3, background: 'var(--color-primary)', opacity: d.isPast ? 0.45 : 1 }} />
                 : ''}
             </span>

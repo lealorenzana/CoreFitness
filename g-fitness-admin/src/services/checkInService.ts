@@ -189,7 +189,7 @@ export async function resolveCheckInCode(raw: string, members: MemberWithProfile
 
 export type CheckInResult =
   | { ok: true; points: number | null }
-  | { ok: false; message: string; reason: 'duplicate' | 'membership' | 'session' | 'failed' };
+  | { ok: false; message: string; reason: 'duplicate' | 'membership' | 'session' | 'failed' | 'slot' };
 
 /**
  * Writes the check-in after the checks a plain status test gets wrong, then
@@ -230,6 +230,8 @@ export async function performCheckIn(
     // only `instanceof Error` hid the database's reason behind "Check-in failed".
     const message = err && typeof err === 'object' && 'message' in err && typeof (err as { message: unknown }).message === 'string'
       ? (err as { message: string }).message : 'Check-in failed';
+    // The gym's time slots said no (0259): the desk may be allowed to let them in anyway; the kiosk never is.
+    if (/ slot is (full|for members who booked)/.test(message)) return { ok: false, reason: 'slot', message };
     return { ok: false, reason: 'failed', message };
   }
   // The balance, at the one moment the desk can act on it. Points are awarded

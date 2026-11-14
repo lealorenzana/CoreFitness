@@ -37,6 +37,7 @@ import { tourFor } from '../lib/tours';
 import { useT } from '../lib/i18n';
 import { useBookingModes } from '../hooks/useBookingModes';
 import ThisWeekStrip from '../components/home/ThisWeekStrip';
+import BookTimeRow from '../components/home/BookTimeRow';
 
 /** Cache slots for this screen — see lib/pageCache.ts. */
 const CACHE_KEY = 'member:home';
@@ -433,6 +434,8 @@ export default function Home() {
 
       {/* This week (gym styles phase 1): Monday to Sunday at a glance, the next thing named — opens the whole week. */}
       <ThisWeekStrip />
+      {/* Time slots (0259): your next booked time, or Book a time — only at a gym that runs them. */}
+      <BookTimeRow />
 
       {/* The gym's reels (0245): a line of tiles, nothing at all when it has none or the switch is off. */}
       <ReelsStrip />

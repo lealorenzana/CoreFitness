@@ -71,6 +71,7 @@ const ToCoachTab = lazyPage(() => import('./pages/train/ToCoachTab'));
 const CoachChat = lazyPage(() => import('./pages/CoachChat'));
 const BookSession = lazyPage(() => import('./pages/BookSession'));
 const ThisWeek = lazyPage(() => import('./pages/ThisWeek'));
+const BookTime = lazyPage(() => import('./pages/BookTime'));
 const Help = lazyPage(() => import('./pages/Help'));
 const GymMap = lazyPage(() => import('./pages/GymMap'));
 const Equipment = lazyPage(() => import('./pages/Equipment'));
@@ -376,6 +377,7 @@ function App() {
           <Route path="booking-history" element={<ToCoachTab />} />
           <Route path="sessions" element={<BookingHistory />} />
           <Route path="week" element={<ThisWeek />} />
+          <Route path="slots" element={<BookTime />} />
           <Route path="book-session" element={<BookSession />} />
           <Route path="chat/:trainerId" element={<CoachChat />} />
           <Route path="trainer/:trainerId" element={<TrainerProfilePage />} />

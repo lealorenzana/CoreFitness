@@ -40,6 +40,7 @@ import { realEmail } from '../lib/api/logins';
 import MyUsernameBox from '../components/MyUsernameBox';
 import PlacePicker from '../components/ui/PlacePicker';
 import GymStyles from '../components/GymStyles';
+import TimeSlotsSettings from '../components/TimeSlotsSettings';
 
 /**
  * Admin settings — every tab here writes to the database.
@@ -63,7 +64,7 @@ import GymStyles from '../components/GymStyles';
  * nothing. They are gone rather than left as buttons that appear to work.
  */
 
-type TabId = 'profile' | 'gym' | 'hours' | 'checkin' | 'bookings' | 'coaching' | 'walk-ins' | 'refunds' | 'payments' | 'waiver' | 'house-rules' | 'security' | 'staff';
+type TabId = 'profile' | 'gym' | 'hours' | 'checkin' | 'bookings' | 'slots' | 'coaching' | 'walk-ins' | 'refunds' | 'payments' | 'waiver' | 'house-rules' | 'security' | 'staff';
 
 const VIOLET = 'var(--color-primary)';
 const TEXT_MUTED = 'var(--color-text-muted)';
@@ -84,6 +85,7 @@ const SECTIONS: Section[] = [
   { id: 'waiver', label: 'Waiver', icon: FileSignature, words: ['par-q', 'health', 'sign', 'liability'] },
   { group: 'Members and money', label: '', icon: Building2, words: [] },
   { id: 'bookings', label: 'Bookings', icon: CalendarCheck, words: ['approve', 'class', 'booking'] },
+  { id: 'slots', label: 'Time slots', icon: Clock, words: ['slot', 'crowd', 'limit', 'capacity', 'reserve', 'floor'] },
   { id: 'coaching', label: 'Personal training', icon: Handshake, words: ['coach', 'trainer', '1-on-1', 'price'] },
   { id: 'walk-ins', label: 'Walk-ins', icon: Footprints, words: ['day pass', 'guest', 'visit pack'] },
   { id: 'refunds', label: 'Refunds', icon: Banknote, words: ['refund', 'cancel', 'fee'] },
@@ -525,6 +527,7 @@ export default function Settings() {
                 </>
               )}
 
+              {activeTab === 'slots' && <>{head('Time slots', 'Members book a time to come in, and you cap how many train at once — every rule is yours')}<TimeSlotsSettings /></>}
               {activeTab === 'bookings' && <>
                 {head('How your gym works', 'Your gym’s style sets the booking and coaching settings below — you can still change each one')}
                 <GymStyles onApplied={() => setStyleTick((n) => n + 1)} />

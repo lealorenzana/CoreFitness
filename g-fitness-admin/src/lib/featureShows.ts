@@ -397,6 +397,21 @@ export const FEATURE_SHOWS: Record<string, FeatureShow> = {
       { en: 'And from their own membership and bookings.', fil: 'At mula sa sarili nilang membership at bookings.' },
     ],
   },
+  slots: {
+    frame: 'phone',
+    screen: [
+      { t: 'head', text: 'Book a time · Today' },
+      { t: 'row', text: '6:00 – 7:30 AM', sub: '24 of 30', hit: 1 },
+      { t: 'row', text: '7:30 – 9:00 AM', sub: 'Full', pill: 'Full' },
+      { t: 'btn', text: 'Book', tap: 1, done: 'Your place is kept' },
+      { t: 'tick', text: 'Checked in — your place was kept', at: 2 },
+    ],
+    steps: [
+      { en: 'You set the slots and how many people each one takes.', fil: 'Ikaw ang magtatakda ng slots at ilan ang kasya sa bawat isa.' },
+      { en: 'Members book a time, within the rules you choose.', fil: 'Magbo-book ang members ng oras, ayon sa patakarang pinili mo.' },
+      { en: 'At the door a booking keeps their place — the rest is your choice.', fil: 'Sa pinto, may lugar ang nag-book — ang iba ay nasa iyo.' },
+    ],
+  },
   analytics: {
     frame: 'desk',
     screen: [

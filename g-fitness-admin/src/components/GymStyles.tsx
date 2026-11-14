@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { ArrowRight, Check, DoorOpen, CalendarDays, CalendarClock, HeartHandshake, type LucideIcon } from 'lucide-react';
+import { ArrowRight, Check, DoorOpen, CalendarDays, CalendarClock, HeartHandshake, Timer, type LucideIcon } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { showToast } from '../utils/toast';
 import { refreshGymModules } from '../hooks/useGymModules';
 import { RdButton } from './ui/rd';
 
-export type GymStyle = 'open_gym' | 'classes' | 'pt_appointments' | 'coaching_packages';
+export type GymStyle = 'open_gym' | 'classes' | 'pt_appointments' | 'coaching_packages' | 'time_slots';
 
 const STYLES: { key: GymStyle; title: string; blurb: string; icon: LucideIcon }[] = [
   { key: 'open_gym', title: 'Open gym', icon: DoorOpen,
@@ -16,6 +16,8 @@ const STYLES: { key: GymStyle; title: string; blurb: string; icon: LucideIcon }[
     blurb: 'Members book a 1-on-1 session with a coach at a free time.' },
   { key: 'coaching_packages', title: 'Coaching packages — members pick their coach', icon: HeartHandshake,
     blurb: 'A member picks one coach for a package of months. Sessions are arranged with the coach, not booked in the app.' },
+  { key: 'time_slots', title: 'Time slots and a crowd limit', icon: Timer,
+    blurb: 'Members book a time to come in, and you cap how many train at once. You set the slots and the rules.' },
 ];
 
 type Change = { setting: string; label: string; now_value: string; next_value: string };
