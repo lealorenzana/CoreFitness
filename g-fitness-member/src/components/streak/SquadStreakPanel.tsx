@@ -1,3 +1,4 @@
+import { usePointsOn } from '../../hooks/usePointsOn';
 import { Flame, HourglassMedium } from '@phosphor-icons/react';
 import StreakOrb from './StreakOrb';
 import StreakWeeks from './StreakWeeks';
@@ -15,9 +16,10 @@ const WORDS: Record<StreakWeek['state'], string> = {
  * day says it ends tonight. Computed in SQL, never stored.
  */
 export default function SquadStreakPanel({ s }: { s: SquadStreak }) {
+  const pointsOn = usePointsOn();
   const live = s.needed > 0 && !s.outOfReach;
   const line = s.needed === 0
-    ? 'Target reached this week — the team points are yours, and the streak is safe.'
+    ? (pointsOn ? 'Target reached this week — the team points are yours, and the streak is safe.' : 'Target reached this week — the streak is safe.')
     : s.outOfReach
       ? (s.current > 0 ? 'This week is out of reach now. A new team streak starts Monday.' : `${s.needed} more between you would have started a streak.`)
       : s.atRisk

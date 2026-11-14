@@ -39,6 +39,7 @@ import Help from './pages/Help';
 import Inbox from './pages/Inbox';
 import Subscription from './pages/Subscription';
 import Rewards from './pages/Rewards';
+import Referrals from './pages/Referrals';
 import Challenges from './pages/Challenges';
 import AttendanceHistory from './pages/AttendanceHistory';
 import Kiosk from './pages/Kiosk';
@@ -95,6 +96,7 @@ function App() {
                 inviting a member is front-desk work, and the database refuses
                 them a coach or another desk account either way. */}
             <Route path="invitations" element={<Invitations />} />
+            <Route path="referrals" element={<ProtectedRoute><Referrals /></ProtectedRoute>} />
             <Route path="attendance" element={<Attendance />} />
             <Route path="attendance/walk-ins" element={<WalkIns />} />
             {/* Staff see it too: "did this member come in last week" is a

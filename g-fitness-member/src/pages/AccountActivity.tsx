@@ -1,3 +1,4 @@
+import { usePointsOn } from '../hooks/usePointsOn';
 import { useEffect, useMemo, useState } from 'react';
 import { usePaged } from '../hooks/usePaging';
 import Pager from '../components/ui/Pager';
@@ -18,6 +19,7 @@ import { errorMessage } from '../utils/errorMessage';
  * same filters and the same folding of same-day repeats.
  */
 export default function AccountActivity() {
+  const pointsOn = usePointsOn();
   const [params, setParams] = useSearchParams();
   const raw = params.get('filter');
   const filter: Filter = raw === 'points' || raw === 'payments' ? raw : 'all';
@@ -61,11 +63,11 @@ export default function AccountActivity() {
   return (
     <Page>
       <PageTitle back fallback="/member/membership" title="Account activity"
-        subtitle="Points earned and spent, payments, and changes to your membership" />
+        subtitle={pointsOn ? 'Points earned and spent, payments, and changes to your membership' : 'Payments and changes to your membership'} />
 
       <div className="flex" style={{ gap: 8 }}>
         <Chip label="All" on={filter === 'all'} onClick={() => { setFilter('all'); paged.setPage(1); }} />
-        <Chip label="Points" on={filter === 'points'} onClick={() => { setFilter('points'); paged.setPage(1); }} />
+        {pointsOn && <Chip label="Points" on={filter === 'points'} onClick={() => { setFilter('points'); paged.setPage(1); }} />}
         <Chip label="Payments" on={filter === 'payments'} onClick={() => { setFilter('payments'); paged.setPage(1); }} />
       </div>
 
@@ -76,7 +78,7 @@ export default function AccountActivity() {
       ) : months.length === 0 ? (
         <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--color-text-muted)' }}>
           {filter === 'payments' ? 'No payments recorded yet — they appear here once the desk records one.'
-            : 'Nothing yet. Check-ins and workouts earn points, and payments at the desk appear here.'}
+            : pointsOn ? 'Nothing yet. Check-ins and workouts earn points, and payments at the desk appear here.' : 'Nothing yet. Payments at the desk appear here.'}
         </p>
       ) : (
         months.map(([label, lines]) => (

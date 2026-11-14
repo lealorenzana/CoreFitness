@@ -7,6 +7,7 @@ import './attendance/att.css';
 import { showSuccessToast, showErrorToast } from '../utils/toast';
 import { recordReason, REASON_FIELD } from '../lib/api/reasons';
 import { todayKey } from '../utils/dates';
+import PointsOffNote from '../components/PointsOffNote';
 import {
   listAchievements, listMetrics, createAchievement, updateAchievement, deleteAchievement, setAchievementActive,
   achievementRarity, achievementQualifiers, earnedSince, ruleSummary, type Rarity,
@@ -371,6 +372,7 @@ export default function Achievements() {
               <div className="t"><b>Points when earned</b><small>{draft.audience === 'member' ? 'added to their balance for Rewards, once' : 'coaches have no points balance'}</small></div>
               <input className="a-in" style={{ width: 80, textAlign: 'center' }} inputMode="numeric" aria-label="Points when earned" disabled={draft.audience !== 'member'} value={draft.points} onChange={(e) => set({ points: e.target.value.replace(/\D/g, '') })} />
             </div>
+            {draft.audience === 'member' && <PointsOffNote what="a badge earns no points" />}
             <div className="a-setting" style={{ padding: '8px 0' }}>
               <div className="t"><b>Secret until earned</b><small>shown as “Secret badge” until they get it</small></div>
               <button type="button" className={`a-toggle ${draft.secret ? '' : 'off'}`} aria-pressed={draft.secret} aria-label="Secret until earned" onClick={() => set({ secret: !draft.secret })} />

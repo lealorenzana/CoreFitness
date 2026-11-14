@@ -9,7 +9,11 @@ import { supabase } from '../supabaseClient';
  * month. The screen only shows the code and what has happened.
  */
 
-export interface MyReferral { friendName: string; status: 'pending' | 'rewarded' | 'void'; createdAt: string; rewardedAt: string | null; points: number }
+export interface MyReferral {
+  friendName: string; status: 'pending' | 'rewarded' | 'void'; createdAt: string; rewardedAt: string | null; points: number;
+  /** 0253: the gym's desk reward when it runs no points, and when the desk handed it over. */
+  deskReward: string | null; deskGivenAt: string | null;
+}
 
 const clean = (m: string) => m.replace(/^.*?: /, '');
 
@@ -23,8 +27,9 @@ export async function myReferrals(): Promise<MyReferral[]> {
   const { data, error } = await supabase.rpc('my_referrals');
   if (error) return [];
   return ((data ?? []) as { friend_name: string; status: MyReferral['status']; created_at: string;
-    rewarded_at: string | null; points: number }[]).map((r) => ({
+    rewarded_at: string | null; points: number; desk_reward?: string | null; desk_given_at?: string | null }[]).map((r) => ({
     friendName: r.friend_name, status: r.status, createdAt: r.created_at, rewardedAt: r.rewarded_at, points: r.points,
+    deskReward: r.desk_reward ?? null, deskGivenAt: r.desk_given_at ?? null,
   }));
 }
 
@@ -42,6 +47,29 @@ export async function referralRewards(): Promise<{ referrer: number | null; frie
   const rows = (data ?? []) as { key: string; points: number; is_active: boolean }[];
   const pts = (k: string) => { const r = rows.find((x) => x.key === k); return r && r.is_active ? r.points : null; };
   return { referrer: pts('referral'), friend: pts('referral_welcome') };
+}
+
+export interface ReferralTerms { pointsOn: boolean; referrer: number | null; friend: number | null; deskReferrer: string | null; deskFriend: string | null }
+
+/** What inviting earns here (0253): points when the gym runs them, its desk reward when it does not.
+ *  Before 0253 is pasted: the point rules, as before. */
+export async function referralTerms(): Promise<ReferralTerms> {
+  const { data, error } = await supabase.rpc('my_referral_terms');
+  if (error || !data) {
+    const p = await referralRewards();
+    return { pointsOn: true, referrer: p.referrer, friend: p.friend, deskReferrer: null, deskFriend: null };
+  }
+  const d = data as { points_on: boolean; referrer_points: number | null; friend_points: number | null; desk_referrer: string | null; desk_friend: string | null };
+  return { pointsOn: d.points_on, referrer: d.points_on ? d.referrer_points : null, friend: d.points_on ? d.friend_points : null,
+    deskReferrer: d.points_on ? null : d.desk_referrer, deskFriend: d.points_on ? null : d.desk_friend };
+}
+
+/** One invitation's line, the same on both screens. */
+export function referralLine(r: MyReferral, pointsOn: boolean): string {
+  if (r.status !== 'rewarded') return 'Joined — waiting for their first payment';
+  if (r.points > 0) return `Paid — ${r.points} points for you`;
+  if (r.deskReward) return r.deskGivenAt ? `Paid — your ${r.deskReward} was handed over` : `Paid — your reward: ${r.deskReward}. Ask at the front desk`;
+  return pointsOn ? 'Paid — past this month’s five' : 'Paid — thank you for bringing them!';
 }
 
 /** The `?ref=` a join link carries, uppercased; null when absent or malformed. */

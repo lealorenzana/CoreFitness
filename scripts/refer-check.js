@@ -3,6 +3,7 @@
  *
  *   - the invite page shows the code, a join link carrying it, the gym's own
  *     reward figures, when it pays, and each invitation's state;
+ *   - with the gym's points off (0253) it promises the desk reward instead, never points;
  *   - an existing account joining another gym through `?ref=` asks to join,
  *     then claims the code (uppercased) for that gym.
  *
@@ -243,6 +244,31 @@ async (page) => {
   out.push('says when it pays: ' + (/When the front desk records their first payment/.test(t) && /free plan, does not count/.test(t) ? 'said' : 'MISSING'));
   out.push('invitations listed: ' + (/Ana R\. Paid — 100 points for you/.test(t) && /Joy M\. Joined — waiting for their first payment/.test(t) ? 'shown' : 'MISSING'));
   await page.screenshot({ path: 'shots/refer.png', fullPage: true });
+
+  // 1b - the gym runs no points (0253): its desk reward is promised instead, never points, and each paid
+  //      invitation says whether the reward was handed over; no points appear anywhere on the page.
+  FN.my_referral_terms = () => ({ points_on: false, referrer_points: 100, friend_points: 50,
+    desk_referrer: '1 free day pass', desk_friend: '₱100 off the first renewal' });
+  FN.my_referrals = () => [
+    { friend_name: 'Ana R.', status: 'rewarded', created_at: iso(-10, 9, 0), rewarded_at: iso(-3, 9, 0), points: 0, desk_reward: '1 free day pass', desk_given_at: null },
+    { friend_name: 'Leo T.', status: 'rewarded', created_at: iso(-9, 9, 0), rewarded_at: iso(-4, 9, 0), points: 0, desk_reward: '1 free day pass', desk_given_at: iso(-2, 9, 0) },
+    { friend_name: 'Joy M.', status: 'pending', created_at: iso(-2, 9, 0), rewarded_at: null, points: 0, desk_reward: null, desk_given_at: null }];
+  const gymApp = FN.my_gym_app;
+  FN.my_gym_app = () => gymApp().map((g) => ({ ...g, modules: { points: false } }));
+  await page.goto('about:blank');
+  await go('/member/refer');
+  t = await text();
+  out.push('points off: the desk reward is promised: ' + (/you get 1 free day pass and they get ₱100 off the first renewal — ask for it at the front desk/.test(t) ? 'yes' : 'MISSING ' + t.slice(0, 300)));
+  out.push('points off: no points anywhere on the page: ' + (!/points?/i.test(t) ? 'yes' : 'MISSING ' + (t.match(/.{40}points?.{20}/i) || [''])[0]));
+  out.push('points off: a reward owed says ask at the desk: ' + (/Ana R\. Paid — your reward: 1 free day pass\. Ask at the front desk/.test(t) ? 'yes' : 'MISSING'));
+  out.push('points off: a reward given says so: ' + (/Leo T\. Paid — your 1 free day pass was handed over/.test(t) ? 'yes' : 'MISSING'));
+  await page.screenshot({ path: 'shots/refer-points-off.png', fullPage: true });
+  FN.my_referral_terms = () => ({ points_on: false, referrer_points: null, friend_points: null, desk_referrer: null, desk_friend: null });
+  await page.goto('about:blank');
+  await go('/member/refer');
+  t = await text();
+  out.push('points off, no desk reward: promises nothing: ' + (/the gym sees that you brought them/.test(t) && !/you get/.test(t) ? 'yes' : 'MISSING'));
+  delete FN.my_referral_terms; FN.my_gym_app = gymApp;
 
   // 2 - a member of another gym follows a friend's link: since 0227 that is a switch (with consent), and the code rides along.
   await go('/join/harbour?ref=abcdef');

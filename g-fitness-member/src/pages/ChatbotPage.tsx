@@ -1,3 +1,4 @@
+import { usePointsOn } from '../hooks/usePointsOn';
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PaperPlaneRight, Trash } from '@phosphor-icons/react';
@@ -105,6 +106,7 @@ export default function ChatbotPage() {
 }
 
 function Assistant() {
+  const pointsOn = usePointsOn();
   const [ctx, setCtx] = useState<AssistantContext>(EMPTY_CONTEXT);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -325,7 +327,7 @@ function Assistant() {
       // after consent the state it captured is still the old one.
       const live = again?.rulesOnly ? null : coachRef.current;
       const coachUsable = mayUseModel && !!live?.allowed;
-      let answer = again?.coachOnly ? RULE_FALLBACK : answerFor(trimmed, ctx, { coach: coachUsable });
+      let answer = again?.coachOnly ? RULE_FALLBACK : answerFor(trimmed, { ...ctx, pointsOff: !pointsOn }, { coach: coachUsable });
 
       // Since 0059 the whole assistant is the paid feature, so this screen is
       // already behind `FeatureLock` and `mayUseModel` is true whenever it

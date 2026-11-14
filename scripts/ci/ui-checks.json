@@ -722,6 +722,10 @@
       "app": "admin"
     },
     {
+      "file": "admin-referrals-check.js",
+      "app": "admin"
+    },
+    {
       "file": "member-reels-check.js",
       "app": "member"
     },

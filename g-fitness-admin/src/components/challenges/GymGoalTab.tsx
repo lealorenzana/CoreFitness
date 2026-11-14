@@ -9,6 +9,8 @@ import { assertWrote } from '../../lib/api/mutate';
 import { broadcastNotification } from '../../lib/api/notifications';
 import { pushToMany } from '../../lib/api/notify';
 import { todayKey, addDays, daysBetween, localDateKey } from '../../utils/dates';
+import PointsOffNote from '../PointsOffNote';
+import { usePointsOn } from '../../hooks/usePointsOn';
 
 const UNIT: Record<string, string> = { training_days: 'training days', workouts_logged: 'workouts', checkins: 'check-ins' };
 const fmt = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
@@ -24,6 +26,7 @@ interface Goal {
  * reaching it is `settle_gym_goals()`'s — nobody types a number in.
  */
 export default function GymGoalTab({ onChanged }: { onChanged?: () => void }) {
+  const pointsOn = usePointsOn();
   const [today] = useState(() => todayKey());
   const [goals, setGoals] = useState<Goal[] | null | undefined>(undefined);
   const [progress, setProgress] = useState<Record<string, { progress: number; contributors: number }>>({});
@@ -95,7 +98,7 @@ export default function GymGoalTab({ onChanged }: { onChanged?: () => void }) {
   const announce = async (g: Goal) => {
     try {
       const p = progress[g.id]?.progress ?? 0;
-      const input = { type: 'event', title: g.title, message: `The whole gym is at ${p.toLocaleString()} of ${g.target.toLocaleString()} ${UNIT[g.metric]} — every visit counts${g.reward_points ? `, and everyone who helps gets ${g.reward_points} points when we reach it` : ''}. Until ${fmt(g.ends_on)}.`, actionUrl: '/member/home' };
+      const input = { type: 'event', title: g.title, message: `The whole gym is at ${p.toLocaleString()} of ${g.target.toLocaleString()} ${UNIT[g.metric]} — every visit counts${g.reward_points && pointsOn ? `, and everyone who helps gets ${g.reward_points} points when we reach it` : ''}. Until ${fmt(g.ends_on)}.`, actionUrl: '/member/home' };
       const r = await broadcastNotification({ audience: 'all_members', ...input });
       void pushToMany(r.recipientIds, { type: 'event', title: input.title, message: input.message, actionUrl: input.actionUrl });
       showToast(`Announced to ${r.recipients} member${r.recipients === 1 ? '' : 's'}`, 'success');
@@ -124,7 +127,7 @@ export default function GymGoalTab({ onChanged }: { onChanged?: () => void }) {
               <span className="a-sub" style={{ fontSize: 13 }}>of {current.target.toLocaleString()} {UNIT[current.metric]} · {cp.contributors} member{cp.contributors === 1 ? ' has' : 's have'} helped</span></div>
             <div className="a-big" style={{ margin: '10px 0 6px' }}><i style={{ width: `${Math.min(100, (cp.progress / current.target) * 100)}%` }} /></div>
             <div className="a-sub">To finish on time the gym needs <b style={{ color: 'var(--a-a300)' }}>{need.toLocaleString()} a day</b>. So far it has done about {pace.toLocaleString()} a day.
-              {current.reward_points ? <> Everyone who adds at least one gets <b style={{ color: '#fff' }}>{current.reward_points} points</b> when it is reached.</> : ''}</div>
+              {current.reward_points && pointsOn ? <> Everyone who adds at least one gets <b style={{ color: '#fff' }}>{current.reward_points} points</b> when it is reached.</> : ''}</div>
             <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
               <button type="button" className="a-btn sm" onClick={() => void announce(current)} data-announce><Megaphone size={13} />Announce it again</button>
               <button type="button" className="a-btn ghost sm" onClick={(e) => setMoreAt(e.currentTarget)}><CalendarPlus size={13} />Give it more time</button>
@@ -174,6 +177,7 @@ export default function GymGoalTab({ onChanged }: { onChanged?: () => void }) {
           to <SentenceDate label="Goal ends" value={form.ends_on} min={form.starts_on} onChange={(v) => setForm({ ...form, ends_on: v })} />; everyone who helped gets{' '}
           <input aria-label="Reward points" inputMode="numeric" value={form.reward_points} onChange={(e) => setForm({ ...form, reward_points: e.target.value.replace(/\D/g, '') })} /> points.
         </div>
+        <PointsOffNote what="reaching the goal earns no points" />
         <div className="a-fld"><label htmlFor="goal-name">Name on Today</label>
           <input id="goal-name" className="a-in" maxLength={80} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. November days" /></div>
         {monthDays != null && form.metric !== 'workouts_logged' && (
@@ -185,7 +189,7 @@ export default function GymGoalTab({ onChanged }: { onChanged?: () => void }) {
         <div className="a-prev"><b>{form.title.trim() || 'Your goal'}</b>
           <div className="a-sub" style={{ margin: '3px 0 8px' }}>The whole gym · 0 of {target.toLocaleString()} {UNIT[form.metric]}</div>
           <div className="a-big"><i style={{ width: '2%' }} /></div>
-          <div className="a-sub" style={{ marginTop: 6 }}>Every visit counts.{Number(form.reward_points) > 0 ? ` Reach it together: ${form.reward_points} points each.` : ''}</div></div>
+          <div className="a-sub" style={{ marginTop: 6 }}>Every visit counts.{Number(form.reward_points) > 0 && pointsOn ? ` Reach it together: ${form.reward_points} points each.` : ''}</div></div>
         <button type="button" className="a-btn violet" style={{ marginTop: 12 }} disabled={busy} onClick={() => void add()} data-set-goal>
           <Check size={15} />{form.starts_on <= today ? 'Set the goal' : `Set it to start ${fmt(form.starts_on)}`}</button>
       </div>

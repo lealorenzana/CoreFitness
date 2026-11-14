@@ -1,3 +1,4 @@
+import { usePointsOn } from '../../hooks/usePointsOn';
 import { useEffect, useState } from 'react';
 import { UsersThree } from '@phosphor-icons/react';
 import { Panel, ProgressBar } from '../ui/noc';
@@ -12,6 +13,7 @@ import { currentGymGoal, GOAL_UNIT, settleSquadsAndGoals, type GymGoal } from '.
  * are in.
  */
 export default function GymGoalStrip() {
+  const pointsOn = usePointsOn();
   const [goal, setGoal] = useState<GymGoal | null>(null);
 
   useEffect(() => {
@@ -35,14 +37,14 @@ export default function GymGoalStrip() {
       <ProgressBar style={{ marginTop: 10 }} fraction={Math.min(1, goal.progress / Math.max(1, goal.target))} />
       <p className="tabular-nums" style={{ fontSize: 12.5, marginTop: 8, color: 'var(--color-text-secondary)' }}>
         {goal.reached
-          ? `Reached! ${goal.contributors} members made it happen${goal.mine > 0 && goal.rewardPoints > 0 ? ` — your ${goal.rewardPoints} points are in` : ''}.`
+          ? `Reached! ${goal.contributors} members made it happen${goal.mine > 0 && goal.rewardPoints > 0 && pointsOn ? ` — your ${goal.rewardPoints} points are in` : ''}.`
           : `${goal.progress.toLocaleString()} of ${goal.target.toLocaleString()} ${unit} · ${goal.contributors} members so far`}
       </p>
       {!goal.reached && (
         <p style={{ fontSize: 12, marginTop: 2, color: goal.mine > 0 ? 'var(--color-primary-300)' : 'var(--color-secondary)' }}>
           {goal.mine > 0
-            ? `You added ${goal.mine}${goal.rewardPoints > 0 ? ` — you get ${goal.rewardPoints} points when it is reached` : ''}.`
-            : `Add one ${unit.replace(/s$/, '')} to be part of it${goal.rewardPoints > 0 ? ` and get ${goal.rewardPoints} points` : ''}.`}
+            ? `You added ${goal.mine}${goal.rewardPoints > 0 && pointsOn ? ` — you get ${goal.rewardPoints} points when it is reached` : ''}.`
+            : `Add one ${unit.replace(/s$/, '')} to be part of it${goal.rewardPoints > 0 && pointsOn ? ` and get ${goal.rewardPoints} points` : ''}.`}
         </p>
       )}
     </Panel>

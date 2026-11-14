@@ -6,7 +6,7 @@ import { LineRow, NocButton, Panel, SectionHead, StatusPill, SeeAll } from '../c
 import { SkeletonList } from '../components/ui/Skeleton';
 import { toast } from '../components/ui/Toast';
 import { getGymApp } from '../lib/gymApp';
-import { myReferralCode, myReferrals, referralRewards, type MyReferral } from '../lib/api/referrals';
+import { myReferralCode, myReferrals, referralLine, referralTerms, type MyReferral, type ReferralTerms } from '../lib/api/referrals';
 
 /**
  * Invite a friend (0125).
@@ -15,21 +15,22 @@ import { myReferralCode, myReferrals, referralRewards, type MyReferral } from '.
  * promise is worded exactly as the database keeps it: points arrive when the
  * friend's first payment is recorded at the desk — not when they sign up, and
  * not for a free plan — and at most five times a month. The figures come from
- * the gym's point rules; a rule the gym switched off is not promised.
+ * the gym's point rules; a rule the gym switched off is not promised. A gym that runs no points (0253)
+ * promises its own desk reward instead, or nothing — never points.
  */
 export default function Refer() {
   const navigate = useNavigate();
   const [code, setCode] = useState<string | null | undefined>(undefined);
   const [slug, setSlug] = useState<string | null>(null);
   const [list, setList] = useState<MyReferral[]>([]);
-  const [pts, setPts] = useState<{ referrer: number | null; friend: number | null }>({ referrer: null, friend: null });
+  const [terms, setTerms] = useState<ReferralTerms>({ pointsOn: true, referrer: null, friend: null, deskReferrer: null, deskFriend: null });
 
   useEffect(() => {
     let alive = true;
     void (async () => {
-      const [c, app, l, p] = await Promise.all([myReferralCode(), getGymApp(), myReferrals(), referralRewards()]);
+      const [c, app, l, t] = await Promise.all([myReferralCode(), getGymApp(), myReferrals(), referralTerms()]);
       if (!alive) return;
-      setCode(c); setSlug(app?.slug ?? null); setList(l); setPts(p);
+      setCode(c); setSlug(app?.slug ?? null); setList(l); setTerms(t);
     })();
     return () => { alive = false; };
   }, []);
@@ -56,11 +57,12 @@ export default function Refer() {
     }
   };
   const paid = list.filter((r) => r.status === 'rewarded').length;
+  const rewardsSomething = !!(terms.referrer || terms.friend || terms.deskReferrer || terms.deskFriend);
 
   return (
     <Page>
       <PageTitle back fallback="/member/rewards" title="Invite a friend"
-        subtitle="Train together — you both earn when they join" />
+        subtitle={rewardsSomething ? 'Train together — you both earn when they join' : 'Bring a friend to train with you'} />
 
       <Panel>
         <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Your code</p>
@@ -75,10 +77,20 @@ export default function Refer() {
       <section>
         <SectionHead title="How it works" />
         <p style={{ fontSize: 13.5, lineHeight: 1.6, color: 'var(--color-text-secondary)' }}>
-          Your friend joins the gym through your link. When the front desk records their first payment,
-          {pts.referrer ? ` you get ${pts.referrer} points` : ' you are thanked'}
-          {pts.friend ? ` and they get ${pts.friend} welcome points` : ''}. Signing up on its own, or a free plan, does not count —
-          and up to five friends a month earn you points.
+          {terms.pointsOn ? (<>
+            Your friend joins the gym through your link. When the front desk records their first payment,
+            {terms.referrer ? ` you get ${terms.referrer} points` : ' you are thanked'}
+            {terms.friend ? ` and they get ${terms.friend} welcome points` : ''}. Signing up on its own, or a free plan, does not count —
+            and up to five friends a month earn you points.
+          </>) : terms.deskReferrer || terms.deskFriend ? (<>
+            Your friend joins the gym through your link. When the front desk records their first payment,
+            {terms.deskReferrer ? ` you get ${terms.deskReferrer}` : ' you are thanked'}
+            {terms.deskFriend ? ` and they get ${terms.deskFriend}` : ''} — ask for it at the front desk. Signing up on its own,
+            or a free plan, does not count{terms.deskReferrer ? ', and up to five friends a month earn you a reward' : ''}.
+          </>) : (<>
+            Your friend joins the gym through your link, and the gym sees that you brought them. Share it with anyone
+            you would like to train with.
+          </>)}
         </p>
       </section>
 
@@ -88,9 +100,7 @@ export default function Refer() {
           <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Nobody yet. Share your link to start.</p>
         ) : list.slice(0, 5).map((r, i, shown) => (
           <LineRow key={i} title={r.friendName} last={i === shown.length - 1}
-            meta={r.status === 'rewarded'
-              ? (r.points > 0 ? `Paid — ${r.points} points for you` : 'Paid — past this month’s five')
-              : 'Joined — waiting for their first payment'}
+            meta={referralLine(r, terms.pointsOn)}
             action={<StatusPill label={r.status === 'rewarded' ? 'Paid' : 'Joined'} tone={r.status === 'rewarded' ? 'structure' : 'muted'} />} />
         ))}
         {list.length > 5 && <SeeAll label="See all friends you invited" count={list.length} onClick={() => navigate('/member/refer/invited')} />}

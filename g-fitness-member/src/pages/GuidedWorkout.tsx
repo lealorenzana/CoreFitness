@@ -1,3 +1,4 @@
+import { usePointsOn } from '../hooks/usePointsOn';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -125,6 +126,7 @@ export default function GuidedWorkout() {
 }
 
 function WorkoutRun() {
+  const pointsOn = usePointsOn();
   const navigate = useNavigate();
   const { logId } = useParams();
   const [session, setSession] = useState<SessionHeader | null>(null);
@@ -480,7 +482,7 @@ function WorkoutRun() {
     try {
       const minutes = Math.max(1, Math.round(elapsed / 60));
       const how = await completeSession(logId, minutes);
-      if (how === 'queued') toast.info('Saved on this phone — your workout and its points go when you are back online.');
+      if (how === 'queued') toast.info(pointsOn ? 'Saved on this phone — your workout and its points go when you are back online.' : 'Saved on this phone — your workout goes when you are back online.');
       const volume = sets.reduce((v, s) => v + (s.weightKg ?? 0) * (s.reps ?? 0), 0);
       const beat = routine.exercises.reduce((n, e) => {
         const prev = e.exerciseId ? last.get(e.exerciseId) ?? [] : [];

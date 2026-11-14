@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Users, CheckSquare, Target, Banknote,
   CreditCard, Dumbbell, CalendarDays, Calendar, Settings,
   Bell, BookOpen, History, MessagesSquare, ShoppingBag, LifeBuoy,
-  Trophy, ListChecks, Gift, Flag, TrendingUp, Smartphone, MailPlus, CalendarRange, Handshake, Wrench, Inbox, Clapperboard, MessageCircle,
+  Trophy, ListChecks, Gift, Flag, TrendingUp, Smartphone, MailPlus, CalendarRange, Handshake, Wrench, Inbox, Clapperboard, MessageCircle, UserPlus,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { StaffArea } from '../../lib/api/staffPermissions';
@@ -96,6 +96,8 @@ export const NAV: Entry[] = [
     children: [
       { label: 'Members', path: '/members', icon: Users, noun: 'members' },
       { label: 'Invitations', path: '/invitations', icon: MailPlus },
+      // Who brought whom (0125) — its own page, there whether or not the gym runs points (0253).
+      { label: 'Referrals', path: '/referrals', icon: UserPlus, module: 'referrals' },
       { label: 'Trainers', path: '/trainers', icon: Dumbbell, adminOnly: true, noun: 'trainers' },
     ],
   },
@@ -191,6 +193,7 @@ export const NAV_TIPS: Record<string, string> = {
   '/attendance': "Check people in and see who is in today. History has every day before",
   '/members': 'Everyone who belongs here: memberships, payments, approvals and archiving',
   '/invitations': 'Invite owners, desk staff and coaches by email',
+  '/referrals': 'Members who brought a friend, and the reward each one earned',
   '/trainers': 'Your coaches: their hours, sessions, ratings and who they coach',
   '/schedule': 'The class timetable: create classes, rooms and coaches',
   '/personal-training': 'Single sessions and monthly packages: what to decide, sessions, packages',

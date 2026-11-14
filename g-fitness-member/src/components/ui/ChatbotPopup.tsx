@@ -1,3 +1,4 @@
+import { usePointsOn } from '../../hooks/usePointsOn';
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -55,6 +56,7 @@ interface ChatbotPopupProps {
 }
 
 export default function ChatbotPopup({ isOpen, onClose }: ChatbotPopupProps) {
+  const pointsOn = usePointsOn();
   const navigate = useNavigate();
   const [messages, setMessages] = useState<Message[]>([
     { id: '1', text: "Hi! I'm your gym's assistant. How can I help today?", sender: 'bot', timestamp: new Date() },
@@ -114,7 +116,7 @@ export default function ChatbotPopup({ isOpen, onClose }: ChatbotPopupProps) {
     setTimeout(() => {
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
-        text: answerFor(q, ctx),
+        text: answerFor(q, { ...ctx, pointsOff: !pointsOn }),
         sender: 'bot',
         timestamp: new Date(),
       }]);

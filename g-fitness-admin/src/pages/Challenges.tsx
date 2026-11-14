@@ -13,6 +13,7 @@ import './attendance/att.css';
 import { showToast } from '../utils/toast';
 import { supabase } from '../lib/supabaseClient';
 import { todayKey, addDays, daysBetween, localDateKey } from '../utils/dates';
+import PointsOffNote from '../components/PointsOffNote';
 
 /**
  * Challenges & goals (0052/0124/0055, redrawn 2026-10-20 to the approved
@@ -256,6 +257,7 @@ export default function Challenges() {
               <input aria-label="Points" inputMode="numeric" value={form.reward_points} onChange={(e) => setForm({ ...form, reward_points: e.target.value.replace(/\D/g, '') })} /> points.
             </div>
             <div className="a-sub" style={{ marginBottom: 8 }}>{COUNTS[form.metric_key]}</div>
+            <div style={{ marginBottom: 8 }}><PointsOffNote what="finishing a challenge earns no points" /></div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
               <button type="button" className={`a-toggle ${form.repeatsWeekly ? '' : 'off'}`} aria-pressed={form.repeatsWeekly} aria-label="Repeat every week" onClick={() => setForm({ ...form, repeatsWeekly: !form.repeatsWeekly })} />
               <span className="a-sub">Repeat every week — a fresh start each Monday, everyone in, paid once a week</span>

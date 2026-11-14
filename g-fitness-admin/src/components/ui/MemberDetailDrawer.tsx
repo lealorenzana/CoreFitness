@@ -1305,6 +1305,7 @@ interface MemberRedemption {
 }
 
 function PointsSection({ memberId }: { memberId: string }) {
+  const pointsOn = moduleOn(useGymModules(), 'points');
   const [balance, setBalance] = useState<number | null>(null);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const [failed, setFailed] = useState(false);
@@ -1360,6 +1361,11 @@ function PointsSection({ memberId }: { memberId: string }) {
 
   return (
     <Section title="CORE Points">
+      {!pointsOn && (
+        <p className="text-xs mb-2" data-points-off style={{ color: 'var(--color-text-secondary)' }}>
+          Your gym runs no points now, so nothing new is earned. This is what they earned before, and any reward already approved can still be handed over.
+        </p>
+      )}
       <div className="rounded-lg p-3 mb-2"
         style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
         <div className="flex items-baseline gap-2">

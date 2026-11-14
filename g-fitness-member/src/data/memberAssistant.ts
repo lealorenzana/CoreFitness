@@ -90,6 +90,8 @@ export interface AssistantContext {
   access: PlanAccess | null;
   /** CORE Points balance (0051), or null when it could not be read. */
   points: number | null;
+  /** 0253: the gym switched Points off — nothing about earning or balances may be promised. */
+  pointsOff?: boolean;
 }
 
 export const EMPTY_CONTEXT: AssistantContext = {
@@ -311,6 +313,9 @@ function planAnswer(ctx: AssistantContext, wantToday: boolean): string {
  * can afford something the database will refuse.
  */
 function pointsAnswer(ctx: AssistantContext): string {
+  if (ctx.pointsOff) {
+    return 'Your gym does not use points.\n\nBadges, streaks and challenges still count your progress, and the front desk can tell you about any rewards the gym gives.';
+  }
   const gated = ctx.access?.excluded.some((e) => /point/i.test(e)) ?? false;
   if (gated) {
     return 'CORE Points are not part of your current plan.\n\nOn a plan that includes them you earn points for checking in, logging workouts and finishing challenges, then spend them on gym rewards. The front desk can tell you which plan adds it.';

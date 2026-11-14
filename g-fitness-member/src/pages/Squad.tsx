@@ -1,3 +1,4 @@
+import { usePointsOn } from '../hooks/usePointsOn';
 import { useCallback, useEffect, useState } from 'react';
 import { CheckCircle, Copy } from '@phosphor-icons/react';
 import { Page, PageTitle } from '../components/ui/page';
@@ -27,6 +28,7 @@ import {
  * does not join one.
  */
 export default function Squad() {
+  const pointsOn = usePointsOn();
   const [squad, setSquad] = useState<MySquad | null | undefined>(undefined);
   const [live, setLive] = useState(true);
   const [board, setBoard] = useState<SquadBoardRow[]>([]);
@@ -76,7 +78,7 @@ export default function Squad() {
   return (
     <Page>
       <PageTitle back fallback="/member/rewards" title={squad ? squad.name : 'Team'}
-        subtitle={squad ? 'Train together — hit the target, everyone gets the points' : 'Two to five friends, one weekly target'} />
+        subtitle={squad ? (pointsOn ? 'Train together — hit the target, everyone gets the points' : 'Train together — hit the weekly target as a team') : 'Two to five friends, one weekly target'} />
 
       {squad ? (
         <>
@@ -87,7 +89,7 @@ export default function Squad() {
             <ProgressBar style={{ marginTop: 12 }} fraction={Math.min(1, squad.days / Math.max(1, squad.target))} />
             <p style={{ fontSize: 12.5, marginTop: 8, color: squad.days >= squad.target ? 'var(--color-primary-300)' : 'var(--color-text-secondary)' }}>
               {squad.days >= squad.target
-                ? 'Target reached this week — the team points are yours.'
+                ? (pointsOn ? 'Target reached this week — the team points are yours.' : 'Target reached this week — well done, team.')
                 : `${squad.target - squad.days} more between you by Sunday.`}
             </p>
           </Panel>}

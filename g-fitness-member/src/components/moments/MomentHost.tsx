@@ -1,3 +1,4 @@
+import { usePointsOn } from '../../hooks/usePointsOn';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { Barbell, Check, Coins, FlagCheckered, Fire, Medal, Star, Target, TrendUp, UsersThree } from '@phosphor-icons/react';
@@ -66,10 +67,12 @@ function Layer({ still, children, onTap, canvas }: {
 }
 
 function Points({ points, step, at, total, why }: { points: number | null; step: number; at: number; total?: string | null; why: string }) {
+  const pointsOn = usePointsOn();
   // The gym's own word for its points (0213), never a bare number beside a coin.
   const word = pointsWord(useGymApp(), true);
   // Nothing was paid (a plan without points, or the rule is off): no points line at all.
-  if (points == null || points <= 0) return null;
+  // 0253: nor when the gym runs no points, even for a badge that names an amount.
+  if (!pointsOn || points == null || points <= 0) return null;
   return (
     <div className={on(step, at, 'mo-points mo-in')} data-moment-points>
       <Coins size={16} weight="fill" /> +{points} {word} {why}{total ? <span className="mo-tot">{total}</span> : null}

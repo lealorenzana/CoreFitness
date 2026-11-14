@@ -1,3 +1,4 @@
+import { usePointsOn } from '../hooks/usePointsOn';
 import { useCallback, useEffect, useState } from 'react';
 import { Medal } from '../components/ui/lively';
 import { useUrlState } from '../hooks/useUrlState';
@@ -84,6 +85,7 @@ function rarityLine(r: Rarity | undefined, role: AchievementRole): string | null
  * even if the number behind it has since dropped (a PT session re-dated).
  */
 export default function Achievements() {
+  const pointsOn = usePointsOn();
   const location = useLocation();
   const isTrainer = location.pathname.startsWith('/trainer');
   const role: AchievementRole = isTrainer ? 'trainer' : 'member';
@@ -281,7 +283,7 @@ export default function Achievements() {
                     // A secret badge (0206) keeps its name and rule to itself until it is yours.
                     const hidden = !have && !!def.secret;
                     const line = have || hidden ? null : amountLine(def, p, units);
-                    const pts = def.points ? ` · +${def.points} points` : '';
+                    const pts = def.points && pointsOn ? ` · +${def.points} points` : '';
                     return (
                       <LineRow
                         key={def.key}
@@ -321,7 +323,7 @@ export default function Achievements() {
       )}
 
       <GlassSheet open={!!detail} onClose={() => setDetail(null)} title={detail ? (detail.secret && !has(detail.key) ? 'Secret badge' : detail.title) : ''}
-        subtitle={detail ? `${tierStyle(detail.tier).label} · ${detail.category}${detail.points ? ` · +${detail.points} points` : ''}` : undefined}>
+        subtitle={detail ? `${tierStyle(detail.tier).label} · ${detail.category}${detail.points && pointsOn ? ` · +${detail.points} points` : ''}` : undefined}>
         {detail && (
           <AchievementDetail def={detail} have={has(detail.key)} unlockedOn={has(detail.key) ? unlockedOn(detail.key) : null}
             progress={progress?.get(detail.key)} units={units} rarity={rarityLine(rarity?.get(detail.key), role)}

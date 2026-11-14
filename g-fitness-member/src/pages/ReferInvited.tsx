@@ -5,7 +5,8 @@ import { LineRow, StatusPill } from '../components/ui/noc';
 import { SkeletonList } from '../components/ui/Skeleton';
 import Pager from '../components/ui/Pager';
 import { usePaged } from '../hooks/usePaging';
-import { myReferrals, type MyReferral } from '../lib/api/referrals';
+import { myReferrals, referralLine, type MyReferral } from '../lib/api/referrals';
+import { usePointsOn } from '../hooks/usePointsOn';
 
 /**
  * Every friend you have invited, twenty to a page — "See all" from Invite a
@@ -13,6 +14,7 @@ import { myReferrals, type MyReferral } from '../lib/api/referrals';
  */
 export default function ReferInvited() {
   const [list, setList] = useState<MyReferral[] | null>(null);
+  const pointsOn = usePointsOn();
   useEffect(() => {
     let alive = true;
     void myReferrals().then((r) => { if (alive) setList(r); });
@@ -29,9 +31,7 @@ export default function ReferInvited() {
           <section>
             {paged.rows.map((r, i) => (
               <LineRow key={i} icon={UserPlus} tone={r.status === 'rewarded' ? 'mine' : 'info'} title={r.friendName}
-                meta={r.status === 'rewarded'
-                  ? (r.points > 0 ? `Paid — ${r.points} points for you` : 'Paid — past this month’s five')
-                  : 'Joined — waiting for their first payment'}
+                meta={referralLine(r, pointsOn)}
                 action={<StatusPill label={r.status === 'rewarded' ? 'Paid' : 'Joined'} tone={r.status === 'rewarded' ? 'structure' : 'muted'} />}
                 last={i === paged.rows.length - 1} />
             ))}
