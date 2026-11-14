@@ -3,7 +3,10 @@ import { Tv } from 'lucide-react';
 import TvBoard from '../components/tv/TvBoard';
 import { loadTv, loadTvDesign, type TvData, type TvDesign } from '../lib/api/tv';
 
-const REFRESH_MS = 60_000;
+// Live (owner, 2026-11-14: "the lobby tv should be real time since its live"): the board's data every
+// 10 seconds; the reward sweeps and the gym's TV design once a minute (every 6th refresh).
+const REFRESH_MS = 10_000;
+const FULL_EVERY = 6;
 
 /**
  * The lobby TV (/tv): a full-screen board for a TV in the gym.
@@ -16,7 +19,7 @@ const REFRESH_MS = 60_000;
  * Since 0209 it is a Core Fitness plan feature and the gym designs it (Your app
  * → Lobby TV): a gym whose plan does not include it, or that switched it off,
  * is told so here rather than shown a blank screen. Before 0209 is pasted it
- * runs as it always did. The data refreshes every minute; the design with it.
+ * runs as it always did. The data refreshes every 10 seconds; the design and the reward sweeps every minute.
  */
 export default function LobbyTv() {
   const [data, setData] = useState<TvData | null>(null);
@@ -25,10 +28,12 @@ export default function LobbyTv() {
 
   useEffect(() => {
     let alive = true;
+    let tick = 0;
     const pull = async () => {
-      const [d, g] = await Promise.all([loadTv(), loadTvDesign()]);
+      const full = tick++ % FULL_EVERY === 0;
+      const [d, g] = await Promise.all([loadTv(full), full ? loadTvDesign() : Promise.resolve(undefined)]);
       if (!alive) return;
-      setData(d); setGate(g); setReady(true);
+      setData(d); if (g !== undefined) setGate(g); setReady(true);
     };
     void pull();
     const refresh = window.setInterval(() => { void pull(); }, REFRESH_MS);

@@ -36,10 +36,11 @@ const rpcRows = async <T,>(fn: string): Promise<T[]> => {
   return error || !Array.isArray(data) ? [] : (data as T[]);
 };
 
-export async function loadTv(): Promise<TvData> {
+export async function loadTv(settle = true): Promise<TvData> {
   // Pay anything now due (squad weeks, the gym goal) — the TV is open all day,
   // which makes it the most reliable sweep there is when pg_cron is not set up.
-  await Promise.all([
+  // Once a minute is plenty for that; the 10-second live refresh skips it (settle = false).
+  if (settle) await Promise.all([
     supabase.rpc('settle_squads').then(() => undefined, () => undefined),
     supabase.rpc('settle_gym_goals').then(() => undefined, () => undefined),
   ]);
