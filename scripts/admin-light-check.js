@@ -25,6 +25,9 @@ async (page) => {
     user: { id: 'u1', aud: 'authenticated', role: 'authenticated', email: 'lea@corefitness.test', app_metadata: {}, user_metadata: {} },
   };
   await page.addInitScript(([k, s]) => localStorage.setItem(k, JSON.stringify(s)), [KEY, session]);
+  // The first-visit tours (0221) answer my_tours_seen's empty list by covering the screen; the dashboard's
+  // ate the sun/moon click. CI's runner sets this too — set here so any runner gives the same result.
+  await page.addInitScript(() => { window.__CF_NO_TOURS = true; });
 
   const now = new Date();
   const iso = (d, h = 9) => { const x = new Date(now); x.setDate(now.getDate() + d); x.setHours(h, 5, 0, 0); return x.toISOString(); };

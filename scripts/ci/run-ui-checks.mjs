@@ -79,7 +79,8 @@ for (const check of checks) {
     const fn = (0, eval)(`(${code}\n)`);
     const result = await Promise.race([
       fn(page),
-      new Promise((_, rej) => setTimeout(() => rej(new Error('timed out after 180 s')), 180_000)),
+      // 180 s unless the manifest gives the check its own `timeoutSec` (a sweep of every route takes longer).
+      new Promise((_, rej) => setTimeout(() => rej(new Error(`timed out after ${check.timeoutSec ?? 180} s`)), (check.timeoutSec ?? 180) * 1000)),
     ]);
     if (result && typeof result === 'object' && Array.isArray(result.failures)) {
       detail = result.summary ?? '';

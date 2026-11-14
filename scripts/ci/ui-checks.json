@@ -1,5 +1,5 @@
 {
-  "_comment": "Fixture checks run by run-ui-checks.mjs and CI. app = which dev server the check needs.",
+  "_comment": "Fixture checks run by run-ui-checks.mjs and CI. app = which dev server the check needs; timeoutSec (optional) replaces the 180 s limit.",
   "checks": [
     {
       "file": "workout-run-check.js",
@@ -63,7 +63,8 @@
     },
     {
       "file": "admin-light-check.js",
-      "app": "admin"
+      "app": "admin",
+      "timeoutSec": 420
     },
     {
       "file": "member-renew-paymongo-check.js",

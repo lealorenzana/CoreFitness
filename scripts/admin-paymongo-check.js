@@ -168,7 +168,11 @@ async (page) => {
   await page.locator('[data-pay-confirmed]').waitFor({ timeout: 10000 }).catch(() => {});
   out.push('…then says it was paid: ' + ((await page.locator('[data-pay-confirmed]').count()) === 1 ? 'yes' : 'MISSING'));
 
+  // The Look tab is four steps since 2026-11-02 and opens on 1 · Colour pair; the two
+  // colour pickers (and the purchase) live on 2 · Your own colours.
+  const ownColours = async () => { await page.locator('[data-look-step="own"]').click(); await page.waitForTimeout(300); };
   await page.goto('http://localhost:5174/gym-app?tab=look', { waitUntil: 'domcontentloaded' });
+  await ownColours();
   await page.locator('[data-buy-colours]').first().waitFor({ timeout: 10000 }).catch(() => {});
   out.push('a colour code is a one-time purchase, presets free: ' + ((await page.locator('[data-buy-colours]').count()) >= 1
     && (await page.locator('[aria-label="Colour code"]').count()) === 0 ? 'yes' : 'MISSING'));
@@ -178,6 +182,7 @@ async (page) => {
 
   // ---- back from PayMongo: unlocked in place, no reload ----
   await page.goto('http://localhost:5174/gym-app?tab=look&paid=co2', { waitUntil: 'domcontentloaded' });
+  await ownColours();
   await page.locator('[data-colours-confirming]').waitFor({ timeout: 10000 }).catch(() => {});
   out.push('back from PayMongo it says it is confirming: ' + ((await page.locator('[data-colours-confirming]').count()) === 1 ? 'yes' : 'MISSING'));
   COLOURS_PAID = true;
