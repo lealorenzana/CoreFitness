@@ -1,10 +1,11 @@
+import { GuideButton } from './guides/GuidePlayer';
 import { useEffect, useState } from 'react';
 import { BellRinging } from '@phosphor-icons/react';
 import { NocButton, Panel } from './ui/noc';
 import { toast } from './ui/Toast';
 import { enablePush, isPushEnabled, pushSupport, refreshPushKey } from '../lib/api/push';
 import { errorMessage } from '../utils/errorMessage';
-import { useT } from '../lib/i18n';
+import { useLanguage, useT } from '../lib/i18n';
 
 /** "Not now" lasts until the app is opened again — memory only, never storage. */
 let dismissedThisSession = false;
@@ -21,6 +22,7 @@ let dismissedThisSession = false;
  */
 export default function PushPrompt() {
   const t = useT();
+  const lang = useLanguage();
   const [state, setState] = useState<'hidden' | 'ask' | 'blocked'>('hidden');
   const [busy, setBusy] = useState(false);
 
@@ -73,6 +75,7 @@ export default function PushPrompt() {
                 onClick={() => { dismissedThisSession = true; setState('hidden'); }}>
                 {t('Not now')}
               </NocButton>
+              <GuideButton id="notifications" lang={lang} label={t('How?')} />
             </div>
           )}
         </div>

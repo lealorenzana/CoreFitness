@@ -1,3 +1,4 @@
+import { GuideButton } from '../components/guides/GuidePlayer';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AndroidLogo, AppleLogo, Compass, DotsThreeVertical, Export, PlusSquare } from '@phosphor-icons/react';
@@ -81,6 +82,7 @@ export default function GetApp() {
   return (
     <Page>
       <PageTitle title="Get the app" subtitle="For members and coaches of every gym on Core Fitness" back fallback="/" />
+      <div style={{ margin: '-4px 0 14px' }}><GuideButton id="install-app" label="Watch how to install" /></div>
 
       <SectionHead title="1. Install it" />
       <TextTabs<Platform> label="Your phone" active={tab} onChange={setTab} tabs={[

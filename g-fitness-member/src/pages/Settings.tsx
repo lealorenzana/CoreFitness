@@ -1,3 +1,4 @@
+import { GuideButton } from '../components/guides/GuidePlayer';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useGymApp } from '../hooks/useGymApp';
@@ -422,6 +423,7 @@ export default function Settings() {
             {/* Notifications — every switch here does something observable. */}
             <section>
               <SectionHead title={t('Notifications')} />
+              <div style={{ margin: '6px 0 4px' }}><GuideButton id="notifications" lang={lang} label={t('How to turn them on')} /></div>
               <div style={{ marginTop: 2 }}>
                 <SwitchRow
                   label="Push notifications"
