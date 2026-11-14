@@ -102,6 +102,7 @@ const FIL: Record<string, string> = {
   "No sessions yet. Book one with any coach.": "Wala pang session. Mag-book sa kahit sinong coach.",
   "With": "Kasama si",
   "Your coach": "Coach mo",
+  "Book with": "Mag-book kay",
   "Chat": "Chat",
   "done": "tapos na",
   "waiting for them to say yes": "hinihintay ang oo niya",

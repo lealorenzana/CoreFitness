@@ -29,10 +29,14 @@ const POLL_MS = 6000;
  * The gym can switch chat off (`chat`): the room still holds notes and
  * routines, and says why there is no box to type in.
  */
-export default function TimelineTab({ room, mode, with: withPerson }: {
+export default function TimelineTab({ room, mode, with: withPerson, docked = false, onMute }: {
   room: Room | null; mode: 'trainer' | 'member';
   /** Who the chat is with, when the screen knows (a trainee's place, 2026-10-28); with no room, just the messages. */
   with?: { id: string; name: string };
+  /** In a chat screen (.noc-chat): the messages scroll here and the box to type in is docked under them. */
+  docked?: boolean;
+  /** The screen shows mute in its own settings (2026-11-14): given, the line under the messages goes. */
+  onMute?: (m: { muted: boolean; toggle: () => void } | null) => void;
 }) {
   const navigate = useNavigate();
   const withId = withPerson?.id ?? null, withName = withPerson?.name ?? '';
@@ -172,6 +176,20 @@ export default function TimelineTab({ room, mode, with: withPerson }: {
     }
   };
 
+  // Mute, handed to the screen's own settings when it has them (2026-11-14).
+  useEffect(() => {
+    if (!onMute) return;
+    if (!chatOn || !conv) { onMute(null); return; }
+    const c = conv;
+    onMute({
+      muted: c.muted,
+      toggle: () => {
+        void setMuted(c.id, !c.muted).then(() => setConv({ ...c, muted: !c.muted }))
+          .catch((err) => toast.error(errorMessage(err, 'Could not change that')));
+      },
+    });
+  }, [conv, chatOn, onMute]);
+
   if (items === undefined) return <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Loading…</p>;
   if (items === null) {
     return <p style={{ fontSize: 13, color: 'var(--color-secondary)' }}>This room's timeline could not be loaded. Pull to refresh, or try again later.</p>;
@@ -199,8 +217,29 @@ export default function TimelineTab({ room, mode, with: withPerson }: {
   );
   const when = (iso: string) => new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 
+  // Messenger style (2026-11-14): a solid bar docked to the bottom edge, full width — not a glass pill over the messages.
+  const composer = chatOn ? (
+        <div className={docked ? 'noc-composer' : 'noc-composer sticky'} data-composer>
+
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <TextArea rows={2} value={draft} aria-label="Message" placeholder={other ? `Message ${other.name.split(' ')[0]}` : 'Write a message'}
+              onChange={(e) => setDraft(e.target.value.slice(0, 2000))}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } }} />
+          </div>
+          <button type="button" onClick={() => void send()} disabled={busy || !draft.trim() || !other} aria-label="Send"
+            className="flex-none flex items-center justify-center"
+            style={{ width: 44, height: 44, borderRadius: 22, background: 'var(--color-secondary)', color: 'var(--nb-action-fg, #000)',
+              opacity: busy || !draft.trim() ? 0.45 : 1 }}>
+            <PaperPlaneRight size={20} weight="fill" />
+          </button>
+        </div>
+      ) : (
+        <p style={{ fontSize: 12.5, color: 'var(--color-text-muted)' }}>Messaging is off at this gym — notes and routines still arrive here.</p>
+      );
+
   return (
-    <div className="flex flex-col" style={{ gap: 8 }} data-timeline>
+    <>
+    <div className={docked ? 'noc-chat-scroll flex flex-col' : 'flex flex-col'} style={{ gap: 8 }} data-timeline>
       {more && shown.length >= 30 && (
         <button type="button" onClick={() => void loadEarlier()} style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-primary-300)', padding: '6px 0' }}>
           Earlier
@@ -276,33 +315,15 @@ export default function TimelineTab({ room, mode, with: withPerson }: {
       ))}
       <div ref={bottom} />
 
-      {chatOn && conv && (
+      {chatOn && conv && !onMute && (
         <button type="button" onClick={() => void toggleMute()} data-mute={conv.muted}
           style={{ alignSelf: 'flex-end', fontSize: 12.5, fontWeight: 600, color: 'var(--color-text-muted)', padding: '2px 0' }}>
           {conv.muted ? 'Muted — turn alerts back on' : 'Mute alerts from this chat'}
         </button>
       )}
-      {chatOn ? (
-        // A frosted bar (the owner, 2026-11-07): the old strip was the page's solid ground — a black band in dark,
-        // a pale one in light, since the page is glass.
-        <div className="flex items-end" data-composer style={{ gap: 8, position: 'sticky', bottom: 8, marginTop: 8, padding: 8, borderRadius: 20,
-          background: 'var(--bar-glass)', backdropFilter: 'blur(18px) saturate(150%)', WebkitBackdropFilter: 'blur(18px) saturate(150%)',
-          border: '1px solid rgb(var(--hair-rgb, 233 233 237) / 0.12)', boxShadow: '0 12px 30px -16px rgba(0,0,0,0.45)' }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <TextArea rows={2} value={draft} aria-label="Message" placeholder={other ? `Message ${other.name.split(' ')[0]}` : 'Write a message'}
-              onChange={(e) => setDraft(e.target.value.slice(0, 2000))}
-              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } }} />
-          </div>
-          <button type="button" onClick={() => void send()} disabled={busy || !draft.trim() || !other} aria-label="Send"
-            className="flex-none flex items-center justify-center"
-            style={{ width: 44, height: 44, borderRadius: 22, background: 'var(--color-secondary)', color: 'var(--nb-action-fg, #000)',
-              opacity: busy || !draft.trim() ? 0.45 : 1 }}>
-            <PaperPlaneRight size={20} weight="fill" />
-          </button>
-        </div>
-      ) : (
-        <p style={{ fontSize: 12.5, color: 'var(--color-text-muted)' }}>Messaging is off at this gym — notes and routines still arrive here.</p>
-      )}
+      {!docked && composer}
     </div>
+    {docked && composer}
+    </>
   );
 }

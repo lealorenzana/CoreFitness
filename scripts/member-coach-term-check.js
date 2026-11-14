@@ -351,9 +351,12 @@ async (page) => {
   DB.public_trainers[0].presence = 'on_leave';
   await go('/member/coach');
   t = await text();
-  out.push('active: until when, and the chat: ' + (/Until/.test(t) && /Open chat/.test(t) ? 'yes' : 'MISSING'));
+  out.push('active: until when, and the chat: ' + (/until/.test(t) && /Message /.test(t) ? 'yes' : 'MISSING'));
   out.push('the coach on leave is said: ' + ((await page.locator('[data-coach-away]').count()) === 1 ? 'yes' : 'MISSING'));
-  await page.getByRole('button', { name: /Pick a stand-in coach/ }).click();
+  // The stand-in is in Manage package since 2026-11-14.
+  await page.locator('[data-manage-package]').click();
+  await page.waitForTimeout(500);
+  await page.locator('[data-manage-sheet]').getByText('Pick a stand-in coach').click();
   await page.waitForTimeout(600);
   t = await text();
   out.push('the stand-ins are coaches of the same specialty: ' + (/Ben Cruz/.test(t) && !/Yoga Yu/.test(t) ? 'yes' : 'MISSING'));

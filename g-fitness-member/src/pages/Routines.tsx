@@ -95,7 +95,7 @@ export default function Routines() {
   };
 
   const title = (
-    <PageTitle back fallback="/member/workouts/today" title="Routines"
+    <PageTitle back fallback="/member/book-class?tab=workout" title="Routines"
       subtitle="Saved workouts you repeat — yours, your coach's and the assistant's" />
   );
 

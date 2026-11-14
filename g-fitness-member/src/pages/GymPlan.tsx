@@ -118,7 +118,7 @@ export default function GymPlan() {
 
   return (
     <Page>
-      <PageTitle back fallback="/member/workouts/today" title="Plan your week"
+      <PageTitle back fallback="/member/book-class?tab=workout" title="Plan your week"
         subtitle={loading ? 'Pick your days and when to be reminded'
           : saved.length === 0 ? 'No days chosen yet'
           : `${saved.length} ${saved.length === 1 ? 'day' : 'days'} a week · reminder at ${formatRemindAt(view!.remindAt)}`} />

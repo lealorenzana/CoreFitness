@@ -29,12 +29,13 @@ export default function CoachChat() {
 
   if (state === undefined) return <Page><PageTitle back fallback="/member/book-class?tab=coach" title="Chat" /><SkeletonList count={3} /></Page>;
   if (state.roomId) return <Navigate to={`/member/rooms/${state.roomId}`} replace />;
+  // A chat screen, Messenger style (2026-11-14): the header stays, the messages scroll, the box is docked below.
   return (
-    <Page>
-      <PageTitle back fallback="/member/book-class?tab=coach" title={state.name ?? 'Your coach'} subtitle="Single sessions" />
-      <div data-coach-chat={trainerId}>
-        <TimelineTab room={null} mode="member" with={{ id: trainerId, name: state.name ?? 'Your coach' }} />
+    <div className="noc-chat" data-coach-chat={trainerId}>
+      <div className="noc-chat-head">
+        <PageTitle back fallback="/member/book-class?tab=coach" title={state.name ?? 'Your coach'} subtitle="Single sessions" />
       </div>
-    </Page>
+      <TimelineTab room={null} mode="member" with={{ id: trainerId, name: state.name ?? 'Your coach' }} docked />
+    </div>
   );
 }

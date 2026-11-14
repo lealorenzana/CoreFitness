@@ -81,8 +81,13 @@ async (page) => {
   out.push("the coach's note is marked seen: " + (CALLS.some(([f, b]) => f === 'mark_feedback' && b.p_id === 'n1' && b.p_done === null) ? 'yes' : 'MISSING'));
   out.push('"Seen" under my last message once the coach opened the chat: ' + ((await page.locator('[data-seen]').count()) === 1 ? 'yes' : 'MISSING'));
   out.push('the chat is marked read when the room is looked at: ' + (CALLS.some(([f]) => /mark.*read|read/.test(f) && f !== 'my_conversations') ? 'yes' : 'MISSING ' + CALLS.map(([f]) => f).join(',')));
-  await page.locator('[data-mute]').click();
+  // Mute lives in Chat settings (⋮) since 2026-11-14, with the package.
+  await page.locator('[data-room-settings]').click();
+  await page.waitForTimeout(500);
+  await page.locator('[data-room-settings-sheet]').getByText('Mute alerts from this chat').click();
   await page.waitForTimeout(400);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(500);
   out.push('alerts from the chat can be muted: ' + (CALLS.some(([f, b]) => /mute/.test(f) && b.p_muted === true) ? 'yes' : 'MISSING ' + CALLS.map(([f]) => f).join(',')));
   await page.getByRole('button', { name: 'Mark as done' }).click();
   await page.waitForTimeout(500);

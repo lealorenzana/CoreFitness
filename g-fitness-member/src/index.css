@@ -1532,6 +1532,22 @@ img { -webkit-user-drag: none; user-select: none; }
   .rg-shine, .rg-tag, .rg-pane { animation: none; }
 }
 
+/* A chat screen, Messenger style (2026-11-14): the header and its tabs stay put, the messages scroll between,
+   and the box to type in is docked to the bottom edge — solid, full width, never floating over the messages.
+   The shells give these pages the whole page area (Layout/TrainerLayout FILLS). */
+.noc-chat { height: 100%; display: flex; flex-direction: column; min-height: 0; }
+.noc-chat-head { flex: none; display: flex; flex-direction: column; gap: 10px; padding-bottom: 10px;
+  margin: 0 calc(-1 * var(--gutter)); padding-left: var(--gutter); padding-right: var(--gutter);
+  border-bottom: 1px solid rgb(var(--hair-rgb, 233 233 237) / 0.08); }
+.noc-chat-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  margin: 0 calc(-1 * var(--gutter)); padding: 12px var(--gutter) 16px; scrollbar-width: none; }
+.noc-chat-scroll::-webkit-scrollbar { display: none; }
+.noc-composer { flex: none; display: flex; align-items: flex-end; gap: 8px;
+  margin: 0 calc(-1 * var(--gutter)); padding: 8px var(--gutter) 10px;
+  background: var(--surface-solid); border-top: 1px solid rgb(var(--hair-rgb, 233 233 237) / 0.1); }
+/* Not in a chat screen (a page that scrolls as a whole): the same bar, held to the bottom while scrolling. */
+.noc-composer.sticky { position: sticky; bottom: 0; z-index: 2; margin-top: 8px; }
+
 /* The glass sheets' roles (components/ui/glass.ts) — dark here, frosted white below. */
 :root {
   --glass-bg: linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 9%, rgba(14, 14, 20, 0.95)) 0%, rgba(9, 9, 13, 0.97) 100%);

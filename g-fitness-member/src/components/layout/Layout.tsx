@@ -67,7 +67,8 @@ const IMMERSIVE = /^\/member\/(track\/session\/|reels\/?$|gym-chat\/?$)/;
  * (2026-10-04). With `min-h-full` the page grew with every reply, so <main>
  * scrolled the whole thing and pushed the composer off the bottom.
  */
-const FILLS = /^\/member\/chatbot\/?$/;
+// …and the chat screens (2026-11-14): a package room and a single-sessions chat, Messenger style.
+const FILLS = /^\/member\/(chatbot\/?$|rooms\/[^/]+\/?$|chat\/[^/]+\/?$)/;
 
 export default function Layout() {
   const location = useLocation();

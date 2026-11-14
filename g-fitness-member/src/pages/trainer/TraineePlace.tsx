@@ -78,15 +78,21 @@ export default function TraineePlace() {
     finally { setBusy(false); }
   };
 
+  // A chat screen, Messenger style (2026-11-14), the same as the member's: the name and tabs stay put, Chat's
+  // messages scroll with the box docked under them, and the other tabs scroll below the tabs.
   return (
-    <Page className="noc-slide-in">
-      <div data-trainee-place={room ? 'package' : 'single'}>
-        <PageTitle back fallback={fallback} title={name} subtitle={subtitle} />
+    <div className="noc-chat noc-slide-in">
+      <div className="noc-chat-head">
+        <div data-trainee-place={room ? 'package' : 'single'}>
+          <PageTitle back fallback={fallback} title={name} subtitle={subtitle} />
+        </div>
+        <TextTabs<Tab> label={`With ${name.split(' ')[0]}`} tabs={tabs} active={tab}
+          onChange={(t) => setParams(t === 'chat' ? {} : { tab: t }, { replace: true })} />
       </div>
-      <TextTabs<Tab> label={`With ${name.split(' ')[0]}`} tabs={tabs} active={tab}
-        onChange={(t) => setParams(t === 'chat' ? {} : { tab: t }, { replace: true })} />
 
-      {tab === 'chat' && <TimelineTab room={room} mode="trainer" with={{ id: memberId, name }} />}
+      {tab === 'chat' && <TimelineTab room={room} mode="trainer" with={{ id: memberId, name }} docked />}
+      {tab !== 'chat' && (
+      <div className="noc-chat-scroll flex flex-col" style={{ gap: 'var(--stack)' }}>
       {tab === 'classwork' && room && <ClassworkTab room={room} mode="trainer" />}
       {tab === 'progress' && room && <ProgressTab room={room} />}
       {tab === 'about' && (
@@ -113,6 +119,8 @@ export default function TraineePlace() {
           )}
         </>
       )}
-    </Page>
+      </div>
+      )}
+    </div>
   );
 }

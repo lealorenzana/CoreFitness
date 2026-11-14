@@ -1,7 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { previousPath } from '../../lib/navTrail';
-import { tabForPath } from '../layout/memberNav';
-import { trainerAreaFor } from '../layout/trainerNav';
+import { areaOf, backTarget, markBack, previousPath } from '../../lib/navTrail';
+import { TABS } from '../layout/memberNav';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft } from '@phosphor-icons/react';
 import { cn } from '../../lib/utils';
@@ -100,17 +99,22 @@ export function PageTitle({
       {back && (
         <button
           onClick={() => {
-            // Back goes up within the tab you are in (the owner, 2026-11-07): when the screen before this one is in
-            // a different bottom-bar tab (Routines opened from You), Back lands on this screen's parent in its own
-            // tab, not on You. In the same tab it steps back exactly as before. Nothing behind: the parent.
-            const prev = previousPath();
-            if (!prev || window.history.length <= 1) { navigate(fallback); return; }
-            // The member's bottom-bar tabs, or the coach's areas (trainerNav) — the same rule in both apps.
-            const area = (path: string) => (path.startsWith('/trainer') ? trainerAreaFor(path) : tabForPath(path));
-            const here = area(location.pathname);
-            const before = area(prev.split('?')[0]);
-            if (here && before && before !== here && area(fallback.split('?')[0]) === here) { navigate(fallback, { replace: true }); return; }
-            navigate(-1);
+            // Back steps back within the tab you are in (lib/navTrail.ts, 2026-11-14): each bottom-bar tab keeps its
+            // own stack, the way the big apps do, so a visit to Today in between never becomes Train's Back.
+            const here = location.pathname + location.search;
+            const target = backTarget(here);
+            if (target) {
+              // The browser's own previous page is the same screen: a real step back keeps history tidy.
+              if (previousPath() === target && window.history.length > 1) { navigate(-1); return; }
+              markBack(target);
+              navigate(target, { replace: true });
+              return;
+            }
+            // First screen in this tab: up to its parent — the page's own when it is in this tab, else the tab's main screen.
+            const area = areaOf(location.pathname);
+            const up = areaOf(fallback) === area ? fallback : (TABS.find((t) => `m:${t.id}` === area)?.path ?? fallback);
+            markBack(up);
+            navigate(up, { replace: true });
           }}
           className="self-start flex items-center"
           // 44px tall to a thumb; the visible row is the 13px line inside it.

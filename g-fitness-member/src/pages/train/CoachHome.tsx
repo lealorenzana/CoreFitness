@@ -4,6 +4,7 @@ import { CalendarCheck, ChatCircleText, HourglassMedium } from '@phosphor-icons/
 import { LineRow, NocButton, SeeAll, SectionHead } from '../../components/ui/noc';
 import { SkeletonList } from '../../components/ui/Skeleton';
 import MyPackage from '../../components/coaching/MyPackage';
+import type { Coaching } from '../../lib/api/coaching';
 import { getCurrentMemberId, isUpcoming, listMyBookings, type MyBooking } from '../../services/bookingService';
 import { useT } from '../../lib/i18n';
 
@@ -27,6 +28,8 @@ export default function CoachHome() {
   const navigate = useNavigate();
   const t = useT();
   const [rows, setRows] = useState<MyBooking[] | null | undefined>(undefined);
+  /** The package running now (2026-11-14): one coach, so one card — no session list, no Find a coach. */
+  const [pkg, setPkg] = useState<Coaching | null | undefined>(undefined);
 
   useEffect(() => {
     let alive = true;
@@ -48,14 +51,22 @@ export default function CoachHome() {
   const preview = [...coming.slice(0, 3), ...past.slice(0, Math.max(0, 4 - Math.min(coming.length, 3)))];
 
   const chat = (r: MyBooking) => r.trainerId && navigate(`/member/chat/${r.trainerId}`);
+  // With a package: the next session with this coach (or their stand-in), worded for the card.
+  const mineCoaches = pkg ? [pkg.trainerId, ...(pkg.standin ? [pkg.standin.trainerId] : [])] : [];
+  const nextWithCoach = pkg && rows ? coming.find((r) => r.trainerId && mineCoaches.includes(r.trainerId)) ?? null : undefined;
+  const nextWords = nextWithCoach === undefined ? undefined
+    : nextWithCoach ? `${when(nextWithCoach.startsAt)}${nextWithCoach.status === 'pending' ? ` · ${t('waiting for them to say yes')}` : ''}` : null;
 
   return (
     <div className="flex flex-col" style={{ gap: 18 }}>
       <div>
-        <SectionHead title={t('Your package')} />
-        <MyPackage />
+        <SectionHead title={pkg ? t('Your coach') : t('Your package')} />
+        <MyPackage next={pkg ? nextWords : undefined} onCurrent={setPkg} />
       </div>
 
+      {pkg ? (
+        rows && rows.length > 0 && <SeeAll label={t('All your sessions')} count={rows.length} onClick={() => navigate('/member/sessions')} />
+      ) : (
       <section aria-label={t('Your sessions')} data-coach-sessions>
         <SectionHead title={t('Your sessions')} />
         {rows === undefined ? <SkeletonList count={2} />
@@ -75,11 +86,22 @@ export default function CoachHome() {
           })}
         {rows && rows.length > 0 && <SeeAll label={t('All your sessions')} count={rows.length} onClick={() => navigate('/member/sessions')} />}
       </section>
+      )}
 
-      <div className="grid grid-cols-2" style={{ gap: 8 }}>
-        <NocButton variant="fill" onClick={() => navigate('/member/book-session')}>{t('Book a session')}</NocButton>
-        <NocButton variant="ghost" onClick={() => navigate('/member/trainers')}>{t('Find a coach')}</NocButton>
-      </div>
+      {pkg ? (
+        // On a package: one coach. Book with them (or their stand-in) only; Switch coach lives in Manage package.
+        <div data-book-with-coach>
+          <NocButton variant="fill" className="w-full"
+            onClick={() => navigate('/member/book-session', { state: { trainerId: pkg.standin ? undefined : pkg.trainerId, onlyTrainers: mineCoaches } })}>
+            {t('Book with')} {pkg.trainerName.split(' ')[0]}
+          </NocButton>
+        </div>
+      ) : pkg === null && (
+        <div className="grid grid-cols-2" style={{ gap: 8 }}>
+          <NocButton variant="fill" onClick={() => navigate('/member/book-session')}>{t('Book a session')}</NocButton>
+          <NocButton variant="ghost" onClick={() => navigate('/member/trainers')}>{t('Find a coach')}</NocButton>
+        </div>
+      )}
     </div>
   );
 }

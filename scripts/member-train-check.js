@@ -326,33 +326,39 @@ async (page) => {
   // ── Coach: your package, your sessions, book one ──
   await go('/member/book-class?tab=coach');
   m = await main();
-  say('Coach: your package, then your sessions', (await selected()) === 'Coach' && m.indexOf('Your package') >= 0 && m.indexOf('Your sessions') > m.indexOf('Your package'), m.slice(0, 300));
+  // On a package (2026-11-14): one coach card — no list of sessions with the same coach, no Find a coach.
+  say('Coach: your coach, as one card', (await selected()) === 'Coach' && m.indexOf('Your coach') >= 0 && (await page.locator('[data-coach-card]').count()) === 1, m.slice(0, 300));
   say('…the package with its coach, length and unread', /Rae Santos/.test(m) && /Package · 3 months/.test(m) && (await page.locator('[data-package-unread]').innerText().catch(() => '')) === '2', m.slice(0, 300));
   // Started 5 days ago, ends in 85: about 6% through.
   const pct = Number(await page.locator('[data-my-package] [role="progressbar"]').first().getAttribute('aria-valuenow').catch(() => 'NaN'));
-  say('…how far through, as a real bar', pct >= 4 && pct <= 8 && /Until/.test(m), String(pct));
-  const sess = await page.locator('[data-coach-sessions]').innerText();
-  say('…sessions coming and past, each with its coach', /With Rae Santos · confirmed/.test(sess) && /With Ben Cruz · waiting for them to say yes/.test(sess) && /With Ben Cruz · done/.test(sess), sess.replace(/\s+/g, ' ').slice(0, 300));
-  say('…Book a session and Find a coach', (await page.getByRole('button', { name: 'Book a session', exact: true }).count()) === 1
-    && (await page.getByRole('button', { name: 'Find a coach', exact: true }).count()) === 1);
+  const pctWords = await page.locator('[data-package-percent]').innerText().catch(() => '');
+  say('…how far through, as a real bar and a number', pct >= 4 && pct <= 8 && /^\d+%$/.test(pctWords) && /3 months package · until/.test(m), `${pct} ${pctWords}`);
+  const nextLine = await page.locator('[data-next-session]').innerText().catch(() => '');
+  say('…the next session with this coach (not one with another coach)', /^Next session: /.test(nextLine), nextLine);
+  say('…no session list and no Find a coach', (await page.locator('[data-coach-sessions]').count()) === 0
+    && (await page.getByRole('button', { name: 'Find a coach', exact: true }).count()) === 0
+    && (await page.getByRole('button', { name: 'Book a session', exact: true }).count()) === 0, m.slice(0, 300));
+  say('…every session is still one tap away', /All your sessions/.test(m));
+  say('…Book with Rae', (await page.locator('[data-book-with-coach]').innerText().catch(() => '')).trim() === 'Book with Rae');
   say('…no word "booking" on the tab', !/booking/i.test(m), m.slice(0, 300));
   await page.screenshot({ path: 'shots/member-train-coach.png', fullPage: true });
 
-  // A session with the package coach opens the package's room; with anyone else, the chat on its own.
-  await page.locator('[data-coach-sessions]').getByText(/With Rae Santos/).first().click();
+  // Message Rae opens the package's room on Chat; a single-session coach has their own chat.
+  await page.locator('[data-message-coach]').click();
   await page.waitForTimeout(1600);
-  say('a session with your package coach opens the package room, on Chat', /\/member\/rooms\/rm1/.test(page.url()) && (await selected()) === 'Chat', `${page.url()} ${await selected()}`);
-  await go('/member/book-class?tab=coach');
-  await page.locator('[data-coach-sessions]').getByText(/With Ben Cruz · done/).first().click();
-  await page.waitForTimeout(1600);
-  say('a single-session coach opens their chat', /\/member\/chat\/t2$/.test(page.url()) && (await page.locator('[data-coach-chat="t2"]').count()) === 1
+  say('Message Rae opens the package room, on Chat', /\/member\/rooms\/rm1/.test(page.url()) && (await selected()) === 'Chat', `${page.url()} ${await selected()}`);
+  await go('/member/chat/t2');
+  say('a single-session coach opens their chat', (await page.locator('[data-coach-chat="t2"]').count()) === 1
     && /Bring water/.test(await main()), `${page.url()} ${(await main()).slice(0, 200)}`);
   await page.screenshot({ path: 'shots/member-coach-chat.png' });
 
+  // Book with Rae: their hours only — never the gym's whole list.
   await go('/member/book-class?tab=coach');
-  await page.getByRole('button', { name: 'Book a session', exact: true }).click();
-  await page.waitForTimeout(1500);
-  say('Book a session is its own page', /\/member\/book-session$/.test(page.url()) && /Book a session/.test(await main()), page.url());
+  await page.locator('[data-book-with-coach]').click();
+  await page.waitForTimeout(1800);
+  const bookText = await main();
+  say('Book with Rae opens Book a session on Rae, with no way to every coach', /\/member\/book-session$/.test(page.url()) && /Rae Santos/.test(bookText)
+    && !/All coaches/.test(bookText), `${page.url()} ${bookText.slice(0, 200)}`);
   await go('/member/sessions');
   m = await main();
   say('See all: every session, with no Classes chip while classes are off', /Your sessions/.test(m) && !/Classes/.test(m), m.slice(0, 300));

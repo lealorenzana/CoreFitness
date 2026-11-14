@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Page, PageTitle } from '../../components/ui/page';
-import { NocButton, TextTabs } from '../../components/ui/noc';
+import { LineRow, TextTabs } from '../../components/ui/noc';
+import GlassSheet from '../../components/ui/GlassSheet';
+import { BellSimple, BellSimpleSlash, DotsThreeVertical, Handshake, LockSimple, SignOut } from '@phosphor-icons/react';
 import { SkeletonList } from '../../components/ui/Skeleton';
 import { toast } from '../../components/ui/Toast';
 import { errorMessage } from '../../utils/errorMessage';
@@ -29,6 +31,9 @@ export default function Room() {
   const mode: 'trainer' | 'member' = pathname.startsWith('/trainer') ? 'trainer' : 'member';
   const [room, setRoom] = useState<RoomT | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
+  /** Chat settings (2026-11-14): mute, the package, and — for a room that is not a package — leaving it. */
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [mute, setMute] = useState<{ muted: boolean; toggle: () => void } | null>(null);
 
   const load = useCallback(async () => {
     const all = await myRooms();
@@ -63,61 +68,80 @@ export default function Room() {
   const isTrainer = mode === 'trainer' && room.isMine;
 
   const run = async (fn: () => Promise<unknown>, ok: string, after?: () => void) => {
+    if (busy) return;   // one tap at a time
     setBusy(true);
     try { await fn(); toast.success(ok); if (after) after(); else await load(); }
     catch (e) { toast.error(errorMessage(e, 'That did not work')); }
     finally { setBusy(false); }
   };
 
+  // A chat screen, Messenger style (2026-11-14): the header and tabs stay put, the messages scroll between them and
+  // the box to type in, docked at the bottom. Settings (⋮) hold mute and the package — a package room is never
+  // "left": leaving it means ending the package, which Manage package does with its reason.
+  const sheetRow = { gap: 0 };
   return (
-    <Page className={mode === 'trainer' ? 'noc-slide-in' : undefined}>
-      <PageTitle back fallback={fallback} title={room.name}
-        subtitle={`${KIND[room.kind]}${mode === 'member' ? ` · ${room.trainerName}` : ` · ${room.memberCount} member${room.memberCount === 1 ? '' : 's'}`}${room.archived ? ' · closed' : ''}`} />
-      {room.description && <p style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{room.description}</p>}
-
-      <TextTabs label="Room sections" tabs={tabs} active={tab}
-        onChange={(t) => setParams(t === first ? {} : { tab: t }, { replace: true })} />
-
-      {tab === 'together' && <TimelineTab room={room} mode={mode} />}
-
-      {tab === 'stream' && (
-        <StreamTab room={room} canPost={isTrainer} canComment={isTrainer || (mode === 'member' && room.fullAccess)} />
-      )}
-      {tab === 'classwork' && <ClassworkTab room={room} mode={mode} />}
-      {tab === 'people' && <PeopleTab room={room} mode={isTrainer ? 'trainer' : 'member'} onChanged={() => void load()} />}
-      {tab === 'progress' && isTrainer && <ProgressTab room={room} />}
-
-      {tab === 'people' && isTrainer && (
-        <div className="flex flex-col" style={{ gap: 8 }}>
-          <NocButton variant="ghost" disabled={busy}
-            onClick={() => void run(() => updateRoom(room.id, { commentsOn: !room.commentsOn }),
-              room.commentsOn ? 'Comments are off in this room.' : 'Comments are on.')}>
-            {room.commentsOn ? 'Turn comments off' : 'Turn comments on'}
-          </NocButton>
-        </div>
-      )}
-
-      {/* Room options, on every tab (0169): leave any room; a trainer closes any
-          room of theirs (groups, and deleting them, went with 0220). */}
-      <div className="flex flex-col" data-room-options style={{ gap: 8, marginTop: 8, paddingTop: 14, borderTop: '1px solid var(--color-separator)' }}>
-        {isTrainer && (
-          <NocButton variant="ghost" disabled={busy}
-            onClick={() => void run(() => setArchived(room.id, !room.archived),
-              room.archived ? 'The room is open again.' : 'The room is closed. It stays readable, and nothing new can be posted.')}>
-            {room.archived ? 'Reopen this room' : 'Close this room'}
-          </NocButton>
-        )}
-        {mode === 'member' && (
-          <NocButton variant="ghost" disabled={busy}
-            onClick={() => {
-              const back = 'Your chat with the coach stays on Train → Coach.';
-              if (!window.confirm(`Leave "${room.name}"? It disappears from your rooms. ${back}`)) return;
-              void run(() => leaveRoom(room.id), 'You left the room.', () => navigate('/member/book-class?tab=coach'));
-            }}>
-            Leave this room
-          </NocButton>
-        )}
+    <div className="noc-chat" data-room={room.id}>
+      <div className="noc-chat-head">
+        <PageTitle back fallback={fallback} title={room.name}
+          subtitle={`${KIND[room.kind]}${mode === 'member' ? ` · ${room.trainerName}` : ` · ${room.memberCount} member${room.memberCount === 1 ? '' : 's'}`}${room.archived ? ' · closed' : ''}`}
+          action={(
+            <button type="button" onClick={() => setSettingsOpen(true)} aria-label="Chat settings" data-room-settings
+              className="grid place-items-center noc-press" style={{ width: 40, height: 40, borderRadius: 20, color: 'var(--color-text-secondary)',
+                border: '1px solid rgb(var(--hair-rgb, 233 233 237) / 0.12)' }}>
+              <DotsThreeVertical size={20} weight="bold" />
+            </button>
+          )} />
+        <TextTabs label="Room sections" tabs={tabs} active={tab}
+          onChange={(t) => setParams(t === first ? {} : { tab: t }, { replace: true })} />
       </div>
-    </Page>
+
+      {tab === 'together'
+        ? <TimelineTab room={room} mode={mode} docked onMute={setMute} />
+        : (
+          <div className="noc-chat-scroll flex flex-col" style={{ gap: 'var(--stack)' }}>
+            {room.description && <p style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{room.description}</p>}
+            {tab === 'stream' && (
+              <StreamTab room={room} canPost={isTrainer} canComment={isTrainer || (mode === 'member' && room.fullAccess)} />
+            )}
+            {tab === 'classwork' && <ClassworkTab room={room} mode={mode} />}
+            {tab === 'people' && <PeopleTab room={room} mode={isTrainer ? 'trainer' : 'member'} onChanged={() => void load()} />}
+            {tab === 'progress' && isTrainer && <ProgressTab room={room} />}
+          </div>
+        )}
+
+      <GlassSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Chat settings"
+        subtitle={mode === 'member' ? `${KIND[room.kind]} with ${room.trainerName}` : room.name}>
+        <div data-room-settings-sheet style={sheetRow}>
+          {mute && (
+            <LineRow icon={mute.muted ? BellSimpleSlash : BellSimple}
+              title={mute.muted ? 'Alerts are muted' : 'Mute alerts from this chat'}
+              meta={mute.muted ? 'Tap to turn them back on' : 'Messages still arrive here, without a notification'}
+              onClick={() => mute.toggle()} />
+          )}
+          {mode === 'member' && pt && (
+            <LineRow icon={Handshake} title="Manage package" meta="Stand-in coach, switch coach, end package"
+              onClick={() => { setSettingsOpen(false); navigate('/member/book-class?tab=coach&manage=1'); }} last />
+          )}
+          {isTrainer && (
+            <>
+              <LineRow icon={LockSimple} title={room.commentsOn ? 'Turn comments off' : 'Turn comments on'}
+                onClick={() => void run(() => updateRoom(room.id, { commentsOn: !room.commentsOn }),
+                  room.commentsOn ? 'Comments are off in this room.' : 'Comments are on.')} />
+              <LineRow icon={LockSimple} title={room.archived ? 'Reopen this room' : 'Close this room'} last
+                onClick={() => void run(() => setArchived(room.id, !room.archived),
+                  room.archived ? 'The room is open again.' : 'The room is closed. It stays readable, and nothing new can be posted.')} />
+            </>
+          )}
+          {mode === 'member' && !pt && (
+            <LineRow icon={SignOut} title="Leave this room" meta="It disappears from your rooms" last
+              onClick={() => {
+                if (!window.confirm(`Leave "${room.name}"? It disappears from your rooms.`)) return;
+                setSettingsOpen(false);
+                void run(() => leaveRoom(room.id), 'You left the room.', () => navigate('/member/book-class?tab=coach'));
+              }} />
+          )}
+        </div>
+      </GlassSheet>
+    </div>
   );
 }

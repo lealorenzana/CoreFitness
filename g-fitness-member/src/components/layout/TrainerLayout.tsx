@@ -50,6 +50,8 @@ export default function TrainerLayout() {
   const root = hub ? null : trainerTabRootFor(location.pathname);
   // The reels player (0245) takes the whole screen, as the member's does: no gutter, no page scroll.
   const immersive = /^\/trainer\/(reels\/watch|gym-chat)\/?$/.test(location.pathname);
+  // A trainee's place is a chat screen (2026-11-14): it fills the page area and scrolls inside itself.
+  const fills = /^\/trainer\/pt\/[^/]+\/?$/.test(location.pathname);
 
   useScrollMemory(mainRef, location.pathname + location.search);
 
@@ -73,7 +75,7 @@ export default function TrainerLayout() {
 
       <main
         ref={mainRef}
-        className={`flex-1 min-h-0 scrollbar-hide relative ${immersive ? 'overflow-hidden' : 'overflow-y-auto'}`}
+        className={`flex-1 min-h-0 scrollbar-hide relative ${immersive || fills ? 'overflow-hidden' : 'overflow-y-auto'}`}
         style={hub || immersive ? { backgroundColor: 'transparent' } : {
           backgroundColor: 'transparent',
           paddingLeft: 'var(--gutter)',
@@ -83,7 +85,7 @@ export default function TrainerLayout() {
       >
         {/* CSS entrance, keyed on the path — never framer's rAF-driven
             `initial`, which stays at zero on a page that is not compositing. */}
-        <div key={`${location.pathname}#${sync}`} className="min-h-full flex flex-col noc-screen">
+        <div key={`${location.pathname}#${sync}`} className={`${fills ? 'h-full' : 'min-h-full'} flex flex-col noc-screen`}>
           {/* A screen's code arrives on first open (lib/lazyPage.ts); the shell
               stays and the page area shows the usual skeleton meanwhile. */}
           <Suspense fallback={<SkeletonList count={4} />}>

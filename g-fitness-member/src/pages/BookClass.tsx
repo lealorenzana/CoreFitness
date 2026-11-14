@@ -314,7 +314,10 @@ function coachMeta(t: PublicTrainer, workDays: Map<string, number[]> | null): st
  */
 export default function BookClass({ mode }: { mode?: 'classes' | 'pt' } = {}) {
   const navigate = useNavigate();
-  const deepLinkTrainerId = (useLocation().state as { trainerId?: string } | null)?.trainerId ?? null;
+  const linkState = useLocation().state as { trainerId?: string; onlyTrainers?: string[] } | null;
+  const deepLinkTrainerId = linkState?.trainerId ?? null;
+  /** On a package (2026-11-14): book with your own coach (and a stand-in) only — never the whole gym's list. */
+  const onlyTrainers = linkState?.onlyTrainers ?? null;
   const [urlFilter, setFilter] = useUrlState<Filter>('show', deepLinkTrainerId ? 'pt' : 'classes', ['classes', 'pt', 'events']);
   const chosenFilter: Filter = mode ?? urlFilter;
   /** The gym's booking choices (0180); 'coach' for both until read. */
@@ -588,6 +591,7 @@ export default function BookClass({ mode }: { mode?: 'classes' | 'pt' } = {}) {
     setWeekOffset(0);
   };
 
+  const shownTrainers = onlyTrainers ? trainers.filter((t) => onlyTrainers.includes(t.id)) : trainers;
   const showMatrix = filter === 'classes' || (filter === 'pt' && selectedTrainer !== null && !slotsLoading);
 
   return (
@@ -660,14 +664,14 @@ export default function BookClass({ mode }: { mode?: 'classes' | 'pt' } = {}) {
           {/* ── 1-on-1, step one: pick a coach ── */}
           {filter === 'pt' && !selectedTrainer && (
             <section>
-              <SectionHead title="Pick a coach" meta={`${trainers.length} at the gym`} />
-              {trainers.length === 0 ? (
+              <SectionHead title="Pick a coach" meta={onlyTrainers ? 'your package' : `${trainers.length} at the gym`} />
+              {shownTrainers.length === 0 ? (
                 <p style={{ marginTop: 12, fontSize: 13, color: 'var(--color-text-muted)' }}>
                   Personal training opens once the gym adds its coaching team.
                 </p>
               ) : (
                 <div className="noc-rows" style={{ marginTop: 4 }}>
-                  {trainers.map((t, i) => (
+                  {shownTrainers.map((t, i) => (
                     <LineRow
                       key={t.id}
                       gutterWidth={46}
@@ -677,7 +681,7 @@ export default function BookClass({ mode }: { mode?: 'classes' | 'pt' } = {}) {
                       meta={coachMeta(t, workDays)}
                       action="Open times"
                       onClick={() => openTrainer(t)}
-                      last={i === trainers.length - 1}
+                      last={i === shownTrainers.length - 1}
                     />
                   ))}
                 </div>
@@ -688,10 +692,12 @@ export default function BookClass({ mode }: { mode?: 'classes' | 'pt' } = {}) {
           {/* ── 1-on-1, step two: the chosen coach ── */}
           {filter === 'pt' && selectedTrainer && (
             <div>
-              <button onClick={() => { setSelectedTrainer(null); setSelected(null); setWeekOffset(0); }}
-                className="flex items-center" style={{ gap: 7, fontSize: 13, color: 'var(--color-primary-300)' }}>
-                <ArrowLeft size={15} /> All coaches
-              </button>
+              {shownTrainers.length > 1 && (
+                <button onClick={() => { setSelectedTrainer(null); setSelected(null); setWeekOffset(0); }}
+                  className="flex items-center" style={{ gap: 7, fontSize: 13, color: 'var(--color-primary-300)' }}>
+                  <ArrowLeft size={15} /> {onlyTrainers ? 'Your coaches' : 'All coaches'}
+                </button>
+              )}
               <p style={{ marginTop: 10, fontSize: 17, fontWeight: 600, color: 'var(--color-text-primary)' }}>
                 {trainerName(selectedTrainer)}
               </p>

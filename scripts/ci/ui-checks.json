@@ -744,6 +744,14 @@
     {
       "file": "admin-color-mode-ask-check.js",
       "app": "admin"
+    },
+    {
+      "file": "member-back-stack-check.js",
+      "app": "member"
+    },
+    {
+      "file": "member-chat-screen-check.js",
+      "app": "member"
     }
   ]
 }

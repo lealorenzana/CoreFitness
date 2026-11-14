@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Avatar from '../ui/Avatar';
+import { ArrowsLeftRight, UserSwitch, XCircle } from '@phosphor-icons/react';
 import { SkeletonList } from '../ui/Skeleton';
 import { toast } from '../ui/Toast';
 import { Field, TextInput } from '../ui/Field';
@@ -33,7 +34,12 @@ const fmt = (ymd: string | null) => (ymd ? new Date(`${ymd}T00:00:00`).toLocaleD
  * room), how far through it you are, a stand-in when your coach is away,
  * switch or end. No package: where to find a coach.
  */
-export default function MyPackage() {
+export default function MyPackage({ next, onCurrent }: {
+  /** The next session with this coach, already worded — or null for none booked; undefined to say nothing. */
+  next?: string | null;
+  /** Tells the Coach tab which package is running, so it can drop Find a coach and book with this coach only. */
+  onCurrent?: (c: Coaching | null) => void;
+} = {}) {
   const navigate = useNavigate();
   const [settings, setSettings] = useState<CoachingSettings | null | undefined>(undefined);
   const [list, setList] = useState<Coaching[] | null | undefined>(undefined);
@@ -52,6 +58,8 @@ export default function MyPackage() {
   const [openedAt] = useState(() => Date.now()); // how far through the package, as of opening the screen
   const [standinOpen, setStandinOpen] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
+  /** Manage package (2026-11-14): stand-in, switch coach, end — one sheet, also opened from the chat's settings (?manage=1). */
+  const [manageOpen, setManageOpen] = useState(() => new URLSearchParams(window.location.search).get('manage') === '1');
   const [endReason, setEndReason] = useState('');
   /** Unread messages from the package's coach, for the chat row. */
   const [unread, setUnread] = useState(0);
@@ -85,6 +93,8 @@ export default function MyPackage() {
   const current = mine.find((c) => OPEN_STATUSES.includes(c.status)) ?? null;
   const past = mine.filter((c) => !OPEN_STATUSES.includes(c.status)).slice(0, 5);
   const coach = current ? coaches.find((t) => t.id === current.trainerId) ?? null : null;
+  const activeNow = current && current.status === 'active' ? current : null;
+  useEffect(() => { if (list !== undefined) onCurrent?.(activeNow); }, [activeNow, list, onCurrent]);
 
   useEffect(() => {
     if (current?.status === 'awaiting_payment' && current.feeMode === 'trainer_direct') {
@@ -184,10 +194,26 @@ export default function MyPackage() {
             </div>
           )}
 
-          {current.status === 'active' && (
-            <>
-              <Panel>
-                <p style={{ fontSize: 13.5, color: 'var(--color-text-primary)' }}>Until {fmt(current.endsOn)}{current.roomId ? ' · Chat · Classwork' : ''}</p>
+          {current.status === 'active' && (() => {
+            // How far through the package: only with both dates, never a guessed bar.
+            const frac = current.startsOn && current.endsOn
+              ? (openedAt - new Date(`${current.startsOn}T00:00:00`).getTime())
+                / (new Date(`${current.endsOn}T00:00:00`).getTime() - new Date(`${current.startsOn}T00:00:00`).getTime())
+              : null;
+            const first = current.trainerName.split(' ')[0];
+            return (
+              <div data-coach-card><Panel>
+                <p style={{ fontSize: 13.5, color: 'var(--color-text-primary)' }}>
+                  {monthsLabel(current.months)} package · until {fmt(current.endsOn)}
+                </p>
+                {frac !== null && (
+                  <div className="flex items-center" style={{ gap: 10, marginTop: 8 }}>
+                    <ProgressBar style={{ flex: 1 }} fraction={frac} />
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-primary-300)' }} data-package-percent>
+                      {Math.round(Math.min(1, Math.max(0, frac)) * 100)}%
+                    </span>
+                  </div>
+                )}
                 {pause && (
                   <p data-coaching-paused={pause.decision} style={{ fontSize: 12.5, marginTop: 6, lineHeight: 1.5, color: 'var(--color-primary-300)' }}>
                     {pause.decision === 'pause'
@@ -197,37 +223,35 @@ export default function MyPackage() {
                         : 'Your membership is paused; your coaching keeps running.'}
                   </p>
                 )}
-                {/* How far through the package: only with both dates, never a guessed bar. */}
-                {current.startsOn && current.endsOn && (
-                  <ProgressBar style={{ marginTop: 8 }} fraction={(openedAt - new Date(`${current.startsOn}T00:00:00`).getTime())
-                    / (new Date(`${current.endsOn}T00:00:00`).getTime() - new Date(`${current.startsOn}T00:00:00`).getTime())} />
+                {current.standin ? (
+                  <p data-standin style={{ fontSize: 13, marginTop: 8, color: 'var(--color-text-secondary)' }}>
+                    {current.standin.name} stands in from {fmt(current.standin.from)} to {fmt(current.standin.to)}.
+                  </p>
+                ) : coach?.presence && coach.presence !== 'available' && (
+                  <p data-coach-away style={{ fontSize: 13, marginTop: 8, color: 'var(--color-secondary)' }}>
+                    {first} is {coach.presence === 'on_leave' ? 'on leave' : 'away'} right now — you can pick a stand-in in Manage package.
+                  </p>
                 )}
                 {current.roomId && (
-                  <NocButton className="w-full" style={{ marginTop: 10 }} onClick={() => navigate(`/member/rooms/${current.roomId}`)}>Open chat</NocButton>
+                  <div data-message-coach style={{ marginTop: 12 }}>
+                    <NocButton className="w-full" onClick={() => navigate(`/member/rooms/${current.roomId}`)}>
+                      Message {first}{unread > 0 ? ` · ${unread > 99 ? '99+' : unread} new` : ''}
+                    </NocButton>
+                  </div>
                 )}
-              </Panel>
-
-              {current.standin ? (
-                <p data-standin style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
-                  {current.standin.name} stands in from {fmt(current.standin.from)} to {fmt(current.standin.to)}.
-                </p>
-              ) : (
-                <div>
-                  {coach?.presence && coach.presence !== 'available' && (
-                    <p data-coach-away style={{ fontSize: 13, marginBottom: 8, color: 'var(--color-secondary)' }}>
-                      {current.trainerName.split(' ')[0]} is {coach.presence === 'on_leave' ? 'on leave' : 'away'} right now.
-                    </p>
-                  )}
-                  <NocButton variant="ghost" className="w-full" onClick={() => setStandinOpen(true)}>Pick a stand-in coach</NocButton>
+                {next !== undefined && (
+                  <p data-next-session style={{ fontSize: 13, marginTop: 10, color: 'var(--color-text-secondary)' }}>
+                    {next ? <>Next session: <b style={{ color: 'var(--color-text-primary)' }}>{next}</b></> : 'No session booked yet.'}
+                  </p>
+                )}
+                <div data-manage-package style={{ marginTop: 10 }}>
+                  <NocButton variant="ghost" className="w-full" onClick={() => setManageOpen(true)}>
+                    Manage package
+                  </NocButton>
                 </div>
-              )}
-
-              <div className="flex" style={{ gap: 8 }}>
-                <NocButton variant="ghost" className="flex-1" onClick={() => navigate('/member/trainers')}>Switch coach</NocButton>
-                <NocButton variant="ghost" className="flex-1" onClick={() => setEndOpen(true)}>End package</NocButton>
-              </div>
-            </>
-          )}
+              </Panel></div>
+            );
+          })()}
         </div>
       )}
 
@@ -256,6 +280,21 @@ export default function MyPackage() {
       {current && (
         <StandinSheet open={standinOpen} onClose={() => setStandinOpen(false)} coaches={others} busy={busy}
           onPick={(t, from, to) => void run(async () => { await setCoachingStandin(current.id, t, from, to); setStandinOpen(false); }, 'Your stand-in is set')} />
+      )}
+
+      {current && current.status === 'active' && (
+        <GlassSheet open={manageOpen} onClose={() => setManageOpen(false)} title="Manage package"
+          subtitle={`${monthsLabel(current.months)} with ${current.trainerName} · until ${fmt(current.endsOn)}`}>
+          <div data-manage-sheet>
+            <LineRow icon={UserSwitch} title={current.standin ? `Stand-in: ${current.standin.name}` : 'Pick a stand-in coach'}
+              meta={current.standin ? `${fmt(current.standin.from)} – ${fmt(current.standin.to)}` : `For days ${current.trainerName.split(' ')[0]} is away`}
+              onClick={current.standin ? undefined : () => { setManageOpen(false); setStandinOpen(true); }} />
+            <LineRow icon={ArrowsLeftRight} title="Switch coach" meta="Choose another coach for the rest of your package"
+              onClick={() => { setManageOpen(false); navigate('/member/trainers'); }} />
+            <LineRow icon={XCircle} title="End package" meta="Your chat and its history stay" last
+              onClick={() => { setManageOpen(false); setEndOpen(true); }} />
+          </div>
+        </GlassSheet>
       )}
 
       <GlassSheet open={endOpen} onClose={() => setEndOpen(false)} title="End your package"
