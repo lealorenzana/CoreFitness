@@ -376,7 +376,7 @@ export default function GymApp() {
       {/* ---- What you run ---------------------------------------------------------------- */}
       {tab === 'runs' && (
         <Split preview={<FeatureShow module={modules.find((m) => m.feature_key === pointed) ?? modules.find((m) => !m.parent_key) ?? null} />}>
-          <div className="a-ct"><h3><ToggleRight size={16} />What your gym runs</h3><small>switching off hides it — nothing is deleted · point at one to see what it does</small></div>
+          <div className="a-ct"><h3><ToggleRight size={16} />What your gym runs</h3><small>switching off hides it — nothing is deleted · click one to see what it does</small></div>
           <ModuleColumns modules={modules} onToggle={(m) => void toggle(m)} onPoint={setPointed} pointed={pointed} />
         </Split>
       )}
@@ -581,7 +581,7 @@ function ModuleColumns({ modules, onToggle, onPoint, pointed }: { modules: GymMo
       : m.description;
     return (
       <div key={m.feature_key} className={`a-setting fs-pointable${pointed === m.feature_key ? ' pointed' : ''}`} style={parent ? { paddingLeft: 20 } : undefined} data-module={m.feature_key}
-        onMouseEnter={() => onPoint(m.feature_key)} onFocusCapture={() => onPoint(m.feature_key)} onClick={() => onPoint(m.feature_key)}>
+        onFocusCapture={() => onPoint(m.feature_key)} onClick={() => onPoint(m.feature_key)}>
         <span className="a-ic" style={parent ? { width: 26, height: 26 } : undefined}><Icon size={parent ? 13 : 15} /></span>
         <div className="t"><b style={locked || held ? { color: 'var(--a-text2)' } : undefined}>{m.label}</b><small>{note}</small></div>
         {locked ? <Lock size={15} style={{ color: 'var(--a-muted)' }} aria-label={`${m.label} is not on your plan`} />

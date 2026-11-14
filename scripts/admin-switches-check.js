@@ -152,7 +152,7 @@ async (page) => {
   const fs = page.locator('[data-feature-show]');
   out.push('explainer starts on the first part: ' + ((await fs.getAttribute('data-feature-show')) === 'front_desk' && (await page.locator('.fs-desk').count()) === 1 ? 'yes (desk screen)' : 'MISSING ' + (await fs.getAttribute('data-feature-show'))));
   out.push('the old phone list is gone: ' + ((await page.locator('.a-phone').count()) === 0 ? 'yes' : 'MISSING'));
-  await page.locator('[data-module="checkin"]').hover();
+  await page.locator('[data-module="checkin"] .t').click();
   await page.waitForTimeout(400);
   const kiosk = { key: await fs.getAttribute('data-feature-show'), phone: await page.locator('.fs-phone').count(), steps: await page.locator('[data-fs-steps] li').count(),
     status: (await page.locator('[data-fs-status]').innerText()).trim(), guide: await fs.locator('[data-guide-button="kiosk"]').count(),
@@ -160,6 +160,12 @@ async (page) => {
   out.push('hovering check-in plays it on a phone: ' + (kiosk.key === 'checkin' && kiosk.phone === 1 && kiosk.steps === 3 ? 'yes' : 'MISSING ' + JSON.stringify(kiosk)));
   out.push('…says it is on, with the set-up guide: ' + (kiosk.status === 'On' && kiosk.guide === 1 ? 'yes' : 'MISSING ' + JSON.stringify(kiosk)));
   out.push('…the row is marked: ' + ((await page.locator('[data-module="checkin"].pointed').count()) === 1 ? 'yes' : 'MISSING'));
+  // Clicked, it stays: moving the mouse over another row does not change it (so its guide can be reached).
+  await page.locator('[data-module="classes"]').hover();
+  await page.waitForTimeout(300);
+  out.push('…and stays while the mouse moves over other rows: ' + ((await fs.getAttribute('data-feature-show')) === 'checkin' ? 'yes' : 'MISSING ' + (await fs.getAttribute('data-feature-show'))));
+  await page.locator('[data-feature-show] [data-guide-button="kiosk"]').hover();
+  out.push('…so its set-up guide can be reached: ' + ((await fs.locator('[data-guide-button="kiosk"]').count()) === 1 ? 'yes' : 'MISSING'));
   await page.waitForTimeout(2800);
   const beat1 = await page.locator('.fs-frame').getAttribute('data-beat');
   out.push('…and it moves on by itself: ' + (kiosk.beat0 === '0' && beat1 === '1' ? 'beat 0 → 1' : 'MISSING ' + kiosk.beat0 + '→' + beat1));
@@ -170,16 +176,16 @@ async (page) => {
   const fil = await page.locator('[data-fs-steps]').innerText();
   out.push('in Filipino: ' + (/Isa-scan ng desk o kiosk/.test(fil) ? 'yes' : 'MISSING ' + fil.slice(0, 80)));
   await page.getByRole('radio', { name: 'EN' }).click();
-  await page.locator('[data-module="assistant"]').hover(); await page.waitForTimeout(300);
+  await page.locator('[data-module="assistant"] .t').click(); await page.waitForTimeout(300);
   const st1 = (await page.locator('[data-fs-status]').innerText()).trim();
-  await page.locator('[data-module="classes"]').hover(); await page.waitForTimeout(300);
+  await page.locator('[data-module="classes"] .t').click(); await page.waitForTimeout(300);
   const st2 = (await page.locator('[data-fs-status]').innerText()).trim();
-  await page.locator('[data-module="quests"]').hover(); await page.waitForTimeout(300);
+  await page.locator('[data-module="quests"] .t').click(); await page.waitForTimeout(300);
   const st3 = (await page.locator('[data-fs-status]').innerText()).trim();
   out.push('statuses: not sold, off, held off: ' + (st1 === 'Not on your plan' && st2 === 'Off' && st3 === 'Off with its group' ? 'yes' : `MISSING ${st1} / ${st2} / ${st3}`));
   const broken = [];
   for (const [key] of FEATURES) {
-    await page.locator(`[data-module="${key}"]`).hover();
+    await page.locator(`[data-module="${key}"] .t`).click();
     await page.waitForTimeout(120);
     if ((await fs.getAttribute('data-feature-show')) !== key || (await page.locator('.fs-frame').count()) !== 1 || (await page.locator('[data-fs-steps] li').count()) < 2) broken.push(key);
   }
@@ -187,13 +193,13 @@ async (page) => {
   const scroll = await page.evaluate(() => document.scrollingElement.scrollHeight - window.innerHeight);
   out.push('the page does not scroll: ' + (scroll <= 0 ? 'yes' : `MISSING (${scroll}px)`));
   await page.emulateMedia({ colorScheme: 'light' });
-  await page.locator('[data-module="engagement"]').hover();
+  await page.locator('[data-module="engagement"] .t').click();
   await page.waitForTimeout(2900);
   await page.screenshot({ path: 'shots/admin-runs-explainer-light.png' });
   out.push('in light the app is light: ' + ((await page.evaluate(() => document.documentElement.dataset.mode)) === 'light' ? 'yes' : 'MISSING'));
   await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' });
   await page.reload({ waitUntil: 'domcontentloaded' }); await page.waitForTimeout(2500);
-  await page.locator('[data-module="checkin"]').hover(); await page.waitForTimeout(300);
+  await page.locator('[data-module="checkin"] .t').click(); await page.waitForTimeout(300);
   const rm0 = await page.locator('.fs-frame').getAttribute('data-beat');
   await page.waitForTimeout(2800);
   const rm1 = await page.locator('.fs-frame').getAttribute('data-beat');

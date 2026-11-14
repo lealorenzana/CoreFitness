@@ -13,6 +13,7 @@ import { getCoachingSettings, monthsLabel, myCoachings, type Coaching } from '..
 import { myConversations } from '../../lib/api/chat';
 import { listMyTrainerMembers } from '../../lib/api/trainerRoster';
 import { errorMessage } from '../../utils/errorMessage';
+import { OPEN_STATUSES } from '../../lib/api/coaching';
 
 type Tab = 'chat' | 'classwork' | 'progress' | 'about';
 const fmt = (ymd: string | null) => (ymd ? new Date(`${ymd}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }) : '');
@@ -112,7 +113,8 @@ export default function TraineePlace() {
               </NocButton>
             </div>
           )}
-          {!room && canOffer && (
+          {/* Offer a package only to someone with none running or on its way (2026-11-14: it showed beside an active one). */}
+          {!room && canOffer && !(coaching && OPEN_STATUSES.includes(coaching.status)) && (
             <NocButton variant="ghost" className="w-full" style={{ marginTop: 14 }} onClick={() => navigate('/trainer/packages?offer=' + memberId)}>
               Offer {name.split(' ')[0]} a package
             </NocButton>

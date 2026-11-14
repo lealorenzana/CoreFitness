@@ -13,7 +13,7 @@ import { showToast } from '../utils/toast';
 const QUESTIONS: { key: string; ask: string; what: string }[] = [
   { key: 'classes', ask: 'Do you run group classes?', what: 'A timetable members book seats in. No: the app is about personal training only.' },
   { key: 'points', ask: 'Points and rewards?', what: 'Members earn points for coming in and training, and spend them on rewards at your desk.' },
-  { key: 'squads', ask: 'Teams?', what: 'Members form small teams that train toward a weekly target together.' },
+  // Teams and the gym goal (squads) are left out of onboarding (owner, 2026-11-14): off by default, still on What you run.
   { key: 'seasons', ask: 'A monthly season?', what: 'A monthly board of points with tiers and prizes.' },
   { key: 'events', ask: 'Gym events?', what: 'One-off events members sign up for — a fun run, a seminar, an open day.' },
   { key: 'gym_chat', ask: 'A group chat for your gym?', what: 'One chat for your members, coaches, front desk and you. You can remove a message, stop someone posting, or make it announcements-only.' },

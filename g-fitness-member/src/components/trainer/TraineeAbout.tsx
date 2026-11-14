@@ -16,6 +16,8 @@ import { listMyTrainerMembers } from '../../lib/api/trainerRoster';
 import { getCurrentTrainerId, getMemberDetailForTrainer, type MemberDetailForTrainer } from '../../services/trainerService';
 import { levelLabel } from '../../lib/api/achievements';
 import { errorMessage } from '../../utils/errorMessage';
+import { moduleOn } from '../../lib/gymApp';
+import { useGymApp } from '../../hooks/useGymApp';
 
 /**
  * One block of a member's own data in the trainer's view.
@@ -67,6 +69,7 @@ export default function TraineeAbout({ member, onChat, initialTab = 'progress' }
   onChat: () => void;
   initialTab?: AboutTab;
 }) {
+  const squadsOn = moduleOn(useGymApp(), 'squads');
   const navigate = useNavigate();
   // In the address (`?about=`), so coming Back to a trainee lands on the same part (2026-11-07).
   const [sheetTab, setSheetTab] = useUrlState<AboutTab>('about', initialTab, ['progress', 'training', 'notes', 'safety']);
@@ -310,8 +313,8 @@ export default function TraineeAbout({ member, onChat, initialTab = 'progress' }
             </SharedBlock>
           </>
         )}
-          {/* Their squad this week (0124) — name and figures, never its code. */}
-          <TraineeSquad memberId={member.id} firstName={member.name.split(' ')[0]} />
+          {/* Their squad this week (0124) — name and figures, never its code. Not while the gym has Teams off. */}
+          {squadsOn && <TraineeSquad memberId={member.id} firstName={member.name.split(' ')[0]} />}
           <TraineePhotos memberId={member.id} firstName={member.name.split(' ')[0]} />
         </div>
       )}

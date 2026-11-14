@@ -201,7 +201,7 @@ async (page) => {
   const cc = CALLS.find((x) => x[0] === 'connect' && !x[1].disconnect);
   out.push('the key goes to the connect function for the gym: ' + (cc && cc[1].kind === 'gym' && cc[1].secretKey === 'sk_test_FAKEfakeFAKE1234' ? 'yes' : 'MISSING'));
   const ct = await page.locator('[data-gym-paymongo]').innerText();
-  out.push('connected: test mode and the last four — never the key: ' + (/test mode — no real money, key ending 1234/.test(ct) && !ct.includes('sk_test_FAKE') ? 'yes' : 'MISSING ' + ct.slice(0, 200)));
+  out.push('connected: test mode and the last four — never the key: ' + (/Test mode — no real money moves yet\.[\s\S]*Key ending 1234/.test(ct) && !ct.includes('sk_test_FAKE') ? 'yes' : 'MISSING ' + ct.slice(0, 200)));
   out.push('…and what members paid in the app is listed: ' + (/Lea Lorenzana/.test(ct) && /₱800/.test(ct) ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/admin-gym-paymongo.png', fullPage: true });
   return out.join('\n');

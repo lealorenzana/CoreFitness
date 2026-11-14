@@ -27,7 +27,9 @@ const timeOf = (iso: string) => new Date(iso).toLocaleTimeString('en-PH', { hour
  * for classes; pt_sessions_insert_frontdesk for 1-on-1). The database still
  * refuses a full class, a plan without classes, or a clash, and says which.
  */
-export default function DeskBookCard({ onBooked, focusKey }: { onBooked: () => void; focusKey?: number }) {
+export default function DeskBookCard({ onBooked, focusKey, only }: { onBooked: () => void; focusKey?: number;
+  /** One kind only (2026-11-14): Class bookings books classes, Personal training books 1-on-1 — no switch between. */
+  only?: 'class' | 'pt' }) {
   const [today] = useState(() => todayKey());
   const [members, setMembers] = useState<{ id: string; name: string; photo: string | null; plan: string }[]>([]);
   const [trainers, setTrainers] = useState<TrainerWithProfile[]>([]);
@@ -35,7 +37,7 @@ export default function DeskBookCard({ onBooked, focusKey }: { onBooked: () => v
   const [pts, setPts] = useState<PtSessionRow[]>([]);
   const [who, setWho] = useState<string | null>(null);
   const [q, setQ] = useState('');
-  const [kind, setKind] = useState<'class' | 'pt'>('class');
+  const [kind, setKind] = useState<'class' | 'pt'>(only ?? 'class');
   const [day, setDay] = useState(today);
   const [coach, setCoach] = useState('');
   const [classes, setClasses] = useState<CalendarSession[] | null>(null);
@@ -129,10 +131,13 @@ export default function DeskBookCard({ onBooked, focusKey }: { onBooked: () => v
           )}
         </div>
       )}
-      <div className="a-seg" style={{ margin: '10px 0' }}>
-        <button type="button" className={kind === 'class' ? 'on' : ''} onClick={() => { setKind('class'); setPick(null); }}>Class</button>
-        <button type="button" className={kind === 'pt' ? 'on' : ''} onClick={() => { setKind('pt'); setPick(null); }}>1-on-1</button>
-      </div>
+      {!only && (
+        <div className="a-seg" style={{ margin: '10px 0' }}>
+          <button type="button" className={kind === 'class' ? 'on' : ''} onClick={() => { setKind('class'); setPick(null); }}>Class</button>
+          <button type="button" className={kind === 'pt' ? 'on' : ''} onClick={() => { setKind('pt'); setPick(null); }}>1-on-1</button>
+        </div>
+      )}
+      {only && <div style={{ height: 10 }} />}
       <div className="flex gap-1 flex-wrap">
         {days.map((k) => <button key={k} type="button" className={`a-chip ${day === k ? 'v' : ''}`} style={{ padding: '5px 9px' }} onClick={() => { setDay(k); setPick(null); }}>{dayLabel(k, today)}</button>)}
       </div>

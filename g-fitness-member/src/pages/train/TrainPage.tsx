@@ -11,6 +11,7 @@ import { moduleOn } from '../../lib/gymApp';
 import { useT } from '../../lib/i18n';
 import { useTour } from '../../components/tour/Tour';
 import { tourFor } from '../../lib/tours';
+import { useBookingModes } from '../../hooks/useBookingModes';
 
 type TrainTab = 'workout' | 'classes' | 'coach';
 
@@ -30,7 +31,9 @@ export default function TrainPage() {
   const app = useGymApp();
   const [params, setParams] = useSearchParams();
   const deepLinkTrainer = (useLocation().state as { trainerId?: string } | null)?.trainerId ?? null;
-  const classesOn = moduleOn(app, 'classes');
+  // A gym that books classes at the front desk (0180 'off') has no Classes tab — as Settings → Bookings says.
+  const bookingModes = useBookingModes();
+  const classesOn = moduleOn(app, 'classes') && bookingModes?.classMode !== 'off';
   const coachOn = moduleOn(app, 'coaching');
   const legacy = params.get('show');
   const fallback: TrainTab = legacy === 'pt' ? 'coach' : (legacy === 'classes' || legacy === 'events') && classesOn ? 'classes' : 'workout';

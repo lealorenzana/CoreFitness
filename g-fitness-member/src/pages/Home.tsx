@@ -35,6 +35,8 @@ import { rampFor } from '../lib/gymTheme';
 import { useTour } from '../components/tour/Tour';
 import { tourFor } from '../lib/tours';
 import { useT } from '../lib/i18n';
+import { useBookingModes } from '../hooks/useBookingModes';
+import ThisWeekStrip from '../components/home/ThisWeekStrip';
 
 /** Cache slots for this screen — see lib/pageCache.ts. */
 const CACHE_KEY = 'member:home';
@@ -107,6 +109,7 @@ interface Entry {
  */
 export default function Home() {
   const navigate = useNavigate();
+  const ptOff = useBookingModes()?.ptMode === 'off';
   useTour(tourFor('member', 'today'), useT());
   // A button to a feature this plan lacks still shows — gates lock and explain,
   // never hide — but carries a lock, so it is a door marked locked rather than
@@ -299,9 +302,9 @@ export default function Home() {
     entries.push({
       key: 'end', gutter: 'Later',
       title: 'Nothing coming up',
-      meta: 'Book a session with a coach on Train.',
-      action: home.frozen || home.expired ? undefined : 'Book',
-      onClick: home.frozen || home.expired ? undefined : () => navigate('/member/book-session'),
+      meta: ptOff ? 'Your gym books sessions at the front desk.' : 'Book a session with a coach on Train.',
+      action: home.frozen || home.expired || ptOff ? undefined : 'Book',
+      onClick: home.frozen || home.expired || ptOff ? undefined : () => navigate('/member/book-session'),
     });
   } else {
     entries.push({
@@ -427,6 +430,9 @@ export default function Home() {
           </NocButton>
         )}
       </div>
+
+      {/* This week (gym styles phase 1): Monday to Sunday at a glance, the next thing named — opens the whole week. */}
+      <ThisWeekStrip />
 
       {/* The gym's reels (0245): a line of tiles, nothing at all when it has none or the switch is off. */}
       <ReelsStrip />

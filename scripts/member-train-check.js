@@ -199,7 +199,7 @@ async (page) => {
     my_features: FEATURES, plan_allows: true, member_points_balance: 0,
     member_progression: [{ level: 1, points: 0, next_level_points: 100 }], sync_my_achievements: 0,
     member_commitments: [], my_trainer_ratings: [],
-    my_booking_modes: [{ class_mode: 'off', pt_mode: 'instant' }],
+    my_booking_modes: [{ class_mode: 'instant', pt_mode: 'instant' }],
     member_last_sets: [{ exercise_id: 'e1', set_number: 1, reps: 8, weight_kg: 50, duration_seconds: null },
       { exercise_id: 'e1', set_number: 2, reps: 8, weight_kg: 50, duration_seconds: null }],
   };
@@ -388,5 +388,42 @@ async (page) => {
     say("a coach's Book opens Book a session", /\/member\/book-session/.test(page.url()), page.url());
   }
   say('nothing scrolls sideways', await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+
+  // ── This week (gym styles phase 1): Monday to Sunday, your sessions, the closed days ──
+  DB.gym_settings[0].closed_days = [0];   // closed on Sundays
+  // One session today, so the week always has a day with a dot (the others may fall in other weeks).
+  DB.pt_sessions.push({ id: 's4', member_id: 'm1', trainer_id: 't1', starts_at: iso(0, 8, 0), duration_minutes: 60, status: 'approved', notes: null, created_at: iso(-1, 9, 0) });
+  const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const mon = new Date(now); mon.setHours(0, 0, 0, 0); mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7));
+  const weekDays = Array.from({ length: 7 }, (_, i) => { const d = new Date(mon); d.setDate(mon.getDate() + i); return ymd(d); });
+  const booked = new Set(DB.pt_sessions.filter((r) => r.status !== 'cancelled' && r.status !== 'rejected').map((r) => ymd(new Date(r.starts_at))).filter((d) => weekDays.includes(d)));
+  await go('/member/home');
+  const strip = page.locator('[data-this-week]');
+  say('Today has a This week strip', (await strip.count()) === 1);
+  const tiles = await strip.locator('[data-week-day]').evaluateAll((els) => els.map((e) => ({ d: e.getAttribute('data-week-day'), has: e.getAttribute('data-has'), closed: e.getAttribute('data-closed') })));
+  say('…Monday to Sunday', JSON.stringify(tiles.map((x) => x.d)) === JSON.stringify(weekDays), JSON.stringify(tiles.map((x) => x.d)));
+  say('…a dot exactly on the days with a session', tiles.every((x) => (x.has === 'true') === booked.has(x.d)), `${JSON.stringify(tiles)} vs ${[...booked]}`);
+  say('…Sunday marked closed', tiles[6]?.closed === 'true' && tiles.slice(0, 6).every((x) => x.closed === 'false'), JSON.stringify(tiles));
+  await strip.click();
+  await page.waitForTimeout(1500);
+  const wk = await main();
+  say('the strip opens This week', /\/member\/week$/.test(page.url()) && (await page.locator('section[data-week-day]').count()) === 7, page.url());
+  say('…with the gym’s hours and its closed day', /Open 6:00\s?AM – 9:00\s?PM/.test(wk) && (await page.locator('[data-week-closed]').count()) === 1, wk.slice(0, 200));
+  await page.screenshot({ path: 'shots/member-this-week.png', fullPage: true });
+
+  // ── Booking off at the desk (0180 'off', or a coaching-packages gym style, 0256): nothing offers it ──
+  RPC.my_booking_modes = [{ class_mode: 'off', pt_mode: 'off' }];
+  STATE.modules = { classes: true };
+  await go('/member/book-class?tab=classes');
+  say('class booking at the desk: no Classes tab, even with Classes on', JSON.stringify((await tabsNow()).map(([n]) => n)) === JSON.stringify(['Workout', 'Coach']), JSON.stringify(await tabsNow()));
+  STATE.modules = { classes: false };
+  await go('/member/book-class?tab=coach');
+  say('1-on-1 at the desk: the Coach tab says so, with no Book button', (await page.locator('[data-pt-booking-off]').count()) === 1
+    && (await page.locator('[data-book-with-coach]').count()) === 0 && (await page.getByRole('button', { name: 'Book a session', exact: true }).count()) === 0);
+  await go('/member/book-session');
+  say('…and Book a session says where to book instead', (await page.locator('[data-pt-booking-off]').count()) === 1 && /front desk/.test(await main()));
+  await go('/member/trainer/t1');
+  say("…and a coach's profile has no Book button", (await page.getByRole('button', { name: /^Book with/ }).count()) === 0);
+  RPC.my_booking_modes = [{ class_mode: 'instant', pt_mode: 'instant' }];
   return out.join('\n');
 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ArrowLeft, ArrowRight, Banknote, Building2, CalendarDays, Check, Clock, DoorOpen, Dumbbell, FileSignature, Gift, Globe, KeyRound,
-  LayoutGrid, LogOut, Palette, Rocket, ScanLine, ScrollText, ShieldCheck, Sparkles, Tags, Trash2, Type, UserPlus, Users, Volume2, VolumeX, Wallet,
+  LayoutGrid, LogOut, Palette, Rocket, ScanLine, ScrollText, ShieldCheck, Sparkles, Tags, Trash2, Type, UserPlus, Users, Volume2, VolumeX, Wallet, Workflow,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { showToast } from '../utils/toast';
@@ -41,6 +41,7 @@ import StudioPreview from './setup/StudioPreview';
 import { EquipmentStep, MembersStep, RewardsStep, TeamStep } from './setup/StudioSteps';
 import { fanfare, levelUp, saved, setSoundOn, soundOn, tick, whoosh } from './setup/sounds';
 import './setup/setup.css';
+import GymStyles from '../components/GymStyles';
 
 
 /**
@@ -63,7 +64,7 @@ import './setup/setup.css';
  */
 
 type Step = 'gym' | 'hours' | 'look' | 'words'
-  | 'runs' | 'bookings' | 'coaching' | 'checkin' | 'coach'
+  | 'style' | 'runs' | 'bookings' | 'coaching' | 'checkin' | 'coach'
   | 'plans' | 'walkins' | 'refunds' | 'payments'
   | 'waiver' | 'rules'
   | 'team' | 'equipment' | 'rewards'
@@ -84,6 +85,7 @@ const STEPS: { key: Step; chapter: Chapter; title: string; blurb: string; icon: 
   { key: 'hours', chapter: 'identity', title: 'When you are open', blurb: 'Your hours, and the days you close.', icon: Clock, optional: true },
   { key: 'look', chapter: 'identity', title: 'Your colours', blurb: 'Two colours, and watch your app and this dashboard change on the right.', icon: Palette },
   { key: 'words', chapter: 'identity', title: 'Your words', blurb: 'What you call your coaches, your members and your classes — and a line for your members’ home screen.', icon: Type, optional: true },
+  { key: 'style', chapter: 'run', title: 'How your gym works', blurb: 'Open floor, classes, appointments or coaching packages — tick yours, and the booking and coaching settings follow.', icon: Workflow, optional: true },
   { key: 'runs', chapter: 'run', title: 'What you run', blurb: 'A few questions. Each answer switches that part of the app on or off — nothing is deleted.', icon: LayoutGrid, optional: true },
   { key: 'bookings', chapter: 'run', title: 'Who approves bookings', blurb: 'Instant, your coaches, your desk — or not in the app at all.', icon: CalendarDays, optional: true },
   { key: 'coaching', chapter: 'run', title: 'How coaching works', blurb: 'How members get a coach, for how long, who is paid — and your house rules for coaching.', icon: Dumbbell, optional: true },
@@ -433,7 +435,7 @@ export default function Setup() {
   }
 
   const monogram = (gym.short_name || gym.gym_name || '?').slice(0, 2).toUpperCase();
-  const selfSaving: Step[] = ['runs', 'bookings', 'coaching', 'walkins', 'checkin', 'coach', 'refunds', 'payments', 'waiver', 'rules', 'team', 'equipment', 'members'];
+  const selfSaving: Step[] = ['style', 'runs', 'bookings', 'coaching', 'walkins', 'checkin', 'coach', 'refunds', 'payments', 'waiver', 'rules', 'team', 'equipment', 'members'];
   const chapters = CHAPTERS.map((ch) => {
     const list = steps.filter((s) => s.chapter === ch.key);
     return { ...ch, list, done: list.filter((s) => done.includes(s.key)).length };
@@ -647,6 +649,7 @@ export default function Setup() {
                       </>}
                   </div>
                 )}
+                {step === 'style' && <div className="ob-hosted"><GymStyles onApplied={() => void getGymModules().then(setModules)} /></div>}
                 {step === 'bookings' && <div className="ob-hosted"><BookingApproval /></div>}
                 {step === 'coaching' && <div className="ob-hosted"><CoachingSettings /></div>}
                 {step === 'checkin' && <div className="ob-hosted"><DoorSettings /></div>}

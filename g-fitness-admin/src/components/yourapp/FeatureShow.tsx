@@ -11,7 +11,8 @@ const BEAT_MS = 2600;
 
 /**
  * Your app → What you run, the right-hand side (owner, 2026-11-14): instead of a phone listing what is on, an
- * animated explainer of the part the owner is pointing at — hover or focus a row, and it acts out what that part
+ * animated explainer of the part the owner picked — click (or focus) a row, and it stays on that part while the
+ * owner reads or opens its guide (hovering changed it under the mouse, 2026-11-14) — and it acts out what that part
  * does, beat by beat, with the beat's words below. Member-facing parts play on a phone; the desk's on a screen;
  * the lobby TV on a TV. What each part IS comes from the database description; the beats (lib/featureShows.ts)
  * show how it is used. Motion is CSS transitions driven by a beat counter (setInterval, never rAF); with reduced
@@ -23,7 +24,7 @@ export default function FeatureShow({ module }: { module: GymModule | null }) {
   const show = module ? showFor(module.feature_key) : null;
 
   if (!module) {
-    return <div className="a-card fs fs-empty" data-feature-show><p className="a-sub">Point at a part on the left to see what it does.</p></div>;
+    return <div className="a-card fs fs-empty" data-feature-show><p className="a-sub">Click a part on the left to see what it does.</p></div>;
   }
 
   const status = module.state === 'not_sold' ? { text: 'Not on your plan', tone: 'off' }

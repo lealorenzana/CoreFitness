@@ -1,8 +1,10 @@
 /**
- * The setup wizard (redesigned 2026-10-04): a new owner walks every step —
- * closed days, colours with a live preview, words, only the parts the plan
- * sells, the AI coach, plans edited/added/removed, the door — and ends on a
- * checklist that links to the pages the wizard does not copy.
+ * The build studio (pages/Setup.tsx, 2026-11-07; the 2026-10-04 wizard before it):
+ * a new owner walks every step of six chapters — closed days, colours with a
+ * live preview, words, how the gym works (gym styles, 2026-11-14), only the
+ * parts the plan sells, the AI assistant, plans edited/added/removed, day
+ * passes, the door — and ends on "Open your gym", which finishes setup in the
+ * database before it leaves for the dashboard.
  *
  * Playwright runner's `filename` argument, admin dev server on :5174.
  */
@@ -94,9 +96,11 @@ async (page) => {
   const next = async () => { await page.getByRole('button', { name: /Save and continue|^Continue$/ }).click(); await page.waitForTimeout(700); };
   await page.setViewportSize({ width: 1400, height: 950 });
   await page.goto('http://localhost:5174/admin/setup', { waitUntil: 'domcontentloaded' });
-  await page.getByText('Setting up Ana Fitness').waitFor({ timeout: 15000 });
+  await page.locator('[data-studio-name]', { hasText: 'Ana Fitness' }).waitFor({ timeout: 15000 });
   let t = await text();
-  out.push('the rail lists every step: ' + (['Your gym', 'When you are open', 'How your app looks', 'Your words', 'What you run', 'Who approves bookings', 'How coaching works', 'Day passes and walk-ins', 'Checking in', 'The AI assistant', 'Your plans', 'How members join', 'Ready to open'].every((s) => t.includes(s)) ? 'yes' : 'MISSING'));
+  // The rail lists the six chapters; only the open chapter shows its steps.
+  out.push('the rail lists every chapter: ' + (['Your identity', 'How you run it', 'Money', 'Safety and rules', 'Team and floor', 'Open the doors'].every((s) => t.includes(s))
+    && ['Name your gym', 'When you are open', 'Your colours', 'Your words'].every((s) => t.includes(s)) ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/admin-setup-1.png' });
 
   await next();                                    // gym → hours
@@ -108,7 +112,10 @@ async (page) => {
   await page.screenshot({ path: 'shots/admin-setup-look.png' });
   await next();                                    // look → words
   out.push('the look is saved: ' + (CALLS.some(([f]) => f === 'save_gym_look') ? 'yes' : 'MISSING'));
-  await next();                                    // words → runs
+  await next();                                    // words → style (gym styles, 0256)
+  await page.locator('[data-gym-styles]').waitFor({ timeout: 5000 }).catch(() => {});
+  out.push('the Run chapter opens on how your gym works: ' + ((await page.locator('[data-studio-step="style"] [data-gym-styles] [data-style]').count()) === 4 ? 'yes' : 'MISSING'));
+  await next();                                    // style → runs
   t = await text();
   // The switches sit under "Show every switch" since the questions came first (guides G2).
   await page.locator('[data-every-switch] summary').click();
@@ -124,9 +131,7 @@ async (page) => {
   await next();                                    // bookings → coaching (0181)
   t = await text();
   out.push('the coaching step asks how members get a coach: ' + ((await page.locator('[data-coaching-settings]').count()) === 1 ? 'yes' : 'MISSING'));
-  await next();                                    // coaching → walk-ins (0185)
-  out.push('the walk-ins step offers day passes: ' + ((await page.locator('[data-day-pass-settings]').count()) === 1 ? 'yes' : 'MISSING'));
-  await next();                                    // walk-ins → checking in (0200)
+  await next();                                    // coaching → checking in (0200)
   out.push('the checking-in step asks about coaches and members’ picks: ' + (/Whether your coaches check in too/.test(await text()) ? 'yes' : 'MISSING'));
   await next();                                    // checking in → coach
   t = await text();
@@ -137,26 +142,36 @@ async (page) => {
   await page.waitForTimeout(600);
   out.push('a plan can be removed: ' + (CALLS.some(([f, b]) => f === 'retire_plan' && b.p_plan_id === 'p-trial') ? 'yes' : 'MISSING'));
   out.push('the free plan cannot be: ' + ((await page.getByLabel('Remove Free Plan').count()) === 0 ? 'yes' : 'MISSING'));
-  await page.locator('#pd-p-prem').fill('90');
+  await page.locator('[data-plan-row]', { hasText: 'Plan · ₱999 now' }).getByLabel('Days').fill('90');
   await page.getByRole('button', { name: 'Add a plan' }).click();
-  await page.locator('#np-0').fill('Student rate');
-  await page.locator('#npp-0').fill('499');
+  const fresh = page.locator('[data-plan-row]', { hasText: 'A new plan' });
+  await fresh.getByLabel('A new plan').fill('Student rate');
+  await fresh.getByLabel('Price (₱)').fill('499');
   await page.screenshot({ path: 'shots/admin-setup-plans.png' });
-  await next();                                    // plans → door
+  await next();                                    // plans → walk-ins (0185)
   out.push('days edited, a plan added: ' + (PATCHES.some((p) => p.duration_days === 90) && PLANS.some((p) => p.name === 'Student rate' && p.price === 499) ? 'yes' : 'MISSING ' + JSON.stringify(PATCHES)));
-  await next();                                    // door → ready
+  out.push('the walk-ins step offers day passes: ' + ((await page.locator('[data-day-pass-settings]').count()) === 1 ? 'yes' : 'MISSING'));
+  // walk-ins → refunds → payments → waiver → rules → team → equipment → rewards → door → members → open
+  for (let i = 0; i < 10; i++) {
+    if ((await page.locator('[data-studio-step="ready"]').count()) === 1) break;
+    await next();
+  }
   t = await text();
-  out.push('the checklist is there: ' + ((await page.getByRole('button', { name: /Refund tiers and fee/ }).count()) === 1 && (await page.getByRole('button', { name: /The shop/ }).count()) === 1 && /Open my gym/.test(t) ? 'yes' : 'MISSING'));
+  out.push('the last step opens the gym: ' + ((await page.locator('[data-studio-step="ready"] [data-studio-summary]').count()) === 1
+    && (await page.locator('[data-open-gym]').count()) === 1 && /Open my gym/.test(t) ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/admin-setup-ready.png' });
-  await page.getByRole('button', { name: /3\. How your app looks/ }).click();
+  await page.getByRole('button', { name: /^Your identity/ }).click();
+  await page.waitForTimeout(300);
+  await page.getByRole('button', { name: 'Your colours', exact: true }).click();
   await page.waitForTimeout(300);
   out.push('a done step can be revisited: ' + (/Your main colour/.test(await text()) ? 'yes' : 'MISSING'));
-  await page.getByRole('button', { name: /13\. Ready to open/ }).click();
+  await page.getByRole('button', { name: /^Open the doors/ }).click();
   await page.waitForTimeout(300);
-  // The bug: a checklist link opened a page while the gym was still "not set up", and the guard sent it back here.
-  await page.getByRole('button', { name: /Refund tiers and fee/ }).click();
-  await page.waitForURL(/\/settings\?tab=refunds/, { timeout: 10000 }).catch(() => {});
+  // The bug: a page opened while the gym was still "not set up", and the guard sent it back here — so setup is finished first.
+  out.push('nothing is finished before Open my gym: ' + (!FINISHED ? 'yes' : 'MISSING (finished too early)'));
+  await page.locator('[data-open-gym]').click();
+  await page.waitForURL(/\/dashboard/, { timeout: 10000 }).catch(() => {});
   await page.waitForTimeout(1200);
-  out.push('a checklist item finishes setup and opens its page: ' + (FINISHED && /\/settings\?tab=refunds/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
+  out.push('Open my gym finishes setup and opens the dashboard: ' + (FINISHED && /\/dashboard/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
   return out.join(String.fromCharCode(10));
 }

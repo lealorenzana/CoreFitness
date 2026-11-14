@@ -7,6 +7,7 @@ import MyPackage from '../../components/coaching/MyPackage';
 import type { Coaching } from '../../lib/api/coaching';
 import { getCurrentMemberId, isUpcoming, listMyBookings, type MyBooking } from '../../services/bookingService';
 import { useT } from '../../lib/i18n';
+import { useBookingModes } from '../../hooks/useBookingModes';
 
 const when = (iso: string | null) => (iso
   ? new Date(iso).toLocaleString('en-PH', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
@@ -25,6 +26,7 @@ const STATE: Record<MyBooking['status'], string> = {
  * every session, with cancel, rebook and evaluate, is See all.
  */
 export default function CoachHome() {
+  const ptOff = useBookingModes()?.ptMode === 'off';
   const navigate = useNavigate();
   const t = useT();
   const [rows, setRows] = useState<MyBooking[] | null | undefined>(undefined);
@@ -88,7 +90,11 @@ export default function CoachHome() {
       </section>
       )}
 
-      {pkg ? (
+      {ptOff ? (
+        <p data-pt-booking-off style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--color-text-secondary)' }}>
+          {t('Your gym books 1-on-1 sessions at the front desk, not in the app.')}
+        </p>
+      ) : pkg ? (
         // On a package: one coach. Book with them (or their stand-in) only; Switch coach lives in Manage package.
         <div data-book-with-coach>
           <NocButton variant="fill" className="w-full"
@@ -101,6 +107,10 @@ export default function CoachHome() {
           <NocButton variant="fill" onClick={() => navigate('/member/book-session')}>{t('Book a session')}</NocButton>
           <NocButton variant="ghost" onClick={() => navigate('/member/trainers')}>{t('Find a coach')}</NocButton>
         </div>
+      )}
+      {/* Booking off, no coach yet: the coaches are still there to find. */}
+      {ptOff && pkg === null && (
+        <NocButton variant="ghost" onClick={() => navigate('/member/trainers')}>{t('Find a coach')}</NocButton>
       )}
     </div>
   );

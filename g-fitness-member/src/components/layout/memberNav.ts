@@ -71,7 +71,7 @@ export const TABS: Tab[] = [
 const TAB_PATHS: string[][] = [
   // Today is only "right now": the day, what arrived, what the gym announced,
   // and the assistant you ask about it.
-  ['/member/home', '/member/notifications', '/member/chatbot', '/member/reels', '/member/gym-chat'],
+  ['/member/home', '/member/notifications', '/member/chatbot', '/member/reels', '/member/gym-chat', '/member/week'],
   // Train: Workout, Coach (and Classes when on), and every screen they open —
   // including the aliases old notification rows still point at.
   ['/member/book-class', '/member/training', '/member/book', '/member/bookings',

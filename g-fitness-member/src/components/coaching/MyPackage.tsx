@@ -24,6 +24,9 @@ import {
 } from '../../lib/api/coaching';
 import { coachingPauses, type CoachingPause } from '../../lib/api/coachingRules';
 
+/** Where a package's chat is: its room, or — no room yet — the plain chat with the coach (CoachChat finds a room later). */
+const chatPath = (c: Coaching) => (c.roomId ? `/member/rooms/${c.roomId}` : `/member/chat/${c.trainerId}`);
+
 const fmt = (ymd: string | null) => (ymd ? new Date(`${ymd}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : '');
 
 /**
@@ -135,7 +138,7 @@ export default function MyPackage({ next, onCurrent }: {
             action={current.status === 'active' && unread > 0
               ? <span data-package-unread className="grid place-items-center" style={{ minWidth: 22, height: 22, padding: '0 6px', borderRadius: 11, fontSize: 12, fontWeight: 700, background: 'var(--color-secondary)', color: 'var(--color-bg)' }}>{unread > 99 ? '99+' : unread}</span>
               : <StatusPill label={STATUS_WORDS[current.status]} tone={current.status === 'active' ? 'structure' : 'action'} />}
-            onClick={current.status === 'active' && current.roomId ? () => navigate(`/member/rooms/${current.roomId}`) : undefined}
+            onClick={current.status === 'active' ? () => navigate(chatPath(current)) : undefined}
             last
           />
 
@@ -232,9 +235,11 @@ export default function MyPackage({ next, onCurrent }: {
                     {first} is {coach.presence === 'on_leave' ? 'on leave' : 'away'} right now — you can pick a stand-in in Manage package.
                   </p>
                 )}
-                {current.roomId && (
+                {/* Always: a package with no room yet still has its chat with the coach (2026-11-14 — the coach's side
+                    had it, the member's did not). The room when there is one, else the coach's own chat. */}
+                {(
                   <div data-message-coach style={{ marginTop: 12 }}>
-                    <NocButton className="w-full" onClick={() => navigate(`/member/rooms/${current.roomId}`)}>
+                    <NocButton className="w-full" onClick={() => navigate(chatPath(current))}>
                       Message {first}{unread > 0 ? ` · ${unread > 99 ? '99+' : unread} new` : ''}
                     </NocButton>
                   </div>

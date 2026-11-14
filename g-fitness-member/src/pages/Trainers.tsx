@@ -13,6 +13,7 @@ import {
 } from '../services/coachDirectoryService';
 import { Page, PageTitle } from '../components/ui/page';
 import { Chip, Eyebrow, Panel, StatusPill } from '../components/ui/noc';
+import { useBookingModes } from '../hooks/useBookingModes';
 
 /**
  * The gym's coaching team, as a member sees it (reworked 2026-09-19).
@@ -30,7 +31,7 @@ import { Chip, Eyebrow, Panel, StatusPill } from '../components/ui/noc';
 type Sort = 'recommended' | 'soonest' | 'rated' | 'name';
 
 function CoachRow({ c, goal, onOpen, onBook, last }: {
-  c: CoachCard; goal: Goal | null; onOpen: () => void; onBook: () => void; last: boolean;
+  c: CoachCard; goal: Goal | null; onOpen: () => void; onBook: (() => void) | null; last: boolean;
 }) {
   const matched = goal ? goalMatches(c.trainer, goal) : [];
   return (
@@ -67,20 +68,21 @@ function CoachRow({ c, goal, onOpen, onBook, last }: {
           )}
         </span>
       </button>
-      <button onClick={onBook} className="flex-none noc-press" style={{
+      {onBook && <button onClick={onBook} className="flex-none noc-press" style={{
         height: 36, padding: '0 14px', borderRadius: 999, fontSize: 13, fontWeight: 600,
         color: 'var(--color-secondary)',
         background: 'color-mix(in srgb, var(--color-secondary) 12%, transparent)',
         border: '1px solid color-mix(in srgb, var(--color-secondary) 35%, transparent)',
       }} aria-label={`Book a 1-on-1 with ${c.name}`}>
         Book
-      </button>
+      </button>}
     </div>
   );
 }
 
 export default function Trainers() {
   const navigate = useNavigate();
+  const ptOff = useBookingModes()?.ptMode === 'off';
   const [cards, setCards] = useState<CoachCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [goalId, setGoalId] = useState<string | null>(null);
@@ -193,10 +195,12 @@ export default function Trainers() {
                         </span>
                       </span>
                     </button>
-                    <button onClick={() => book(c)} className="flex-none"
-                      style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-secondary)' }}>
-                      Book again
-                    </button>
+                    {!ptOff && (
+                      <button onClick={() => book(c)} className="flex-none"
+                        style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-secondary)' }}>
+                        Book again
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -236,7 +240,7 @@ export default function Trainers() {
               <div className="noc-rows" style={{ marginTop: 4 }}>
                 {ranked.map((c, i) => (
                   <CoachRow key={c.trainer.id} c={c} goal={goal} last={i === ranked.length - 1}
-                    onOpen={() => open(c)} onBook={() => book(c)} />
+                    onOpen={() => open(c)} onBook={ptOff ? null : () => book(c)} />
                 ))}
               </div>
             )}

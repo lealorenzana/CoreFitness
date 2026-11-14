@@ -140,7 +140,9 @@ function ClassLine({
                 <MapPin size={12} /> {cls.location}
               </span>
             )}
-            {!cls.template_id && <span style={{ color: 'var(--color-primary-300)' }}>· Your class</span>}
+            {cls.template_id
+              ? <span style={{ color: 'var(--color-text-muted)' }}>· Gym timetable</span>
+              : <span style={{ color: 'var(--color-primary-300)' }}>· Your class</span>}
           </p>
 
           {/* How full it is: a bar, then the count in words — "1 booked · 11
@@ -160,8 +162,9 @@ function ClassLine({
             </span>
           </div>
 
-          {/* The class's details are the trainer's to keep right (0085). */}
-          {editable && (
+          {/* A class the coach made is theirs to keep right (0085); one from the gym's weekly timetable is the
+              gym's — the owner changes it (0257, 2026-11-14), so it carries no Edit. */}
+          {editable && !cls.template_id && (
             <button onClick={() => onEdit(cls)} className="inline-flex items-center noc-press"
               style={{ gap: 5, marginTop: 9, fontSize: 12.5, color: 'var(--color-primary-300)' }}>
               <PencilSimple size={13} /> Edit class

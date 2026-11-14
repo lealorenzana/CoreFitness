@@ -26,6 +26,7 @@ import { Chip, Eyebrow, InlineStat, NocButton, Panel, StatusPill, TextTabs } fro
 import CancelBookingDialog from '../components/ui/CancelBookingDialog';
 import { useGymApp } from '../hooks/useGymApp';
 import { moduleOn } from '../lib/gymApp';
+import { useBookingModes } from '../hooks/useBookingModes';
 
 /**
  * Your sessions — See all from Train → Coach (it was My bookings; simplify,
@@ -108,6 +109,7 @@ function downloadIcs(row: MyBooking) {
 
 export default function BookingHistory() {
   const navigate = useNavigate();
+  const modes = useBookingModes();
   const [rows, setRows] = useState<MyBooking[]>([]);
   const [visitDays, setVisitDays] = useState<Set<string>>(new Set());
   const [evaluate, setEvaluate] = useState<Set<string>>(new Set());
@@ -257,7 +259,7 @@ export default function BookingHistory() {
                     <Star size={13} weight="fill" /> Evaluate
                   </button>
                 )}
-                {tab !== 'upcoming' && (
+                {tab !== 'upcoming' && !(row.kind === 'pt' ? modes?.ptMode === 'off' : modes?.classMode === 'off') && (
                   <button onClick={() => bookAgain(row)} className="inline-flex items-center" style={{ gap: 4, color: 'var(--color-primary-300)' }}>
                     <ArrowClockwise size={13} /> Book again
                   </button>

@@ -306,10 +306,12 @@ export default function Bookings({ scope, embedded = false }: { scope?: 'pt' | '
       return next;
     });
 
-  const pendingCount = rows.filter((r) => r.status === 'pending').length;
-  const yours = rows.filter((r) => r.status === 'pending' && gymMayApprove(r)).length;
-  const flaggedCount = rows.filter((r) => r.status === 'pending' && r.warnings.length > 0).length;
-  const bookedToday = rows.filter((r) => r.status === 'approved' && r.when && localDateKey(r.when) === today);
+  // The kind this page is about (2026-11-14): Class bookings counts classes, Personal training counts 1-on-1.
+  const scoped = scope ? rows.filter((r) => r.kind === scope) : rows;
+  const pendingCount = scoped.filter((r) => r.status === 'pending').length;
+  const yours = scoped.filter((r) => r.status === 'pending' && gymMayApprove(r)).length;
+  const flaggedCount = scoped.filter((r) => r.status === 'pending' && r.warnings.length > 0).length;
+  const bookedToday = scoped.filter((r) => r.status === 'approved' && r.when && localDateKey(r.when) === today);
   const weekRows = rows.filter((r) => r.kind === 'class' && r.when && localDateKey(r.when) >= today && localDateKey(r.when) <= addDays(today, 6) && r.seats);
   const seatsByClass = new Map<string, { t: number; c: number }>();
   for (const r of weekRows) seatsByClass.set(r.title + r.when, { t: r.seats!.taken, c: r.seats!.capacity });
@@ -355,7 +357,7 @@ export default function Bookings({ scope, embedded = false }: { scope?: 'pt' | '
       <div className="a-head">
         {!embedded && <div className="min-w-0">
           <h1>{scope === 'class' ? 'Class bookings' : 'Bookings'}</h1>
-          <p>{scope === 'class' ? 'Every class booking, by day' : 'Every class booking and 1-on-1, by day'}{modes ? <> · <span style={{ color: 'var(--a-p300)' }}>classes: {MODE_WORD[modes.class].toLowerCase()} · 1-on-1: {MODE_WORD[modes.pt].toLowerCase()}</span></> : ''}</p>
+          <p>{scope === 'class' ? 'Every class booking, by day' : 'Every class booking and 1-on-1, by day'}{modes ? <> · <span style={{ color: 'var(--a-p300)' }}>{scope === 'class' ? `${MODE_WORD[modes.class].toLowerCase()}` : `classes: ${MODE_WORD[modes.class].toLowerCase()} · 1-on-1: ${MODE_WORD[modes.pt].toLowerCase()}`}</span></> : ''}</p>
         </div>}
         <nav className="a-tabs" aria-label="Bookings views" data-rd-tabs>
           <button type="button" className={view === 'day' ? 'on' : ''} onClick={() => { setView('day'); setFilter('all'); }}><CalendarDays size={14} />By day</button>
@@ -393,15 +395,16 @@ export default function Bookings({ scope, embedded = false }: { scope?: 'pt' | '
         {view === 'history' && <button type="button" className="a-btn" style={{ padding: '7px 11px', marginLeft: 'auto' }} onClick={exportCsv}><Download size={15} />Export</button>}
       </div>
 
-      <div className="a-grid flex-none" style={{ gridTemplateColumns: 'repeat(4,minmax(0,1fr))' }} data-booking-cards>
+      <div className="a-grid flex-none" style={{ gridTemplateColumns: `repeat(${scope === 'pt' ? 3 : 4},minmax(0,1fr))` }} data-booking-cards>
         <button type="button" className="a-card press text-left" style={pendingCount ? { borderColor: 'var(--a-warn-line, #3e310f)', padding: '12px 14px' } : { padding: '12px 14px' }} onClick={() => { setView('waiting'); setFilter('pending'); }}>
           <div className="a-lbl" style={pendingCount ? { color: 'var(--a-a300)' } : undefined}>Waiting for a decision</div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}><div className="a-num">{pendingCount}</div><span className="a-sub">{pendingCount - yours} with coaches · {yours} yours</span></div>
         </button>
         <div className="a-card" style={{ padding: '12px 14px' }}><div className="a-lbl">Booked today</div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}><div className="a-num">{bookedToday.length}</div><span className="a-sub">{bookedToday.filter((r) => r.kind === 'class').length} in classes · {bookedToday.filter((r) => r.kind === 'pt').length} 1-on-1</span></div></div>
-        <div className="a-card" style={{ padding: '12px 14px' }}><div className="a-lbl">Seats filled · next 7 days</div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}><div className="a-num">{seatC ? `${Math.round((seatT / seatC) * 100)}%` : '—'}</div><span className="a-sub">{seatC ? `${seatT} of ${seatC} in booked classes` : 'no class bookings yet'}</span></div></div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}><div className="a-num">{bookedToday.length}</div><span className="a-sub">{scope === 'pt' ? '1-on-1 sessions' : scope === 'class' ? 'in classes' : `${bookedToday.filter((r) => r.kind === 'class').length} in classes · ${bookedToday.filter((r) => r.kind === 'pt').length} 1-on-1`}</span></div></div>
+        {/* Seats belong to classes: not on Personal training. */}
+        {scope !== 'pt' && <div className="a-card" style={{ padding: '12px 14px' }}><div className="a-lbl">Seats filled · next 7 days</div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}><div className="a-num">{seatC ? `${Math.round((seatT / seatC) * 100)}%` : '—'}</div><span className="a-sub">{seatC ? `${seatT} of ${seatC} in booked classes` : 'no class bookings yet'}</span></div></div>}
         <button type="button" className="a-card press text-left" style={flaggedCount ? { borderColor: 'var(--a-warn-line, #3e310f)', padding: '12px 14px' } : { padding: '12px 14px' }} onClick={() => { setView('waiting'); setFilter('pending'); }}>
           <div className="a-lbl" style={flaggedCount ? { color: 'var(--a-a300)' } : undefined}>Need checking</div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}><div className="a-num">{flaggedCount}</div><span className="a-sub">waiting with a warning</span></div>
@@ -481,13 +484,13 @@ export default function Bookings({ scope, embedded = false }: { scope?: 'pt' | '
         </div>
 
         <div className="a-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <DeskBookCard onBooked={() => void load()} focusKey={focusBook} />
+          <DeskBookCard onBooked={() => void load()} focusKey={focusBook} only={scope} />
           <BookingAttentionPanel onChanged={load} />
           {modes && (
             <div className="a-card" style={{ flexShrink: 0 }}>
               <div className="a-ct"><h3><ShieldCheck size={16} />Who decides here</h3><button type="button" className="a-btn ghost sm" onClick={() => navigate('/settings?tab=bookings')}><Settings2 size={13} />Change</button></div>
-              <div className="a-row"><span className="a-dot v" /><div className="t"><b>Classes</b><small>{MODE_SAY[modes.class]}</small></div></div>
-              <div className="a-row"><span className="a-dot a" /><div className="t"><b>1-on-1</b><small>{MODE_SAY[modes.pt]}</small></div></div>
+              {scope !== 'pt' && <div className="a-row"><span className="a-dot v" /><div className="t"><b>Classes</b><small>{MODE_SAY[modes.class]}</small></div></div>}
+              {scope !== 'class' && <div className="a-row"><span className="a-dot a" /><div className="t"><b>1-on-1</b><small>{MODE_SAY[modes.pt]}</small></div></div>}
             </div>
           )}
         </div>

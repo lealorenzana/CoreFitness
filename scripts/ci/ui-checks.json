@@ -752,6 +752,10 @@
     {
       "file": "member-chat-screen-check.js",
       "app": "member"
+    },
+    {
+      "file": "admin-gym-styles-check.js",
+      "app": "admin"
     }
   ]
 }

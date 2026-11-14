@@ -39,15 +39,17 @@ function Steps({ acc }: { acc: GymAccount | null }) {
     { title: 'Go live', done: !!acc?.live,
       body: <>When PayMongo activates your account, connect your <b>sk_live_</b> key here instead. Members&rsquo; payments land in your PayMongo balance and PayMongo pays them out to your bank; Core Fitness never holds your money.</> },
   ];
-  const next = steps.findIndex((x) => !x.done);
+  // Connected (2026-11-14): only what is left to go live — the done steps were the same news as the status above.
+  const shown = acc ? steps.map((x, n) => ({ ...x, n })).filter((x) => !x.done) : steps.map((x, n) => ({ ...x, n }));
+  const next = shown.findIndex((x) => !x.done);
   return (
     <div style={{ marginTop: 14 }} data-paymongo-steps>
-      <div className="a-lbl" style={{ marginBottom: 8 }}>How to set it up {acc ? `· ${steps.filter((x) => x.done).length} of 6 done` : ''}</div>
-      {steps.map((x, i) => (
+      <div className="a-lbl" style={{ marginBottom: 8 }}>{acc ? `To take real money · ${shown.length} step${shown.length === 1 ? '' : 's'} left` : 'How to set it up'}</div>
+      {shown.map((x, i) => (
         <div key={x.title} className="flex gap-2.5" style={{ padding: '8px 0', borderTop: i ? '1px solid var(--a-border)' : 0, opacity: x.done ? 0.65 : 1 }}>
           <span className="a-ic" style={{ width: 24, height: 24, borderRadius: 99, fontSize: 11, fontWeight: 800,
             background: x.done ? 'var(--a-plight)' : i === next ? 'var(--a-alight)' : undefined, color: x.done ? 'var(--a-p300)' : i === next ? 'var(--a-a300)' : undefined }}>
-            {x.done ? <Check size={12} /> : i + 1}
+            {x.done ? <Check size={12} /> : x.n + 1}
           </span>
           <div className="min-w-0">
             <b style={{ fontSize: 13 }}>{x.title}</b>
@@ -95,21 +97,16 @@ export default function PayTab() {
             </div>
             {acc ? (
               <>
-                <div className="a-step"><span><Check size={12} /></span>Your PayMongo account is connected — money goes straight to you.</div>
-                <p className="a-sub" style={{ margin: '-4px 0 10px 31px', color: '#fff' }} data-paymongo-connected>
-                  PayMongo is connected ({acc.live ? 'live — real money' : 'test mode — no real money'}, key ending {acc.key_last4}).
-                  Members can renew and pay for coaching in the app; it lands in your PayMongo account and shows in Payments with a receipt number.
+                <p className="a-sub" style={{ lineHeight: 1.55, color: 'var(--a-text2)' }} data-paymongo-connected>
+                  <b style={{ color: 'var(--color-text-primary)' }}>{acc.live ? 'Live — members pay you real money.' : 'Test mode — no real money moves yet.'}</b>{' '}
+                  Key ending {acc.key_last4}. Members see “Pay in the app” when they renew or pay for coaching — GCash, Maya, cards or online
+                  banking, whatever your PayMongo account takes — and it lands in your PayMongo account, minus PayMongo’s own fee, and shows in
+                  Payments with a receipt number. The desk still takes cash.
                 </p>
-                <div className="a-step"><span><Check size={12} /></span>GCash, Maya, cards and online banking — whatever your PayMongo account takes.</div>
-                <div className="a-step"><span>3</span>Members see “Pay in the app” on Renew; the desk still takes cash.</div>
-                {!acc.live && <div className="a-hint"><CreditCard size={15} /><span>To take real money, verify your business with PayMongo, then connect your sk_live_ key here.</span></div>}
-                <div className="a-grid" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10, marginTop: 10 }}>
+                <div className="a-grid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10, marginTop: 10 }}>
                   <div className="a-card" style={{ padding: 12 }}><div className="a-lbl">Paid in the app · {monthName}</div>
                     <div className="a-num" style={{ fontSize: 22 }}>{peso(monthPaid.reduce((n, p) => n + Number(p.amount), 0))}</div>
                     <div className="a-sub">{monthPaid.length} payment{monthPaid.length === 1 ? '' : 's'}</div></div>
-                  <div className="a-card" style={{ padding: 12 }}><div className="a-lbl">Fees</div>
-                    <div className="a-num" style={{ fontSize: 22 }}>PayMongo's</div>
-                    <div className="a-sub">taken by PayMongo at its own rates</div></div>
                   <div className="a-card" style={{ padding: 12 }}><div className="a-lbl">Paid in the app · so far</div>
                     <div className="a-num" style={{ fontSize: 22 }}>{peso(paid.reduce((n, p) => n + Number(p.amount), 0))}</div>
                     <div className="a-sub">{paid.length} payment{paid.length === 1 ? '' : 's'} · <Link to="/payments" style={{ color: 'var(--a-p300)' }}>on Payments</Link></div></div>

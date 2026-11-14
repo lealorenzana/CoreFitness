@@ -111,6 +111,8 @@ async (page) => {
   for (let i = 0; i < 3; i++) await next();          // gym → hours → look → words
   // The points' name is not asked here: the gym has not yet said whether it runs points (owner, 2026-11-12).
   say('Your words asks about people and classes, not about points', /Your coaches/.test(await text()) && (await page.getByText('Your points are called').count()) === 0);
+  await next();                                       // → how your gym works (0256, first in the Run chapter)
+  say('the Run chapter starts with how the gym works', /How your gym works/.test(await text()));
   await next();                                       // → runs
   const asked = await page.locator('[data-run-question]').evaluateAll((els) => els.map((e) => e.getAttribute('data-run-question')));
   say('What you run asks questions, only for what the plan includes', JSON.stringify(asked) === JSON.stringify(['classes', 'points', 'seasons', 'events', 'gym_chat', 'reels', 'online_pay', 'moments']), JSON.stringify(asked));

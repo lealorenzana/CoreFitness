@@ -19,6 +19,7 @@ import type { ClassRow } from '../types/db';
 import { Page, PageTitle } from '../components/ui/page';
 import TrainWith from '../components/coaching/TrainWith';
 import { Eyebrow, LineRow, NocButton, Panel, SeeAll } from '../components/ui/noc';
+import { useBookingModes } from '../hooks/useBookingModes';
 
 /**
  * A coach's profile, as a member sees it (Nocturne redesign).
@@ -45,6 +46,7 @@ import { Eyebrow, LineRow, NocButton, Panel, SeeAll } from '../components/ui/noc
  */
 export default function TrainerProfile() {
   const navigate = useNavigate();
+  const ptOff = useBookingModes()?.ptMode === 'off';
   const { trainerId } = useParams();
   // Read once — Date.now() during render is impure (react-hooks/purity).
   const [now] = useState(() => Date.now());
@@ -238,9 +240,11 @@ export default function TrainerProfile() {
             </div>
           </section>
 
-          <NocButton variant="action" icon={<CalendarPlus size={16} />} onClick={bookWith}>
-            Book with {trainer.first_name}
-          </NocButton>
+          {!ptOff && (
+            <NocButton variant="action" icon={<CalendarPlus size={16} />} onClick={bookWith}>
+              Book with {trainer.first_name}
+            </NocButton>
+          )}
           {/* A coaching term with them (0181), when the gym lets members pick. */}
           <TrainWith trainerId={trainer.id} firstName={trainer.first_name} presence={trainer.presence} />
 

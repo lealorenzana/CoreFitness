@@ -141,5 +141,6 @@
 :root[data-mode="light"] .fs-cap { color: #5D5B70; }
 
 /* The row being explained, on the left. */
-.att .a-setting.fs-pointable { border-radius: 10px; transition: background .2s; }
+.att .a-setting.fs-pointable { border-radius: 10px; transition: background .2s; cursor: pointer; }
+.att .a-setting.fs-pointable:hover:not(.pointed) { background: rgb(var(--hair-rgb, 255 255 255) / .03); }
 .att .a-setting.fs-pointable.pointed { background: color-mix(in srgb, var(--color-primary) 10%, transparent); }

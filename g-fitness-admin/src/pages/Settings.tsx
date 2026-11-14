@@ -39,6 +39,7 @@ import { cropPhoto } from '../components/ui/PhotoCropper';
 import { realEmail } from '../lib/api/logins';
 import MyUsernameBox from '../components/MyUsernameBox';
 import PlacePicker from '../components/ui/PlacePicker';
+import GymStyles from '../components/GymStyles';
 
 /**
  * Admin settings — every tab here writes to the database.
@@ -126,6 +127,8 @@ async function loadSetup(): Promise<{ pinned: boolean | null; waiver: boolean | 
 }
 
 export default function Settings() {
+  /** Bumped when a gym style is applied, so Who approves bookings reads the new choice (0256). */
+  const [styleTick, setStyleTick] = useState(0);
   // `?tab=refunds` opens that tab — the setup wizard's last step links straight to each one.
   const [activeTab, setActiveTab] = useState<TabId>(() => {
     const asked = new URLSearchParams(window.location.search).get('tab');
@@ -522,7 +525,12 @@ export default function Settings() {
                 </>
               )}
 
-              {activeTab === 'bookings' && <>{head('Bookings', 'Who approves bookings — for group classes and 1-on-1 sessions separately')}<BookingApproval /></>}
+              {activeTab === 'bookings' && <>
+                {head('How your gym works', 'Your gym’s style sets the booking and coaching settings below — you can still change each one')}
+                <GymStyles onApplied={() => setStyleTick((n) => n + 1)} />
+                <div style={{ height: 22 }} />
+                {head('Bookings', 'Who approves bookings — for group classes and 1-on-1 sessions separately')}<BookingApproval key={styleTick} />
+              </>}
               {activeTab === 'coaching' && <>{head('Personal training', 'How members get a coach, for how long, and who is paid')}<CoachingSettings /></>}
               {activeTab === 'walk-ins' && (
                 <>
