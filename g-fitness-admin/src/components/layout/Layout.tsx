@@ -13,6 +13,7 @@ import WhatsNew from '../WhatsNew';
 import GymTermsBanner from '../GymTermsBanner';
 import TrialEnded from '../TrialEnded';
 import { getGymContext, type GymContext } from '../../lib/gymContext';
+import ColorModeAsk from '../colormode/ColorModeAsk';
 
 export default function Layout() {
   const location = useLocation();
@@ -87,6 +88,8 @@ export default function Layout() {
       <TooltipLayer />
       {/* The gym's colours and premium theme on the owner's app too (2026-11-02). */}
       <GymLook />
+      {/* The first sign-in question: light, dark or match my device (0254). */}
+      <ColorModeAsk app="admin" />
     </div>
   );
 }

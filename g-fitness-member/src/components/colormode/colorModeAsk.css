@@ -1,0 +1,89 @@
+/* The first sign-in question (0254) — ColorModeAsk.tsx. BYTE-IDENTICAL in admin and member.
+   Only tokens both apps define: --raised-solid, --color-text-*, --color-primary, --fill-primary, --hair-rgb.
+   A floating dialog stays solid (never glass). The little screens are drawn in fixed light and dark
+   colours on purpose: they show what each choice looks like, whatever mode the app is in now. */
+
+.cma-back {
+  position: fixed; inset: 0; z-index: 1000;
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+  background: rgb(0 0 0 / 0.6);
+  animation: cma-fade 180ms ease-out;
+}
+.cma-box {
+  width: 100%; max-width: 480px; border-radius: 22px; padding: 22px 20px 18px;
+  background: var(--raised-solid, #17171c); color: var(--color-text-primary);
+  border: 1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1);
+  box-shadow: 0 24px 60px rgb(0 0 0 / 0.35);
+  animation: cma-rise 240ms cubic-bezier(.2, .8, .2, 1);
+}
+.cma-title { margin: 0; font-size: 19px; font-weight: 700; line-height: 1.25; letter-spacing: -0.01em; }
+.cma-hint { margin: 6px 0 16px; font-size: 13px; line-height: 1.45; color: var(--color-text-secondary); }
+
+.cma-opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.cma-opt {
+  display: flex; flex-direction: column; align-items: stretch; text-align: left; gap: 4px;
+  padding: 10px; border-radius: 16px; cursor: pointer; font: inherit; color: inherit;
+  background: rgb(var(--hair-rgb, 255 255 255) / 0.03);
+  border: 1.5px solid rgb(var(--hair-rgb, 255 255 255) / 0.1);
+  transition: border-color 150ms, background 150ms, transform 150ms;
+}
+.cma-opt:hover { border-color: rgb(var(--hair-rgb, 255 255 255) / 0.22); }
+.cma-opt:active { transform: scale(0.98); }
+.cma-opt:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.cma-opt[data-on="true"] {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+.cma-art { position: relative; display: block; margin-bottom: 4px; }
+.cma-label { font-size: 13.5px; font-weight: 650; line-height: 1.25; }
+.cma-line { font-size: 12px; line-height: 1.35; color: var(--color-text-muted); }
+
+/* A tiny app screen: a top bar, two cards and a button. */
+.cma-scr {
+  display: flex; flex-direction: column; gap: 5px; padding: 8px 7px;
+  aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden;
+}
+.cma-scr i { display: block; border-radius: 4px; }
+.cma-top { height: 6px; width: 55%; }
+.cma-card { height: 14px; }
+.cma-short { width: 70%; }
+.cma-pill { height: 8px; width: 40%; margin-top: auto; border-radius: 99px !important; background: var(--color-primary); }
+.cma-light { background: #F4F4F6; border: 1px solid #E2E2E8; }
+.cma-light .cma-top { background: #C9C9D0; }
+.cma-light .cma-card { background: #FFFFFF; box-shadow: 0 1px 2px rgb(0 0 0 / 0.08); }
+.cma-dark { background: #0E0E12; border: 1px solid #26262E; }
+.cma-dark .cma-top { background: #3A3A44; }
+.cma-dark .cma-card { background: #1C1C22; }
+
+/* Match my phone: light and dark cut on the diagonal. */
+.cma-split { position: relative; display: block; }
+.cma-split > .cma-scr:last-child { position: absolute; inset: 0; clip-path: polygon(62% 0, 100% 0, 100% 100%, 38% 100%); }
+
+.cma-tick {
+  position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 99px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--fill-primary, var(--color-primary)); color: #fff;
+  box-shadow: 0 0 0 2px var(--raised-solid, #17171c);
+}
+
+.cma-go {
+  width: 100%; margin-top: 16px; min-height: 46px; border: 0; border-radius: 14px; cursor: pointer;
+  font: inherit; font-size: 14.5px; font-weight: 650; color: #fff;
+  background: var(--fill-primary, var(--color-primary));
+}
+.cma-go:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }
+
+/* On a phone the question sits at the bottom, where the thumb is. */
+@media (max-width: 600px) {
+  .cma-back { align-items: flex-end; padding: 0; }
+  .cma-box { max-width: none; border-radius: 22px 22px 0 0; padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
+  .cma-opts { gap: 8px; }
+  .cma-opt { padding: 8px; }
+  .cma-line { font-size: 12px; }
+}
+
+@keyframes cma-fade { from { opacity: 0; } }
+@keyframes cma-rise { from { opacity: 0; transform: translateY(14px); } }
+@media (prefers-reduced-motion: reduce) {
+  .cma-back, .cma-box { animation: none; }
+}

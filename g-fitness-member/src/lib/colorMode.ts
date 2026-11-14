@@ -15,6 +15,9 @@ import { reapplyPremiumTheme } from './premiumThemes';
 export type ColorMode = 'system' | 'light' | 'dark';
 
 let saved: ColorMode = 'system';
+/** 0254: whether this account still has to be asked (first sign-in). False until read, and before 0254. */
+let mustAsk = false;
+const askListeners = new Set<(ask: boolean) => void>();
 /**
  * The sign-in screen's own switch (the owner, 2026-11-07): before anyone signs in there is no account to
  * save a choice on, so it is this phone's — a per-device convenience, read where "the device decides".
@@ -53,14 +56,36 @@ media?.addEventListener('change', () => { if (saved === 'system' && !device) app
 
 /** After sign-in: this account's choice. Before 0234 (or signed out), the device decides. */
 export async function loadColorMode(): Promise<void> {
-  const { data, error } = await supabase.rpc('my_color_mode');
+  const [{ data, error }, asked] = await Promise.all([supabase.rpc('my_color_mode'), supabase.rpc('my_color_mode_asked')]);
   saved = !error && (data === 'light' || data === 'dark') ? data : 'system';
+  applyColorMode();
+  // Ask only when the account says it never chose (0254). An error (0254 not pasted, or offline) never asks.
+  setMustAsk(!asked.error && asked.data === false);
+}
+
+function setMustAsk(v: boolean): void {
+  if (mustAsk === v) return;
+  mustAsk = v;
+  askListeners.forEach((fn) => fn(v));
+}
+
+/** The first sign-in question (0254): shown while this is true; any choice answers it. */
+export const colorModeMustAsk = (): boolean => mustAsk;
+export function onColorModeAsk(fn: (ask: boolean) => void): () => void {
+  askListeners.add(fn);
+  return () => { askListeners.delete(fn); };
+}
+
+/** The first sign-in question's live preview (0254): shows a mode without saving it or answering the question. */
+export function previewColorMode(mode: ColorMode): void {
+  saved = mode;
   applyColorMode();
 }
 
 export async function setColorMode(mode: ColorMode): Promise<string | null> {
   saved = mode;
   applyColorMode();
+  setMustAsk(false);   // any choice — the question, Settings, the sun/moon — answers it (0254)
   const { error } = await supabase.rpc('set_color_mode', { p_mode: mode });
   return error ? error.message : null;
 }
@@ -68,6 +93,7 @@ export async function setColorMode(mode: ColorMode): Promise<string | null> {
 /** Signed out, or another account: back to the device's setting (memberCaches). */
 export function clearColorMode(): void {
   saved = 'system';
+  setMustAsk(false);
   applyColorMode();
 }
 

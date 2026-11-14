@@ -736,6 +736,14 @@
     {
       "file": "admin-gym-chat-check.js",
       "app": "admin"
+    },
+    {
+      "file": "member-color-mode-ask-check.js",
+      "app": "member"
+    },
+    {
+      "file": "admin-color-mode-ask-check.js",
+      "app": "admin"
     }
   ]
 }

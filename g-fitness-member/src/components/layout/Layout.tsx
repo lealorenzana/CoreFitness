@@ -25,6 +25,8 @@ import GymPaused from '../ui/GymPaused';
 import ModuleGate from '../ModuleGate';
 import { getCurrentMemberId } from '../../services/bookingService';
 import { useEffect } from 'react';
+import ColorModeAsk from '../colormode/ColorModeAsk';
+import { useLanguage } from '../../lib/i18n';
 
 /**
  * The member shell (Nocturne redesign, 2026-09-16), top to bottom:
@@ -97,6 +99,7 @@ export default function Layout() {
 
   // The gym's colour and name, and whether it is read-only (0104).
   const gym = useGymBrand();
+  const lang = useLanguage();
 
   // The member's language (0095), once per shell mount. Missing column or a
   // failed read leaves English, which is what every screen falls back to.
@@ -169,6 +172,8 @@ export default function Layout() {
       {/* The big moments (wave 1): one queue, played over any screen. */}
       <MomentWatcher />
       <MomentHost />
+      {/* The first sign-in question: light, dark or match my phone (0254). */}
+      <ColorModeAsk app="member" lang={lang} />
     </PhoneChassis>
   );
 }

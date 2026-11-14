@@ -17,6 +17,8 @@ import { useGymBrand } from '../../hooks/useGymBrand';
 import GymLockBanner from '../ui/GymLockBanner';
 import GymPaused from '../ui/GymPaused';
 import ModuleGate from '../ModuleGate';
+import ColorModeAsk from '../colormode/ColorModeAsk';
+import { useLanguage } from '../../lib/i18n';
 
 /**
  * The trainer shell — the member shell's structure (Nocturne), top to bottom:
@@ -53,6 +55,7 @@ export default function TrainerLayout() {
 
   // The gym's colour and name, and whether it is read-only (0104).
   const gym = useGymBrand();
+  const lang = useLanguage();
 
   // The gym's free trial has ended (0198): the app stops for coaches too.
   if (gym?.lockReason === 'trial_ended') {
@@ -96,6 +99,8 @@ export default function TrainerLayout() {
       <AchievementWatcher />
       {/* A coach's badges play here too (the member's other moments are theirs). */}
       <MomentHost />
+      {/* The first sign-in question: light, dark or match my phone (0254). */}
+      <ColorModeAsk app="member" lang={lang} />
     </PhoneChassis>
   );
 }
