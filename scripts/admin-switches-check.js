@@ -148,6 +148,58 @@ async (page) => {
   out.push('not sold explained: ' + (/Your Core Fitness plan does not include this/.test(t) ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/admin-switches.png', fullPage: true });
 
+  // ---- the explainer beside the switches (2026-11-14): point at a part, it acts out what it does ----
+  const fs = page.locator('[data-feature-show]');
+  out.push('explainer starts on the first part: ' + ((await fs.getAttribute('data-feature-show')) === 'front_desk' && (await page.locator('.fs-desk').count()) === 1 ? 'yes (desk screen)' : 'MISSING ' + (await fs.getAttribute('data-feature-show'))));
+  out.push('the old phone list is gone: ' + ((await page.locator('.a-phone').count()) === 0 ? 'yes' : 'MISSING'));
+  await page.locator('[data-module="checkin"]').hover();
+  await page.waitForTimeout(400);
+  const kiosk = { key: await fs.getAttribute('data-feature-show'), phone: await page.locator('.fs-phone').count(), steps: await page.locator('[data-fs-steps] li').count(),
+    status: (await page.locator('[data-fs-status]').innerText()).trim(), guide: await fs.locator('[data-guide-button="kiosk"]').count(),
+    beat0: await page.locator('.fs-frame').getAttribute('data-beat') };
+  out.push('hovering check-in plays it on a phone: ' + (kiosk.key === 'checkin' && kiosk.phone === 1 && kiosk.steps === 3 ? 'yes' : 'MISSING ' + JSON.stringify(kiosk)));
+  out.push('…says it is on, with the set-up guide: ' + (kiosk.status === 'On' && kiosk.guide === 1 ? 'yes' : 'MISSING ' + JSON.stringify(kiosk)));
+  out.push('…the row is marked: ' + ((await page.locator('[data-module="checkin"].pointed').count()) === 1 ? 'yes' : 'MISSING'));
+  await page.waitForTimeout(2800);
+  const beat1 = await page.locator('.fs-frame').getAttribute('data-beat');
+  out.push('…and it moves on by itself: ' + (kiosk.beat0 === '0' && beat1 === '1' ? 'beat 0 → 1' : 'MISSING ' + kiosk.beat0 + '→' + beat1));
+  await page.emulateMedia({ colorScheme: 'dark' }); await page.waitForTimeout(400);
+  out.push('in dark the app is dark: ' + ((await page.evaluate(() => document.documentElement.dataset.mode)) === 'dark' ? 'yes' : 'MISSING'));
+  await page.screenshot({ path: 'shots/admin-runs-explainer-dark.png' });
+  await page.getByRole('radio', { name: 'FIL' }).click();
+  const fil = await page.locator('[data-fs-steps]').innerText();
+  out.push('in Filipino: ' + (/Isa-scan ng desk o kiosk/.test(fil) ? 'yes' : 'MISSING ' + fil.slice(0, 80)));
+  await page.getByRole('radio', { name: 'EN' }).click();
+  await page.locator('[data-module="assistant"]').hover(); await page.waitForTimeout(300);
+  const st1 = (await page.locator('[data-fs-status]').innerText()).trim();
+  await page.locator('[data-module="classes"]').hover(); await page.waitForTimeout(300);
+  const st2 = (await page.locator('[data-fs-status]').innerText()).trim();
+  await page.locator('[data-module="quests"]').hover(); await page.waitForTimeout(300);
+  const st3 = (await page.locator('[data-fs-status]').innerText()).trim();
+  out.push('statuses: not sold, off, held off: ' + (st1 === 'Not on your plan' && st2 === 'Off' && st3 === 'Off with its group' ? 'yes' : `MISSING ${st1} / ${st2} / ${st3}`));
+  const broken = [];
+  for (const [key] of FEATURES) {
+    await page.locator(`[data-module="${key}"]`).hover();
+    await page.waitForTimeout(120);
+    if ((await fs.getAttribute('data-feature-show')) !== key || (await page.locator('.fs-frame').count()) !== 1 || (await page.locator('[data-fs-steps] li').count()) < 2) broken.push(key);
+  }
+  out.push('every part in the list has its animation: ' + (broken.length ? 'MISSING ' + broken.join(', ') : `yes (${FEATURES.length})`));
+  const scroll = await page.evaluate(() => document.scrollingElement.scrollHeight - window.innerHeight);
+  out.push('the page does not scroll: ' + (scroll <= 0 ? 'yes' : `MISSING (${scroll}px)`));
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.locator('[data-module="engagement"]').hover();
+  await page.waitForTimeout(2900);
+  await page.screenshot({ path: 'shots/admin-runs-explainer-light.png' });
+  out.push('in light the app is light: ' + ((await page.evaluate(() => document.documentElement.dataset.mode)) === 'light' ? 'yes' : 'MISSING'));
+  await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' });
+  await page.reload({ waitUntil: 'domcontentloaded' }); await page.waitForTimeout(2500);
+  await page.locator('[data-module="checkin"]').hover(); await page.waitForTimeout(300);
+  const rm0 = await page.locator('.fs-frame').getAttribute('data-beat');
+  await page.waitForTimeout(2800);
+  const rm1 = await page.locator('.fs-frame').getAttribute('data-beat');
+  out.push('reduced motion: the finished screen, still: ' + (rm0 === '2' && rm1 === '2' ? 'yes' : `MISSING ${rm0}→${rm1}`));
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+
   // ---- switching one on reaches the sidebar without a reload ----
   await page.locator('[data-module]', { hasText: 'Coaching rooms' }).first().locator('button.a-toggle').click();
   await page.waitForTimeout(1500);
@@ -185,7 +237,7 @@ async (page) => {
   t = await text();
   out.push('a half-typed code is flagged: ' + (/A colour code is # and six characters/.test(t) ? 'yes' : 'MISSING'));
   await page.locator('#look-action-code').fill('#FFEE00');
-  await page.getByRole('button', { name: 'Publish to members' }).click();
+  await page.getByRole('button', { name: 'Publish', exact: true }).click();
   await page.waitForTimeout(1200);
   out.push('saved: accent ' + (CALLS.save_gym_look?.p_accent ?? 'MISSING') + ' / action ' + (CALLS.save_gym_look?.p_accent_action ?? 'MISSING'));
   await page.screenshot({ path: 'shots/admin-brand-colour.png', fullPage: true });

@@ -28,6 +28,7 @@ import CelebrationsTab from '../components/yourapp/CelebrationsTab';
 import PremiumThemes from '../components/yourapp/PremiumThemes';
 import SavedThemes from '../components/yourapp/SavedThemes';
 import { cropPhoto } from '../components/ui/PhotoCropper';
+import FeatureShow from '../components/yourapp/FeatureShow';
 
 const MEMBER_APP = 'https://corefitness-gym.vercel.app';
 
@@ -79,6 +80,8 @@ export default function GymApp() {
   const setTab = (t: AppTab) => setParams((prev) => { const n = new URLSearchParams(prev); n.set('tab', t); return n; }, { replace: true });
   const [app, setApp] = useState<App | null>(null);
   const [modules, setModules] = useState<GymModule[]>([]);
+  /** What you run: the part the owner is pointing at, played on the right (FeatureShow). */
+  const [pointed, setPointed] = useState<string | null>(null);
   const [words, setWords] = useState({ points_name: '', points_name_short: '', welcome_message: '' });
   /** The nouns (0114). The server always returns all six, so an empty box means "the English word". */
   const [vocab, setVocab] = useState<GymVocabulary | null>(null);
@@ -372,23 +375,9 @@ export default function GymApp() {
 
       {/* ---- What you run ---------------------------------------------------------------- */}
       {tab === 'runs' && (
-        <Split preview={(
-          <Phone cap="Live preview · what members can open">
-            <b style={{ fontSize: 16 }}>Train</b>
-            <div className="a-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0 }}>
-              {modules.filter((m) => !m.parent_key).map((m) => {
-                const Icon = MODULE_ICONS[m.feature_key] ?? ToggleRight;
-                const on = m.enabled && m.state !== 'not_sold' && m.state !== 'parent_off';
-                return on
-                  ? <div key={m.feature_key} className="a-phcard flex items-center gap-2.5"><Icon size={15} style={{ color: 'var(--a-p300)' }} /><b>{m.label}</b></div>
-                  : <div key={m.feature_key} className="a-phcard flex items-center gap-2.5" style={{ opacity: 0.35, borderStyle: 'dashed' }}><Icon size={15} /><span className="a-sub">{m.label} — off</span></div>;
-              })}
-            </div>
-            <TabBar on="Train" />
-          </Phone>
-        )}>
-          <div className="a-ct"><h3><ToggleRight size={16} />What your gym runs</h3><small>switching off hides it — nothing is deleted</small></div>
-          <ModuleColumns modules={modules} onToggle={(m) => void toggle(m)} />
+        <Split preview={<FeatureShow module={modules.find((m) => m.feature_key === pointed) ?? modules.find((m) => !m.parent_key) ?? null} />}>
+          <div className="a-ct"><h3><ToggleRight size={16} />What your gym runs</h3><small>switching off hides it — nothing is deleted · point at one to see what it does</small></div>
+          <ModuleColumns modules={modules} onToggle={(m) => void toggle(m)} onPoint={setPointed} pointed={pointed} />
         </Split>
       )}
 
@@ -576,7 +565,7 @@ function TabBar({ on, colour }: { on: 'Today' | 'Train' | 'You'; colour?: string
  * lock and why; a child whose parent is off shows why and cannot be flipped —
  * its own setting is kept, and returns with the parent.
  */
-function ModuleColumns({ modules, onToggle }: { modules: GymModule[]; onToggle: (m: GymModule) => void }) {
+function ModuleColumns({ modules, onToggle, onPoint, pointed }: { modules: GymModule[]; onToggle: (m: GymModule) => void; onPoint: (key: string) => void; pointed: string | null }) {
   const parents = modules.filter((m) => !m.parent_key);
   const weight = (p: GymModule) => 1 + modules.filter((c) => c.parent_key === p.feature_key).length;
   const total = parents.reduce((n, p) => n + weight(p), 0);
@@ -591,7 +580,8 @@ function ModuleColumns({ modules, onToggle }: { modules: GymModule[]; onToggle: 
       : held ? `Off because ${parent?.label ?? 'the part it belongs to'} is off.`
       : m.description;
     return (
-      <div key={m.feature_key} className="a-setting" style={parent ? { paddingLeft: 20 } : undefined} data-module={m.feature_key}>
+      <div key={m.feature_key} className={`a-setting fs-pointable${pointed === m.feature_key ? ' pointed' : ''}`} style={parent ? { paddingLeft: 20 } : undefined} data-module={m.feature_key}
+        onMouseEnter={() => onPoint(m.feature_key)} onFocusCapture={() => onPoint(m.feature_key)} onClick={() => onPoint(m.feature_key)}>
         <span className="a-ic" style={parent ? { width: 26, height: 26 } : undefined}><Icon size={parent ? 13 : 15} /></span>
         <div className="t"><b style={locked || held ? { color: 'var(--a-text2)' } : undefined}>{m.label}</b><small>{note}</small></div>
         {locked ? <Lock size={15} style={{ color: 'var(--a-muted)' }} aria-label={`${m.label} is not on your plan`} />

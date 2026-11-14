@@ -1,0 +1,145 @@
+/* Your app → What you run: the animated explainer (FeatureShow.tsx). fs-*. Dark first, light below.
+   Inside a gym: the gym's colour through var(--color-primary) / --a-p300, never a fixed violet. */
+
+.fs { display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow: hidden; }
+.fs-empty { align-items: center; justify-content: center; }
+.fs-head { display: flex; align-items: center; gap: 8px; }
+.fs-head > .min-w-0 { flex: 1; display: flex; flex-direction: column; }
+.fs-eyebrow { font-size: 11px; color: var(--a-muted); text-transform: uppercase; letter-spacing: .06em; }
+.fs-title { font-size: 15px; line-height: 1.25; }
+.fs-status { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 99px; white-space: nowrap; }
+.fs-status.on { background: color-mix(in srgb, var(--color-primary) 22%, transparent); color: var(--a-p300); }
+.fs-status.off { background: rgb(var(--hair-rgb, 255 255 255) / .08); color: var(--a-muted); }
+.fs-lang { display: flex; border: 1px solid rgb(var(--hair-rgb, 255 255 255) / .12); border-radius: 99px; overflow: hidden; }
+.fs-lang button { font-size: 11px; font-weight: 700; padding: 3px 8px; color: var(--a-muted); background: transparent; border: 0; cursor: pointer; }
+.fs-lang button.on { background: color-mix(in srgb, var(--color-primary) 26%, transparent); color: var(--a-text2); }
+
+.fs-stage {
+  position: relative; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center;
+  border-radius: 16px; padding: 30px 12px 12px; overflow: hidden;
+  background: radial-gradient(70% 60% at 50% 40%, color-mix(in srgb, var(--color-primary) 22%, #0c0c16), #0c0c16 75%);
+  border: 1px solid var(--a-border);
+}
+.fs-cap { position: absolute; top: 10px; left: 12px; font-size: 11px; color: var(--a-text2); display: flex; gap: 6px; align-items: center; }
+
+/* Frames */
+.fs-frame { position: relative; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 24px 50px rgb(0 0 0 / .45); }
+.fs-phone { width: 200px; height: min(360px, 100%); border-radius: 30px; border: 7px solid #050508; background: #0B0B14; }
+.fs-phone::before { content: ""; position: absolute; top: 6px; left: 50%; transform: translateX(-50%); width: 62px; height: 15px; border-radius: 10px; background: #050508; z-index: 3; }
+.fs-desk { width: 300px; height: min(230px, 100%); border-radius: 12px; border: 1px solid #2a2842; background: #0E0E18; }
+.fs-desk::before { content: ""; height: 18px; flex: none; background: #17162a; border-bottom: 1px solid #2a2842;
+  background-image: radial-gradient(circle at 10px 9px, #3a3850 3px, transparent 3.5px), radial-gradient(circle at 22px 9px, #3a3850 3px, transparent 3.5px), radial-gradient(circle at 34px 9px, #3a3850 3px, transparent 3.5px); }
+.fs-tv { width: 310px; height: min(190px, 100%); border-radius: 10px; border: 8px solid #050508; background: #07070d; }
+.fs-tv::after { content: ""; position: absolute; }
+.fs-scr { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 7px; padding: 28px 11px 11px; position: relative; color: #ECEBF5; }
+.fs-desk .fs-scr { padding-top: 12px; }
+.fs-tv .fs-scr { padding: 14px 16px; justify-content: center; gap: 9px; }
+.fs-tv .fs-h { font-size: 17px; }
+.fs-tv .fs-row b { font-size: 14px; }
+
+/* Pieces — every one fades and rises in when its beat comes */
+.fs-scr > * { transition: opacity .45s ease, transform .45s cubic-bezier(.2,.8,.2,1), background .3s, border-color .3s; }
+.fs-scr > .out { opacity: 0; transform: translateY(8px); }
+.fs-scr > .in { opacity: 1; transform: none; }
+.fs-h { font-size: 13px; font-weight: 800; }
+.fs-row { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 11px; background: rgb(255 255 255 / .05); border: 1px solid rgb(255 255 255 / .08); }
+.fs-row.hit { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 18%, transparent); }
+.fs-row-t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.fs-row-t b { font-size: 11.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fs-row-t small { font-size: 10px; color: #A9A7BD; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fs-pill { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 99px; background: color-mix(in srgb, var(--color-primary) 30%, transparent); color: #fff; white-space: nowrap; }
+.fs-btn { position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 8px; border-radius: 11px;
+  font-size: 11.5px; font-weight: 800; color: #fff; background: var(--fill-primary, var(--color-primary)); }
+.fs-btn.tap { transform: scale(.95) !important; }
+.fs-btn.did { background: color-mix(in srgb, var(--color-primary) 22%, #1a1a26); color: #ECEBF5; }
+.fs-ripple { position: absolute; left: 50%; top: 50%; width: 14px; height: 14px; margin: -7px; border-radius: 50%; background: rgb(255 255 255 / .55); animation: fs-ripple .8s ease-out forwards; }
+@keyframes fs-ripple { to { transform: scale(14); opacity: 0; } }
+
+.fs-bub { max-width: 82%; padding: 7px 10px; border-radius: 13px; font-size: 11px; line-height: 1.35; }
+.fs-bub small { display: block; font-size: 9.5px; font-weight: 700; color: #C9C7DA; margin-bottom: 1px; }
+.fs-bub.l { align-self: flex-start; background: rgb(255 255 255 / .08); border-bottom-left-radius: 4px; }
+.fs-bub.r { align-self: flex-end; background: var(--fill-primary, var(--color-primary)); color: #fff; border-bottom-right-radius: 4px; }
+
+.fs-bar-t { display: flex; justify-content: space-between; font-size: 10.5px; color: #C9C7DA; margin-bottom: 4px; }
+.fs-bar-t b { color: #ECEBF5; }
+.fs-track { height: 8px; border-radius: 99px; background: rgb(255 255 255 / .1); overflow: hidden; }
+.fs-track i { display: block; height: 100%; border-radius: inherit; background: var(--color-primary); transition: width 1.1s cubic-bezier(.2,.8,.2,1); }
+
+.fs-toast { position: absolute; top: 24px; left: 8px; right: 8px; z-index: 2; display: flex; flex-direction: column; gap: 1px;
+  padding: 8px 10px; border-radius: 12px; background: #24233a; box-shadow: 0 8px 20px rgb(0 0 0 / .4); font-size: 10.5px; }
+.fs-toast b { font-size: 10px; color: var(--a-p300); }
+.fs-toast.out { opacity: 0; transform: translateY(-40px) !important; }
+
+.fs-qr { position: relative; align-self: center; width: 104px; height: 104px; border-radius: 12px; background: #fff; padding: 10px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px; overflow: hidden; }
+.fs-qr span { border-radius: 4px; background: repeating-linear-gradient(90deg, #111 0 5px, transparent 5px 9px), repeating-linear-gradient(0deg, #111 0 5px, transparent 5px 10px); background-blend-mode: multiply; }
+.fs-qr span:nth-child(1), .fs-qr span:nth-child(4) { background: #111; box-shadow: inset 0 0 0 6px #111, inset 0 0 0 10px #fff; }
+.fs-scanline { position: absolute; left: 0; right: 0; height: 3px; top: 0; background: var(--color-primary); box-shadow: 0 0 10px var(--color-primary); opacity: 0; }
+.fs-qr.scan .fs-scanline { opacity: 1; animation: fs-scan 1.3s ease-in-out infinite alternate; }
+@keyframes fs-scan { from { top: 4%; } to { top: 94%; } }
+
+.fs-tick { display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 700; }
+.fs-tick > span { flex: none; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--fill-primary, var(--color-primary)); color: #fff; }
+.fs-tick.in > span { animation: fs-pop .45s cubic-bezier(.2,1.6,.4,1); }
+@keyframes fs-pop { from { transform: scale(.3); } }
+
+.fs-chips { display: flex; gap: 4px; }
+.fs-chips span { font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 99px; background: rgb(255 255 255 / .06); color: #C9C7DA; }
+.fs-chips span.on { background: color-mix(in srgb, var(--color-primary) 32%, transparent); color: #fff; }
+.fs-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.fs-tiles span { aspect-ratio: 4 / 3; border-radius: 9px; display: flex; align-items: center; justify-content: center; color: #fff;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 45%, #1b1a28), #1b1a28); }
+
+.fs-chart { display: flex; align-items: flex-end; gap: 6px; height: 64px; padding: 0 2px; }
+.fs-chart i { flex: 1; border-radius: 5px 5px 2px 2px; background: var(--color-primary); transform: scaleY(.08); transform-origin: bottom; transition: transform .8s cubic-bezier(.2,.8,.2,1); }
+.fs-chart.drawn i { transform: none; }
+
+.fs-float { align-self: center; font-size: 15px; font-weight: 800; color: var(--a-p300); }
+.fs-float.in { animation: fs-float 1.4s ease-out; }
+@keyframes fs-float { 0% { opacity: 0; transform: translateY(14px) scale(.8); } 30% { opacity: 1; transform: none; } }
+
+/* The words, beat by beat */
+.fs-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.fs-steps li { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; line-height: 1.4; color: var(--a-muted); transition: color .3s; }
+.fs-steps li.now { color: var(--a-text2); font-weight: 600; }
+.fs-steps li.done { color: var(--a-text2); }
+.fs-n { flex: none; width: 19px; height: 19px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10.5px; font-weight: 800;
+  background: rgb(var(--hair-rgb, 255 255 255) / .08); color: var(--a-muted); transition: background .3s, color .3s; }
+.fs-steps li.now .fs-n, .fs-steps li.done .fs-n { background: var(--fill-primary, var(--color-primary)); color: #fff; }
+.fs-desc { margin: 0; font-size: 12px; line-height: 1.45; color: var(--a-muted); }
+.fs-foot { display: flex; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fs-scr > *, .fs-track i, .fs-chart i { transition: none; }
+  .fs-qr.scan .fs-scanline, .fs-ripple, .fs-tick.in > span, .fs-float.in { animation: none; }
+}
+
+/* Light mode: solid, white words on fills, nothing near-black behind words. The frames stay devices. */
+:root[data-mode="light"] .fs-stage { background: color-mix(in srgb, var(--color-primary) 7%, #F1F2F6); }
+:root[data-mode="light"] .fs-phone { background: #F4F5F8; border-color: #1b1b22; }
+:root[data-mode="light"] .fs-desk { background: #FFFFFF; border-color: #D9D9E3; }
+:root[data-mode="light"] .fs-desk::before { background-color: #F1F1F6; border-color: #E2E2EA; }
+:root[data-mode="light"] .fs-frame { box-shadow: 0 18px 40px rgb(20 20 40 / .18); }
+:root[data-mode="light"] .fs-phone .fs-scr, :root[data-mode="light"] .fs-desk .fs-scr { color: #17161F; }
+:root[data-mode="light"] .fs-phone .fs-row, :root[data-mode="light"] .fs-desk .fs-row { background: #FFFFFF; border-color: #E6E7EC; }
+:root[data-mode="light"] .fs-phone .fs-row.hit, :root[data-mode="light"] .fs-desk .fs-row.hit { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 10%, #FFFFFF); }
+:root[data-mode="light"] .fs-phone .fs-row-t small, :root[data-mode="light"] .fs-desk .fs-row-t small,
+:root[data-mode="light"] .fs-phone .fs-bar-t, :root[data-mode="light"] .fs-phone .fs-bub small { color: #5D5B70; }
+:root[data-mode="light"] .fs-phone .fs-bar-t b { color: #17161F; }
+:root[data-mode="light"] .fs-pill { background: var(--fill-primary, var(--color-primary)); }
+:root[data-mode="light"] .fs-phone .fs-bub.l { background: #E9E9F0; }
+:root[data-mode="light"] .fs-phone .fs-track, :root[data-mode="light"] .fs-desk .fs-track { background: #E2E2EA; }
+:root[data-mode="light"] .fs-btn.did { background: color-mix(in srgb, var(--color-primary) 14%, #FFFFFF); color: #17161F; border: 1px solid color-mix(in srgb, var(--color-primary) 40%, #FFFFFF); }
+:root[data-mode="light"] .fs-toast { background: #FFFFFF; color: #17161F; box-shadow: 0 8px 20px rgb(20 20 40 / .16); }
+:root[data-mode="light"] .fs-toast b { color: var(--fill-primary, var(--color-primary)); }
+:root[data-mode="light"] .fs-chips span { background: #E9E9F0; color: #5D5B70; }
+:root[data-mode="light"] .fs-chips span.on { background: var(--fill-primary, var(--color-primary)); color: #fff; }
+:root[data-mode="light"] .fs-float { color: var(--fill-primary, var(--color-primary)); }
+:root[data-mode="light"] .fs-tiles span { background: color-mix(in srgb, var(--color-primary) 40%, #FFFFFF); }
+:root[data-mode="light"] .fs-status.on { background: var(--fill-primary, var(--color-primary)); color: #fff; }
+:root[data-mode="light"] .fs-lang button.on { background: var(--fill-primary, var(--color-primary)); color: #fff; }
+:root[data-mode="light"] .fs-cap { color: #5D5B70; }
+
+/* The row being explained, on the left. */
+.att .a-setting.fs-pointable { border-radius: 10px; transition: background .2s; }
+.att .a-setting.fs-pointable.pointed { background: color-mix(in srgb, var(--color-primary) 10%, transparent); }

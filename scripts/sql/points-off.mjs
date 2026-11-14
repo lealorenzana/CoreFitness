@@ -109,5 +109,8 @@ check('…and the points landed in the ledger', (await ledger('referral')) === r
 await owner();
 check('the helpers are closed to visitors', !(await one(`select has_function_privilege('anon', 'give_referral_reward(uuid, text)', 'execute') or has_function_privilege('anon', 'gym_points_on(uuid)', 'execute') x`)).x);
 check('marker', (await one(`select migration_0253_applied() ok`).catch(() => ({ ok: false }))).ok === true);
+// 0255: Invite a friend's own description (shown on What you run) no longer promises points only.
+const desc = (await one(`select description d from platform_features where key = 'referrals'`))?.d ?? '';
+check('Invite a friend is described with the desk reward too (0255)', /desk reward/.test(desc) && !/both earn points/.test(desc), desc);
 console.log(failures ? `\n${failures} FAILED` : '\nall 0253 checks passed');
 process.exit(failures ? 1 : 0);
