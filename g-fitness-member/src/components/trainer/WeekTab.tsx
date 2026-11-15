@@ -13,13 +13,15 @@ import {
   coachDecides, decideRequest, decidedText, loadTrainerRequests, modeFor, waitedLabel, type TrainerRequest,
 } from '../../services/trainerRequests';
 import { errorMessage } from '../../utils/errorMessage';
+import { getBookingRules, markAttendance, runBookingSweeps, type BookingRules } from '../../lib/api/bookingRules';
+import RepeatDialog from '../booking/RepeatDialog';
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
 const dayKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 const shortDay = (iso: string) => new Date(iso).toLocaleDateString('en-PH', { weekday: 'short', day: 'numeric', month: 'short' });
 
 /** One thing on the week: a 1-on-1 session or (where the gym runs classes) a member's class booking. */
-interface WeekItem { kind: 'pt' | 'class'; id: string; memberId: string; startsAt: string; title: string }
+interface WeekItem { kind: 'pt' | 'class'; id: string; memberId: string; startsAt: string; title: string; attended: 'came' | 'no_show' | null }
 
 /**
  * This week — what a coach runs Monday to Sunday, on the phone's own clock
@@ -44,8 +46,16 @@ export default function WeekTab({ trainerId, classesOn }: { trainerId: string | 
   const [cancelling, setCancelling] = useState<WeekItem | null>(null);
   const [now] = useState(() => Date.now());
 
+  /** 0260: the gym tracks no-shows — only then does a session that has started offer Came / No-show. */
+  const [marking, setMarking] = useState(false);
+  const [rules, setRules] = useState<BookingRules | null>(null);
+  const [repeating, setRepeating] = useState<WeekItem | null>(null);
   const load = useCallback(async () => {
     if (!trainerId) return;
+    await runBookingSweeps();   // judge ended sessions first, so what is shown is already marked (pg_cron is optional)
+    const br = await getBookingRules();
+    setRules(br);
+    setMarking(!!br && br.noshowsOn && br.noshowMode !== 'off');
     const [s, r, c, rq, m] = await Promise.all([
       listTrainerPtSessions(trainerId).catch(() => null), listMyTrainerMembers().catch(() => [] as TrainerRosterRow[]),
       myCoachings().catch(() => null), loadTrainerRequests(trainerId).catch(() => [] as TrainerRequest[]), getBookingModes().catch(() => null),
@@ -69,9 +79,10 @@ export default function WeekTab({ trainerId, classesOn }: { trainerId: string | 
   const inWeek = (iso: string) => { const t = new Date(iso).getTime(); return t >= monday.getTime() && t < end; };
   const week: WeekItem[] = [
     ...(sessions ?? []).filter((s) => s.status === 'approved' && inWeek(s.starts_at))
-      .map((s) => ({ kind: 'pt' as const, id: s.id, memberId: s.member_id, startsAt: s.starts_at, title: 'Session' })),
+      .map((s) => ({ kind: 'pt' as const, id: s.id, memberId: s.member_id, startsAt: s.starts_at, title: 'Session',
+        attended: (s as { attended?: 'came' | 'no_show' | null }).attended ?? null })),
     ...shown.filter((r) => r.kind === 'class' && r.status === 'approved' && r.startsAt && inWeek(r.startsAt))
-      .map((r) => ({ kind: 'class' as const, id: r.id, memberId: r.memberId, startsAt: r.startsAt as string, title: r.title })),
+      .map((r) => ({ kind: 'class' as const, id: r.id, memberId: r.memberId, startsAt: r.startsAt as string, title: r.title, attended: r.attended })),
   ].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 
   const decide = async (r: TrainerRequest, status: 'approved' | 'rejected') => {
@@ -80,6 +91,15 @@ export default function WeekTab({ trainerId, classesOn }: { trainerId: string | 
     try { await decideRequest(r, status, trainerId); toast.success(decidedText(r, status, modes, names.get(r.memberId)?.name)); await load(); }
     catch (e) { toast.error(errorMessage(e, 'Could not save that decision')); }
     finally { setBusy(null); }
+  };
+
+  const mark = async (s: WeekItem, came: boolean) => {
+    setBusy(s.id);
+    const res = await markAttendance(s.kind, s.id, came);
+    setBusy(null);
+    if (!res.ok) { toast.error(res.message); return; }
+    toast.success(came ? `${names.get(s.memberId)?.name ?? 'They'} came` : 'Marked as a no-show — your gym’s rules apply');
+    await load();
   };
 
   return (
@@ -156,7 +176,23 @@ export default function WeekTab({ trainerId, classesOn }: { trainerId: string | 
                     <StatusPill label={tag} tone={tag === 'Package' ? 'structure' : 'muted'} />
                   </button>
                   {/* cancel_booking() refuses one that has started (0081). */}
+                  {ahead && rules?.repeatsOn && rules.repeatWho.includes('coach') && (
+                    <button type="button" onClick={() => setRepeating(s)} data-coach-repeat style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--color-primary-300)' }}>Repeat</button>
+                  )}
                   {ahead && <button type="button" onClick={() => setCancelling(s)} style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--color-secondary)' }}>Cancel</button>}
+                  {/* 0260: once it has started, the coach says who came; a no-show can be undone the same way. */}
+                  {!ahead && marking && (
+                    <span className="flex-none inline-flex items-center" style={{ gap: 6 }} data-coach-mark={s.attended ?? 'none'}>
+                      {s.attended && <StatusPill label={s.attended === 'came' ? 'Came' : 'No-show'} tone={s.attended === 'came' ? 'structure' : 'action'} />}
+                      {s.attended !== 'came' && (
+                        <button type="button" className="td-ok noc-press" disabled={busy === s.id} onClick={() => void mark(s, true)}
+                          aria-label={s.attended === 'no_show' ? 'They were here' : 'They came'}><Check size={16} weight="bold" /></button>
+                      )}
+                      {s.attended !== 'no_show' && (
+                        <button type="button" className="td-no noc-press" disabled={busy === s.id} onClick={() => void mark(s, false)} aria-label="They did not come"><X size={15} /></button>
+                      )}
+                    </span>
+                  )}
                 </div>
               );
             })}
@@ -164,6 +200,9 @@ export default function WeekTab({ trainerId, classesOn }: { trainerId: string | 
         );
       })}
 
+      <RepeatDialog rules={rules} onClose={() => setRepeating(null)} onDone={() => { setRepeating(null); void load(); }}
+        booking={repeating ? { kind: repeating.kind, id: repeating.id, startsAt: repeating.startsAt,
+          title: `${names.get(repeating.memberId)?.name ?? 'Member'} · ${repeating.kind === 'class' ? repeating.title : 'Session'}` } : null} />
       <CancelBookingDialog open={cancelling !== null} kind={cancelling?.kind ?? 'pt'} id={cancelling?.id ?? null} actor="trainer"
         title={cancelling ? `${names.get(cancelling.memberId)?.name ?? 'Member'} · ${cancelling.kind === 'class' ? `${cancelling.title} · ` : ''}${shortDay(cancelling.startsAt)}, ${time(cancelling.startsAt)}` : ''}
         onClose={() => setCancelling(null)} onCancelled={() => { setCancelling(null); void load(); }} />

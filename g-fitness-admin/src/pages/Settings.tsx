@@ -41,6 +41,7 @@ import MyUsernameBox from '../components/MyUsernameBox';
 import PlacePicker from '../components/ui/PlacePicker';
 import GymStyles from '../components/GymStyles';
 import TimeSlotsSettings from '../components/TimeSlotsSettings';
+import BookingRulesSettings from '../components/BookingRulesSettings';
 
 /**
  * Admin settings — every tab here writes to the database.
@@ -84,7 +85,7 @@ const SECTIONS: Section[] = [
   { id: 'house-rules', label: 'House rules', icon: ScrollText, words: ['rules', 'conduct'] },
   { id: 'waiver', label: 'Waiver', icon: FileSignature, words: ['par-q', 'health', 'sign', 'liability'] },
   { group: 'Members and money', label: '', icon: Building2, words: [] },
-  { id: 'bookings', label: 'Bookings', icon: CalendarCheck, words: ['approve', 'class', 'booking'] },
+  { id: 'bookings', label: 'Bookings', icon: CalendarCheck, words: ['approve', 'class', 'booking', 'repeat', 'weekly', 'no-show', 'late', 'cancel', 'pause'] },
   { id: 'slots', label: 'Time slots', icon: Clock, words: ['slot', 'crowd', 'limit', 'capacity', 'reserve', 'floor'] },
   { id: 'coaching', label: 'Personal training', icon: Handshake, words: ['coach', 'trainer', '1-on-1', 'price'] },
   { id: 'walk-ins', label: 'Walk-ins', icon: Footprints, words: ['day pass', 'guest', 'visit pack'] },
@@ -533,6 +534,8 @@ export default function Settings() {
                 <GymStyles onApplied={() => setStyleTick((n) => n + 1)} />
                 <div style={{ height: 22 }} />
                 {head('Bookings', 'Who approves bookings — for group classes and 1-on-1 sessions separately')}<BookingApproval key={styleTick} />
+                <div style={{ height: 22 }} />
+                {head('Repeats, late cancels and no-shows', 'Your rules for weekly bookings, cancelling close to the start, and members who do not come')}<BookingRulesSettings />
               </>}
               {activeTab === 'coaching' && <>{head('Personal training', 'How members get a coach, for how long, and who is paid')}<CoachingSettings /></>}
               {activeTab === 'walk-ins' && (

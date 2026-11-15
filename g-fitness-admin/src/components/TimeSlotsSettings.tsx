@@ -98,7 +98,6 @@ export default function TimeSlotsSettings() {
         {([
           ['ahead_days', 'Book how far ahead', 'days (0 = today only)', 0, 30],
           ['per_day', 'Slots a day per member', 'at most', 1, 6],
-          ['cancel_minutes', 'Cancel up to', 'minutes before (0 = until it starts)', 0, 1440],
         ] as const).map(([k, label, unit, lo, hi]) => (
           <label key={k} className="block text-sm" style={{ color: 'var(--color-text-primary)' }}>
             <span className="font-semibold">{label}</span>
@@ -109,6 +108,11 @@ export default function TimeSlotsSettings() {
             </span>
           </label>
         ))}
+        {/* 0260: the cancel window is set with the other kinds, so every late-cancel rule lives in one place. */}
+        <p className="text-sm self-end" style={muted} data-slot-cancel-moved>
+          Cancel up to <b style={{ color: 'var(--color-text-primary)' }}>{rules.cancel_minutes ? `${rules.cancel_minutes} minutes before` : 'the start'}</b> —{' '}
+          <Link to="/settings?tab=bookings" style={{ color: 'var(--color-primary)', textDecoration: 'underline' }}>change it in Bookings → Late cancels</Link>
+        </p>
       </div>
 
       <div>

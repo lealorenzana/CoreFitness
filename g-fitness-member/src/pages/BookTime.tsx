@@ -8,6 +8,8 @@ import { bookSlot, cancelSlot, listSlots, slotRules, type Slot, type SlotRules }
 import { addDays, todayKey } from '../utils/dates';
 import { errorMessage } from '../utils/errorMessage';
 import { useT } from '../lib/i18n';
+import PauseNotice from '../components/booking/PauseNotice';
+import { getBookingRules, type LateMode } from '../lib/api/bookingRules';
 
 const clock = (t: string) => { const [h, m] = t.split(':').map(Number); return new Date(2000, 0, 1, h, m).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }); };
 const dayChip = (ymd: string, today: string) => {
@@ -36,6 +38,9 @@ export default function BookTime() {
     setSlots(await listSlots(d, 0));
   }, []);
   useEffect(() => { void slotRules().then(setRules); }, []);
+  // 0260: inside the cancel window a cancel may be blocked or only marked late — the gym's choice, said as it is.
+  const [lateMode, setLateMode] = useState<LateMode>('block');
+  useEffect(() => { void getBookingRules().then((r) => { if (r) setLateMode(r.lateMode); }); }, []);
   useEffect(() => { void (async () => { await load(day); })(); }, [day, load]);
 
   const days = rules ? Array.from({ length: rules.aheadDays + 1 }, (_, i) => addDays(today, i)) : [today];
@@ -48,12 +53,15 @@ export default function BookTime() {
   const rulesLine = rules
     ? [rules.door === 'required' ? t('Only members who booked get in during a slot.') : t('Your booking keeps your place; others come in while there is room.'),
        rules.perDay === 1 ? t('One slot a day.') : `${rules.perDay} ${t('slots a day.')}`,
-       rules.cancelMinutes > 0 ? `${t('Cancel up to')} ${rules.cancelMinutes} ${t('minutes before.')}` : t('Cancel any time before it starts.')].join(' ')
+       rules.cancelMinutes === 0 ? t('Cancel any time before it starts.')
+         : lateMode === 'block' ? `${t('Cancel up to')} ${rules.cancelMinutes} ${t('minutes before.')}`
+         : `${t('Cancelling within')} ${rules.cancelMinutes} ${t('minutes of the start is recorded as late.')}`].join(' ')
     : '';
 
   return (
     <Page>
       <PageTitle back fallback="/member/home" title={t('Book a time')} subtitle={t('Pick when you come in')} />
+      <PauseNotice />
       {rules === undefined ? <SkeletonList count={3} />
         : rules === null || !rules.on ? <p style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }} data-slots-off>{t('Your gym does not use time slots — just come in during opening hours.')}</p>
         : (<>

@@ -1,3 +1,4 @@
+import PauseNotice from '../components/booking/PauseNotice';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useUrlState } from '../hooks/useUrlState';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -596,6 +597,7 @@ export default function BookClass({ mode }: { mode?: 'classes' | 'pt' } = {}) {
 
   return (
     <Page>
+      <PauseNotice />
       {!mode && <TextTabs<Filter>
         label="What to book"
         tabs={[

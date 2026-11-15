@@ -44,6 +44,8 @@ export const CATALOGUE: CatalogueGroup[] = [
       ['One page for the desk', 'What to decide, every session and every package, on one Personal training page.'],
       ['Approvals your way', 'Instant, the coach, the desk, both, or switched off.'],
       ['Cancellations with reasons', 'Your reasons, your limits, and a record of who cancelled and why.'],
+      ['Weekly repeats', 'A booking repeats every week, for a number of weeks or until stopped — set by members, coaches or the desk, as you choose.'],
+      ['No-shows and late cancels', 'Your cut-off per kind, who came marked by check-in or by hand, and what follows — a message, the plan count, or a booking pause. Never points.'],
       ['Classes when you want them', 'Switch classes on and get a timetable that generates itself, waitlists and seat counts.'],
     ],
   },

@@ -4,8 +4,12 @@ import { usePaged } from '../hooks/usePaging';
 import Pager from '../components/ui/Pager';
 import { useNavigate } from 'react-router-dom';
 import {
-  ArrowClockwise, Barbell, CalendarPlus, Check, Clock, MapPin, Plus, Star, UsersThree, X,
+  ArrowClockwise, Barbell, CalendarPlus, Check, Clock, MapPin, Plus, Repeat as RepeatIcon, Star, UsersThree, WarningCircle, X,
 } from '@phosphor-icons/react';
+import RepeatDialog from '../components/booking/RepeatDialog';
+import {
+  getBookingRules, listRepeats, runBookingSweeps, stopRepeat, type BookingRules, type Repeat,
+} from '../lib/api/bookingRules';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { toast } from '../components/ui/Toast';
 import Avatar from '../components/ui/Avatar';
@@ -119,6 +123,11 @@ export default function BookingHistory() {
   const [pendingCancel, setPendingCancel] = useState<MyBooking | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const classesOn = moduleOn(useGymApp(), 'classes');
+  // 0260: the gym's repeat / no-show rules (null before 0260 or when unread: nothing extra is drawn),
+  // the member's running repeats, and the one being set up.
+  const [rules, setRules] = useState<BookingRules | null>(null);
+  const [repeats, setRepeats] = useState<Repeat[]>([]);
+  const [repeating, setRepeating] = useState<MyBooking | null>(null);
 
   /** `quiet` = a background refresh: no skeleton flash, no toast on a blip. */
   const load = useCallback(async (quiet = false) => {
@@ -129,10 +138,16 @@ export default function BookingHistory() {
         if (!quiet) toast.error('Your session could not be verified. Please sign in again.');
         return;
       }
-      const [list, visits] = await Promise.all([
+      // 0260: judge ended sessions and book the weeks a repeat has not booked yet — pg_cron is optional.
+      if (!quiet) await runBookingSweeps();
+      const [list, visits, r, rep] = await Promise.all([
         listMyBookings(id),
         listMemberAttendance(id).catch(() => []),
+        getBookingRules(),
+        listRepeats(),
       ]);
+      setRules(r);
+      setRepeats(rep.filter((x) => !x.stoppedAt));
       setRows(list);
       setVisitDays(new Set(visits.map((v) => localDateKey(v.check_in_time))));
       setNow(Date.now());
@@ -179,6 +194,15 @@ export default function BookingHistory() {
   const inMonth = rows.filter((r) => r.startsAt && localDateKey(r.startsAt).startsWith(monthKey));
   const attended = inMonth.filter((r) => r.status === 'approved' && !isUpcoming(r, now) && r.startsAt && visitDays.has(localDateKey(r.startsAt))).length;
   const cancelledCount = inMonth.filter(closed).length;
+
+  const mayRepeat = !!rules && rules.repeatsOn && rules.repeatWho.includes('member');
+  const openRepeat = (r: MyBooking) => setRepeating(r);
+  const stop = async (id: string) => {
+    const res = await stopRepeat(id);
+    if (!res.ok) { toast.error(res.message); return; }
+    toast.success('Stopped — the weeks already booked stay');
+    await load(true);
+  };
 
   const afterCancelled = async () => {
     toast.success(pendingCancel?.kind === 'pt' ? 'Session cancelled' : 'Class cancelled');
@@ -241,11 +265,19 @@ export default function BookingHistory() {
                 {row.cancelledByRole ? ` by ${WHO[row.cancelledByRole] ?? 'the gym'}` : ''}
                 {row.cancellationReason ? ` · ${row.cancellationReason}` : ''}
                 {row.cancellationNote ? ` — "${row.cancellationNote}"` : ''}
+                {row.lateCancel ? ' · a late cancel' : ''}
               </span>
             )}
 
             <span className="flex items-center flex-wrap" style={{ marginTop: 8, gap: 10 }}>
-              {tab === 'cancelled' ? null : tab === 'past' ? (
+              {tab === 'cancelled' ? null : tab === 'past' && row.attended ? (
+                // 0260: the gym's own mark wins over the check-in guess.
+                <span className="inline-flex items-center" data-my-mark={row.attended} style={{ gap: 5, fontSize: 12.5, lineHeight: 1.45,
+                  color: row.attended === 'came' ? 'var(--color-primary-300)' : 'var(--color-secondary)' }}>
+                  {row.attended === 'came' ? <Check size={13} weight="bold" /> : <WarningCircle size={13} />}
+                  {row.attended === 'came' ? 'Marked as there' : 'Marked as a no-show — if you were there, tell the front desk or your coach'}
+                </span>
+              ) : tab === 'past' ? (
                 <span className="inline-flex items-center" style={{ gap: 5, fontSize: 12.5, color: checkedIn ? 'var(--color-primary-300)' : 'var(--color-text-muted)' }}>
                   {checkedIn ? <Check size={13} weight="bold" /> : <Clock size={13} />}
                   {checkedIn ? 'You checked in that day' : 'No check-in that day'}
@@ -263,6 +295,14 @@ export default function BookingHistory() {
                   <button onClick={() => bookAgain(row)} className="inline-flex items-center" style={{ gap: 4, color: 'var(--color-primary-300)' }}>
                     <ArrowClockwise size={13} /> Book again
                   </button>
+                )}
+                {tab === 'upcoming' && mayRepeat && !row.repeating && canCancel && row.startsAt && (
+                  <button onClick={() => openRepeat(row)} className="inline-flex items-center" data-repeat-weekly style={{ gap: 4, color: 'var(--color-secondary)' }}>
+                    <RepeatIcon size={13} /> Repeat weekly
+                  </button>
+                )}
+                {tab === 'upcoming' && row.repeating && (
+                  <span className="inline-flex items-center" data-is-repeating style={{ gap: 4, color: 'var(--color-primary-300)' }}><RepeatIcon size={13} /> Weekly</span>
                 )}
                 {canCancel && (
                   <button onClick={() => setPendingCancel(row)} style={{ color: 'var(--color-text-secondary)' }}>
@@ -307,6 +347,18 @@ export default function BookingHistory() {
 
       {loading ? <SkeletonList /> : (
         <>
+          {rules?.myPause && (
+            <Panel glow="action">
+              <div className="flex items-start" data-my-pause style={{ gap: 10 }}>
+                <WarningCircle size={18} style={{ color: 'var(--color-secondary)', flexShrink: 0, marginTop: 1 }} />
+                <p style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--color-text-primary)' }}>
+                  You can’t book in the app until{' '}
+                  <b>{new Date(rules.myPause.until).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</b>
+                  {' '}— {rules.myPause.reason}. The front desk can still book for you.
+                </p>
+              </div>
+            </Panel>
+          )}
           {/* ── Next up ── */}
           {next ? (
             <Panel glow={next.status === 'pending' ? 'action' : 'structure'}>
@@ -388,6 +440,37 @@ export default function BookingHistory() {
             <Chip label="1-on-1" on={kind === 'pt'} onClick={() => setKind('pt')} icon={<Barbell size={13} weight="bold" />} />
           </div>}
 
+          {tab === 'upcoming' && repeats.length > 0 && (
+            <section data-my-repeats>
+              <h2 style={{ fontSize: 'var(--text-title)', fontWeight: 700, color: 'var(--color-text-primary)' }}>Every week</h2>
+              {repeats.map((r, i) => {
+                const refused = r.weekList.filter((w) => w.outcome === 'refused');
+                return (
+                  <div key={r.id}>
+                    <div className="flex items-start" style={{ gap: 12, padding: '12px 0' }}>
+                      <RepeatIcon size={18} style={{ color: 'var(--color-primary-300)', flexShrink: 0, marginTop: 2 }} />
+                      <span className="flex-1 min-w-0">
+                        <span className="block truncate" style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                          {r.what} · {['Sundays', 'Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays'][r.weekday]}
+                        </span>
+                        <span className="block" style={{ fontSize: 12, marginTop: 2, color: 'var(--color-text-secondary)' }}>
+                          {r.weeks ? `${r.weeks} weeks` : 'Until stopped'} · {r.weekList.filter((w) => w.outcome === 'booked').length} booked
+                        </span>
+                        {refused.map((w) => (
+                          <span key={w.date} className="block" style={{ fontSize: 12, marginTop: 4, lineHeight: 1.45, color: 'var(--color-secondary)' }}>
+                            {new Date(`${w.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} not booked — {w.message ?? 'it could not be booked'}
+                          </span>
+                        ))}
+                      </span>
+                      <button onClick={() => void stop(r.id)} style={{ fontSize: 12.5, color: 'var(--color-text-secondary)' }}>Stop</button>
+                    </div>
+                    {i < repeats.length - 1 && <div className="hair" />}
+                  </div>
+                );
+              })}
+            </section>
+          )}
+
           {visible.length === 0 ? (
             <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--color-text-muted)' }}>
               {tab === 'upcoming' ? 'Nothing coming up.'
@@ -413,12 +496,16 @@ export default function BookingHistory() {
         </>
       )}
 
+      <RepeatDialog booking={repeating} rules={rules} onClose={() => setRepeating(null)} onDone={() => { setRepeating(null); void load(true); }} />
+
       <CancelBookingDialog
         open={pendingCancel !== null}
         kind={pendingCancel?.kind === 'pt' ? 'pt' : 'class'}
         id={pendingCancel?.id ?? null}
         title={pendingCancel?.title ?? ''}
         actor="member"
+        startsAt={pendingCancel?.startsAt ?? null}
+        confirmed={pendingCancel?.status === 'approved'}
         onClose={() => setPendingCancel(null)}
         onCancelled={afterCancelled}
       />

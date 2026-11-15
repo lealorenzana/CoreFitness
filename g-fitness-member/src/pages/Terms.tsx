@@ -4,6 +4,8 @@ import LegalPage, { type GlanceItem, type LegalSection } from '../components/leg
 import { describeWindow, getRefundTerms, type RefundTermsState } from '../lib/api/refundTerms';
 import { prettyVersion, TERMS_VERSION } from '../lib/legalVersions';
 import HouseRulesBlock from '../components/legal/HouseRulesBlock';
+import { getBookingRules, type BookingRules } from '../lib/api/bookingRules';
+import { cancelGlance, cancelTermsLine, noshowTermsLine, repeatTermsLine } from '../lib/bookingTermsWords';
 
 /**
  * The terms the gym actually operates by.
@@ -21,7 +23,8 @@ import HouseRulesBlock from '../components/legal/HouseRulesBlock';
  *
  *   Freezing            0057, 0070      — twice a month, reason required
  *   Refunds             0070, 0073      — the gym's own tiers, and RA 7394's pro-rata floor
- *   Cancel a booking    0016, 0071      — any time before it starts, no forfeit
+ *   Cancel a booking    0016, 0071, 0260 — your gym's cut-off per kind, and what a late cancel means
+ *   Repeats, no-shows   0260            — your gym's own rules, read from its settings
  *   Account status      0069, 0078      — archived, never deleted; reasons kept
  *
  * The full reasoning, including the sources behind the numbers, is in
@@ -111,7 +114,7 @@ function coachingPauseLine(state: RefundTermsState): string {
   return 'Whether a coaching package pauses with your membership is each gym’s own rule. The app tells you your gym’s before you ask to freeze.';
 }
 
-const buildSections = (state: RefundTermsState): LegalSection[] => [
+const buildSections = (state: RefundTermsState, booking: BookingRules | null): LegalSection[] => [
   {
     id: 'membership',
     title: '1. Your membership',
@@ -147,7 +150,10 @@ const buildSections = (state: RefundTermsState): LegalSection[] => [
     id: 'classes',
     title: '5. Classes and personal training',
     body: [
-      'You can cancel a class or a session yourself while it is still pending or booked. There is no cut-off and nothing is forfeited for cancelling late — please just tell your coach, so the slot goes to somebody else.',
+      // 0260: cancelling, repeats and no-shows are the signed-in member's gym's own rules (lib/bookingTermsWords.ts).
+      cancelTermsLine(booking),
+      ...[repeatTermsLine(booking)].filter((x): x is string => !!x),
+      noshowTermsLine(booking),
       'You cannot be booked into two things at once. A class that overlaps a session you already have is refused, and the app says which booking it clashes with.',
       'Coaches accept or decline their own requests, oldest request first. An admin can reverse a decision.',
       'If a request sits unanswered, the system chases it: your coach after a day, you after two, and an admin after three, so a request cannot quietly expire.',
@@ -187,10 +193,10 @@ const buildSections = (state: RefundTermsState): LegalSection[] => [
   },
 ];
 
-const glance: GlanceItem[] = [
+const buildGlance = (booking: BookingRules | null): GlanceItem[] => [
   { icon: Snowflake, label: 'Freeze twice a month', detail: 'Frozen days are added back to your expiry.', to: 'freezing' },
   { icon: Banknote, label: 'Refunds have a floor', detail: 'The tiers are a minimum — pro-rata wins when higher.', to: 'refunds' },
-  { icon: CalendarX, label: 'Cancel bookings freely', detail: 'No cut-off, and nothing is forfeited.', to: 'classes' },
+  { icon: CalendarX, ...cancelGlance(booking), to: 'classes' },
   { icon: Archive, label: 'Delete it yourself', detail: 'Erased after 7 days; payments and visits stay as "Deleted member".', to: 'account' },
 ];
 
@@ -209,7 +215,15 @@ export default function Terms() {
     })();
     return () => { alive = false; };
   }, []);
-  const sections = useMemo(() => buildSections(state), [state]);
+  // 0260: the gym's booking rules — null with no session or before 0260, and the page says each gym sets its own.
+  const [booking, setBooking] = useState<BookingRules | null>(null);
+  useEffect(() => {
+    let alive = true;
+    (async () => { const r = await getBookingRules(); if (alive) setBooking(r); })();
+    return () => { alive = false; };
+  }, []);
+  const sections = useMemo(() => buildSections(state, booking), [state, booking]);
+  const glance = useMemo(() => buildGlance(booking), [booking]);
 
   return (
     <LegalPage

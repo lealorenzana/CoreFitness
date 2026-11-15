@@ -37,6 +37,10 @@ export interface PtSessionRow {
    *  screens must not render as "unpaid". */
   payment_id?: string | null;
   created_at: string;
+  /** 0260: came / no-show (null = not marked), a member's late cancel, and the weekly repeat it belongs to. */
+  attended?: 'came' | 'no_show' | null;
+  late_cancel?: boolean;
+  repeat_id?: string | null;
 }
 
 export async function listPtSessions(): Promise<PtSessionRow[]> {

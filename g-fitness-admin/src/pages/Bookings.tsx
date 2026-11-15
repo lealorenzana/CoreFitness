@@ -21,6 +21,8 @@ import { notifyUser } from '../lib/api/notify';
 import { loadBookingQueue, type QueueRow } from '../services/bookingQueueService';
 import { sweepStaleRequests } from '../lib/api/bookings';
 import BookingAttentionPanel from '../components/ui/BookingAttentionPanel';
+import { getBookingRules, markAttendance, runBookingSweeps, type BookingRules } from '../lib/api/bookingRules';
+import RepeatDialog from '../components/bookings/RepeatDialog';
 import type { BookingStatus } from '../types/db';
 
 /**
@@ -176,6 +178,8 @@ export default function Bookings({ scope, embedded = false }: { scope?: 'pt' | '
       // Never throws into the page: a failed sweep must not stop the queue
       // rendering, and the queue is what the admin came for.
       await sweepStaleRequests();
+      // 0260: judge ended sessions and book what weekly repeats have not booked yet (pg_cron is optional).
+      await runBookingSweeps();
 
       const { rows: queue } = await loadBookingQueue();
       setRows(queue);
@@ -188,6 +192,25 @@ export default function Bookings({ scope, embedded = false }: { scope?: 'pt' | '
   }, []);
 
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
+
+  /** 0260: no-shows on at this gym (and not 'off') — only then is "came / didn't come" drawn. */
+  const [marking, setMarking] = useState(false);
+  const [bookingRules, setBookingRules] = useState<BookingRules | null>(null);
+  const [repeatRow, setRepeatRow] = useState<QueueRow | null>(null);
+  useEffect(() => { void (async () => { const r = await getBookingRules(); setBookingRules(r); setMarking(!!r && r.noshowsOn && r.noshowMode !== 'off'); })(); }, []);
+  /** The desk sets a repeat only where the owner lets it (0260): a booking that is still ahead and not already weekly. */
+  const canRepeat = (r: QueueRow) => !!bookingRules?.repeatsOn && bookingRules.repeatWho.includes('desk') && !r.repeating
+    && (r.status === 'approved' || r.status === 'pending') && !!r.when && new Date(r.when).getTime() > nowMs;
+  const [nowMs] = useState(() => Date.now());
+  const canMark = (r: QueueRow) => marking && r.status === 'approved' && !!r.when && new Date(r.when).getTime() <= nowMs;
+  const mark = async (r: QueueRow, came: boolean) => {
+    setBusyId(r.id);
+    const res = await markAttendance(r.kind, r.id, came);
+    setBusyId('');
+    if (!res.ok) { showToast(res.message, 'error'); return; }
+    showToast(came ? `${r.memberName} came` : `${r.memberName} marked as a no-show`, 'success');
+    setRows((rs) => rs.map((x) => (x.id === r.id && x.kind === r.kind ? { ...x, attended: came ? 'came' : 'no_show' } : x)));
+  };
 
   /** The write plus the member's notification. Shared by single and bulk paths. */
   const applyDecision = async (row: QueueRow, decision: 'approved' | 'rejected') => {
@@ -452,7 +475,11 @@ export default function Bookings({ scope, embedded = false }: { scope?: 'pt' | '
                             {row.warnings.length > 0 && <div className="a-sub truncate" style={{ color: 'var(--a-a300)' }} data-tip={row.warnings.map((w) => w.message).join(' — ')}><AlertTriangle size={11} className="inline" /> {row.warnings[0].message}</div>}</div></div></td>
                           <td><b className="block truncate">{row.title}</b>
                             <div className="a-sub truncate">{row.when ? fmtTime(row.when) : '—'}{row.trainerName ? ` · ${row.trainerName}` : ''}{row.seats ? <> · <span style={{ color: full ? 'var(--a-a300)' : undefined }}>{row.seats.taken}/{row.seats.capacity}</span></> : ' · 1-on-1'}{row.notes ? ` · “${row.notes}”` : ''}</div></td>
-                          <td><span className={`a-pill ${row.status === 'approved' ? 'v' : row.status === 'pending' ? 'a' : ''}`}>{STATUS_BADGE[row.status]}</span><div>{outcome(row)}</div></td>
+                          <td><span className={`a-pill ${row.status === 'approved' ? 'v' : row.status === 'pending' ? 'a' : ''}`}>{STATUS_BADGE[row.status]}</span>
+                            {row.attended && <span className={`a-pill ${row.attended === 'no_show' ? 'a' : 'v'}`} style={{ marginLeft: 4 }} data-mark={row.attended}>{row.attended === 'no_show' ? 'No-show' : 'Came'}</span>}
+                            {row.lateCancel && <span className="a-pill a" style={{ marginLeft: 4 }} data-late-cancel>Late cancel</span>}
+                            {row.repeating && <span className="a-sub" style={{ marginLeft: 6 }} data-repeating>· weekly</span>}
+                            <div>{outcome(row)}</div></td>
                           <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                             {row.status === 'pending' && !gymMayApprove(row) ? (
                               <button type="button" className="a-btn sm" disabled={reminded.has(row.id)} onClick={() => void remindCoach(row)} data-remind-coach
@@ -461,6 +488,22 @@ export default function Bookings({ scope, embedded = false }: { scope?: 'pt' | '
                               <span className="inline-flex gap-1">
                                 <button type="button" className="a-btn violet sm" disabled={busyId === row.id} onClick={() => void decide(row, 'approved')}>{row.coachOkName ? 'Confirm' : 'Approve'}</button>
                                 {gymMayReject(row) && <button type="button" className="a-btn ghost sm" aria-label="Reject" data-tip="Reject — the member is told" disabled={busyId === row.id} onClick={() => void decide(row, 'rejected')}><XCircle size={14} /></button>}
+                              </span>
+                            ) : canRepeat(row) ? (
+                              <span className="inline-flex gap-1">
+                                <button type="button" className="a-btn ghost sm" disabled={busyId === row.id} onClick={() => setRepeatRow(row)} data-desk-repeat-btn
+                                  data-tip="Book the same time every week">Repeat</button>
+                                {gymMayReverse(row) && (
+                                  <button type="button" className="a-btn ghost sm" aria-label="Change decision" disabled={busyId === row.id} onClick={() => setToReverse(row)}
+                                    data-tip="Change decision — make it rejected"><RotateCcw size={14} /></button>
+                                )}
+                              </span>
+                            ) : canMark(row) ? (
+                              <span className="inline-flex gap-1" data-mark-buttons>
+                                <button type="button" className={`a-btn sm ${row.attended === 'came' ? 'violet' : 'ghost'}`} disabled={busyId === row.id || row.attended === 'came'}
+                                  aria-label="Came" onClick={() => void mark(row, true)} data-tip={row.attended === 'no_show' ? 'They were here — undoes the no-show' : 'They came'}><CheckCircle size={14} /></button>
+                                <button type="button" className={`a-btn sm ${row.attended === 'no_show' ? 'soft' : 'ghost'}`} disabled={busyId === row.id || row.attended === 'no_show'}
+                                  aria-label="No-show" onClick={() => void mark(row, false)} data-tip="They did not come — your no-show rules apply"><XCircle size={14} /></button>
                               </span>
                             ) : (row.status === 'approved' || row.status === 'rejected') && gymMayReverse(row) ? (
                               <button type="button" className="a-btn ghost sm" aria-label="Change decision" disabled={busyId === row.id} onClick={() => setToReverse(row)}
@@ -511,6 +554,9 @@ export default function Bookings({ scope, embedded = false }: { scope?: 'pt' | '
         confirmText={bulk === 'approved' ? 'Approve all' : 'Reject all'}
         type={bulk === 'approved' ? 'info' : 'warning'}
       />
+
+      <RepeatDialog rules={bookingRules} onClose={() => setRepeatRow(null)} onDone={() => { setRepeatRow(null); void load(); }}
+        booking={repeatRow ? { kind: repeatRow.kind, id: repeatRow.id, title: `${repeatRow.memberName} · ${repeatRow.title}` } : null} />
 
       <ConfirmDialog
         isOpen={!!toReverse}

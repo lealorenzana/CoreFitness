@@ -8,6 +8,7 @@ import TraineeProgram from './TraineeProgram';
 import TraineeRecords from './TraineeRecords';
 import TraineeSquad from './TraineeSquad';
 import TraineeStreak from './TraineeStreak';
+import TraineeShowingUp from './TraineeShowingUp';
 import TraineePhotos from './TraineePhotos';
 import { TextArea, TextInput } from '../ui/Field';
 import { NocButton, ProgressBar, StatusPill, TextTabs } from '../ui/noc';
@@ -243,6 +244,7 @@ export default function TraineeAbout({ member, onChat, initialTab = 'progress' }
       {sheetTab === 'progress' && (
         <div data-tab-progress className="about-stack">
           <TraineeStreak memberId={member.id} firstName={member.name.split(' ')[0]} />
+          <TraineeShowingUp memberId={member.id} firstName={member.name.split(' ')[0]} />
           {/* Their latest personal records (0123), when they share their workouts. */}
           <TraineeRecords memberId={member.id} />
           {detailLoading ? (

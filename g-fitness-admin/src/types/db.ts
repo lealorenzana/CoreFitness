@@ -204,6 +204,10 @@ export interface BookingRow {
   /** Under "coach, then desk" (0180): the coach who accepted, and when. */
   coach_ok_by?: string | null;
   coach_ok_at?: string | null;
+  /** 0260: came / no-show (null = not marked), a member's late cancel, and the weekly repeat it belongs to. */
+  attended?: 'came' | 'no_show' | null;
+  late_cancel?: boolean;
+  repeat_id?: string | null;
 }
 
 export interface AttendanceRow {

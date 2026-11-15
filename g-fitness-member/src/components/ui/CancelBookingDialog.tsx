@@ -5,6 +5,7 @@ import {
   listCancellationReasons, cancelBooking, type CancellationReason,
 } from '../../lib/api/cancellations';
 import { errorMessage } from '../../utils/errorMessage';
+import { getBookingRules, insideLateWindow, minutesWords, type BookingRules } from '../../lib/api/bookingRules';
 
 /**
  * Cancel a booking, with a reason. One dialog, both sides of the app.
@@ -30,7 +31,7 @@ import { errorMessage } from '../../utils/errorMessage';
  * sentence is what gets shown rather than a generic failure.
  */
 export default function CancelBookingDialog({
-  open, kind, id, title, actor, onClose, onCancelled,
+  open, kind, id, title, actor, onClose, onCancelled, startsAt = null, confirmed = false,
 }: {
   open: boolean;
   kind: 'class' | 'pt';
@@ -40,6 +41,9 @@ export default function CancelBookingDialog({
   actor: 'member' | 'trainer' | 'staff';
   onClose: () => void;
   onCancelled: () => void;
+  /** 0260: when it starts and whether it is confirmed — a member's cancel of a confirmed booking can be late. */
+  startsAt?: string | null;
+  confirmed?: boolean;
 }) {
   const [reasons, setReasons] = useState<CancellationReason[]>([]);
   const [reason, setReason] = useState('');
@@ -86,6 +90,20 @@ export default function CancelBookingDialog({
     return () => { cancelled = true; };
   }, [open, actor]);
 
+  // 0260: the gym's late window, said before the member confirms — never discovered afterwards.
+  const [rules, setRules] = useState<BookingRules | null>(null);
+  // The moment the rules were read — Date.now() during render is impure (react-hooks/purity).
+  const [readAt, setReadAt] = useState(0);
+  useEffect(() => {
+    if (!open || actor !== 'member' || !confirmed) return;
+    let gone = false;
+    void (async () => { const r = await getBookingRules(); if (!gone) { setRules(r); setReadAt(Date.now()); } })();
+    return () => { gone = true; };
+  }, [open, actor, confirmed]);
+  const windowMin = kind === 'pt' ? rules?.ptCancelMinutes ?? 0 : rules?.classCancelMinutes ?? 0;
+  const late = actor === 'member' && confirmed && !!rules && !!startsAt && insideLateWindow(startsAt, windowMin, readAt);
+  const blocked = late && rules?.lateMode === 'block';
+
   const chosen = reasons.find((r) => r.key === reason) ?? null;
   const noteRequired = chosen?.needs_note === true;
   const incomplete = !chosen || (noteRequired && note.trim() === '');
@@ -115,7 +133,7 @@ export default function CancelBookingDialog({
       subtitle={title}
       confirmLabel={busy ? 'Cancelling…' : 'Confirm cancellation'}
       cancelLabel="Keep it"
-      confirmDisabled={busy || incomplete}
+      confirmDisabled={busy || incomplete || blocked}
       onConfirm={submit}
     >
       <div className="flex flex-col" style={{ gap: 14 }}>
@@ -126,6 +144,18 @@ export default function CancelBookingDialog({
                 : 'Your seat is released back to the class. You can book it again if it stays open.')
             : 'The member is told that you cancelled, and the reason you give here is shown to them.'}
         </p>
+
+        {late && rules && (
+          <div className="flex items-start" data-late-window style={{ gap: 8, fontSize: 12.5, lineHeight: 1.5, color: 'var(--color-secondary)' }}>
+            <WarningCircle size={15} className="flex-shrink-0" style={{ marginTop: 1 }} />
+            <span>
+              {blocked
+                ? `Your gym asks you to cancel at least ${minutesWords(windowMin)} before it starts. It is too late to cancel in the app — ask the front desk.`
+                : `This is within ${minutesWords(windowMin)} of the start, so it is recorded as a late cancel${rules.lateMode === 'mark' && rules.noshowsOn && rules.noshowMode !== 'off'
+                  ? ' and counts like a no-show under your gym’s rules' : ''}. Your ${kind === 'pt' ? 'coach’s hour' : 'seat'} still opens for someone else.`}
+            </span>
+          </div>
+        )}
 
         <div>
           <p style={{ fontSize: 13.5, marginBottom: 10, color: 'var(--color-text-primary)' }}>Why is it being cancelled?</p>

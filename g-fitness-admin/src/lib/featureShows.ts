@@ -412,6 +412,34 @@ export const FEATURE_SHOWS: Record<string, FeatureShow> = {
       { en: 'At the door a booking keeps their place — the rest is your choice.', fil: 'Sa pinto, may lugar ang nag-book — ang iba ay nasa iyo.' },
     ],
   },
+  repeats: {
+    frame: 'phone',
+    screen: [
+      { t: 'head', text: 'Lift · Tue 6:00 PM' },
+      { t: 'btn', text: 'Repeat weekly', tap: 0, done: 'Repeats for 4 weeks' },
+      { t: 'row', text: 'Tue, Nov 25', sub: 'booked', at: 1 },
+      { t: 'row', text: 'Tue, Dec 2', sub: 'class full', pill: 'Not booked', at: 2, hit: 2 },
+    ],
+    steps: [
+      { en: 'A booking repeats every week — whoever you allow sets it up.', fil: 'Umuulit linggo-linggo ang booking — kung sino ang pinayagan mo ang mag-aayos.' },
+      { en: 'Each week is booked like any other: seats, plan limits, approvals.', fil: 'Bawat linggo ay bina-book gaya ng iba: upuan, limit ng plan, pag-apruba.' },
+      { en: 'A week that cannot be booked says why — never skipped quietly.', fil: 'Ang linggong hindi ma-book ay sinasabi kung bakit — hindi tahimik na nilalaktawan.' },
+    ],
+  },
+  noshows: {
+    frame: 'desk',
+    screen: [
+      { t: 'head', text: 'Bookings · Today' },
+      { t: 'row', text: 'Ana R. — Lift 6:00 PM', sub: 'checked in 5:40 PM', pill: 'Came', at: 0 },
+      { t: 'row', text: 'Ben C. — 1-on-1 4:00 PM', sub: 'no check-in in the window', pill: 'No-show', at: 1, hit: 1 },
+      { t: 'btn', text: 'They were here', tap: 2, done: 'No-show undone' },
+    ],
+    steps: [
+      { en: 'A check-in in the window marks who came — or you mark it by hand.', fil: 'Ang check-in sa takdang oras ang nagtatala kung sino ang dumating — o ikaw ang magtatala.' },
+      { en: 'A no-show follows your rules: tell them, count it, or pause booking.', fil: 'Ang hindi pagdating ay sumusunod sa patakaran mo: sabihan, bilangin, o i-pause ang booking.' },
+      { en: 'A wrong mark is undone, and so is what it caused.', fil: 'Ang maling tala ay naa-undo, pati ang naging epekto nito.' },
+    ],
+  },
   analytics: {
     frame: 'desk',
     screen: [

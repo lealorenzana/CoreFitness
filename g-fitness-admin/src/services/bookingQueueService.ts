@@ -66,6 +66,10 @@ export interface QueueRow {
    * request is never stranded.
    */
   coachActive: boolean;
+  /** 0260: came / no-show (null = not marked yet), a member's late cancel, part of a weekly repeat. */
+  attended: 'came' | 'no_show' | null;
+  lateCancel: boolean;
+  repeating: boolean;
 }
 
 export interface QueueData {
@@ -185,6 +189,9 @@ export async function loadBookingQueue(): Promise<QueueData> {
         decidedByName: b.decided_by ? names[b.decided_by] ?? null : null,
         coachOkName: coachOk(b),
         coachActive: !!b.classes?.trainer_id && activeCoaches.has(b.classes.trainer_id),
+        attended: b.attended ?? null,
+        lateCancel: b.late_cancel === true,
+        repeating: !!b.repeat_id,
       };
     }),
     ...ptSessions.map((s): QueueRow => {
@@ -213,6 +220,9 @@ export async function loadBookingQueue(): Promise<QueueData> {
         decidedByName: s.decided_by ? names[s.decided_by] ?? null : null,
         coachOkName: coachOk(s),
         coachActive: activeCoaches.has(s.trainer_id),
+        attended: s.attended ?? null,
+        lateCancel: s.late_cancel === true,
+        repeating: !!s.repeat_id,
       };
     }),
   ].sort((a, b) => b.requestedAt.localeCompare(a.requestedAt));

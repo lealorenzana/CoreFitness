@@ -129,6 +129,10 @@ export interface MyBooking {
   cancelledByRole: 'member' | 'trainer' | 'staff' | 'admin' | 'system' | null;
   cancellationReason: string | null;
   cancellationNote: string | null;
+  /** 0260: came / no-show as the gym marked it (null = not marked), a late cancel, and part of a weekly repeat. */
+  attended: 'came' | 'no_show' | null;
+  lateCancel: boolean;
+  repeating: boolean;
 }
 
 /**
@@ -531,6 +535,10 @@ export async function listMyBookings(memberId: string): Promise<MyBooking[]> {
       ? reasonLabel.get(r.cancellation_reason as string) ?? String(r.cancellation_reason).replace(/_/g, ' ')
       : null,
     cancellationNote: (r.cancellation_note as string | null) ?? null,
+    // 0260's columns, read loosely the same way.
+    attended: (r.attended as MyBooking['attended']) ?? null,
+    lateCancel: r.late_cancel === true,
+    repeating: !!r.repeat_id,
   });
 
   // A plan with a personal-training allowance means the session is covered, so

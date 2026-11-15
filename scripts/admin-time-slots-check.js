@@ -1,6 +1,6 @@
 /**
  * Settings → Time slots (0259), the owner's every rule: off until switched on (and says where); how the door treats a
- * slot and whether the desk may let someone in anyway; days ahead, slots a day, the cancel cut-off; the weekly grid
+ * slot and whether the desk may let someone in anyway; days ahead, slots a day (the cancel cut-off lives in Bookings since 0260); the weekly grid
  * cut from the opening hours and edited by hand (add, remove). Light and dark; the page never scrolls.
  * Setup copied from admin-gym-styles-check.js. Admin dev server on :5174.
  */
@@ -95,11 +95,10 @@ async (page) => {
   await page.waitForTimeout(700);
   c = CALLS.filter((x) => x.fn === 'set_slot_settings').pop();
   say('days ahead is the owner’s number', c && c.body.p_ahead_days === 3, JSON.stringify(c));
-  await page.locator('[data-rule="cancel_minutes"]').fill('99999');
-  await page.locator('[data-rule="per_day"]').click();
-  await page.waitForTimeout(700);
-  c = CALLS.filter((x) => x.fn === 'set_slot_settings').pop();
-  say('…and an impossible cut-off is held to 24 hours', c && c.body.p_cancel_minutes === 1440, JSON.stringify(c));
+  // 0260: the cancel cut-off moved to Bookings → Late cancels, with the other kinds; this card says so and links there.
+  say('the cancel cut-off is set with the other late-cancel rules, and the card links there',
+    (await page.locator('[data-slot-cancel-moved] a[href="/settings?tab=bookings"]').count()) === 1
+    && (await page.locator('[data-rule="cancel_minutes"]').count()) === 0);
 
   say('closed days say so, empty days say the door ignores them', /closed/.test(await page.locator('[data-slot-day="0"]').innerText())
     && /No slots/.test(await page.locator('[data-slot-day="1"]').innerText()));

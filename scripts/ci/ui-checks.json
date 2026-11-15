@@ -765,6 +765,18 @@
     {
       "file": "admin-time-slots-check.js",
       "app": "admin"
+    },
+    {
+      "file": "admin-booking-rules-check.js",
+      "app": "admin"
+    },
+    {
+      "file": "member-repeats-noshows-check.js",
+      "app": "member"
+    },
+    {
+      "file": "trainer-noshows-check.js",
+      "app": "member"
     }
   ]
 }

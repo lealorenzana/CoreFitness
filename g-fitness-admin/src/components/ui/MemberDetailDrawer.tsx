@@ -48,6 +48,10 @@ import { moduleOn, useGymModules } from '../../hooks/useGymModules';
 import type { MembershipStatus, MembershipPlanRow } from '../../types/db';
 import { realEmail } from '../../lib/api/logins';
 import LoginSection from '../LoginSection';
+import {
+  getBookingPause, getBookingRecord, getBookingRules, liftBookingPause, listRepeats, stopRepeat,
+  type BookingRules, type Pause as BookingPause, type RecordRow, type Repeat,
+} from '../../lib/api/bookingRules';
 
 /**
  * The whole of one member, on one screen.
@@ -1075,6 +1079,7 @@ function BookingsTab({ detail }: { detail: MemberDetail }) {
   const { bookings, ptSessions } = detail;
   return (
     <div className="space-y-4">
+      <BookingHabitsSection memberId={detail.identity.profile.id} />
       <Section title={`Class bookings (${bookings.length})`}>
         {bookings.length === 0 ? (
           <Empty text="No class bookings." />
@@ -1112,6 +1117,59 @@ function BookingsTab({ detail }: { detail: MemberDetail }) {
         )}
       </Section>
     </div>
+  );
+}
+
+/**
+ * 0260: the member's no-shows, late cancels and weekly repeats, and a pause on booking if one is running — the desk
+ * lifts it or stops a repeat here. Nothing at all while both switches are off and nothing was ever recorded.
+ */
+function BookingHabitsSection({ memberId }: { memberId: string }) {
+  const [rules, setRules] = useState<BookingRules | null>(null);
+  const [record, setRecord] = useState<RecordRow[] | null>(null);
+  const [pause, setPause] = useState<BookingPause | null>(null);
+  const [repeats, setRepeats] = useState<Repeat[]>([]);
+  const [busy, setBusy] = useState(false);
+  const load = useCallback(async () => {
+    const [r, rec, p, rep] = await Promise.all([getBookingRules(), getBookingRecord(memberId), getBookingPause(memberId), listRepeats(memberId)]);
+    setRules(r); setRecord(rec); setPause(p); setRepeats(rep.filter((x) => !x.stoppedAt));
+  }, [memberId]);
+  useEffect(() => { void (async () => { await load(); })(); }, [load]);
+  if (!rules) return null;
+  const marks = (record ?? []).filter((x) => x.mark !== 'came');
+  if (!rules.repeatsOn && !rules.noshowsOn && !pause && marks.length === 0 && repeats.length === 0) return null;
+  const when = (iso: string) => new Date(iso).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  const act = async (fn: () => Promise<{ ok: true } | { ok: false; message: string }>, ok: string) => {
+    setBusy(true); const r = await fn(); setBusy(false);
+    if (!r.ok) { showToast(r.message, 'error'); return; }
+    showToast(ok, 'success'); await load();
+  };
+  return (
+    <Section title="Showing up">
+      <div className="space-y-2" data-drawer-habits>
+        {pause && (
+          <div className="rounded-xl p-3 flex items-start gap-3" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }} data-drawer-pause>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>Booking in the app is paused until {when(pause.until)}</p>
+              <p className="text-[11px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{pause.reason}. You can still book for them.</p>
+            </div>
+            <Button size="sm" variant="secondary" disabled={busy} onClick={() => void act(() => liftBookingPause(memberId), 'Pause lifted — they can book again')}>Lift pause</Button>
+          </div>
+        )}
+        {record === null ? <Empty text="Their no-shows could not be loaded." />
+          : marks.length === 0 ? <Empty text={rules.noshowsOn ? 'No no-shows or late cancels in the last 90 days.' : 'No-shows are not tracked at this gym.'} />
+          : marks.map((m) => (
+            <Row key={`${m.kind}-${m.id}`} title={m.what} subtitle={m.mark === 'late_cancel' ? `cancelled late${m.markedAt ? ' · ' + when(m.markedAt) : ''}`
+              : `no-show · ${m.markedByRole === 'system' ? 'no check-in in the window' : `marked by ${m.markedByRole === 'trainer' ? 'their coach' : 'the front desk'}`}`}
+              right={<Badge variant="Pending">{m.mark === 'late_cancel' ? 'Late cancel' : 'No-show'}</Badge>} />
+          ))}
+        {repeats.map((r) => (
+          <Row key={r.id} title={`${r.what} — every ${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][r.weekday]}`}
+            subtitle={`${r.weeks ? `${r.weeks} weeks from ${formatDate(r.firstDate)}` : 'until stopped'} · ${r.weekList.filter((w) => w.outcome === 'booked').length} booked${r.weekList.some((w) => w.outcome === 'refused') ? `, ${r.weekList.filter((w) => w.outcome === 'refused').length} could not be` : ''}`}
+            right={<Button size="sm" variant="secondary" disabled={busy} onClick={() => void act(() => stopRepeat(r.id), 'Repeat stopped — the weeks already booked stay')}>Stop</Button>} />
+        ))}
+      </div>
+    </Section>
   );
 }
 

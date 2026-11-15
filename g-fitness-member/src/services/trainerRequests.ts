@@ -18,7 +18,10 @@ export interface TrainerRequest {
   requestedAt: string;
   /** Under "coach then desk" (0180): this coach has accepted; the desk confirms. */
   coachOk: boolean;
+  /** 0260: came / no-show (null = not marked). */
+  attended: 'came' | 'no_show' | null;
 }
+const attendedOf = (r: object) => ((r as { attended?: 'came' | 'no_show' | null }).attended ?? null);
 
 /** Pending first — this is a work queue, not an archive — and within pending, the longest wait at the top. */
 export async function loadTrainerRequests(trainerId: string): Promise<TrainerRequest[]> {
@@ -30,12 +33,12 @@ export async function loadTrainerRequests(trainerId: string): Promise<TrainerReq
     ...classRows.map((b): TrainerRequest => ({
       kind: 'class', id: b.id, memberId: b.member_id, title: b.classes?.name ?? 'Class', status: b.status,
       startsAt: b.classes?.scheduled_at ?? null, requestedAt: b.requested_at,
-      coachOk: !!(b as { coach_ok_at?: string | null }).coach_ok_at,
+      coachOk: !!(b as { coach_ok_at?: string | null }).coach_ok_at, attended: attendedOf(b),
     })),
     ...ptRows.map((s): TrainerRequest => ({
       kind: 'pt', id: s.id, memberId: s.member_id, title: 'Personal training', status: s.status,
       startsAt: s.starts_at, requestedAt: s.requested_at,
-      coachOk: !!(s as { coach_ok_at?: string | null }).coach_ok_at,
+      coachOk: !!(s as { coach_ok_at?: string | null }).coach_ok_at, attended: attendedOf(s),
     })),
   ].sort((a, b) => {
     if ((a.status === 'pending') !== (b.status === 'pending')) return a.status === 'pending' ? -1 : 1;
