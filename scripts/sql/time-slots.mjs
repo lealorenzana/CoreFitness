@@ -117,6 +117,8 @@ check('today only: tomorrow is refused', /today's slots only/.test((await tryRun
 // A slot at midnight tonight is always less than 24 hours away, whatever time the test runs.
 await as(AD);
 await db.exec(`select save_slot_template(null, ${dowTomorrow}::smallint, '00:00', '00:30', 5); select set_slot_settings('reserve', 7, 2, 1440, true)`);
+// 0260: inside the window a member's cancel is blocked only when the owner chooses 'block' (the default marks it late).
+if (!process.env.BEFORE || process.env.BEFORE > '0260') await db.exec(`select set_cancel_rules(0, 0, 1440, 'block')`);
 await as(M[3]);
 const late = (await one(`select book_slot('${tomorrow}', '00:00') b`)).b;
 check('the owner’s cut-off (24 hours): a member can no longer cancel a slot starting sooner', /at least 1440 minutes before/.test((await tryRun(`select cancel_slot('${late}')`)) ?? ''));

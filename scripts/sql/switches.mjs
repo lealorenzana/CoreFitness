@@ -43,7 +43,11 @@ check('ten new switches, each with a parent', ['shop', 'requests', 'chat', 'room
 check('children listed right after their parent', keys.indexOf('chat') === keys.indexOf('coaching') + 1 || keys.indexOf('rooms') === keys.indexOf('coaching') + 1, keys.join());
 // 0220: classes, squads, seasons and events start off; 0245/0246: so do reels and the gym chat. Everything else on.
 const startOff = list.filter((r) => r.state !== 'on').map((r) => r.feature_key).sort().join();
-check('everything starts on except the four 0220 switched off, reels and the gym chat', startOff === ['classes', 'events', 'gym_chat', 'reels', 'seasons', 'squads'].join(), startOff);
+const B = process.env.BEFORE;
+const expectOff = ['classes', 'events', 'gym_chat', 'noshows', 'reels', 'repeats', 'seasons', 'slots', 'squads']
+  .filter((k) => k !== 'slots' || !B || B > '0259')
+  .filter((k) => !['noshows', 'repeats'].includes(k) || !B || B > '0260');
+check('everything starts on except the four 0220 switched off, reels and the gym chat, time slots (0259), repeats and no-shows (0260)', startOff === expectOff.join(), startOff);
 
 // ---- a child on its own ------------------------------------------------------------------------
 await db.exec(`select set_gym_module('chat', false)`);
