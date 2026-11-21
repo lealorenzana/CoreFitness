@@ -69,7 +69,7 @@ export default function Applications() {
         { icon: CheckCircle2, value: apps ? String(of('approved').length) : '…', label: 'Let in', onClick: () => pick('approved'), on: show === 'approved' },
         { icon: XCircle, value: apps ? String(of('rejected').length) : '…', label: 'Turned down', onClick: () => pick('rejected'), on: show === 'rejected' },
         { icon: Users, value: apps ? waiting.reduce((n, a) => n + (a.member_estimate ?? 0), 0).toLocaleString('en-PH') : '…', label: 'Members they say they have',
-          tip: 'Each waiting gym\'s own answer to "Roughly how many members?" on the website, added up — the members those gyms would bring onto Core Fitness if you let them in. Their estimate, not a count.' },
+          tip: 'Each waiting gym\'s own answer to "Roughly how many members?" on the website, added up, the members those gyms would bring onto Core Fitness if you let them in. Their estimate, not a count.' },
         { icon: Clock, value: oldest ? `${daysSince(oldest.created_at)}d` : '—', label: oldest ? `Oldest: ${oldest.gym_name}` : 'Nobody waiting', act: !!oldest && daysSince(oldest.created_at) >= 3 },
       ]} />
 
@@ -154,7 +154,7 @@ export default function Applications() {
                     </div>
                     <div className="app-box">
                       <span className="app-lbl"><ShieldCheck size={12} /> Sign-in and terms</span>
-                      <b>{accounts.has(app.id) ? 'Has an account' : 'No account — status link only'}</b>
+                      <b>{accounts.has(app.id) ? 'Has an account' : 'No account, status link only'}</b>
                       {/* 0154: which version of the gym documents they agreed to. Before 0154 the field is absent — say nothing. */}
                       {app.terms_version !== undefined && (app.terms_version
                         ? <span className="app-line" data-tip={app.terms_accepted_at ? `Agreed ${when(app.terms_accepted_at)}` : undefined}>Agreed to gym terms (version of {app.terms_version})</span>
@@ -191,10 +191,10 @@ export default function Applications() {
             <h2 className="section-title"><Sparkles size={14} /> Letting a gym in</h2>
             <ol className="steps">
               <li><Link2 size={15} /><span><b>You pick its link</b>The address its members type: …/join/its-name.</span></li>
-              <li><FileCheck2 size={15} /><span><b>You verify their documents</b>Permit, DTI/SEC, BIR 2303, barangay clearance, the owner's ID and a photo of the gym's front — Let them in opens once all six are verified.</span></li>
+              <li><FileCheck2 size={15} /><span><b>You verify their documents</b>Permit, DTI/SEC, BIR 2303, barangay clearance, the owner's ID and a photo of the gym's front, Let them in opens once all six are verified.</span></li>
               <li><KeyRound size={15} /><span><b>You name the owner</b>An applicant with an account becomes the owner with the password they chose; anyone else gets a temporary one, shown to you once.</span></li>
-              <li><Settings2 size={15} /><span><b>They set the gym up</b>Name, logo and colours at /admin/setup — none of Core Fitness's.</span></li>
-              <li><Banknote size={15} /><span><b>A paid plan pays first</b>Once the six are verified they pay on their application page — online, or GCash, Maya or bank with a reference you confirm here. Let them in opens once it is paid; the plan starts that day.</span></li>
+              <li><Settings2 size={15} /><span><b>They set the gym up</b>Name, logo and colours at /admin/setup, none of Core Fitness's.</span></li>
+              <li><Banknote size={15} /><span><b>A paid plan pays first</b>Once the six are verified they pay on their application page, online, or GCash, Maya or bank with a reference you confirm here. Let them in opens once it is paid; the plan starts that day.</span></li>
               <li><Clock size={15} /><span><b>Or their free trial runs</b>It pays nothing first and ends on its own date; reminders go before it does.</span></li>
               <li><Copy size={15} /><span><b>Later payments, from anywhere</b>GCash, Maya or bank, to the details on Settings → How gyms pay. They send the reference and a screenshot from Your plan; you check it and verify it on Money.</span></li>
             </ol>
@@ -224,7 +224,7 @@ export default function Applications() {
         {dialog?.kind === 'in' && (
           <Ask
             title={`Let ${dialog.app.gym_name} in?`}
-            blurb="The link name is what their members type — …/join/…  Small letters, numbers and dashes, and it cannot be changed casually afterwards."
+            blurb="The link name is what their members type, …/join/…  Small letters, numbers and dashes, and it cannot be changed casually afterwards."
             fields={[
               { key: 'slug', label: 'Link name', required: true, initial: slugFor(dialog.app.gym_name) },
               // A paid plan they paid for (0224) starts on approval; only an unpriced one is still a choice here.
@@ -243,7 +243,7 @@ export default function Applications() {
               if (v.start && v.start !== TRIAL_FIRST && app.plan_key) await setGymPlan(gymId, app.plan_key, null);
               await load();
               setMailNote(await emailApplicant(app, 'application_approved', `${app.gym_name} is in`,
-                `${app.gym_name} is in. Sign in at https://corefitness-admin.vercel.app with the account you applied with — your email and password, or Google — and set your gym up.`));
+                `${app.gym_name} is in. Sign in at https://corefitness-admin.vercel.app with the account you applied with, your email and password, or Google, and set your gym up.`));
               // Since 0222 the application's own account is made the owner with the gym, so there is
               // nobody to name. Before 0222 is pasted the gym has no owner yet: name one as before.
               const { data: owned, error: noMarker } = await supabase.rpc('migration_0222_applied');
@@ -258,7 +258,7 @@ export default function Applications() {
           <Ask
             title={`Turn ${dialog.app.gym_name} down?`}
             blurb={pays.get(dialog.app.id)?.status === 'paid'
-              ? `They are shown the reason you give, so write it for them to read. They have paid ${peso(pays.get(dialog.app.id)!.amount)} by ${pays.get(dialog.app.id)!.method_label} — the gym terms promise it back in full, so refund it.`
+              ? `They are shown the reason you give, so write it for them to read. They have paid ${peso(pays.get(dialog.app.id)!.amount)} by ${pays.get(dialog.app.id)!.method_label}, the gym terms promise it back in full, so refund it.`
               : 'They are shown the reason you give, so write it for them to read.'}
             fields={[{ key: 'reason', label: 'Why', required: true, placeholder: 'Outside the area we can support for now' }]}
             confirmLabel="Turn them down"
@@ -291,7 +291,7 @@ export default function Applications() {
             await confirmApplicationPayment(p.payment_id!, ok, reason);
             setDialog(null); await load();
             setMailNote(await emailApplicant(app, 'application_message', ok ? 'Your payment is confirmed' : 'We could not find your payment',
-              ok ? `We found your ${p.method_label} payment (ref ${p.reference}) for ${p.plan_name}. We let you in next — you will hear from us.`
+              ok ? `We found your ${p.method_label} payment (ref ${p.reference}) for ${p.plan_name}. We let you in next, you will hear from us.`
                  : `We could not find your ${p.method_label} payment (ref ${p.reference}): ${reason}\n\nCheck the reference number and send it again on your application page.`));
           }} />
         )}
@@ -301,7 +301,7 @@ export default function Applications() {
         {dialog?.kind === 'delete' && (
           <Ask
             title={`Delete ${dialog.app.owner_name}'s account?`}
-            blurb={`They can no longer sign in, and their documents are deleted. ${dialog.app.gym_name}'s application stays in your records. This cannot be undone — they would apply again with a new account.`}
+            blurb={`They can no longer sign in, and their documents are deleted. ${dialog.app.gym_name}'s application stays in your records. This cannot be undone, they would apply again with a new account.`}
             fields={[]}
             confirmLabel="Delete the account"
             onCancel={close}
@@ -374,7 +374,7 @@ function Reach({ app, onTalk }: { app: Application; onTalk: () => void }) {
       </button>
       {/* A laptop cannot call or text (2026-11-02): the number is shown to dial on a phone, and copied with one click. */}
       <button type="button" data-reach-phone onClick={() => void navigator.clipboard.writeText(app.phone).then(() => setCopiedPhone(true))}
-        data-tip="Call or text them from your phone — click to copy the number">
+        data-tip="Call or text them from your phone, click to copy the number">
         <Phone size={13} /> {app.phone} <span className="reach-hint">{copiedPhone ? 'copied' : 'copy'}</span>
       </button>
       <a href={`viber://chat?number=${encodeURIComponent(intl)}`}>Viber</a>
@@ -384,8 +384,8 @@ function Reach({ app, onTalk }: { app: Application; onTalk: () => void }) {
       )}
       {/* Gmail in a new tab, the address, subject and a first line already written; the address itself is shown. */}
       <a data-reach-email target="_blank" rel="noreferrer" data-tip="Opens a new email to them in Gmail"
-        href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(app.email)}&su=${encodeURIComponent(`Your Core Fitness application — ${app.gym_name}`)}&body=${encodeURIComponent(
-        `Hi ${app.owner_name.split(' ')[0]},\n\n` + (app.status_token ? `You can follow your application and write to us here:\n${statusLink(app.status_token)}\n\n` : '') + '— Core Fitness')}`}>
+        href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(app.email)}&su=${encodeURIComponent(`Your Core Fitness application, ${app.gym_name}`)}&body=${encodeURIComponent(
+        `Hi ${app.owner_name.split(' ')[0]},\n\n` + (app.status_token ? `You can follow your application and write to us here:\n${statusLink(app.status_token)}\n\n` : '') + 'Core Fitness')}`}>
         <Mail size={13} /> {app.email} <span className="reach-hint">Gmail</span>
       </a>
       {app.status_token && (
@@ -447,16 +447,16 @@ function PayCheck({ app, p, onDone, onCancel }: {
         Find it in your own {p.method_label} history before confirming.</p>
       {proof ? (
         <button type="button" className="proof-thumb" onClick={() => setBigProof(true)} data-pay-proof aria-label="See the receipt they sent">
-          <img src={proof} alt="" /><span>Their receipt screenshot — tap to look closer</span>
+          <img src={proof} alt="" /><span>Their receipt screenshot, tap to look closer</span>
         </button>
-      ) : <p className="meta" style={{ margin: 0 }}>No screenshot sent — the reference only.</p>}
+      ) : <p className="meta" style={{ margin: 0 }}>No screenshot sent, the reference only.</p>}
       {bigProof && proof && (
         <DocViewer docs={[{ id: 'proof', label: `${app.gym_name}'s receipt`, url: proof, fileName: 'receipt.jpg', status: '', meta: `${p.method_label} · ref ${p.reference}` }]}
           start={0} onClose={() => setBigProof(false)} />
       )}
       {refusing ? (
         <>
-          <input value={reason} maxLength={500} placeholder="Why — they read this" aria-label="Why the payment was not found"
+          <input value={reason} maxLength={500} placeholder="Why, they read this" aria-label="Why the payment was not found"
             onChange={(e) => setReason(e.target.value)} />
           <div className="actions">
             <button className="btn" disabled={busy || reason.trim().length < 3} onClick={() => void go(false)}>Say it was not found</button>
@@ -465,7 +465,7 @@ function PayCheck({ app, p, onDone, onCancel }: {
         </>
       ) : (
         <div className="actions">
-          <button className="btn" disabled={busy} onClick={() => void go(true)} data-pay-confirm>Confirm — it arrived</button>
+          <button className="btn" disabled={busy} onClick={() => void go(true)} data-pay-confirm>Confirm, it arrived</button>
           <button className="btn ghost" disabled={busy} onClick={() => setRefusing(true)}>Not found</button>
           <button className="btn ghost" onClick={onCancel}>Cancel</button>
         </div>

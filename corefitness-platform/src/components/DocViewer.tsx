@@ -33,7 +33,7 @@ export default function DocViewer({ docs, start, onClose, onVerify }: {
   if (!d) return null;
   const go = (n: number) => { setI(n); setFull(false); };
   return createPortal(
-    <div className="docv" role="dialog" aria-label={`${d.label} — document ${i + 1} of ${docs.length}`} data-doc-viewer>
+    <div className="docv" role="dialog" aria-label={`${d.label}, document ${i + 1} of ${docs.length}`} data-doc-viewer>
       <div className="docv__bar">
         <span className="docv__title"><b>{d.label}</b><small>{d.meta}</small></span>
         <span className="docv__count">{i + 1} of {docs.length}</span>

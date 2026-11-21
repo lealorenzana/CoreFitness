@@ -30,7 +30,7 @@ export default class ErrorBoundary extends Component<Props, State> {
       <div className="card notice">
         <div className="name">This screen stopped</div>
         <div className="meta">
-          Nothing was changed by it. The other tabs still work — and if this happened just after a
+          Nothing was changed by it. The other tabs still work, and if this happened just after a
           migration, the probe is the first thing to check:
           <code style={{ marginLeft: 6 }}>python scripts/probe-migrations.py</code>
         </div>

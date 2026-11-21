@@ -63,10 +63,10 @@ export default function Growth() {
 
   const GROWTH_TIPS: Record<string, string> = {
     MRR: 'Monthly recurring revenue: the monthly price of every gym whose paid time covers this month.',
-    ARR: 'Annual run rate — this month\'s MRR times twelve. A pace, not money in the bank.',
+    ARR: 'Annual run rate, this month\'s MRR times twelve. A pace, not money in the bank.',
     'Collected this month': 'Payments from gyms actually recorded this month, whatever period they cover.',
     Gyms: 'Gyms created by the end of this month, suspended ones included; the foot counts the new ones and those suspended this month.',
-    Members: 'Active members across every gym at the end of the month — a floor, not a peak.',
+    Members: 'Active members across every gym at the end of the month, a floor, not a peak.',
     'Gyms at risk': 'Scored from quiet check-ins, lapsed payments, trials ending unpaid and owners not signing in (0136).',
   };
   const kpis = [
@@ -84,7 +84,7 @@ export default function Growth() {
       {sentNote && <p className="meta" data-sent-note>{sentNote}</p>}
       {writing && (
         <MessageOwner open onClose={() => setWriting(null)} gymId={writing.id} gymName={writing.name} reasons={writing.reasons}
-          onSent={(n) => setSentNote(`Sent to ${writing.name}'s owner${n > 1 ? `s (${n})` : ''} — it is in their bell and on their phone.`)} />
+          onSent={(n) => setSentNote(`Sent to ${writing.name}'s owner${n > 1 ? `s (${n})` : ''}, it is in their bell and on their phone.`)} />
       )}
       <div className="kpis">
         {kpis.map((k) => {

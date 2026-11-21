@@ -17,7 +17,7 @@ const stamp = (iso: string) => new Date(iso).toLocaleString('en-PH', { day: 'num
  * from Settings each time, so a corrected number corrects every conversation.
  */
 /** The "Pay online" message (0228): the site shows it with a button to Pay for your plan. Keep "Pay for your plan" in it. */
-const PAY_ONLINE = 'Pay online: open Pay for your plan on your application page and press Pay online — GCash, Maya, card or online banking, through PayMongo.';
+const PAY_ONLINE = 'Pay online: open Pay for your plan on your application page and press Pay online, GCash, Maya, card or online banking, through PayMongo.';
 const PAYMONGO = '__paymongo';
 
 export default function ApplicationThread({ app, payDue = false }: {
@@ -94,7 +94,7 @@ export default function ApplicationThread({ app, payDue = false }: {
       )}
       <div className="thread">
         {msgs === null ? <p className="empty">Loading…</p> : msgs.length === 0 ? (
-          <p className="empty">No messages yet. Write first — they see it on their status link.</p>
+          <p className="empty">No messages yet. Write first, they see it on their status link.</p>
         ) : msgs.map((m) => (
           <div key={m.id} className={`bubble${m.from_platform ? ' mine' : ''}`}>
             <span className="bubble-who">{m.from_platform ? (m.author_name ?? 'Core Fitness') : app.owner_name} · {stamp(m.created_at)}</span>

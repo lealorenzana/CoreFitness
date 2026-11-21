@@ -50,7 +50,7 @@ export default function GymDocuments() {
           <p className="meta" style={{ marginTop: 0 }}>
             {published
               ? <>In effect: the version of <b>{day(published)}</b>. {agreed} of {rows.length} gym{rows.length === 1 ? '' : 's'} have agreed to it.</>
-              : <>Drafts — nothing is in effect. The website says so, the apply form asks nobody to agree, and no owner is asked.</>}
+              : <>Drafts, nothing is in effect. The website says so, the apply form asks nobody to agree, and no owner is asked.</>}
             {' '}<a href={`${SITE}/#legal/terms`} target="_blank" rel="noopener noreferrer">Open the documents <ExternalLink size={11} /></a>
           </p>
 

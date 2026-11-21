@@ -46,7 +46,7 @@ export default function DemoGyms() {
     try {
       for (let n = 1; n <= GYMS; n++) {
         for (let step = (doneBefore.get(n) ?? 0) + 1; step <= STEPS; step++) {
-          if (stop.current) throw new Error('Stopped — press Create again to carry on where it stopped.');
+          if (stop.current) throw new Error('Stopped, press Create again to carry on where it stopped.');
           const line = await demoGymStep(n, step, DEMO_PASSWORD);
           done++;
           setRun({ kind: 'create', done, total, line });
@@ -69,7 +69,7 @@ export default function DemoGyms() {
     try {
       for (const g of todo) {
         for (const step of [1, 2]) {
-          if (stop.current) throw new Error('Stopped — press Remove again to finish.');
+          if (stop.current) throw new Error('Stopped, press Remove again to finish.');
           const line = await demoRemoveStep(g.n, step);
           done++;
           setRun({ kind: 'remove', done, total, line });
@@ -106,7 +106,7 @@ export default function DemoGyms() {
     return (
       <div className="card pf-card pf-12" data-demo-gyms>
         <div className="name">Demo gyms for a load test</div>
-        <div className="meta">Paste migration 0238 (supabase/migrations/0238_demo_gyms.sql) first — then Create and Remove appear here.</div>
+        <div className="meta">Paste migration 0238 (supabase/migrations/0238_demo_gyms.sql) first, then Create and Remove appear here.</div>
       </div>
     );
   }
@@ -115,13 +115,13 @@ export default function DemoGyms() {
     <div className="card pf-card pf-12" data-demo-gyms>
       <div className="name">Demo gyms for a load test</div>
       <div className="meta">
-        {GYMS} made-up gyms in Philippine towns, each with an owner, a front desk, 3 coaches and 200 members — every one a
-        real sign-in — and about six months of payments, check-ins, coaching and chats. Listed publicly with a Demo mark,
+        {GYMS} made-up gyms in Philippine towns, each with an owner, a front desk, 3 coaches and 200 members, every one a
+        real sign-in, and about six months of payments, check-ins, coaching and chats. Listed publicly with a Demo mark,
         never billed. {list.length === 0 ? 'None exist now.' : <><strong>{complete} of {GYMS}</strong> built · {members.toLocaleString()} members.</>}
       </div>
       {list.length > 0 && (
         <div className="meta" style={{ marginTop: 6 }}>
-          Sign in by username — <code>gym07.owner</code>, <code>gym07.desk</code>, <code>gym07.coach1</code>, <code>gym07.m123</code> —
+          Sign in by username, <code>gym07.owner</code>, <code>gym07.desk</code>, <code>gym07.coach1</code>, <code>gym07.m123</code>,
           with the shared password <code data-demo-password>{DEMO_PASSWORD}</code>.
         </div>
       )}
@@ -132,7 +132,7 @@ export default function DemoGyms() {
             <div style={{ height: '100%', width: `${Math.round((run.done / Math.max(1, run.total)) * 100)}%`, background: run.kind === 'create' ? '#7C3AED' : '#F59E0B', transition: 'width .3s' }} />
           </div>
           <div className="meta" style={{ marginTop: 6 }}>
-            {run.kind === 'create' ? 'Building' : 'Removing'} — {run.done} of {run.total} steps · {run.line}
+            {run.kind === 'create' ? 'Building' : 'Removing'}, {run.done} of {run.total} steps · {run.line}
           </div>
           <button className="btn ghost" type="button" style={{ marginTop: 6 }} onClick={() => { stop.current = true; }}>Stop after this step</button>
         </div>
@@ -157,7 +157,7 @@ export default function DemoGyms() {
         }}>
           <div className="meta">
             {confirm === 'create'
-              ? `This adds ${GYMS} gyms and ${(GYMS * 205).toLocaleString()} accounts to the live database — about 250 MB of the free plan's 500 MB — in ${GYMS * STEPS} steps, roughly 5–10 minutes. Keep this tab open.`
+              ? `This adds ${GYMS} gyms and ${(GYMS * 205).toLocaleString()} accounts to the live database, about 250 MB of the free plan's 500 MB, in ${GYMS * STEPS} steps, roughly 5–10 minutes. Keep this tab open.`
               : <>This deletes every demo gym, its {members.toLocaleString()} members, staff, history and sign-ins. Only gyms marked Demo are touched. <strong style={{ color: 'var(--warn)' }}>There is no undo.</strong></>}
           </div>
           <label htmlFor="demo-confirm" style={{ marginTop: 8 }}>Type <strong>{confirm}</strong> to confirm</label>

@@ -55,7 +55,7 @@ export default function SupportView() {
         <div className="row" style={{ gap: 12, alignItems: 'center' }}>
           <GymMark name={s.gym.name} logoUrl={s.settings?.logo_url ?? null} accent={s.settings?.accent ?? 'violet'} size={40} />
           <span className="grow">
-            <span className="name"><Eye size={14} style={{ verticalAlign: -2 }} /> Looking at {s.gym.name} — read-only</span>
+            <span className="name"><Eye size={14} style={{ verticalAlign: -2 }} /> Looking at {s.gym.name}, read-only</span>
             <span className="meta" style={{ margin: 0 }}>
               {s.grant.granted_by ? `${s.grant.granted_by} opened it` : 'The owner opened it'}
               {s.grant.reason ? ` for: “${s.grant.reason}”` : ''} · ends by itself in {left(s.grant.expires_at)} · this visit is in their activity log
@@ -81,7 +81,7 @@ export default function SupportView() {
           <section className="card">
             <h2 className="section-title">The gym</h2>
             <dl className="kv">
-              <dt>Status</dt><dd>{s.gym.status}{s.gym.lock_reason ? ` — read-only (${s.gym.lock_reason})` : ''}</dd>
+              <dt>Status</dt><dd>{s.gym.status}{s.gym.lock_reason ? `, read-only (${s.gym.lock_reason})` : ''}</dd>
               <dt>Plan</dt><dd>{s.gym.plan}{s.gym.paid_until ? `, paid to ${stamp(s.gym.paid_until).replace(/,.*$/, '')}` : ''}</dd>
               <dt>Link</dt><dd>/join/{s.gym.slug}</dd>
               <dt>Joining</dt><dd>{s.settings?.join_policy === 'open' ? 'Listed: anyone can find it' : s.settings?.join_policy === 'code' ? 'Only with the link or code' : 'At the desk only'}
@@ -102,7 +102,7 @@ export default function SupportView() {
             </dl>
             {waitingInv.some((i) => i.has_account) && (
               <p className="meta" style={{ color: 'var(--warn)', display: 'flex', gap: 6 }}><AlertTriangle size={14} />
-                {waitingInv.filter((i) => i.has_account).length} waiting invitation(s) are for an email that already has an account — that person must sign in (not sign up) and open the link again.</p>
+                {waitingInv.filter((i) => i.has_account).length} waiting invitation(s) are for an email that already has an account, that person must sign in (not sign up) and open the link again.</p>
             )}
             {s.settings?.join_policy === 'closed' && (
               <p className="meta" style={{ color: 'var(--warn)' }}>This gym signs members up at the desk only, so members cannot use a join link or code.</p>
@@ -121,7 +121,7 @@ export default function SupportView() {
                   <td>{i.name ? `${i.name} · ` : ''}{i.email}</td><td>{i.role}</td>
                   <td style={{ color: i.state === 'waiting' ? 'var(--text)' : undefined }}>{i.state}{i.accepted_at ? ` ${stamp(i.accepted_at)}` : ''}</td>
                   <td>{stamp(i.created_at)}</td><td>{stamp(i.expires_at)}</td>
-                  <td>{i.has_account ? 'Has one — must sign in' : 'None yet — must sign up'}</td>
+                  <td>{i.has_account ? 'Has one, must sign in' : 'None yet, must sign up'}</td>
                 </tr>
               ))}
             </tbody>

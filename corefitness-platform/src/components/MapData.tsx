@@ -61,7 +61,7 @@ export default function MapData() {
       }
       await new Promise((r) => setTimeout(r, 1200));
     }
-    setBusy(failed ? `Done — ${found} gyms; ${failed} area${failed === 1 ? '' : 's'} could not be reached. Try again later.` : `Done — ${found} gyms in ${tiles.size} areas.`);
+    setBusy(failed ? `Done, ${found} gyms; ${failed} area${failed === 1 ? '' : 's'} could not be reached. Try again later.` : `Done, ${found} gyms in ${tiles.size} areas.`);
     await load();
   };
 

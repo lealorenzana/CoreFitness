@@ -52,7 +52,7 @@ export default function ExportGym({ gymId, gymName }: { gymId: string; gymName: 
   return (
     <>
       <button className="btn ghost" disabled={why !== null} onClick={() => { setOpen(true); setDone(null); }}
-        data-tip={why === undefined ? 'Checking…' : why ?? `Download ${gymName}'s records — its owner is told`}>
+        data-tip={why === undefined ? 'Checking…' : why ?? `Download ${gymName}'s records, its owner is told`}>
         <Download size={14} /> Export data
       </button>
       <Modal open={open} onClose={() => setOpen(false)} size="md" title={`Export ${gymName}'s data`}

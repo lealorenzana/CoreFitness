@@ -83,7 +83,7 @@ export default function Capacity() {
             {!p ? 'one reading a day' : p.months === null ? 'not growing' : p.months > 120 ? 'full in 10+ years' : `full in ~${p.months < 1 ? 'under a month' : `${Math.round(p.months)} months`}`}
           </span>
         </div>
-        {pct >= 80 && <p className="meta" style={{ color: 'var(--warn)', margin: 0 }}>Past 80% — the bell is ringing about this.</p>}
+        {pct >= 80 && <p className="meta" style={{ color: 'var(--warn)', margin: 0 }}>Past 80%, the bell is ringing about this.</p>}
       </section>
     );
   };
@@ -136,7 +136,7 @@ export default function Capacity() {
         <section className="card">
           <h2 className="section-title"><Gauge size={14} /> Limits this page cannot see</h2>
           <ul className="cap-limits">
-            <li data-tip="Data sent out of Supabase — every page load and photo shown. Measured only by Supabase itself."><b>Egress</b><span>5 GB a month</span></li>
+            <li data-tip="Data sent out of Supabase, every page load and photo shown. Measured only by Supabase itself."><b>Egress</b><span>5 GB a month</span></li>
             <li data-tip="Calls to the Edge Functions (approve-gym, push, the assistant)."><b>Edge function calls</b><span>500,000 a month</span></li>
             <li data-tip="Live connections for realtime updates at the same moment."><b>Realtime connections</b><span>200 at once</span></li>
             <li data-tip="A free project with no activity for a week is paused until someone restores it."><b>Inactivity pause</b><span>after 7 quiet days</span></li>
@@ -146,7 +146,7 @@ export default function Capacity() {
         <section className="card side-fill">
           <h2 className="section-title"><Lightbulb size={14} /> Near a limit</h2>
           <ul className="cap-tips">
-            <li><b>Database:</b> remove demo data (Platform), then look at the biggest tables below — notifications and logs grow fastest.</li>
+            <li><b>Database:</b> remove demo data (Platform), then look at the biggest tables below, notifications and logs grow fastest.</li>
             <li><b>Storage:</b> the largest files are listed by gym; a gym's photo allowance is on its plan.</li>
             <li><b>Past what free allows:</b> Supabase Pro is $25 a month for 8 GB of database and 100 GB of files.</li>
           </ul>
@@ -167,13 +167,13 @@ export default function Capacity() {
           sub: foot ? `${count(g.rows)} rows · ${count(g.files)} files` : undefined })), 'No gym has uploaded anything yet.')}
       </section>
       <section className="card cap-3">
-        <h2 className="section-title"><FileImage size={14} /> Largest files <InfoDot tip="By size and the gym that owns them. A file's name is never shown — it can be a person's." /></h2>
+        <h2 className="section-title"><FileImage size={14} /> Largest files <InfoDot tip="By size and the gym that owns them. A file's name is never shown, it can be a person's." /></h2>
         {det === null ? <p className="empty"><FileImage size={22} className="empty-icon" />Paste migration 0140 to list them.</p>
           // What, whose, type and when (0239) — before 0239, the bucket and owner as before.
           : bars(files.map((f) => ({
               key: f.key,
-              name: f.what ? `${f.what} — ${f.whose}` : f.label,
-              label: f.what ? <>{f.what}<span className="cap-whose"> — {f.whose}</span></> : f.label,
+              name: f.what ? `${f.what}, ${f.whose}` : f.label,
+              label: f.what ? <>{f.what}<span className="cap-whose">, {f.whose}</span></> : f.label,
               used: f.used,
               sub: f.what ? [f.file_type ? f.file_type.replace(/^image\//, '').replace(/^application\//, '').toUpperCase() : null,
                              f.uploaded ? `uploaded ${new Date(f.uploaded).toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}` : null,
@@ -211,7 +211,7 @@ function TrendChart({ days }: { days: CapacityDay[] }) {
           <path d={line('storage_bytes', 60, 96)} className="cap-line-st" />
         </svg>
         <div className="cap-hit">
-          {days.map((d, i) => <span key={d.day} data-tip={`${shortDay(d.day)} — database ${size(d.db_bytes)}, storage ${size(d.storage_bytes)}, ${count(d.mau)} signed in`}
+          {days.map((d, i) => <span key={d.day} data-tip={`${shortDay(d.day)}, database ${size(d.db_bytes)}, storage ${size(d.storage_bytes)}, ${count(d.mau)} signed in`}
             style={{ cursor: 'pointer' }} data-detail={detail({ title: shortDay(d.day), value: `${size(d.db_bytes)} database`, rows: [
               ['Storage', size(d.storage_bytes)], ['Files', count(d.storage_objects)], ['People signed in, 30 days', count(d.mau)],
               ['Database vs the day before', i ? `${d.db_bytes >= days[i - 1].db_bytes ? '+' : '−'}${size(Math.abs(d.db_bytes - days[i - 1].db_bytes))}` : '—'],

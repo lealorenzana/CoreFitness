@@ -34,7 +34,7 @@ export default function PaymentMethods() {
     e.preventDefault();
     if (!edit) return;
     setBusy(true); setMsg(null);
-    try { await savePaymentMethod({ ...edit, id: edit.id || null }); setEdit(null); await load(); setMsg('Saved — gyms see it on Your plan.'); }
+    try { await savePaymentMethod({ ...edit, id: edit.id || null }); setEdit(null); await load(); setMsg('Saved, gyms see it on Your plan.'); }
     catch (err) { setMsg(err instanceof Error ? err.message : 'Could not save'); }
     finally { setBusy(false); }
   };
@@ -51,7 +51,7 @@ export default function PaymentMethods() {
         <>
           {rows.length === 0 && !edit && (
             <p className="meta" style={{ marginTop: 0 }}>
-              No way to pay yet — gyms see “ask Core Fitness how to pay”. Add your GCash number and QR code so a gym in another
+              No way to pay yet, gyms see “ask Core Fitness how to pay”. Add your GCash number and QR code so a gym in another
               province can pay without travelling.
             </p>
           )}
@@ -59,7 +59,7 @@ export default function PaymentMethods() {
             <div key={m.id} className="row" style={{ gap: 12, padding: '10px 0', borderBottom: '1px solid var(--border-soft)', opacity: m.active ? 1 : 0.55 }}>
               {m.qr_image ? <img className="qr-thumb" src={m.qr_image} alt={`${m.label} QR code`} /> : <span className="qr-thumb" style={{ display: 'grid', placeItems: 'center', color: '#888' }}><QrCode size={28} /></span>}
               <span className="grow" style={{ minWidth: 0 }}>
-                <span className="name">{m.label}{!m.active && ' — hidden'}</span>
+                <span className="name">{m.label}{!m.active && ', hidden'}</span>
                 <span className="meta" style={{ margin: 0 }}>{[m.account_name, m.account_number].filter(Boolean).join(' · ') || 'No account details'}</span>
               </span>
               <button className="btn ghost" onClick={() => setEdit(m)}>Edit</button>

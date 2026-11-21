@@ -131,7 +131,7 @@ export default function GymDetail({ gym, onChanged, onClose }: {
 
       <div style={{ marginTop: 14 }}>
         <div className="name" style={{ fontSize: 13 }}>Who runs it</div>
-        <div className="meta">Owners and front desk only — a gym's members are its own business.</div>
+        <div className="meta">Owners and front desk only, a gym's members are its own business.</div>
         {people === null && <p className="empty">Loading…</p>}
         {people?.length === 0 && (
           <p className="empty">Nobody can sign into this gym yet. Invite its owner from the gym's row.</p>
@@ -168,14 +168,14 @@ export default function GymDetail({ gym, onChanged, onClose }: {
               when they sign in.
             </div>
             <pre className="handover-box">
-{`${gym.name} — sign in
+{`${gym.name}, sign in
 Where: https://corefitness-admin.vercel.app
 Email: ${reset.email ?? '(no email on file)'}
 Temporary password: ${reset.password}`}
             </pre>
             <div style={{ height: 10 }} />
-            <EmailIt to={reset.email} toName={reset.who} subject={`${gym.name} — your new Core Fitness password`}
-              body={`${gym.name} — sign in
+            <EmailIt to={reset.email} toName={reset.who} subject={`${gym.name}, your new Core Fitness password`}
+              body={`${gym.name}, sign in
 Where: https://corefitness-admin.vercel.app
 Email: ${reset.email}
 Temporary password: ${reset.password}

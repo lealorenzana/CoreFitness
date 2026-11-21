@@ -66,7 +66,7 @@ export default function EventDetail({ event }: { event: LoggedEvent }) {
       {reason && <p className="meta" style={{ marginTop: 0 }}>Reason given: “{reason}”</p>}
       <dl className="kv" style={{ marginTop: 14 }}>
         <dt><Clock size={12} /> When</dt><dd>{stamp(event.created_at)} · {ago(event.created_at)}</dd>
-        <dt><Hash size={12} /> Action</dt><dd><code>{event.action}</code> — {say(event.action)}</dd>
+        <dt><Hash size={12} /> Action</dt><dd><code>{event.action}</code>, {say(event.action)}</dd>
         <dt><Building2 size={12} /> Gym</dt><dd>{event.gym_id ? (event.gym_name ?? 'A gym no longer listed') : 'The platform itself'}</dd>
         <dt><UserRound size={12} /> By</dt><dd>{event.actor_name ?? 'Not recorded with this event'}</dd>
         <dt>Event no.</dt><dd>{event.id}</dd>

@@ -115,23 +115,23 @@ export default function Support() {
                 <div className="card" style={{ padding: 12, marginBottom: 10 }}>
                   <span className="name" style={{ fontSize: 13 }}>Error report attached</span>
                   <span className="meta" style={{ display: 'block', fontFamily: 'ui-monospace, Consolas, monospace', whiteSpace: 'pre-wrap' }}>
-                    {access.context.message}{access.context.route ? ` — on ${access.context.route}` : ''}{access.context.build ? ` · build ${access.context.build}` : ''}
+                    {access.context.message}{access.context.route ? `, on ${access.context.route}` : ''}{access.context.build ? ` · build ${access.context.build}` : ''}
                   </span>
                 </div>
               )}
               <div className="card" style={{ padding: 12, marginBottom: 10 }}>
                 <span className="name" style={{ fontSize: 13 }}>Support access</span>
                 {access?.live ? (
-                  <span className="meta" style={{ display: 'block' }}>Open until {when(access.expires_at!)} — read-only. <Link to={`/gyms/${open.gym_id}`}>Open the gym</Link> and use Support view.</span>
+                  <span className="meta" style={{ display: 'block' }}>Open until {when(access.expires_at!)}, read-only. <Link to={`/gyms/${open.gym_id}`}>Open the gym</Link> and use Support view.</span>
                 ) : access?.requested_at && !access.answer ? (
-                  <span className="meta" style={{ display: 'block' }}>Asked for {access.hours} h — waiting for the owner to approve it on the ticket.</span>
+                  <span className="meta" style={{ display: 'block' }}>Asked for {access.hours} h, waiting for the owner to approve it on the ticket.</span>
                 ) : asking ? (
                   <div className="row" style={{ gap: 8, marginTop: 6 }}>
                     <select value={asking.hours} onChange={(e) => setAsking({ ...asking, hours: Number(e.target.value) })} aria-label="Hours">
                       {[1, 2, 4, 8, 24].map((h) => <option key={h} value={h}>{h} hour{h === 1 ? '' : 's'}</option>)}
                     </select>
                     <input className="grow" value={asking.why} maxLength={300} onChange={(e) => setAsking({ ...asking, why: e.target.value })}
-                      placeholder="What you need to look at — the owner reads this" aria-label="Why" />
+                      placeholder="What you need to look at, the owner reads this" aria-label="Why" />
                     <button className="btn" disabled={busy || !asking.why.trim()}
                       onClick={() => void run(async () => { await requestTicketAccess(open.id, asking.hours, asking.why.trim()); setAsking(null); })}>Ask the owner</button>
                     <button className="btn ghost" onClick={() => setAsking(null)}>Cancel</button>
@@ -158,7 +158,7 @@ export default function Support() {
                 </div>
               ))}
               <textarea rows={4} value={reply} maxLength={4000} onChange={(e) => setReply(e.target.value)}
-                placeholder="Your reply — the person who opened it is notified" aria-label="Reply" style={{ marginTop: 8 }} />
+                placeholder="Your reply, the person who opened it is notified" aria-label="Reply" style={{ marginTop: 8 }} />
               <div className="row" style={{ marginTop: 10 }}>
                 <button className="btn" disabled={busy || !reply.trim()} onClick={() => void run(async () => { await replyTicket(open.id, reply); setReply(''); })}>
                   <Send size={14} /> Reply
@@ -172,7 +172,7 @@ export default function Support() {
               {fix !== null && (
                 <div style={{ marginTop: 10 }}>
                   <textarea rows={3} value={fix} maxLength={2000} onChange={(e) => setFix(e.target.value)} aria-label="What was fixed"
-                    placeholder="What was wrong and what you changed — the gym reads this, and any access from this ticket ends" />
+                    placeholder="What was wrong and what you changed, the gym reads this, and any access from this ticket ends" />
                   <button className="btn" style={{ marginTop: 8 }} disabled={busy || !fix.trim()}
                     onClick={() => void run(async () => { await resolveTicket(open.id, fix.trim()); setFix(null); setOpen({ ...open, status: 'closed' }); })}>
                     Close as fixed

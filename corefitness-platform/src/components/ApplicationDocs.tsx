@@ -59,7 +59,7 @@ export default function ApplicationDocs({ app, onChanged }: { app: Application; 
       if (!ok) {
         // One email naming every document waiting on them, and why.
         setMailNote(await emailApplicant(app, 'application_documents', back.length === 1 ? `Please send your ${back[0].label} again` : `Please send ${back.length} documents again`,
-          `We need ${back.length === 1 ? 'this document' : 'these documents'} again:\n\n${back.map((d) => `• ${d.label}: ${d.reason}`).join('\n')}\n\nAttach ${back.length === 1 ? 'it' : 'them'} and press Send again — only ${back.length === 1 ? 'this one' : 'these'}, nothing else.`));
+          `We need ${back.length === 1 ? 'this document' : 'these documents'} again:\n\n${back.map((d) => `• ${d.label}: ${d.reason}`).join('\n')}\n\nAttach ${back.length === 1 ? 'it' : 'them'} and press Send again, only ${back.length === 1 ? 'this one' : 'these'}, nothing else.`));
       } else if (kinds.every((k) => now(k.kind)?.status === 'verified')) {
         setMailNote(await emailApplicant(app, 'application_documents', 'All six documents are verified',
           'We checked all six of your business documents and they are verified. We will be in touch about the next step.'));
@@ -86,7 +86,7 @@ export default function ApplicationDocs({ app, onChanged }: { app: Application; 
           onVerify={async (id) => { const doc = docs.find((x) => x.id === id); if (doc) await decide(doc, true); }} />
       )}
       <p className="meta" style={{ marginTop: 0 }}>
-        {verified} of {kinds.length} verified. {verified < kinds.length ? 'Let them in once all are verified and in date.' : 'Everything is verified — you can let them in.'}
+        {verified} of {kinds.length} verified. {verified < kinds.length ? 'Let them in once all are verified and in date.' : 'Everything is verified, you can let them in.'}
       </p>
       {error && <p className="err">{error}</p>}
       <div className="doc-review">
@@ -133,7 +133,7 @@ export default function ApplicationDocs({ app, onChanged }: { app: Application; 
               )}
               {d && rejecting === d.id && (
                 <div className="doc-reject">
-                  <input value={reason} maxLength={500} placeholder="What is wrong — they read this" aria-label={`Why ${k.label} is sent back`}
+                  <input value={reason} maxLength={500} placeholder="What is wrong, they read this" aria-label={`Why ${k.label} is sent back`}
                     onChange={(e) => setReason(e.target.value)} />
                   <button type="button" className="btn" disabled={busy || !reason.trim()} onClick={() => void decide(d, false)}>Send back</button>
                   <button type="button" className="btn ghost" onClick={() => setRejecting(null)}>Cancel</button>

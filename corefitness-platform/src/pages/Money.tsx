@@ -156,7 +156,7 @@ export default function Money() {
           {due === null && <p className="empty">Loading…</p>}
           {due?.length === 0 && (
             <p className="empty">
-              No gym is due. Gyms with no paid-until date at all are not listed here — set one by
+              No gym is due. Gyms with no paid-until date at all are not listed here, set one by
               recording a payment.
             </p>
           )}
@@ -167,9 +167,9 @@ export default function Money() {
                 {' · '}{g.members} member{g.members === 1 ? '' : 's'}
                 {' · '}
                 {g.lock_reason === 'suspended' ? 'suspended by you'
-                  : g.lock_reason === 'trial_ended' ? `free trial ended ${day(g.paid_until)} — paused until it pays`
-                  : g.days_left < -grace ? `read-only — ${-g.days_left} days past ${day(g.paid_until)}`
-                  : g.days_left < 0 ? `${-g.days_left} days late — read-only in ${grace + 1 + g.days_left} more`
+                  : g.lock_reason === 'trial_ended' ? `free trial ended ${day(g.paid_until)}, paused until it pays`
+                  : g.days_left < -grace ? `read-only, ${-g.days_left} days past ${day(g.paid_until)}`
+                  : g.days_left < 0 ? `${-g.days_left} days late, read-only in ${grace + 1 + g.days_left} more`
                   : g.days_left === 0 ? 'due today'
                   : `due in ${g.days_left} days`}
               </span>
@@ -213,7 +213,7 @@ export default function Money() {
               <span style={{ flex: 1, minWidth: 0 }}>
               <strong style={{ color: 'var(--text)' }}>{peso(p.amount)}</strong>
               {p.receipt_no ? <span className="muted"> · {p.receipt_no}</span> : null}
-              {' — '}{name(p.gym_id)} · paid {day(p.paid_on)} · covers to {day(p.covers_until)}
+              {', '}{name(p.gym_id)} · paid {day(p.paid_on)} · covers to {day(p.covers_until)}
               {p.method ? ` · ${p.method}` : ''}
               {p.reference ? ` · ${p.reference}` : ''}
               {p.note ? <><br /><span className="muted">{p.note}</span></> : null}

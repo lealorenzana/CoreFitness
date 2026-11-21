@@ -85,7 +85,7 @@ export default function Activity() {
         </select>
         <select aria-label="Action" value={f.action ?? ''} onChange={(e) => set({ action: e.target.value || null })} style={{ width: 210 }}>
           <option value="">Every action</option>
-          {families.map(([k, n]) => <option key={k} value={k}>{say(k)} — all ({n})</option>)}
+          {families.map(([k, n]) => <option key={k} value={k}>{say(k)}, all ({n})</option>)}
           {actions.map((a) => <option key={a.action} value={a.action}>{say(a.action)} ({a.n})</option>)}
         </select>
         <span style={{ width: 160 }} aria-label="From" data-tip="From this Manila day"><DatePicker mode="history" placeholder="From" value={f.from ?? ''} max={f.to ?? undefined} onChange={(v) => set({ from: v || null })} /></span>
@@ -103,7 +103,7 @@ export default function Activity() {
       {error && <p className="err">{error}</p>}
 
       <section className="card act-card">
-        <h2 className="section-title"><History size={14} /> {filtered ? 'Matching events' : 'Every event, newest first'} <InfoDot tip="Written by the database itself when the platform acts — never by this screen, so it cannot be edited or skipped." /></h2>
+        <h2 className="section-title"><History size={14} /> {filtered ? 'Matching events' : 'Every event, newest first'} <InfoDot tip="Written by the database itself when the platform acts, never by this screen, so it cannot be edited or skipped." /></h2>
         {rows === null ? <p className="empty">Loading…</p> : rows.length === 0 ? (
           <p className="empty"><History size={22} className="empty-icon" />{filtered ? 'Nothing matches.' : 'Nothing has happened yet.'}</p>
         ) : (
@@ -114,7 +114,7 @@ export default function Activity() {
                 onKeyDown={(ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); setOpen(e); } }}>
                 <span className={`act-kind k-${family(e.action)}`} data-tip={e.action}>{say(family(e.action))}</span>
                 <span className="act-text">
-                  <span className="act-summary">{e.summary}{typeof e.detail?.reason === 'string' && <em> — “{e.detail.reason as string}”</em>}</span>
+                  <span className="act-summary">{e.summary}{typeof e.detail?.reason === 'string' && <em>, “{e.detail.reason as string}”</em>}</span>
                   <span className="act-meta">
                     {e.gym_id ? <Link to={`/gyms/${e.gym_id}`}><Building2 size={12} />{e.gym_name ?? 'a gym'}</Link> : <span><Building2 size={12} />the platform</span>}
                     {e.actor_name && <span><UserRound size={12} />{e.actor_name}</span>}

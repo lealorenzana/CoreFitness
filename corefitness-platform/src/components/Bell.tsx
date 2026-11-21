@@ -35,7 +35,7 @@ export default function Bell() {
   return (
     <div ref={box} className="pbell">
       <button className="btn ghost pbell__btn" aria-label={total ? `${total} things need you` : 'Nothing needs you'} aria-expanded={open}
-        data-tip={total ? `${total} thing${total === 1 ? '' : 's'} need you — click to see` : 'Nothing needs you right now'} onClick={() => setOpen((v) => !v)}>
+        data-tip={total ? `${total} thing${total === 1 ? '' : 's'} need you, click to see` : 'Nothing needs you right now'} onClick={() => setOpen((v) => !v)}>
         <BellIcon size={17} />
         {total > 0 && <span className="pbell__count">{total > 99 ? '99+' : total}</span>}
       </button>

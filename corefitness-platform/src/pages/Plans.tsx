@@ -120,7 +120,7 @@ export default function Plans() {
       const gyms = await retirePlan(plan.key);
       await load();
       setError(gyms > 0
-        ? `${plan.name} is retired. ${gyms} gym${gyms === 1 ? '' : 's'} stay on it and keep what they have — it is simply no longer offered.`
+        ? `${plan.name} is retired. ${gyms} gym${gyms === 1 ? '' : 's'} stay on it and keep what they have, it is simply no longer offered.`
         : `${plan.name} is retired. No gym was on it.`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not retire the plan');
@@ -178,7 +178,7 @@ export default function Plans() {
         <form className="card ask" onSubmit={save}>
           <div className="name">{editing.key && plans?.some((p) => p.key === editing.key) ? `Edit ${editing.name}` : 'A new plan'}</div>
           <div className="meta">
-            Leave a price empty if you have not decided — the website says “Talk to us”, which is
+            Leave a price empty if you have not decided, the website says “Talk to us”, which is
             true, instead of a number that is not. Leave a limit empty for no limit.
           </div>
           <div className="fields">
@@ -266,13 +266,13 @@ export default function Plans() {
               <select id="pl-pub" value={editing.is_public ? 'yes' : 'no'}
                 onChange={(e) => setEditing({ ...editing, is_public: e.target.value === 'yes' })}>
                 <option value="yes">Shown</option>
-                <option value="no">Hidden — for gyms you place on it yourself</option>
+                <option value="no">Hidden, for gyms you place on it yourself</option>
               </select>
             </div>
           </div>
           {editing.max_members !== null && (
             <p className="meta" style={{ marginTop: 10 }}>
-              A gym on this plan will be refused its {editing.max_members + 1}th active member — by the
+              A gym on this plan will be refused its {editing.max_members + 1}th active member, by the
               database, at the desk, with that sentence. Existing members are never touched.
             </p>
           )}
@@ -306,7 +306,7 @@ export default function Plans() {
           <div className="plan-price">
             {peso(plan.price_monthly)
               ? <><b>{peso(plan.price_monthly)}</b><span>a month{plan.price_yearly !== null ? ` · ${peso(plan.price_yearly)} a year` : ''}</span></>
-              : <><b className="undecided">Talk to us</b><span>no price decided — the website says so</span></>}
+              : <><b className="undecided">Talk to us</b><span>no price decided, the website says so</span></>}
           </div>
           {plan.blurb && <p className="plan-blurb">“{plan.blurb}”</p>}
           <div className="plan-facts">
@@ -365,7 +365,7 @@ function ComparePlans({ plans, features, on, onToggle, onSuggest }: {
     <section className="card" style={{ marginBottom: 16 }}>
       <div className="row" style={{ gap: 10 }}>
         <h2 className="section-title grow" style={{ margin: 0 }}><Layers size={14} /> What each plan gets</h2>
-        <span className="muted" style={{ fontSize: 12.5 }}>{nDiff === 0 ? 'No feature differs between plans yet' : `${nDiff} feature${nDiff === 1 ? ' differs' : 's differ'}`} · click a cell to include or take out — gyms on that plan follow at once</span>
+        <span className="muted" style={{ fontSize: 12.5 }}>{nDiff === 0 ? 'No feature differs between plans yet' : `${nDiff} feature${nDiff === 1 ? ' differs' : 's differ'}`} · click a cell to include or take out, gyms on that plan follow at once</span>
         {onSuggest && <button className="btn ghost" onClick={onSuggest}>Use a suggested split</button>}
       </div>
       <div style={{ overflowX: 'auto' }}>

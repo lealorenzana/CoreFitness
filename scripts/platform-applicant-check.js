@@ -217,7 +217,7 @@ async (page) => {
   out.push('a verified one can be asked for again: ' + (again && again[1].p_document === 'd0' ? 'yes' : 'MISSING ' + JSON.stringify(again)));
   out.push('…one email names every document waiting, with each reason: ' + (mail2 && /blurred/.test(mail2[1].body) && /last year/.test(mail2[1].body) && /2 documents/.test(mail2[1].subject ?? '') ? 'yes' : 'MISSING ' + JSON.stringify(mail2)));
   let t = await text();
-  out.push('…and the screen says plainly no mail went: ' + (/Not emailed — no mail provider is set up yet/.test(t) ? 'yes' : 'MISSING'));
+  out.push('…and the screen says plainly no mail went: ' + (/Not emailed, no mail provider is set up yet/.test(t) ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/platform-application-documents.png' });
   await page.keyboard.press('Escape');
   await page.waitForTimeout(300);

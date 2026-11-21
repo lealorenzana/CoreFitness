@@ -145,9 +145,9 @@ export default function Gyms() {
           const on = t.f !== null && filter === t.f;
           return (
             <button key={t.label} type="button" className={`tile${t.act ? ' act' : ''}${on ? ' on' : ''}`}
-              data-tip={{ Gyms: 'Every gym on Core Fitness — click to show them all', Live: 'Open, set up, and not read-only',
-                'Setting up': 'No owner yet, or the owner has not finished /admin/setup', Members: 'Active members across every gym — click for Growth',
-                'Need you': 'Read-only, at risk of leaving, or due within 14 days — click to show only these' }[t.label]}
+              data-tip={{ Gyms: 'Every gym on Core Fitness, click to show them all', Live: 'Open, set up, and not read-only',
+                'Setting up': 'No owner yet, or the owner has not finished /admin/setup', Members: 'Active members across every gym, click for Growth',
+                'Need you': 'Read-only, at risk of leaving, or due within 14 days, click to show only these' }[t.label]}
               onClick={() => (t.go ? navigate(t.go) : pick(on ? 'all' : t.f!))}>
               <span className="tile-icon"><Icon size={19} /></span>
               <span className="tile-text">
@@ -242,7 +242,7 @@ export default function Gyms() {
         {dialog?.kind === 'archive' && (
           <Ask
             title={`Archive ${dialog.gym.name}?`}
-            blurb="For a gym that has closed or will not come back. It disappears from your lists (find it under Archived), stops being listed to members, and goes read-only — its records are kept, nothing is deleted, and you can restore it any time. Its owner is shown the reason."
+            blurb="For a gym that has closed or will not come back. It disappears from your lists (find it under Archived), stops being listed to members, and goes read-only, its records are kept, nothing is deleted, and you can restore it any time. Its owner is shown the reason."
             fields={[
               { key: 'reason', label: 'Why', required: true, placeholder: 'The gym closed in October' },
               { key: 'confirm', label: `Type ${dialog.gym.name} to confirm`, required: true, placeholder: dialog.gym.name },
@@ -251,7 +251,7 @@ export default function Gyms() {
             onCancel={close}
             onConfirm={async (v) => {
               if (v.confirm.trim().toLowerCase() !== dialog.gym.name.trim().toLowerCase()) {
-                throw new Error(`Type the gym's name exactly — ${dialog.gym.name} — to archive it.`);
+                throw new Error(`Type the gym's name exactly, ${dialog.gym.name}, to archive it.`);
               }
               await setGymStatus(dialog.gym.id, 'archived', v.reason.trim());
               setDialog(null);
@@ -265,7 +265,7 @@ export default function Gyms() {
         {dialog?.kind === 'plan' && (
           <Ask
             title={`What plan is ${dialog.gym.name} on?`}
-            blurb="The plan decides what the gym can use and how many members it may have. The date is better moved by recording a payment on the Money screen — that leaves an amount and a reference behind it."
+            blurb="The plan decides what the gym can use and how many members it may have. The date is better moved by recording a payment on the Money screen, that leaves an amount and a reference behind it."
             fields={[
               // The plans that exist; a retired plan is still listed when this
               // gym is the one on it, or the picker could not show its own value.
@@ -292,7 +292,7 @@ export default function Gyms() {
         <form onSubmit={add}>
           <p className="meta" style={{ marginTop: 0 }}>
             It opens with Core Fitness's own plans, point rules, badges and settings, which the gym then edits as its own.
-            Its name, address and logo stay blank — the owner fills those in when they first sign in. Invite the owner
+            Its name, address and logo stay blank, the owner fills those in when they first sign in. Invite the owner
             from its card afterwards; until you do, nobody can sign into it.
           </p>
           <div className="fields">
@@ -326,7 +326,7 @@ function StatusPill({ gym }: { gym: PlatformGym }) {
     <span className="pill warn"><span className="dot" />{gym.lock_reason === 'suspended' ? 'Suspended'
       : gym.lock_reason === 'archived' ? 'Archived'
       : gym.lock_reason === 'cancelled' ? 'Left Core Fitness'
-      : gym.lock_reason === 'trial_ended' ? 'Trial ended — paused' : 'Overdue — read-only'}</span>
+      : gym.lock_reason === 'trial_ended' ? 'Trial ended, paused' : 'Overdue, read-only'}</span>
   ) : (
     <span className="pill ok"><span className="dot" />{setupState(gym) ? 'Setting up' : 'Live'}</span>
   );
@@ -432,10 +432,10 @@ function QuickView({ gym, risk, busy, onFull, onPlan, onSuspend, onInvite, onRea
       <dl className="qv-rows">
         <div><dt>Plan</dt><dd>{gym.plan_name ?? gym.plan}{gym.price_monthly !== null ? ` · ${peso(gym.price_monthly)} a month` : ''}</dd></div>
         <div><dt>Paid until</dt><dd style={dueSoon(gym) ? { color: 'var(--warn)' } : undefined}>{gym.paid_until
-          ? `${day(gym.paid_until)}${gym.days_left !== null ? (gym.days_left < 0 ? ` — ${-gym.days_left} days late` : ` — ${gym.days_left} days left`) : ''}`
+          ? `${day(gym.paid_until)}${gym.days_left !== null ? (gym.days_left < 0 ? `, ${-gym.days_left} days late` : `, ${gym.days_left} days left`) : ''}`
           : 'No paid-until date'}</dd></div>
         <div><dt>Activity</dt><dd>{since(gym.last_activity)}</dd></div>
-        <div><dt>Set up</dt><dd>{gym.owners === 0 ? 'Nobody can sign in yet — invite the owner'
+        <div><dt>Set up</dt><dd>{gym.owners === 0 ? 'Nobody can sign in yet, invite the owner'
           : !gym.onboarded ? 'The owner has not finished setting the gym up' : 'Done'}</dd></div>
       </dl>
 

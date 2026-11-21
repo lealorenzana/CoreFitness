@@ -216,7 +216,7 @@ async (page) => {
   await page.getByLabel('Days before read-only').fill('10');
   await page.waitForTimeout(200);
   t = await text();
-  out.push('the rules as a worked example: ' + (/reminder — 7 days before/.test(t) && /read-only if still unpaid/.test(t) ? 'yes' : 'MISSING'));
+  out.push('the rules as a worked example: ' + (/reminder, 7 days before/.test(t) && /read-only if still unpaid/.test(t) ? 'yes' : 'MISSING'));
   await page.getByRole('button', { name: 'Save billing rules' }).click();
   await page.waitForTimeout(500);
   out.push('billing rules save from Settings: ' + (CALLS.some((c) => c[0] === 'billing' && c[1].p_grace_days === 10) ? 'grace 10' : 'MISSING'));

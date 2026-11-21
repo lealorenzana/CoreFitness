@@ -19,7 +19,6 @@ import WhatsNewPage from './pages/WhatsNew';
 import Website from './pages/Website';
 import DetailLayer from './components/DetailLayer';
 import Bell from './components/Bell';
-import RibbonField from './components/RibbonField';
 import Capacity from './pages/Capacity';
 import CommandPalette from './components/CommandPalette';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -52,21 +51,21 @@ type Gate = 'checking' | 'in' | 'out';
 
 interface Page { path: string; label: string; icon: LucideIcon; title: string; lede: string; group: 'The service' | 'Talk to gyms' | 'Run it' }
 const PAGES: Page[] = [
-  { group: 'The service', path: '/overview', label: 'Overview', icon: LayoutDashboard, title: 'Overview', lede: 'The whole service at a glance — and what needs you.' },
+  { group: 'The service', path: '/overview', label: 'Overview', icon: LayoutDashboard, title: 'Overview', lede: 'The whole service at a glance, and what needs you.' },
   { group: 'The service', path: '/gyms', label: 'Gyms', icon: Building2, title: 'Gyms', lede: 'Every gym on Core Fitness: who runs it, how busy, what it pays.' },
-  { group: 'The service', path: '/growth', label: 'Growth', icon: TrendingUp, title: 'Growth', lede: 'The service as a business — and the gyms about to leave it.' },
-  { group: 'The service', path: '/people', label: 'People', icon: UserSearch, title: 'People', lede: 'Anyone with an account, across every gym — and suspending one.' },
-  { group: 'The service', path: '/usage', label: 'Usage', icon: Grid3x3, title: 'Usage', lede: 'Every gym against every feature — who uses what, and what nobody has found.' },
+  { group: 'The service', path: '/growth', label: 'Growth', icon: TrendingUp, title: 'Growth', lede: 'The service as a business, and the gyms about to leave it.' },
+  { group: 'The service', path: '/people', label: 'People', icon: UserSearch, title: 'People', lede: 'Anyone with an account, across every gym, and suspending one.' },
+  { group: 'The service', path: '/usage', label: 'Usage', icon: Grid3x3, title: 'Usage', lede: 'Every gym against every feature, who uses what, and what nobody has found.' },
   { group: 'Talk to gyms', path: '/applications', label: 'Applications', icon: Inbox, title: 'Applications', lede: 'Gyms asking to join, from the website.' },
   { group: 'Talk to gyms', path: '/support', label: 'Support', icon: LifeBuoy, title: 'Support', lede: 'What gym owners and desks have asked Core Fitness.' },
   { group: 'Talk to gyms', path: '/feedback', label: 'Feedback', icon: MessageSquareHeart, title: 'Feedback', lede: 'What gyms think of Core Fitness: ratings, ideas and testimonials for the website.' },
-  { group: 'Talk to gyms', path: '/announcements', label: 'Announcements', icon: Megaphone, title: 'Announcements', lede: 'Tell every gym — or one plan — something, as a banner in their admin app.' },
-  { group: 'Talk to gyms', path: '/whats-new', label: "What's new", icon: Sparkles, title: "What's new", lede: 'After an update, tell each app what changed — shown once to every person.' },
+  { group: 'Talk to gyms', path: '/announcements', label: 'Announcements', icon: Megaphone, title: 'Announcements', lede: 'Tell every gym, or one plan, something, as a banner in their admin app.' },
+  { group: 'Talk to gyms', path: '/whats-new', label: "What's new", icon: Sparkles, title: "What's new", lede: 'After an update, tell each app what changed, shown once to every person.' },
   { group: 'Talk to gyms', path: '/website', label: 'Website', icon: Globe, title: 'Website', lede: 'What the public website says, and where everything else on it is set.' },
   { group: 'Run it', path: '/plans', label: 'Plans', icon: Layers, title: 'Plans', lede: 'What you sell to gyms, and what each plan unlocks.' },
   { group: 'Run it', path: '/money', label: 'Money', icon: CreditCard, title: 'Money', lede: 'What gyms have paid, and who is due.' },
   { group: 'Run it', path: '/capacity', label: 'Capacity', icon: HardDrive, title: 'Capacity', lede: 'How close the service is to the free tier, how fast, and where the space goes.' },
-  { group: 'Run it', path: '/activity', label: 'Activity', icon: History, title: 'Activity', lede: 'Everything the platform did — searchable, by gym, action and day.' },
+  { group: 'Run it', path: '/activity', label: 'Activity', icon: History, title: 'Activity', lede: 'Everything the platform did, searchable, by gym, action and day.' },
   { group: 'Run it', path: '/platform', label: 'Platform', icon: Activity, title: 'Platform', lede: 'Health, crashes, backups and support access.' },
   { group: 'Run it', path: '/settings', label: 'Settings', icon: SettingsIcon, title: 'Settings', lede: 'Receipts, billing rules and who can run the platform.' },
 ];
@@ -129,15 +128,14 @@ function Shell() {
 
   return (
     <>
-    {/* The background: 21st.dev's BLERRY.APP Ribbon Field, live on a canvas (RibbonField, 2026-11-08). */}
-    <RibbonField />
     <div className={`app${narrow ? ' narrow' : ''}`}>
       <aside className="side">
         <div className="brand">
-          <img className="brand-logo" src="/core-fitness-logo.png" alt="Core Fitness" />
+          {/* The mark as line art, like the sign-in (2026-11-22): no colour logo in the chrome. */}
+          <svg className="brand-mark-line" viewBox="0 0 28 28" role="img" aria-label="Core Fitness"><path d="M21 6.5 A10.5 10.5 0 1 0 21 21.5" /><path d="M5 14 H23" /></svg>
           <span className="brand-words">
             <span className="brand-name">Core Fitness</span>
-            <span className="brand-sub">Platform panel</span>
+            <span className="brand-sub">Platform</span>
           </span>
         </div>
         <button type="button" className="collapse" onClick={() => setNarrow((n) => !n)} aria-label={narrow ? 'Open the menu' : 'Collapse the menu'}>
@@ -187,7 +185,7 @@ function Shell() {
       <div className="main">
         <header className="topbar">
           <span className="top-title">Core Fitness <span className="local-badge">This computer only</span></span>
-          <button type="button" className="find" data-tip="Find any gym, applicant, payment reference, ticket, log entry or screen — Ctrl K or /" onClick={() => window.dispatchEvent(new Event('platform:search'))}>
+          <button type="button" className="find" data-tip="Find any gym, applicant, payment reference, ticket, log entry or screen, Ctrl K or /" onClick={() => window.dispatchEvent(new Event('platform:search'))}>
             <Search size={15} /> <span>Search anything…</span> <kbd>Ctrl K</kbd>
           </button>
           <span className="top-right">

@@ -151,10 +151,10 @@ export default function Platform() {
               <div className="row log" key={g.id}>
                 <span className="grow">
                   <strong style={{ color: 'var(--text)' }}>{g.gym_name}</strong>
-                  {g.reason ? ` — "${g.reason}"` : ''}
+                  {g.reason ? `, "${g.reason}"` : ''}
                   <br />
                   until {stamp(g.expires_at)}
-                  {g.first_used_at ? ' — already visited' : ' — not looked at yet'}
+                  {g.first_used_at ? ', already visited' : ', not looked at yet'}
                 </span>
                 {/* 0149: the read-only view. enter_support_session() set a session
                     setting that no later request could read (each is its own
@@ -169,7 +169,7 @@ export default function Platform() {
       {/* ---- the demo data ---------------------------------------------------
           The removal SQL has existed since the seeds did. The problem was never
           the SQL, it was that its only interface was a 166-line paste into a
-          production console — and the evening anybody needs it is the evening
+          production console, and the evening anybody needs it is the evening
           before a demo, with the dashboard showing 150 people who do not exist.
 
           Drawn only while there is something to remove, so this card disappears
@@ -247,7 +247,7 @@ export default function Platform() {
         <div className="row">
           <span className="grow">
             <span className="section-title" style={{ marginBottom: 4 }}><Bug size={14} />
-              {showResolved ? 'Crashes, last 14 days' : 'Crashes still open, last 14 days'} <InfoDot tip="Filed by the admin and member apps when a screen breaks. Grouped by message — marking one handled clears every copy." />
+              {showResolved ? 'Crashes, last 14 days' : 'Crashes still open, last 14 days'} <InfoDot tip="Filed by the admin and member apps when a screen breaks. Grouped by message, marking one handled clears every copy." />
             </span>
             <span className="meta">Filed automatically by both apps when a screen breaks (0095).</span>
           </span>
@@ -304,11 +304,11 @@ export default function Platform() {
       )}
 
       <div className="card pf-card side-fill">
-        <div className="section-title" style={{ marginBottom: 4 }}><GitBranch size={14} /> Migrations <InfoDot tip="Pasted by hand, one at a time, in the Supabase SQL editor — never db push." /></div>
+        <div className="section-title" style={{ marginBottom: 4 }}><GitBranch size={14} /> Migrations <InfoDot tip="Pasted by hand, one at a time, in the Supabase SQL editor, never db push." /></div>
         <div className="meta">
           Which are live is asked of the database, never assumed:
           <code style={{ marginLeft: 6 }}>python scripts/probe-migrations.py</code>. Paste waiting ones
-          one at a time, in number order, in the Supabase SQL editor — and the matching
+          one at a time, in number order, in the Supabase SQL editor, and the matching
           <code style={{ margin: '0 4px' }}>scripts/sql/verify/verifyNNNN.sql</code> after each.
         </div>
         {migs === null ? <p className="meta" style={{ marginTop: 8 }}>Asking the database…</p> : (() => {
@@ -318,7 +318,7 @@ export default function Platform() {
             <p className="meta" data-migrations={waiting.join(',')} style={{ marginTop: 8, color: waiting.length ? 'var(--warn, #F59E0B)' : undefined }}>
               {waiting.length === 0 && unsure === 0
                 ? `0074–${String(LAST).padStart(4, '0')} are all live.`
-                : waiting.length ? `Not pasted yet: ${waiting.join(', ')} — paste them in this order.` : ''}
+                : waiting.length ? `Not pasted yet: ${waiting.join(', ')}, paste them in this order.` : ''}
               {unsure > 0 && ` ${unsure} could not be checked from here; run the script.`}
             </p>
           );
@@ -337,7 +337,7 @@ export default function Platform() {
           {events?.map((e) => (
             <div className="log" key={e.id}>
               {e.summary}
-              {typeof e.detail?.reason === 'string' && <> — “{e.detail.reason as string}”</>}
+              {typeof e.detail?.reason === 'string' && <>, “{e.detail.reason as string}”</>}
               <span className="muted"> · {stamp(e.created_at)}</span>
             </div>
           ))}
@@ -350,7 +350,7 @@ export default function Platform() {
           <div className="section-title" style={{ marginBottom: 4 }}><ShieldCheck size={14} /> Who can run the platform <InfoDot tip="Anyone here can let a gym in, suspend one and change what the service sells." /></div>
           <div className="meta">
             Anyone here can let a gym in, suspend one, and change what the service sells. The last one
-            cannot be removed — there is no way back in if nobody holds the keys.
+            cannot be removed, there is no way back in if nobody holds the keys.
           </div>
           <div className="ov-scroll" style={{ marginTop: 10 }}>
             {admins.map((a) => (
@@ -376,7 +376,7 @@ export default function Platform() {
         <div className="card pf-card pf-12">
           <div className="section-title" style={{ marginBottom: 4 }}><Mail size={14} /> Mail, last 30 days</div>
           <div className="meta">
-            Who was told what, and whether it arrived. Never the message itself — an invitation or a
+            Who was told what, and whether it arrived. Never the message itself, an invitation or a
             temporary password lives in there, and it was shown once already.
           </div>
           <div style={{ marginTop: 10 }}>
@@ -384,10 +384,10 @@ export default function Platform() {
               <div className="log" key={e.id}>
                 <strong style={{ color: 'var(--text)' }}>{e.subject}</strong>
                 <br />
-                {e.to_email}{e.gym_name ? ` — ${e.gym_name}` : ''} — {e.kind.replace(/_/g, ' ')} —{' '}
+                {e.to_email}{e.gym_name ? `, ${e.gym_name}` : ''}, {e.kind.replace(/_/g, ' ')},{' '}
                 <span style={{ color: e.status === 'sent' ? 'var(--text-2)' : 'var(--warn)' }}>
                   {e.status === 'sent' ? `sent ${stamp(e.sent_at!)}`
-                    : e.status === 'not_configured' ? 'no mail provider set up — handed over by hand'
+                    : e.status === 'not_configured' ? 'no mail provider set up, handed over by hand'
                     : e.status === 'failed' ? `failed: ${e.error ?? 'no reason given'}`
                     : 'queued'}
                 </span>

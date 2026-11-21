@@ -21,7 +21,7 @@ export default function DemoNotice() {
     <p className="card notice" style={{ display: 'flex', gap: 10, alignItems: 'center', margin: '0 0 16px', gridColumn: '1 / -1' }}>
       <FlaskConical size={16} style={{ color: 'var(--warn)', flex: 'none' }} />
       <span className="grow" style={{ fontSize: 13 }}>
-        These numbers are real reads of every gym's data — and that data still includes the demo seed: {d.people.toLocaleString('en-PH')} seeded
+        These numbers are real reads of every gym's data, and that data still includes the demo seed: {d.people.toLocaleString('en-PH')} seeded
         people, {d.attendance.toLocaleString('en-PH')} check-ins and {d.payments.toLocaleString('en-PH')} payments that never happened.
       </span>
       <Link className="btn ghost" to="/platform">Remove it</Link>

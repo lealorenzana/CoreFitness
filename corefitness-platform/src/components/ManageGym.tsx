@@ -43,12 +43,12 @@ export default function ManageGym({ gym, onChanged }: { gym: PlatformGym; onChan
           <span className="app-lbl"><Layers size={12} /> Plan</span>
           <div className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
             <select value={plan} onChange={(e) => setPlan(e.target.value)} aria-label="Plan">
-              {plans.map((p) => <option key={p.key} value={p.key}>{p.name}{p.price_monthly != null ? ` — ₱${Number(p.price_monthly).toLocaleString('en-PH')}/mo` : ''}{p.max_members ? `, ${p.max_members} members` : ''}</option>)}
+              {plans.map((p) => <option key={p.key} value={p.key}>{p.name}{p.price_monthly != null ? `, ₱${Number(p.price_monthly).toLocaleString('en-PH')}/mo` : ''}{p.max_members ? `, ${p.max_members} members` : ''}</option>)}
             </select>
             <button className="btn" disabled={busy || plan === gym.plan} onClick={() => void run(() => setGymPlan(gym.id, plan, gym.paid_until), `Moved to ${chosen?.name ?? plan}.`)}>Move</button>
           </div>
           <span className="app-line muted">{tooSmall
-            ? `It has ${gym.members} members — over this plan's ${chosen!.max_members}. Nobody is removed, but no new member gets in until it is under.`
+            ? `It has ${gym.members} members, over this plan's ${chosen!.max_members}. Nobody is removed, but no new member gets in until it is under.`
             : 'Its paid-until date stays as it is; the owner sees the new plan at once.'}</span>
         </div>
 
@@ -56,7 +56,7 @@ export default function ManageGym({ gym, onChanged }: { gym: PlatformGym; onChan
           <span className="app-lbl">{suspended ? <PlayCircle size={12} /> : <Ban size={12} />} Running</span>
           {asking ? (
             <>
-              <input value={reason} maxLength={300} placeholder="Why — the gym is told this sentence" aria-label="Reason" onChange={(e) => setReason(e.target.value)} />
+              <input value={reason} maxLength={300} placeholder="Why, the gym is told this sentence" aria-label="Reason" onChange={(e) => setReason(e.target.value)} />
               <div className="row" style={{ gap: 8 }}>
                 <button className="btn" disabled={busy || reason.trim().length < 3} onClick={() => void run(async () => {
                   await setGymStatus(gym.id, asking === 'suspend' ? 'suspended' : 'archived', reason.trim()); setAsking(null); setReason('');
@@ -84,7 +84,7 @@ export default function ManageGym({ gym, onChanged }: { gym: PlatformGym; onChan
               setHidden(!hidden);
             }, hidden ? 'Listed again.' : 'Hidden from the lists.')}>{hidden ? 'Show it in the lists' : 'Hide it from the lists'}</button>
           )}
-          <span className="app-line muted">{hidden ? 'Hidden: not on the website or Find your gym — its link and code still work.' : 'Listed: anyone can find it on the website and in the app.'}</span>
+          <span className="app-line muted">{hidden ? 'Hidden: not on the website or Find your gym, its link and code still work.' : 'Listed: anyone can find it on the website and in the app.'}</span>
         </div>
       </div>
       {msg && <p className="meta" style={{ margin: '8px 0 0' }} role="status">{msg}</p>}

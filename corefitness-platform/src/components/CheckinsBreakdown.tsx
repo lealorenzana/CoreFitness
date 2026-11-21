@@ -99,7 +99,7 @@ export default function CheckinsBreakdown({ days = 30 }: { days?: number }) {
           ))}
         </tbody>
       </table>
-      <p className="meta">A check-in is one visit recorded at a gym's desk, its kiosk or by a member's QR code. Counted, never read —
+      <p className="meta">A check-in is one visit recorded at a gym's desk, its kiosk or by a member's QR code. Counted, never read:
         the platform sees how many, not who.</p>
     </div>
   );

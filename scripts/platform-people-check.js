@@ -188,7 +188,7 @@ async (page) => {
   out.push('suspended with the reason: ' + (sus && sus[1].p_person === 'p1' && sus[1].p_reason === 'Payments reported as fraudulent by two gyms.' ? 'yes' : 'MISSING ' + JSON.stringify(sus)));
   const mail = CALLS.find((c) => c[0] === 'email');
   out.push('…they are emailed the reason: ' + (mail && mail[1].kind === 'account_suspended' && mail[1].to === 'mia@example.test' && /fraudulent/.test(mail[1].body) ? 'yes' : 'MISSING ' + JSON.stringify(mail)));
-  out.push('…and the screen says plainly no mail went: ' + (/Not emailed — no mail provider is set up yet/.test(await page.locator('[data-mail-note]').innerText()) ? 'yes' : 'MISSING'));
+  out.push('…and the screen says plainly no mail went: ' + (/Not emailed, no mail provider is set up yet/.test(await page.locator('[data-mail-note]').innerText()) ? 'yes' : 'MISSING'));
   const row = page.locator('[data-suspended="mia@example.test"]');
   out.push('they are on the Suspended list, with the reason: ' + ((await row.count()) === 1 && /fraudulent/.test(await row.innerText()) ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/platform-people.png' });

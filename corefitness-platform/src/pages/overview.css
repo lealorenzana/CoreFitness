@@ -1,0 +1,196 @@
+/* The platform's Overview (Overview.tsx, 2026-11-22): one screen of numbers. Plan colours (plan.css): solid
+   surfaces, hairlines, violet for data, amber only for what needs doing. Labels small and quiet, numbers large and
+   tabular. Every box scrolls itself; the page never does at 1280 and wider. */
+.ox { display: grid; gap: 12px; min-height: 0;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: auto minmax(0, 1.12fr) minmax(0, 1fr);
+  grid-template-areas: "band band band band" "rev rev chk rail" "gyms health pipe rail"; }
+.page:has(> .ox) { min-height: 0; }
+.content .page > .ox { overflow: hidden !important; }
+.ox > * { min-width: 0; min-height: 0; }
+.ox .num, .ox dd, .ox-value { font-variant-numeric: tabular-nums; }
+
+/* ---- the band: six figures on one ruled strip, no tiles ---- */
+.ox-band { grid-area: band; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; overflow: hidden; }
+.ox-cell { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 64px; grid-template-rows: auto auto auto auto; column-gap: 8px;
+  padding: 14px 16px 12px; color: inherit; text-decoration: none; border-left: 1px solid var(--hairline); transition: background-color .15s; }
+.ox-cell:first-child { border-left: 0; }
+.ox-cell:hover { background: rgb(255 255 255 / .025); }
+.ox-label { grid-column: 1 / -1; font-size: 12px; font-weight: 500; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ox-value { grid-column: 1; margin-top: 6px; font-size: 26px; font-weight: 650; letter-spacing: -.03em; line-height: 1.05; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ox-spark { grid-column: 2; grid-row: 2 / 4; align-self: end; width: 64px; height: 28px; overflow: visible; }
+.ox-spark polyline { fill: none; stroke: rgb(196 181 253 / .55); stroke-width: 1.4; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
+.ox-spark circle { fill: var(--accent-text); }
+.ox-delta { grid-column: 1 / -1; margin-top: 6px; font-size: 12px; font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ox-delta.up { color: var(--accent-text); } .ox-delta.down { color: var(--warn); } .ox-delta.flat { color: var(--text-3); }
+.ox-foot { grid-column: 1 / -1; margin-top: 2px; font-size: 12px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---- boxes ---- */
+.ox-box { display: flex; flex-direction: column; min-height: 0; padding: 14px 16px; background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; overflow: hidden; }
+.ox-rev { grid-area: rev; } .ox-chk { grid-area: chk; } .ox-rail { grid-area: rail; padding: 0; }
+.ox-gyms { grid-area: gyms; } .ox-health { grid-area: health; } .ox-pipe { grid-area: pipe; }
+.ox-head { display: flex; align-items: center; gap: 8px; flex: none; min-height: 24px; }
+.ox-head h2 { margin: 0; font-size: 13px; font-weight: 600; color: var(--text); letter-spacing: 0; white-space: nowrap; }
+.ox-head .count { margin-left: 2px; }
+.ox-head-2 { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--hairline); }
+.ox-more { margin-left: auto; padding: 4px 8px; margin-right: -8px; border: 0; border-radius: 6px; background: none; font: inherit; font-size: 12px; font-weight: 600;
+  color: var(--text-3); text-decoration: none; cursor: pointer; white-space: nowrap; }
+.ox-more:hover { color: var(--text); background: rgb(255 255 255 / .05); }
+.ox-dim { color: var(--text-3); font-size: 12px; font-variant-numeric: tabular-nums; }
+.ox-quiet { margin: 10px 0 0; font-size: 13px; color: var(--text-3); }
+.ox-grow { flex: 1; display: grid; place-items: center; text-align: center; }
+.ox-scroll { flex: 1 1 0; min-height: 0; overflow-y: auto; margin: 8px -16px 0; padding: 0 16px; }
+.ox-note { flex: none; margin: 8px 0 0; font-size: 12px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ox-sub { font-size: 12px; color: var(--text-3); white-space: nowrap; }
+
+.ox-figs { flex: none; display: flex; gap: 22px; margin: 10px 0 0; flex-wrap: wrap; row-gap: 6px; }
+.ox-figs div { min-width: 0; }
+.ox-figs dt { font-size: 11.5px; color: var(--text-3); }
+.ox-figs dd { margin: 2px 0 0; font-size: 17px; font-weight: 650; letter-spacing: -.02em; color: var(--text); white-space: nowrap; }
+.ox-figs dd small { font-size: 12px; font-weight: 500; color: var(--text-3); letter-spacing: 0; }
+.ox-figs dd small.up { color: var(--accent-text); } .ox-figs dd small.down { color: var(--warn); }
+
+.ox-legend { display: inline-flex; gap: 12px; margin-left: 10px; font-size: 11.5px; color: var(--text-3); }
+.ox-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.ox-legend .sq { width: 8px; height: 8px; border-radius: 2px; background: rgb(124 58 237 / .55); }
+.ox-legend .ln { width: 12px; height: 2px; border-radius: 1px; background: #ddd6fe; }
+
+/* ---- revenue: bars collected, a line recurring ---- */
+.ox-chart { flex: 1 1 0; min-height: 90px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; margin-top: 12px; }
+.ox-grid { display: flex; flex-direction: column; justify-content: space-between; padding-bottom: 20px; font-size: 10.5px; color: var(--text-3); text-align: right; font-variant-numeric: tabular-nums; }
+.ox-bars { position: relative; display: flex; gap: 6px; min-height: 0;
+  background: linear-gradient(var(--hairline), var(--hairline)) 0 0 / 100% 1px no-repeat,
+              linear-gradient(var(--hairline), var(--hairline)) 0 calc(50% - 10px) / 100% 1px no-repeat,
+              linear-gradient(var(--hairline), var(--hairline)) 0 calc(100% - 20px) / 100% 1px no-repeat; }
+.ox-bars .bar { flex: 1; display: flex; flex-direction: column; align-items: stretch; gap: 0; height: 100%; min-width: 0; background: transparent !important; border-radius: 4px; cursor: pointer; }
+.ox-bars .bar:hover .bar-fill { background: rgb(124 58 237 / .8) !important; }
+.ox-track { flex: 1; display: flex; align-items: flex-end; justify-content: center; min-height: 0; }
+.ox-track .bar-fill { width: min(100%, 30px); border-radius: 3px 3px 0 0; transition: height .5s var(--ease); }
+.ox-bars .bar-label { height: 20px; line-height: 20px; text-align: center; font-size: 10.5px; color: var(--text-3); }
+.ox-bars .bar.now .bar-label { color: var(--text); font-weight: 600; }
+.ox-mrr { position: absolute; left: 0; right: 0; top: 0; bottom: 20px; width: 100%; height: calc(100% - 20px); pointer-events: none; overflow: visible; }
+.ox-mrr polyline { fill: none; stroke: #ddd6fe; stroke-width: 1.6; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+
+.ox-plans { flex: none; display: flex; align-items: center; gap: 12px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--hairline); min-width: 0; }
+.ox-stack { flex: 1 1 120px; display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: rgb(255 255 255 / .06); gap: 2px; min-width: 60px; }
+.ox-stack > span { height: 100%; cursor: pointer; }
+.ox-keys { display: flex; gap: 12px; font-size: 12px; color: var(--text-2); min-width: 0; overflow: hidden; }
+.ox-keys span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.ox-keys i { width: 8px; height: 8px; border-radius: 2px; }
+.ox-keys b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* ---- check-ins: a line over the month, the average dashed ---- */
+.ox-line { position: relative; flex: 1 1 0; min-height: 80px; margin-top: 12px; }
+.ox-line svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.ox-line .area { fill: rgb(124 58 237 / .12); }
+.ox-line .ln { fill: none; stroke: var(--accent-text); stroke-width: 1.6; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.ox-line .avg { stroke: rgb(255 255 255 / .18); stroke-width: 1; stroke-dasharray: 3 4; vector-effect: non-scaling-stroke; }
+.ox-hits { position: absolute; inset: 0; display: flex; }
+.ox-hits span { flex: 1; cursor: pointer; }
+.ox-hits span:hover { background: rgb(255 255 255 / .04); }
+
+/* ---- the rail ---- */
+.ox-rail > .ox-head { padding: 14px 16px 0; }
+.ox-rail > .ox-head-2 { margin-top: 10px; padding-top: 12px; }
+.ox-rail .ox-scroll { margin: 8px 0 0; padding: 0 8px 8px; }
+.ox-todo { flex: 1.4 1 0; }
+.ox-events { flex: 1 1 0; }
+.ox-rail .ox-quiet { margin: 4px 8px; }
+.ox-task { display: grid; grid-template-columns: 6px minmax(0, 1fr); gap: 10px; align-items: start; padding: 8px; border-radius: 8px; color: inherit; text-decoration: none; }
+.ox-task:hover { background: rgb(255 255 255 / .035); }
+.ox-task i { width: 6px; height: 6px; margin-top: 6px; border-radius: 50%; background: var(--text-3); }
+.ox-task.act i { background: var(--warn); } .ox-task.warn i { background: var(--warn); opacity: .6; } .ox-task.info i { background: var(--accent-text); }
+.ox-task b { display: block; font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.35; }
+.ox-task small { display: block; margin-top: 2px; font-size: 12px; color: var(--text-3); line-height: 1.4; }
+.ox-event { display: flex; justify-content: space-between; gap: 10px; width: 100%; padding: 7px 8px; border: 0; border-radius: 8px; background: none; text-align: left;
+  font: inherit; font-size: 12.5px; color: var(--text-2); cursor: pointer; }
+.ox-event:hover { background: rgb(255 255 255 / .035); color: var(--text); }
+.ox-event span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ox-event time { flex: none; color: var(--text-3); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+
+/* ---- gyms by size ---- */
+.ox-table { width: 100%; border-collapse: collapse; font-size: 12.5px; table-layout: fixed; }
+.ox-table th:nth-child(2) { width: 64px; } .ox-table th:nth-child(3) { width: 92px; }
+@media (max-width: 1500px) { .ox-table th:nth-child(3) { width: 44px; } }
+.ox-table th { position: sticky; top: 0; z-index: 1; background: var(--surface); padding: 0 0 6px; text-align: left; font-size: 11px !important; font-weight: 500 !important;
+  letter-spacing: 0 !important; text-transform: none !important; color: var(--text-3) !important; border-bottom: 1px solid var(--hairline); }
+.ox-table td { padding: 7px 0; border-bottom: 1px solid var(--hairline); vertical-align: middle; background: transparent !important; }
+.ox-table tr:last-child td { border-bottom: 0; }
+.ox-table .r { text-align: right; padding-right: 12px; }
+.ox-gym { display: flex; align-items: center; gap: 8px; min-width: 0; color: inherit; text-decoration: none; }
+.ox-gym > span { min-width: 0; }
+.ox-gym b { display: block; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ox-gym small { display: block; font-size: 11.5px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ox-gym:hover b { text-decoration: underline; text-underline-offset: 2px; }
+.ox-use { display: flex; align-items: center; gap: 6px; min-width: 70px; }
+.ox-use .trk { flex: 1; height: 4px; border-radius: 2px; background: rgb(255 255 255 / .07); overflow: hidden; }
+.ox-use .trk span { display: block; height: 100%; border-radius: 2px; background: var(--accent-text); }
+.ox-use.hot .trk span { background: var(--warn); }
+.ox-use em { font-style: normal; font-size: 11.5px; color: var(--text-3); font-variant-numeric: tabular-nums; min-width: 30px; text-align: right; }
+.ox-use.hot em { color: var(--warn); }
+
+/* ---- health ---- */
+.ox-hbar { flex: none; display: flex; gap: 2px; height: 8px; margin-top: 12px; border-radius: 4px; overflow: hidden; background: rgb(255 255 255 / .06); }
+.ox-hbar span { flex-basis: 0; } .ox-hbar .healthy { background: var(--accent); } .ox-hbar .medium { background: #a78bfa; opacity: .55; } .ox-hbar .high { background: var(--warn); }
+.ox-hkeys { flex: none; display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; }
+.ox-hkeys span { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); white-space: nowrap; }
+.ox-hkeys i { width: 8px; height: 8px; border-radius: 2px; }
+.ox-hkeys .healthy i { background: var(--accent); } .ox-hkeys .medium i { background: #a78bfa; opacity: .55; } .ox-hkeys .high i { background: var(--warn); }
+.ox-hkeys b { font-size: 13px; font-weight: 650; color: var(--text); font-variant-numeric: tabular-nums; }
+.ox-health .ox-scroll { margin-top: 10px; }
+.ox-risk { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-top: 1px solid var(--hairline); color: inherit; text-decoration: none; }
+.ox-risk:first-child { border-top: 0; }
+.ox-risk > span:first-child { min-width: 0; }
+.ox-risk b { display: block; font-size: 12.5px; font-weight: 600; color: var(--text); }
+.ox-risk small { display: block; margin-top: 2px; font-size: 11.5px; color: var(--text-3); line-height: 1.4; }
+.ox-risk.high b::after, .ox-risk.medium b::after { display: inline-block; white-space: nowrap; }
+.ox-risk.high b::after { content: 'At risk'; margin-left: 8px; font-size: 10.5px; font-weight: 600; color: var(--warn); }
+.ox-risk.medium b::after { content: 'Watch'; margin-left: 8px; font-size: 10.5px; font-weight: 600; color: var(--accent-text); }
+.ox-risk .num { flex: none; font-size: 13px; font-weight: 600; color: var(--text); text-align: right; }
+.ox-risk .num small { display: block; font-weight: 400; font-size: 11px; }
+.ox-risk:hover b { text-decoration: underline; text-underline-offset: 2px; }
+
+/* ---- pipeline and the free tier ---- */
+.ox-funnel { flex: none; display: grid; gap: 7px; margin-top: 10px; }
+.ox-step { display: grid; grid-template-columns: 92px minmax(0, 1fr) 28px 34px; align-items: center; gap: 8px; font-size: 12px; cursor: pointer; }
+.ox-step .lbl { color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ox-step .trk, .ox-limit .trk { height: 6px; border-radius: 3px; background: rgb(255 255 255 / .06); overflow: hidden; }
+.ox-step .trk span { display: block; height: 100%; background: rgb(124 58 237 / .7); border-radius: 3px; }
+.ox-step .trk span.pay { background: var(--accent); }
+.ox-step b { text-align: right; font-weight: 600; color: var(--text); }
+.ox-step small { text-align: right; color: var(--text-3); font-size: 11.5px; }
+.ox-step:hover .lbl { color: var(--text); }
+.ox-limits { display: grid; gap: 9px; margin-top: 10px; overflow-y: auto; min-height: 0; }
+.ox-limit { display: grid; grid-template-columns: minmax(0, 1fr) auto; row-gap: 5px; font-size: 12px; }
+.ox-limit .lbl { color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ox-limit .val { color: var(--text-3); font-size: 11.5px; }
+.ox-limit .trk { grid-column: 1 / -1; }
+.ox-limit .trk span { display: block; height: 100%; background: var(--accent-text); border-radius: 3px; }
+.ox-limit.hot .trk span { background: var(--warn); } .ox-limit.hot .val { color: var(--warn); }
+
+/* ---- narrower: the rail drops under, the page scrolls ---- */
+@media (max-width: 1500px) {
+  /* Still one strip: the lines go, the numbers stay. */
+  .ox { grid-template-columns: 1.15fr 1fr 1fr .95fr; }
+  .ox-cell { grid-template-columns: minmax(0, 1fr); padding: 11px 12px 10px; }
+  .ox-spark { display: none; }
+  .ox-value { font-size: 21px; }
+  .ox-figs { gap: 16px; }
+  .ox-figs dd { font-size: 15px; }
+  .ox-use .trk { display: none; }
+  .ox-use { min-width: 0; justify-content: flex-end; }
+  .ox-legend { display: none; }
+}
+@media (max-width: 1279px) {
+  .ox { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: none;
+    grid-template-areas: "band band" "rev rev" "chk rail" "gyms health" "pipe rail"; }
+  .content .page > .ox { overflow: visible !important; }
+  .ox-box { min-height: 300px; }
+}
+@media (max-width: 760px) {
+  .ox { grid-template-columns: minmax(0, 1fr); grid-template-areas: "band" "rev" "chk" "rail" "gyms" "health" "pipe"; }
+  .ox-band { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ox-cell:nth-child(n) { border-left: 0; border-top: 1px solid var(--hairline); }
+  .ox-cell:nth-child(-n + 2) { border-top: 0; }
+  .ox-cell:nth-child(even) { border-left: 1px solid var(--hairline); }
+}

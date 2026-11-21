@@ -48,7 +48,7 @@ export default function MessageOwner({ open, onClose, gymId, gymName, reasons = 
     setBusy(false);
     if (err) {
       setError(/platform_message_gym|function .* does not exist|schema cache/i.test(err.message)
-        ? 'Messages to owners need migration 0240 — paste it in the Supabase SQL editor first.' : err.message);
+        ? 'Messages to owners need migration 0240, paste it in the Supabase SQL editor first.' : err.message);
       return;
     }
     onSent?.(Number(data) || 0);

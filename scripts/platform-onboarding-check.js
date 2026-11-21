@@ -146,7 +146,7 @@ async (page) => {
   out.push('…per day: ' + ((await page.locator('.spark span').count()) === 30 ? '30 days drawn' : 'MISSING'));
   await page.screenshot({ path: 'shots/platform-checkins-drilldown.png' });
   await page.keyboard.press('Escape');
-  await page.locator('.ov-event').first().click();
+  await page.locator('.ox-event').first().click();
   await page.getByText('Recorded with it').waitFor({ timeout: 5000 });
   t = await text();
   out.push('a recent-activity item opens its details: ' + (/Reason given: “unpaid”/.test(t) && /Covers until/.test(t) ? 'yes' : 'MISSING'));
@@ -234,10 +234,10 @@ async (page) => {
   await page.goto('http://localhost:5175/support', { waitUntil: 'domcontentloaded' });
   await page.getByRole('link', { name: /Look inside/ }).first().waitFor({ timeout: 15000 });
   await page.getByRole('link', { name: /Look inside/ }).first().click();
-  await page.getByText(/Looking at gabby pogi 123 — read-only/).waitFor({ timeout: 10000 });
+  await page.getByText(/Looking at gabby pogi 123, read-only/).waitFor({ timeout: 10000 });
   await page.getByRole('tab', { name: /Invitations/ }).click();
   t = await text();
-  out.push('support access opens the gym: ' + (/lea123@gmail.com/.test(t) && /Has one — must sign in/.test(t) ? 'yes, invitations explained' : 'MISSING'));
+  out.push('support access opens the gym: ' + (/lea123@gmail.com/.test(t) && /Has one, must sign in/.test(t) ? 'yes, invitations explained' : 'MISSING'));
   await page.screenshot({ path: 'shots/platform-support-view.png' });
 
   // ---- Ctrl+K ---------------------------------------------------------------------------------------------

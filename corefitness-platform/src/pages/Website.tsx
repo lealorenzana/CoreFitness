@@ -14,15 +14,15 @@ const SITE_URL = 'https://corefitness-site.vercel.app';
 
 type Key = 'notice' | 'hero_eyebrow' | 'hero_title_1' | 'hero_title_2' | 'hero_lede' | 'coaches_title' | 'coaches_lede';
 const FIELDS: { key: Key; label: string; builtIn: string; max: number; long?: boolean; tip?: string }[] = [
-  { key: 'notice', label: 'Notice along the top', builtIn: '', max: 160, tip: 'An amber line above everything — a holiday, an outage, news. Empty shows no line.' },
+  { key: 'notice', label: 'Notice along the top', builtIn: '', max: 160, tip: 'An amber line above everything, a holiday, an outage, news. Empty shows no line.' },
   { key: 'hero_eyebrow', label: 'Small line above the headline', builtIn: 'Gym software, made in Occidental Mindoro', max: 60 },
   { key: 'hero_title_1', label: 'Headline, first line', builtIn: 'Run your gym,', max: 40 },
   { key: 'hero_title_2', label: 'Headline, second line (in colour)', builtIn: 'give your members an app.', max: 50 },
   { key: 'hero_lede', label: 'The sentence under the headline', max: 320, long: true,
-    builtIn: 'Memberships, payments in cash or in the app, QR check-in, personal training, coaches and an AI assistant — with a phone app your members actually install. Built for a real gym in Mamburao, and open to yours.' },
+    builtIn: 'Memberships, payments in cash or in the app, QR check-in, personal training, coaches and an AI assistant, with a phone app your members actually install. Built for a real gym in Mamburao, and open to yours.' },
   { key: 'coaches_title', label: 'Coaches band, title', builtIn: 'Coaches carry the app too.', max: 60 },
   { key: 'coaches_lede', label: 'Coaches band, sentence', max: 260, long: true,
-    builtIn: 'Trainers sign in to the same phone app. They run their own classes, decide their own bookings, and see only the members they train — and only what those members choose to share.' },
+    builtIn: 'Trainers sign in to the same phone app. They run their own classes, decide their own bookings, and see only the members they train, and only what those members choose to share.' },
 ];
 
 interface Saved { value: string; updated_at: string; updated_by: string | null }
@@ -58,16 +58,16 @@ export default function Website() {
     setBusy(key); setMsg(null);
     const { error } = await supabase.rpc('save_site_text', { p_key: key, p_value: value });
     setBusy(null);
-    if (error) { setMsg({ key, text: /save_site_text|schema cache|does not exist/i.test(error.message) ? 'Needs migration 0241 — paste it first.' : error.message, bad: true }); return; }
-    setMsg({ key, text: value.trim() ? 'Saved — the website shows it on its next visit.' : 'Back to the built-in words.' });
+    if (error) { setMsg({ key, text: /save_site_text|schema cache|does not exist/i.test(error.message) ? 'Needs migration 0241, paste it first.' : error.message, bad: true }); return; }
+    setMsg({ key, text: value.trim() ? 'Saved, the website shows it on its next visit.' : 'Back to the built-in words.' });
     await load();
   };
 
   const where = [
     { icon: Layers, label: 'Prices', what: counts.plans === null ? 'The plans and prices on the site' : `${counts.plans} plans on the price list`, to: '/plans' },
-    { icon: Building2, label: 'Gyms listed', what: counts.gyms === null ? 'Which gyms the site lists' : `${counts.gyms} gyms listed — hide or show one on its page`, to: '/gyms' },
-    { icon: MessageSquareQuote, label: 'Testimonials', what: counts.quotes === null ? 'Owners’ words you approved' : `${counts.quotes} shown — approve or hide in Feedback`, to: '/feedback' },
-    { icon: FileSignature, label: 'Gym documents', what: 'Terms for gyms, the Data Processing Agreement, the Privacy Policy — publish a version', to: '/settings?part=docs' },
+    { icon: Building2, label: 'Gyms listed', what: counts.gyms === null ? 'Which gyms the site lists' : `${counts.gyms} gyms listed, hide or show one on its page`, to: '/gyms' },
+    { icon: MessageSquareQuote, label: 'Testimonials', what: counts.quotes === null ? 'Owners’ words you approved' : `${counts.quotes} shown, approve or hide in Feedback`, to: '/feedback' },
+    { icon: FileSignature, label: 'Gym documents', what: 'Terms for gyms, the Data Processing Agreement, the Privacy Policy, publish a version', to: '/settings?part=docs' },
     { icon: Phone, label: 'Business contact', what: 'The name, address, email and phone the site and the documents quote', to: '/settings?part=business' },
     { icon: Inbox, label: 'Applications', what: 'What the site’s Register your gym form sends', to: '/applications' },
   ];
@@ -81,7 +81,7 @@ export default function Website() {
             <h2 className="section-title row" style={{ gap: 8 }}><PenLine size={14} /> <span className="grow">The website&rsquo;s words</span>
               <a className="btn ghost sm" href={SITE_URL} target="_blank" rel="noreferrer"><ExternalLink size={13} /> Open the site</a>
             </h2>
-            <p className="meta" style={{ margin: 0 }}>Empty means the site&rsquo;s own words (shown faintly in each box). Gym names, prices and contact details are never typed here — they come from the system.</p>
+            <p className="meta" style={{ margin: 0 }}>Empty means the site&rsquo;s own words (shown faintly in each box). Gym names, prices and contact details are never typed here, they come from the system.</p>
           </div>
           {saved === null ? <p className="empty">Reading…</p> : FIELDS.map((f) => {
             const cur = draft[f.key] ?? '';
@@ -109,7 +109,7 @@ export default function Website() {
         </section>
 
         <section className="card" data-site-where>
-          <h2 className="section-title"><Store size={14} /> Everything else the site shows <InfoDot tip="Read from the database each time someone opens the site — change it on the page it links to." /></h2>
+          <h2 className="section-title"><Store size={14} /> Everything else the site shows <InfoDot tip="Read from the database each time someone opens the site, change it on the page it links to." /></h2>
           {where.map((w) => (
             <Link key={w.label} to={w.to} className="todo">
               <span className="kpi-icon" style={{ width: 32, height: 32 }}><w.icon size={15} /></span>

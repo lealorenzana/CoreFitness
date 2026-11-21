@@ -58,7 +58,7 @@ export default function People() {
         <section className="card" data-people-search>
           <div className="card-head">
             <h2 className="section-title"><Search size={14} /> Find a person</h2>
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Name or email — at least 2 letters" aria-label="Find a person"
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Name or email, at least 2 letters" aria-label="Find a person"
               style={{ width: '100%' }} />
           </div>
           {rows === null ? <p className="empty">Search every gym's members, coaches, desks, owners and applicants.</p>
@@ -71,7 +71,7 @@ export default function People() {
                   </span>
                   <span className="meta" style={{ display: 'block' }}>{p.email}</span>
                   <span className="meta">
-                    {p.gyms.length ? p.gyms.map((g) => `${ROLE[g.role] ?? g.role} at ${g.gym}${g.status !== 'active' ? ` (${g.status})` : ''}`).join(' · ') : p.applicant ? 'Applicant — no gym yet' : 'No gym'}
+                    {p.gyms.length ? p.gyms.map((g) => `${ROLE[g.role] ?? g.role} at ${g.gym}${g.status !== 'active' ? ` (${g.status})` : ''}`).join(' · ') : p.applicant ? 'Applicant, no gym yet' : 'No gym'}
                   </span>
                   {p.suspended_reason && <span className="meta" style={{ display: 'block' }}>Since {when(p.suspended_at!)}: {p.suspended_reason}</span>}
                 </span>
@@ -108,7 +108,7 @@ export default function People() {
           <Ask
             title={`Suspend ${dialog.person.name ?? dialog.person.email}?`}
             blurb="They are signed out of every app at once and cannot use any gym until you lift it. They are shown this reason, and emailed it; their gyms are told only that Core Fitness suspended them."
-            fields={[{ key: 'reason', label: 'Why — they read this', required: true, placeholder: 'Payments reported as fraudulent by two gyms' }]}
+            fields={[{ key: 'reason', label: 'Why, they read this', required: true, placeholder: 'Payments reported as fraudulent by two gyms' }]}
             confirmLabel="Suspend the account"
             onCancel={close}
             onConfirm={async (v) => {

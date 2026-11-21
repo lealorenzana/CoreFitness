@@ -114,10 +114,10 @@ export default function Usage() {
                     const a = v ? 0.12 + (v / most(f.key)) * 0.72 : 0;
                     return (
                       <td key={f.key} className={v ? '' : 'zero'} style={{ cursor: 'pointer', ...(v ? { background: `rgba(124, 58, 237, ${a.toFixed(2)})` } : {}) }}
-                        data-detail={detail({ title: `${g.name} — ${f.label}`, value: `${v.toLocaleString('en-PH')} in ${days} days`, rows: [
+                        data-detail={detail({ title: `${g.name}, ${f.label}`, value: `${v.toLocaleString('en-PH')} in ${days} days`, rows: [
                           ['The busiest gym at this', most(f.key).toLocaleString('en-PH')], ['A day, on average', (v / days).toFixed(1)],
                           ...(f.key === 'coach' && ai ? [['Estimated cost at list price', usd(spendOf(g.id))] as [string, string]] : []),
-                        ], note: v ? undefined : 'Not used in this window — worth a word with the owner.' })}
+                        ], note: v ? undefined : 'Not used in this window, worth a word with the owner.' })}
                         data-tip={f.key === 'coach'
                           ? `${g.name}: ${v.toLocaleString('en-PH')} coach messages in ${days} days`
                             + (ai ? `, about ${usd(spendOf(g.id))} at list price (an estimate)` : '')
@@ -137,7 +137,7 @@ export default function Usage() {
         </div>
         <Pagination page={usagePage.page} perPage={usagePage.perPage} total={usagePage.total} noun={usagePage.total === 1 ? 'gym' : 'gyms'} onPage={usagePage.setPage} />
         {unused.length > 0 && use && use.length > 0 && (
-          <p className="meta use-foot">Nobody used {unused.map((f) => f.label.toLowerCase()).join(', ')} in these {days} days — worth an announcement.</p>
+          <p className="meta use-foot">Nobody used {unused.map((f) => f.label.toLowerCase()).join(', ')} in these {days} days, worth an announcement.</p>
         )}
       </section>
     </>

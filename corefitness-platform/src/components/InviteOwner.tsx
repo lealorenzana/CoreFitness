@@ -54,7 +54,7 @@ export default function InviteOwner({ gymId, gymName, initial, onDone, onCancel 
 
   if (result) {
     const lines = [
-      `${result.gym} — your Core Fitness sign-in`,
+      `${result.gym}, your Core Fitness sign-in`,
       'Where: https://corefitness-admin.vercel.app',
       `Email: ${result.email}`,
       result.password ? `Temporary password: ${result.password}` : '',
@@ -69,7 +69,7 @@ export default function InviteOwner({ gymId, gymName, initial, onDone, onCancel 
         {result.existing ? (
           <div className="meta">
             They already had a Core Fitness account, so they keep the password they know. Tell them
-            to switch gyms after signing in — {result.gym} is now one of theirs.
+            to switch gyms after signing in, {result.gym} is now one of theirs.
           </div>
         ) : (
           <>
@@ -84,7 +84,7 @@ export default function InviteOwner({ gymId, gymName, initial, onDone, onCancel 
             </button>
             <div style={{ height: 10 }} />
             <EmailIt to={result.email} toName={`${form.firstName} ${form.lastName}`.trim() || null}
-              subject={`${result.gym} — your Core Fitness sign-in`} body={lines}
+              subject={`${result.gym}, your Core Fitness sign-in`} body={lines}
               kind="owner_credentials" gymId={gymId} />
           </>
         )}
@@ -101,7 +101,7 @@ export default function InviteOwner({ gymId, gymName, initial, onDone, onCancel 
       <div className="name">Who owns {gymName}?</div>
       <div className="meta">
         They become this gym's admin, with an account of their own. If that email already has a Core
-        Fitness account, no second one is made — {gymName} is simply added to it.
+        Fitness account, no second one is made, {gymName} is simply added to it.
       </div>
       <div className="fields">
         <div>

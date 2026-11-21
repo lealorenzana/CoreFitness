@@ -68,7 +68,7 @@ export default function PaymentClaims({ onChanged }: { onChanged?: () => void })
       {claims.length === 0 ? (
         <p className="meta" style={{ margin: 0 }}>
           Nothing waiting. A running gym pays from Your plan in its admin app with PayMongo (QR Ph), which records itself
-          under Paid online — nothing to verify. A reference sent while applying is checked on Applications. Only a
+          under Paid online, nothing to verify. A reference sent while applying is checked on Applications. Only a
           reference sent from an older admin app would wait here.
         </p>
       ) : claims.map((c) => (
@@ -95,7 +95,7 @@ export default function PaymentClaims({ onChanged }: { onChanged?: () => void })
             <div>
               {open.proof_image
                 ? <img className="proof" src={open.proof_image} alt={`Screenshot sent by ${open.gym_name}`} />
-                : <p className="empty">No screenshot was sent — check the reference alone.</p>}
+                : <p className="empty">No screenshot was sent, check the reference alone.</p>}
             </div>
             <div>
               <dl className="kv">
@@ -118,10 +118,10 @@ export default function PaymentClaims({ onChanged }: { onChanged?: () => void })
               </div>
               <button className="btn" style={{ marginTop: 12, width: '100%' }} disabled={busy || !until || !(Number(amount) > 0)}
                 onClick={() => void verify()}>
-                <BadgeCheck size={15} /> {busy ? 'Recording…' : 'I found it — verify and record'}
+                <BadgeCheck size={15} /> {busy ? 'Recording…' : 'I found it, verify and record'}
               </button>
               <div style={{ marginTop: 18 }}>
-                <label htmlFor="pc-why">Or, it is not there — tell the owner why</label>
+                <label htmlFor="pc-why">Or, it is not there, tell the owner why</label>
                 <input id="pc-why" value={why} placeholder="No transfer with that reference on that day" onChange={(e) => setWhy(e.target.value)} />
                 <button className="btn ghost" style={{ marginTop: 8 }} disabled={busy || why.trim().length < 3} onClick={() => void reject()}>
                   <XCircle size={15} /> Not found

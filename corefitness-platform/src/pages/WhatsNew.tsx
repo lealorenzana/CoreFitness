@@ -85,10 +85,10 @@ export default function WhatsNew() {
                 onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
           </div>
           <div style={{ marginTop: 14 }}>
-            <label htmlFor="rn-items">What changed — one line each, up to 8</label>
+            <label htmlFor="rn-items">What changed, one line each, up to 8</label>
             <textarea id="rn-items" rows={7} value={form.items} placeholder={'Alerts now reach your phone straight away.\nBadges can earn you points.'}
               onChange={(e) => setForm({ ...form, items: e.target.value })} />
-            <p className="meta">{lines.length} of 8 lines{lines.some((l) => l.length > 200) ? ' — a line is over 200 characters' : ''}</p>
+            <p className="meta">{lines.length} of 8 lines{lines.some((l) => l.length > 200) ? ', a line is over 200 characters' : ''}</p>
           </div>
           <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
             <button className="btn" type="submit" disabled={busy || form.title.trim().length < 3 || lines.length === 0 || lines.length > 8}>{form.id ? 'Save' : 'Publish'}</button>

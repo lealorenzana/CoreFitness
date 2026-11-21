@@ -34,7 +34,7 @@ export default function SupportGrants({ compact = false }: { compact?: boolean }
       {grants.map((g) => (
         <div key={g.id} className="row" style={{ gap: 12, padding: '8px 0' }}>
           <span className="grow">
-            <b style={{ color: 'var(--text)' }}>{g.gym_name}</b>{g.reason ? ` — “${g.reason}”` : ''}
+            <b style={{ color: 'var(--text)' }}>{g.gym_name}</b>{g.reason ? `, “${g.reason}”` : ''}
             <span className="meta" style={{ display: 'block', margin: 0 }}>
               Ends in {left(g.expires_at)} · {g.first_used_at ? 'you have looked' : 'nobody has looked yet'}
             </span>

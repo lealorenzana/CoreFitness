@@ -22,7 +22,7 @@ export default function EmailIt({ to, toName, subject, body, kind, gymId }: Prop
   const [state, setState] = useState<'idle' | 'busy' | 'sent' | 'off' | 'failed'>('idle');
   const [why, setWhy] = useState<string | null>(null);
 
-  if (!to) return <p className="meta">No email address on file — pass it on yourself.</p>;
+  if (!to) return <p className="meta">No email address on file, pass it on yourself.</p>;
 
   const send = async () => {
     setState('busy');

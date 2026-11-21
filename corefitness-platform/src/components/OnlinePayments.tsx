@@ -29,9 +29,9 @@ export default function OnlinePayments() {
     <section className="card" style={{ marginTop: 16 }} data-online-payments>
       <h2 className="section-title"><CreditCard size={14} /> Paid online (PayMongo)
         <span className="meta" data-paymongo-mode style={{ margin: '0 0 0 auto', fontWeight: 600, color: mode?.live ? 'var(--amber, #F59E0B)' : undefined }}>
-          {mode === undefined ? 'Checking the key…' : mode === null ? 'Key mode unknown — the payment function did not answer'
-            : !mode.configured ? 'No PayMongo key saved — online payment is off'
-            : mode.live ? 'Live — real money' : 'Test mode — no real money moves'}
+          {mode === undefined ? 'Checking the key…' : mode === null ? 'Key mode unknown, the payment function did not answer'
+            : !mode.configured ? 'No PayMongo key saved, online payment is off'
+            : mode.live ? 'Live, real money' : 'Test mode, no real money moves'}
         </span></h2>
       {error && <p className="err">{error}</p>}
       <div className="row" style={{ gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
@@ -46,7 +46,7 @@ export default function OnlinePayments() {
         <div key={r.id} className="fb-row">
           <span className="grow">
             <span className="name">{r.gym_id ? <Link to={`/gyms/${r.gym_id}`}>{r.gym_name}</Link> : r.gym_name} · {WHAT[r.purpose] ?? r.purpose} · {peso(r.amount)}</span>
-            <span className="meta">{r.status === 'paid' ? `paid ${when(r.paid_at ?? r.created_at)}${r.method ? ` by ${r.method}` : ''} · ${r.payment_id}` : r.status === 'failed' ? 'did not match its checkout — not recorded' : r.status}</span>
+            <span className="meta">{r.status === 'paid' ? `paid ${when(r.paid_at ?? r.created_at)}${r.method ? ` by ${r.method}` : ''} · ${r.payment_id}` : r.status === 'failed' ? 'did not match its checkout, not recorded' : r.status}</span>
           </span>
         </div>
       ))}

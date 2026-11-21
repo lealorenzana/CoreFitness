@@ -81,7 +81,7 @@ export default function Settings() {
       <div className="set-pane">
       {part === 'business' && (
       <form className="card set-6" onSubmit={(e) => { e.preventDefault(); void save('business'); }}>
-        <h2 className="section-title"><Building size={14} /> Business and receipts <InfoDot tip="Printed on every receipt a gym gets for paying Core Fitness — never typed into a screen." /></h2>
+        <h2 className="section-title"><Building size={14} /> Business and receipts <InfoDot tip="Printed on every receipt a gym gets for paying Core Fitness, never typed into a screen." /></h2>
         {b === undefined ? <p className="empty">Loading…</p> : b === null ? <p className="empty">Paste migration 0138 to set these.</p> : (
           <>
             <div className="fields" style={{ marginTop: 0 }}>
@@ -123,7 +123,7 @@ export default function Settings() {
                 <label htmlFor="s-grace">Days of grace before read-only</label>
                 <div className="set-rule__in"><input id="s-grace" type="number" min={0} max={60} required value={b.grace_days}
                   onChange={(e) => setB({ ...b, grace_days: Number(e.target.value) })} /><span>days</span></div>
-                <small>After the due date an unpaid gym keeps working this long. Then its dashboard turns read-only — nothing is deleted.</small>
+                <small>After the due date an unpaid gym keeps working this long. Then its dashboard turns read-only, nothing is deleted.</small>
               </div>
               <div className="set-rule">
                 <label htmlFor="s-rem">Remind the owner, days before</label>
@@ -167,7 +167,7 @@ export default function Settings() {
           try { await addAdmin(email.trim()); setEmail(''); await load(); setMsg({ part: 'admins', text: 'Added.' }); }
           catch (err) { setMsg({ part: 'admins', text: err instanceof Error ? err.message : 'Could not add them' }); }
         })(); }}>
-          <input className="grow" type="email" required value={email} aria-label="Their email" placeholder="their email — they need a Core Fitness account already" onChange={(e) => setEmail(e.target.value)} />
+          <input className="grow" type="email" required value={email} aria-label="Their email" placeholder="their email, they need a Core Fitness account already" onChange={(e) => setEmail(e.target.value)} />
           <button className="btn" type="submit"><UserPlus size={14} /> Add</button>
         </form>
         {said('admins')}
@@ -180,10 +180,10 @@ export default function Settings() {
       <section className="card set-6">
         <h2 className="section-title"><Monitor size={14} /> This installation</h2>
         <dl className="qv-rows set-facts">
-          <div><dt>Runs on</dt><dd>This computer only (localhost:5175) — never deployed</dd></div>
+          <div><dt>Runs on</dt><dd>This computer only (localhost:5175), never deployed</dd></div>
           <div><dt>Database</dt><dd><code>{ref}</code> on Supabase</dd></div>
           <div><dt>Migrations</dt><dd>Checked with <code>python scripts/probe-migrations.py</code>, pasted one at a time</dd></div>
-          <div><dt>Backups</dt><dd>Weekly, on GitHub Actions — status on Platform</dd></div>
+          <div><dt>Backups</dt><dd>Weekly, on GitHub Actions, status on Platform</dd></div>
         </dl>
         <h2 className="section-title" style={{ marginTop: 18 }}><Keyboard size={14} /> Shortcuts</h2>
         <ul className="set-keys">

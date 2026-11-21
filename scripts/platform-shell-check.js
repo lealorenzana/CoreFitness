@@ -82,6 +82,7 @@ async (page) => {
       { gym_id: 'g1', name: 'G Fitness', logo_url: null, accent: 'violet', score: 0, level: 'healthy', reasons: [], checkins_14: 80, usual_14: '75', owner_seen: iso(1) }],
     platform_growth: () => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].reverse().map((b) => ({ month: ym(b), gyms: 3 - Math.min(2, Math.floor(b / 5)),
       new_gyms: b === 0 ? 1 : 0, lost_gyms: 0, members: 181 - b * 6, revenue: String(b < 6 ? 2998 : 999), mrr: String(b < 6 ? 2998 : 1999) })),
+    platform_checkins_daily: () => Array.from({ length: 30 }, (_, i) => ({ day: iso(29 - i).slice(0, 10), checkins: 30 + ((i * 7) % 23) + (i % 7 === 5 ? 18 : 0), demo: 0 })),
     platform_funnel: () => [{ applied: 6, let_in: 3, set_up: 3, active_30d: 2, paying: 2 }],
     platform_feature_adoption: () => [{ feature: 'checkins', label: 'Check-ins', gyms_30d: 3, gyms_total: 3 }, { feature: 'shop', label: 'Shop', gyms_30d: 1, gyms_total: 3 }],
     platform_gym_people: () => [],
@@ -153,7 +154,7 @@ async (page) => {
   await page.waitForTimeout(700);
   let t = await text();
   out.push('lands on Overview: ' + (/\/overview$/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
-  out.push('the Core Fitness logo in the sidebar: ' + ((await page.locator('.side img[alt="Core Fitness"]').count()) === 1 ? 'shown' : 'MISSING'));
+  out.push('the Core Fitness logo in the sidebar: ' + ((await page.locator('.side [aria-label="Core Fitness"]').count()) === 1 ? 'shown' : 'MISSING'));
   out.push('sidebar with every screen: ' + (['Overview', 'Gyms', 'Growth', 'Applications', 'Plans', 'Money', 'Platform'].every((x) => t.includes(x)) ? 'shown' : 'MISSING'));
   out.push('support badge: ' + ((await page.getByLabel('1 support waiting').count()) === 1 ? '1' : 'MISSING'));
   out.push('the bell: ' + ((await page.getByRole('button', { name: '3 things need you' }).count()) === 1 ? '3' : 'MISSING'));
@@ -174,7 +175,7 @@ async (page) => {
   out.push('at-risk tag on the row: ' + (/At risk: No check-ins in 14 days/.test(t) && /Watch: Free trial ends in 5 days/.test(t) ? 'shown' : 'MISSING'));
   // One warning line per card since 2026-11-08 (cards a page = what fits): the rest are "+N more", all in the line's title.
   const flagTips = await page.locator('[data-gym-flag]').evaluateAll((els) => els.map((e) => e.getAttribute('title') ?? ''));
-  out.push('gyms with chips: ' + (/142 members/.test(t) && flagTips.some((x) => /9 days late/.test(x)) && /\+1 more/.test(t) && /Overdue — read-only/.test(t) ? 'shown' : 'MISSING'));
+  out.push('gyms with chips: ' + (/142 members/.test(t) && flagTips.some((x) => /9 days late/.test(x)) && /\+1 more/.test(t) && /Overdue, read-only/.test(t) ? 'shown' : 'MISSING'));
   await page.screenshot({ path: 'shots/platform-gyms.png' });
 
   await page.getByRole('button', { name: 'G Fitness, open' }).click();
@@ -378,8 +379,12 @@ async (page) => {
   await page.waitForTimeout(400);
   out.push('Settings shows one section, chosen on the left: ' + (firstPart && /Save billing rules/.test(await text()) && !/Save receipt details/.test(await text()) ? 'yes' : 'MISSING'));
   await page.setViewportSize({ width: 1600, height: 700 });
-  await page.goto('http://localhost:5175/overview', { waitUntil: 'domcontentloaded' });
-  await page.waitForTimeout(2500);
+  // Overview's boxes scroll themselves (data-va-keep, 2026-11-22): View all is tried on the pages that still use it.
+  for (const p of ['/growth', '/money', '/platform', '/capacity']) {
+    await page.goto('http://localhost:5175' + p, { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2500);
+    if (await page.locator('[data-va]').count()) break;
+  }
   const btns = page.locator('[data-va]');
   const nBtn = await btns.count();
   let lifted = false, closed = false, still = false;

@@ -1,0 +1,165 @@
+/* =====================================================================================================
+   PLAN — the platform (super admin) app, 2026-11-22. Loaded LAST (main.tsx), over index/ui/bento/redesign/aurora.
+
+   The owner: "remove the AI slop in the whole platform app … make it professional". The same family as the
+   sign-in (door.css) and the gym sign-in: a near-black ground, solid surfaces, hairlines, one violet for "where
+   you are / what is chosen", one amber for "do this", tabular numbers. Removed everywhere: the ribbon and aurora
+   backgrounds, glass blur, gradient text, gradient fills, glows, icon tiles, hover lifts, purple-tinted cards.
+   Rules from design/lessons/LESSONS.md: 60/30/10 colour, concentric radii (12 outer, 8 inner), labels quiet and
+   numbers loud, press 0.97, transform/opacity motion only, nothing decorative that a number could be instead.
+   ===================================================================================================== */
+:root {
+  --bg: #0e0d12;
+  --surface: #141319;
+  --surface-solid: #141319;
+  --surface-raised: #1a1920;
+  --surface-high: #222129;
+  --hairline: rgb(255 255 255 / .075);
+  --border-soft: rgb(255 255 255 / .06);
+  --line-strong: rgb(255 255 255 / .14);
+  --text: #ececf1;
+  --text-2: #a9a8b8;
+  --text-3: #807f92;
+  --accent: #7c3aed;
+  --accent-hover: #6d28d9;
+  --accent-tint: rgb(124 58 237 / .14);
+  --accent-text: #c4b5fd;
+  --warn: #f5a524;
+  --warn-tint: rgb(245 165 36 / .1);
+  --on-warn: #1a1205;
+  --glow-v: none;
+  --grad-v: var(--accent);
+  --grad-a: var(--warn);
+  --radius: 12px;
+  --ease: cubic-bezier(.22, 1, .36, 1);
+  color-scheme: dark;
+}
+html, body, #root { background: var(--bg) !important; }
+body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-font-smoothing: antialiased; }
+.ribbon, .aurora { display: none !important; }
+::selection { background: var(--accent); color: #fff; }
+::-webkit-scrollbar-thumb { background: rgb(255 255 255 / .12); border: 2px solid transparent; background-clip: padding-box; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgb(255 255 255 / .22); background-clip: padding-box; }
+:is(a, button, input, select, textarea, [tabindex]):focus-visible { outline: 2px solid var(--accent-text) !important; outline-offset: 2px; }
+
+/* ---- the shell ---- */
+.side { background: #0b0a0f !important; border-right: 1px solid var(--hairline); backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+.brand { gap: 10px !important; }
+.brand-mark-line { width: 28px; height: 28px; flex: none; fill: none; stroke: var(--text-2); stroke-width: 1.8; stroke-linecap: round; }
+.brand-name { background: none !important; -webkit-text-fill-color: currentColor; color: var(--text) !important; font-size: 14px !important; font-weight: 650 !important;
+  letter-spacing: -.01em !important; text-transform: none !important; }
+.brand-sub { color: var(--text-3) !important; font-size: 11.5px !important; letter-spacing: 0 !important; text-transform: none !important; }
+.collapse { background: transparent !important; border: 1px solid var(--hairline) !important; color: var(--text-3) !important; }
+.collapse:hover { color: var(--text) !important; border-color: var(--line-strong) !important; }
+.nav-head { color: var(--text-3) !important; font-size: 11px !important; font-weight: 600 !important; letter-spacing: .08em !important; }
+.nav-group.here .nav-head { color: var(--text-2) !important; }
+.nav a { color: var(--text-2) !important; border-radius: 8px !important; transform: none !important; background: transparent !important; box-shadow: none !important; font-weight: 500; }
+.nav a:hover { background: rgb(255 255 255 / .04) !important; color: var(--text) !important; }
+.nav a.on { color: var(--text) !important; background: rgb(255 255 255 / .065) !important; font-weight: 600; }
+.nav a.on::before { background: var(--accent) !important; box-shadow: none !important; width: 2px !important; }
+.nav a svg { filter: none !important; color: var(--text-3); }
+.nav a.on svg { color: var(--accent-text) !important; }
+.count, .nav .count { background: var(--warn) !important; color: var(--on-warn) !important; box-shadow: none !important; border: 0 !important; font-weight: 700 !important;
+  font-variant-numeric: tabular-nums; }
+.signout { color: var(--text-2) !important; }
+.signout:hover { color: var(--text) !important; background: rgb(255 255 255 / .04) !important; }
+
+.topbar { background: var(--bg) !important; border-bottom: 1px solid var(--hairline) !important; backdrop-filter: none !important; }
+.top-title { font-weight: 600 !important; }
+.local-badge { background: transparent !important; border: 1px solid var(--line-strong) !important; color: var(--text-2) !important; font-weight: 600 !important; letter-spacing: .06em; }
+.topbar .find { background: var(--surface) !important; border: 1px solid var(--hairline) !important; box-shadow: none !important; }
+.topbar .find:hover { border-color: var(--line-strong) !important; }
+.topbar .me { background: transparent !important; border: 0 !important; }
+.me-avatar { background: var(--surface-high) !important; color: var(--text-2) !important; box-shadow: none !important; font-weight: 600 !important; }
+kbd { background: var(--surface-raised) !important; border: 1px solid var(--hairline) !important; color: var(--text-3) !important; box-shadow: none !important; }
+
+.p-head h1 { background: none !important; -webkit-text-fill-color: currentColor; color: var(--text) !important; font-size: 24px !important; font-weight: 650 !important;
+  letter-spacing: -.025em !important; }
+.p-head p { color: var(--text-3) !important; font-size: 13.5px; }
+.p-head .today { background: transparent !important; border: 0 !important; padding: 0 !important; color: var(--text-3) !important; font-size: 13px; font-variant-numeric: tabular-nums; }
+
+/* ---- surfaces: solid, hairline, no lift, no glow ---- */
+.card, .pf-card, .kpi, section.card, .ov-card, .gym-card, .app-card, .tile, .stat {
+  background: var(--surface) !important; border: 1px solid var(--hairline) !important; border-radius: var(--radius) !important;
+  box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; transform: none !important; }
+.card:hover, .pf-card:hover, .ov-card:hover, .kpi:hover, .gym-card:hover, .tile:hover { border-color: var(--line-strong) !important; box-shadow: none !important; transform: none !important; }
+.card.notice { background: var(--warn-tint) !important; border-color: rgb(245 165 36 / .3) !important; }
+.tile.on, .gym-card.on { border-color: rgb(124 58 237 / .6) !important; background: var(--surface) !important; }
+.kpi::after, .tile::after, .tile.act::after, .kpi.act::after { display: none !important; }
+.kpi-icon, .tile-icon, .todo-icon, .empty-icon { display: none !important; }
+.kpi-value, .tile-value { background: none !important; -webkit-text-fill-color: currentColor; color: var(--text) !important; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.kpi-label, .tile-label { color: var(--text-3) !important; }
+.section-title { font-size: 13px !important; font-weight: 600 !important; color: var(--text) !important; letter-spacing: 0 !important; }
+.section-title svg { display: none !important; }
+.name { color: var(--text) !important; font-weight: 600 !important; }
+.meta { color: var(--text-2); }
+.empty { color: var(--text-3) !important; }
+.num, td, .gym-stat b { font-variant-numeric: tabular-nums; }
+
+/* ---- buttons: one amber action, everything else quiet ---- */
+.btn, button.btn { border-radius: 10px !important; font-weight: 600 !important; color: var(--on-warn) !important; background: var(--warn) !important; border: 1px solid transparent !important;
+  box-shadow: none !important; filter: none !important; transform: none; transition: background-color .12s, transform .16s var(--ease) !important; }
+.btn:hover:not(:disabled), button.btn:hover:not(:disabled) { background: #f8b542 !important; transform: none; }
+.btn:active:not(:disabled) { transform: scale(.97) !important; }
+.btn.ghost, button.btn.ghost { color: var(--text) !important; background: transparent !important; border: 1px solid var(--line-strong) !important; }
+.btn.ghost:hover:not(:disabled), button.btn.ghost:hover:not(:disabled) { background: rgb(255 255 255 / .05) !important; border-color: rgb(255 255 255 / .22) !important; }
+.btn:disabled { opacity: .5 !important; filter: none !important; }
+
+/* ---- tabs, chips, pills ---- */
+.ptabs { background: var(--surface) !important; border: 1px solid var(--hairline) !important; border-radius: 10px !important; }
+.ptabs button { border-radius: 7px !important; }
+.ptabs button.on, .ptabs button[aria-selected="true"] { color: var(--text) !important; background: var(--surface-high) !important; box-shadow: none !important; }
+.chip { background: transparent !important; border: 1px solid var(--hairline) !important; color: var(--text-2) !important; box-shadow: none !important; }
+.chip:hover { border-color: var(--line-strong) !important; color: var(--text) !important; }
+.chip.on, .chip[aria-pressed="true"], .chip.active, .msg-owner .chip.on { color: var(--text) !important; background: var(--accent-tint) !important; border-color: rgb(124 58 237 / .55) !important; box-shadow: none !important; }
+.chip.warn { color: var(--warn) !important; background: var(--warn-tint) !important; border-color: rgb(245 165 36 / .3) !important; }
+.pill { background: transparent !important; border: 1px solid var(--hairline) !important; color: var(--text-2) !important; }
+.pill.ok { color: var(--accent-text) !important; background: var(--accent-tint) !important; border-color: rgb(124 58 237 / .4) !important; }
+.pill.warn { color: var(--warn) !important; background: var(--warn-tint) !important; border-color: rgb(245 165 36 / .3) !important; }
+
+/* ---- fields ---- */
+input, select, textarea { background: #0b0a0f !important; border: 1px solid var(--line-strong) !important; color: var(--text) !important; border-radius: 9px !important; box-shadow: none !important; }
+input:hover, select:hover, textarea:hover { border-color: rgb(255 255 255 / .22) !important; }
+input:focus, select:focus, textarea:focus { border-color: var(--accent) !important; box-shadow: none !important; background: #0b0a0f !important; }
+input::placeholder, textarea::placeholder { color: var(--text-3) !important; }
+.tick input, input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
+
+/* ---- tables and rows ---- */
+th { color: var(--text-3) !important; font-size: 11px !important; font-weight: 600 !important; letter-spacing: .06em !important; }
+tbody tr:hover td { background: rgb(255 255 255 / .025) !important; }
+a.todo:hover, .fb-row:hover { background: rgb(255 255 255 / .03) !important; }
+
+/* ---- meters and bars: flat fills ---- */
+.meter, .bar, .cap-bar, .ov-step-track, .app-meter { background: rgb(255 255 255 / .06) !important; }
+.meter > span, .meter-bar > span, .cap-bar > span, .ov-step-track span, .app-meter i { background: var(--accent) !important; box-shadow: none !important; }
+.bar-fill { background: rgb(124 58 237 / .55) !important; box-shadow: none !important; }
+.bar.now .bar-fill { background: var(--accent) !important; }
+.ov-step-track span.pay { background: var(--warn) !important; }
+.set-track::before { background: var(--hairline) !important; }
+.ov-dot { box-shadow: none !important; }
+
+/* ---- floating things: solid, never see-through ---- */
+.pbell__panel, [role="dialog"], .palette, .cmdk, .tooltip, .modal, .detail-pop { background: #17161d !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+  border: 1px solid var(--line-strong) !important; box-shadow: 0 24px 60px -24px rgb(0 0 0 / .8) !important; }
+.palette-shade, .modal-shade, .shade { backdrop-filter: none !important; background: rgb(6 5 10 / .72) !important; }
+[data-va-scrolls] > .card-head:first-child, [data-va-scrolls] > .ov-head:first-child, [data-va-scrolls] > .section-title:first-child {
+  background: var(--surface) !important; border-bottom: 1px solid var(--hairline) !important; }
+.va-show span { color: var(--text) !important; background: var(--surface-high) !important; box-shadow: inset 0 0 0 1px var(--line-strong) !important; transform: none !important; }
+.va-search { background: #17161d !important; border-color: var(--line-strong) !important; }
+.docv__bar, .docv__strip { background: #121117 !important; }
+.docv__nav { background: #17161d !important; }
+.avatar, .brand-mark { box-shadow: none !important; }
+
+/* ---- motion: one short entrance, nothing that floats ---- */
+@media (prefers-reduced-motion: no-preference) {
+  .page { animation: plan-in .32s var(--ease) backwards !important; }
+  .p-head { animation: none !important; }
+}
+@keyframes plan-in { from { opacity: 0; transform: translateY(6px); } }
+
+/* ---- no boxes inside boxes: figures inside a card sit on its surface, divided by hairlines ---- */
+.gym-stat, .mini-figs > *, .ov-figs > span { background: transparent !important; border: 0 !important; border-left: 1px solid var(--hairline) !important; border-radius: 0 !important; }
+.gym-stat:first-child, .mini-figs > :first-child, .ov-figs > span:first-child { border-left: 0 !important; padding-left: 0 !important; }
+.kpi-value, .tile-value, .gym-stat b, .cap-big b { font-weight: 650 !important; }
+h1, h2, h3 { font-weight: 650; }
+.app-box, .manage-box, .handover-box { background: transparent !important; box-shadow: none !important; border-color: var(--hairline) !important; }

@@ -319,7 +319,7 @@ export async function inviteOwner(
   // `error.message` — which only ever says "non-2xx status code".
   if (error && (/Failed to send a request/i.test(error.message) || (error as { context?: Response }).context?.status === 404)) {
     throw new Error('The approve-gym Edge Function is not deployed, so no login can be made for the owner. '
-      + 'Deploy it once (npx supabase functions deploy approve-gym — see supabase/README.md), then try again.');
+      + 'Deploy it once (npx supabase functions deploy approve-gym, see supabase/README.md), then try again.');
   }
   if (error) {
     const body = await (error as { context?: Response }).context?.json?.().catch(() => null);
@@ -814,10 +814,10 @@ export async function emailApplicant(app: Application,
   subject: string, body: string): Promise<string> {
   try {
     const r = await sendEmail({
-      to: app.email, toName: app.owner_name, kind, subject: `${subject} — ${app.gym_name}`,
+      to: app.email, toName: app.owner_name, kind, subject: `${subject}, ${app.gym_name}`,
       body: `Hi ${app.owner_name.split(' ')[0]},\n\n${body}\n\nRead and answer at ${SITE}/#account (sign in with the account you applied with).\n\n— Core Fitness`,
     });
-    if (!r.configured) return `Not emailed — no mail provider is set up yet. ${app.owner_name.split(' ')[0]} sees it when they sign in.`;
+    if (!r.configured) return `Not emailed, no mail provider is set up yet. ${app.owner_name.split(' ')[0]} sees it when they sign in.`;
     return r.status === 'sent' ? `Emailed to ${app.email}.` : `The email to ${app.email} did not go: ${r.error ?? r.status}.`;
   } catch (e) {
     return `Not emailed: ${e instanceof Error ? e.message : 'unknown error'}.`;
@@ -929,7 +929,7 @@ export async function emailSuspension(p: { email: string; name: string | null },
         ? `Hi ${first},\n\nCore Fitness has lifted the suspension on your account. You can sign in to every app again.\n\n— Core Fitness`
         : `Hi ${first},\n\nCore Fitness has suspended your account, so you cannot use the member, coach or gym apps for now.\n\nThe reason: ${reason}\n\nIf you think this is a mistake, reply to this email.\n\n— Core Fitness`,
     });
-    if (!r.configured) return `Not emailed — no mail provider is set up yet. They see ${lifted ? 'it' : 'the reason'} when they sign in.`;
+    if (!r.configured) return `Not emailed, no mail provider is set up yet. They see ${lifted ? 'it' : 'the reason'} when they sign in.`;
     return r.status === 'sent' ? `Emailed to ${p.email}.` : `The email to ${p.email} did not go: ${r.error ?? r.status}.`;
   } catch (e) {
     return `Not emailed: ${e instanceof Error ? e.message : 'unknown error'}.`;

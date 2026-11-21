@@ -73,7 +73,7 @@ export default function Feedback() {
               <div key={t.id} className="fb-row">
                 <span className="grow">
                   <span className="name" style={{ fontWeight: 500 }}>“{t.quote}”</span>
-                  <span className="meta">— {t.shown_name}{t.shown_role ? `, ${t.shown_role}` : ''} · {t.gym_name} · {t.status === 'approved' ? 'on the website' : t.status === 'declined' ? 'not used' : 'waiting for you'}</span>
+                  <span className="meta">{t.shown_name}{t.shown_role ? `, ${t.shown_role}` : ''} · {t.gym_name} · {t.status === 'approved' ? 'on the website' : t.status === 'declined' ? 'not used' : 'waiting for you'}</span>
                 </span>
                 <div className="fb-actions">
                   {t.status !== 'approved' && <button type="button" className="btn" disabled={busy} onClick={() => void run(() => setTestimonial(t.id, true))}>Put it on the website</button>}

@@ -115,7 +115,7 @@ export default function GymProfile() {
           <span className="meta" style={{ marginTop: 2 }}>/join/{gym.slug} · on Core Fitness since {day(gym.created_at)} · {gym.plan_name ?? gym.plan}</span>
         </span>
         {gym.lock_reason
-          ? <span className="pill warn"><span className="dot" />{gym.lock_reason === 'suspended' ? 'Suspended' : gym.lock_reason === 'trial_ended' ? 'Trial ended — paused' : 'Overdue — read-only'}</span>
+          ? <span className="pill warn"><span className="dot" />{gym.lock_reason === 'suspended' ? 'Suspended' : gym.lock_reason === 'trial_ended' ? 'Trial ended, paused' : 'Overdue, read-only'}</span>
           : <span className="pill ok"><span className="dot" />{gym.owners === 0 || !gym.onboarded ? 'Setting up' : 'Live'}</span>}
         <SupportDoor gymId={gym.id} />
         {writing && <MessageOwner open onClose={() => setWriting(false)} gymId={gym.id} gymName={gym.name} onSent={() => void loadMessages()} />}
@@ -184,7 +184,7 @@ export default function GymProfile() {
               </div>
             ))}
             {unused.length > 0 && (
-              <p className="meta" style={{ marginTop: 10 }}>Not used yet: {unused.map((f) => f.label).join(', ')} — worth a word with the owner.</p>
+              <p className="meta" style={{ marginTop: 10 }}>Not used yet: {unused.map((f) => f.label).join(', ')}, worth a word with the owner.</p>
             )}
           </section>
         </div>
@@ -205,7 +205,7 @@ export default function GymProfile() {
             ? <>Free trial until {day(gym.paid_until)}. The next day the app stops for the gym, its staff and its members (no grace days) until it pays for a plan. Change the date to shorten or lengthen the trial.</>
             : gym.paid_until
             ? <>Covered until {day(gym.paid_until)}. After that and the grace days, the gym goes read-only until a payment is verified.</>
-            : <>No billing — this gym has no covered-until date, so nothing is ever due and it never locks. Start billing to give it a date; its owner is told, and reminded before it.</>}
+            : <>No billing, this gym has no covered-until date, so nothing is ever due and it never locks. Start billing to give it a date; its owner is told, and reminded before it.</>}
         </p>
         {billing ? (
           <div className="row" style={{ gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
@@ -288,7 +288,7 @@ export default function GymProfile() {
 
         <section className="card">
           <h2 className="section-title"><NotebookPen size={14} /> Your notes</h2>
-          <p className="meta" style={{ marginTop: -6, marginBottom: 10 }}>Only you see these — never the gym.</p>
+          <p className="meta" style={{ marginTop: -6, marginBottom: 10 }}>Only you see these, never the gym.</p>
           <form className="row" onSubmit={(e) => { e.preventDefault(); if (note.trim()) void act(async () => { await addGymNote(gymId, note); setNote(''); }); }}>
             <input className="grow" value={note} maxLength={2000} onChange={(e) => setNote(e.target.value)}
               placeholder="e.g. Owner prefers calls after 6pm; wants a yearly price" aria-label="New note" />
