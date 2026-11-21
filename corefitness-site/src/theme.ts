@@ -13,7 +13,11 @@ export function currentTheme(): Theme {
 }
 
 export function setTheme(t: Theme): void {
-  document.documentElement.dataset.theme = t;
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', t === 'light' ? '#f6f5fb' : '#0b0b12');
+  // Every colour would otherwise transition at once and the swap looks glitchy: off for two frames.
+  const root = document.documentElement;
+  root.classList.add('theme-swap');
+  root.dataset.theme = t;
+  requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove('theme-swap')));
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', t === 'light' ? '#f7f6f9' : '#0e0d12');
   try { localStorage.setItem(KEY, t); } catch { /* blocked storage: the choice lasts this visit */ }
 }

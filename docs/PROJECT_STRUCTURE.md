@@ -35,8 +35,7 @@ CoreFitness/
 │       │       ├── AddMemberModal.tsx
 │       │       ├── EditMemberModal.tsx
 │       │       ├── MemberDetailModal.tsx
-│       │       ├── QRScanner.tsx
-│       │       └── LandingFooter.tsx   # Cinematic footer on login page
+│       │       └── QRScanner.tsx
 │       ├── data/                       # The four mock files that lived here
 │       │   ├── chatbot.ts              #   (members, trainers, mockRetention,
 │       │   └── gyms.ts                 #   mockTrainerFeedback) are deleted.

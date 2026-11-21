@@ -137,7 +137,7 @@ async (page) => {
   out.push('PayMongo is asked for the application, with no price from the page: ' + (open && open[1].purpose === 'application' && open[1].details?.application === APP
     && !('amount' in (open[1].details ?? {})) && open[1].returnUrl.startsWith('http://localhost:5176/') ? 'yes' : 'MISSING ' + JSON.stringify(open)));
   out.push('back from PayMongo, the payment is checked and shown paid: ' + (CALLS.some((c) => c[0] === 'paymongo' && c[1].reconcile === 'ck1')
-    && /Paid — Starter, ₱1,499 for a month/.test(await pay.innerText()) ? 'yes' : 'MISSING ' + (await pay.innerText())));
+    && /Paid: Starter, ₱1,499 for a month/.test(await pay.innerText()) ? 'yes' : 'MISSING ' + (await pay.innerText())));
   out.push('paid: the plan is locked: ' + ((await page.locator('[data-plan-locked]').count()) === 1 && (await page.locator('[data-change-plan]').count()) === 0 ? 'yes' : 'MISSING'));
   out.push('…and the address is clean again: ' + (!/paid=/.test(page.url()) && page.url().endsWith('#account') ? 'yes' : 'NO ' + page.url()));
   await page.screenshot({ path: 'shots/site-pay-paid.png', fullPage: true });

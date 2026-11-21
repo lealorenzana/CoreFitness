@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Gym sign-in mock-ups</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  /* Three directions for the gym sign-in (2026-11-21). Throwaway mock-ups: plain HTML, sample content. */
+  :root { --bg: #0e0d12; --surface: #16151c; --high: #1d1c25; --line: rgb(255 255 255 / .1); --line-2: rgb(255 255 255 / .18);
+    --text: #ececf1; --text-2: #a9a8b8; --text-3: #8b8a9d; --violet: #7c3aed; --violet-text: #c4b5fd; --amber: #f5a524; --on-amber: #1a1205; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--bg); color: var(--text); font-family: Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .v { display: none; min-height: 100vh; }
+  body.a .va, body.b .vb, body.c .vc { display: grid; }
+  .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; letter-spacing: -0.02em; }
+  .brand img { width: 28px; height: 28px; border-radius: 50%; }
+  label { display: block; font-size: 14px; font-weight: 550; color: var(--text-2); margin: 0 0 8px; }
+  .field + .field { margin-top: 16px; }
+  .in { height: 48px; border-radius: 10px; background: var(--high); border: 1px solid var(--line-2); display: flex; align-items: center; padding: 0 14px; font-size: 16px; color: var(--text-3); }
+  .in.pw { justify-content: space-between; }
+  .row { display: flex; justify-content: space-between; align-items: center; margin: 14px 0 20px; font-size: 14px; }
+  .check { display: inline-flex; gap: 10px; align-items: center; color: var(--text-2); }
+  .check i { width: 18px; height: 18px; border-radius: 5px; background: var(--violet); display: inline-block; }
+  .forgot { color: var(--violet-text); font-weight: 600; }
+  .btn { height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 15px; font-weight: 650; }
+  .btn.primary { background: var(--amber); color: var(--on-amber); }
+  .btn.google { background: #fff; color: #1f1f1f; }
+  .btn.ghost { border: 1px solid var(--line-2); color: var(--text); }
+  .or { display: flex; align-items: center; gap: 12px; margin: 18px 0; font-size: 13px; color: var(--text-3); }
+  .or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+  .g { width: 18px; height: 18px; border-radius: 50%; background: conic-gradient(#ea4335 0 25%, #fbbc05 0 50%, #34a853 0 75%, #4285f4 0); }
+  .small { font-size: 13.5px; color: var(--text-3); }
+  .small a { color: var(--text); font-weight: 600; text-decoration: none; }
+
+  /* ---- A: the quiet column — centred, no card, Google first, everything else at the edges ---- */
+  .va { grid-template-rows: auto 1fr auto; padding: 24px 32px; }
+  .va header, .va footer { display: flex; justify-content: space-between; align-items: center; }
+  .va footer { gap: 20px; }
+  .va main { display: grid; place-items: center; }
+  .va .col { width: 100%; max-width: 380px; }
+  .va h1 { margin: 0; font-size: 30px; font-weight: 700; letter-spacing: -0.035em; }
+  .va .sub { margin: 8px 0 28px; color: var(--text-2); font-size: 15px; }
+  .va .who { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--line); }
+
+  /* ---- B: the desk at opening time — the gym app's morning on the left, the form on the right ---- */
+  .vb { grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); }
+  .vb .show { background: var(--surface); border-right: 1px solid var(--line); padding: 32px 48px; display: grid; grid-template-rows: auto 1fr auto; }
+  .vb .show .stage { display: grid; place-items: center; }
+  .win { width: 100%; max-width: 560px; border-radius: 16px; border: 1px solid var(--line-2); background: var(--bg); overflow: hidden; }
+  .win-bar { height: 34px; display: flex; gap: 6px; align-items: center; padding: 0 12px; background: var(--high); border-bottom: 1px solid var(--line); font-size: 12px; color: var(--text-3); }
+  .win-bar i { width: 9px; height: 9px; border-radius: 50%; background: var(--line-2); }
+  .win-body { padding: 16px; display: grid; gap: 12px; }
+  .tiles { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 8px; }
+  .tile { border: 1px solid var(--line); border-radius: 8px; padding: 10px; } .tile small { display: block; font-size: 12px; color: var(--text-3); }
+  .tile b { font-size: 24px; letter-spacing: -0.03em; } .tile.lead { background: rgb(124 58 237 / .18); border-color: rgb(124 58 237 / .4); }
+  .rows { border: 1px solid var(--line); border-radius: 8px; } .rows div { display: flex; justify-content: space-between; padding: 9px 12px; font-size: 13px; }
+  .rows div + div { border-top: 1px solid var(--line); } .rows em { font-style: normal; color: var(--amber); font-weight: 600; } .rows span small { color: var(--text-3); margin-left: 6px; }
+  .vb .cap { font-size: 13px; color: var(--text-3); }
+  .vb .cap b { color: var(--text); font-weight: 600; }
+  .vb .form { display: grid; place-items: center; padding: 32px; }
+  .vb .col { width: 100%; max-width: 380px; }
+  .vb h1 { margin: 0; font-size: 28px; letter-spacing: -0.03em; } .vb .sub { margin: 8px 0 26px; color: var(--text-2); }
+
+  /* ---- C: the floor — the owner's own photo of a real gym, full height, the form on solid ground ---- */
+  .vc { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .vc .photo { position: relative; overflow: hidden; }
+  .vc .photo > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: saturate(.85) brightness(.75); }
+  .vc .photo .over { position: absolute; left: 40px; right: 40px; bottom: 40px; }
+  .vc .photo .over p { margin: 0; font-size: 28px; font-weight: 650; letter-spacing: -0.03em; line-height: 1.15; max-width: 16ch; }
+  .vc .photo .over small { display: block; margin-top: 10px; color: #c9c8d4; font-size: 14px; }
+  .vc .photo .brand { position: absolute; left: 40px; top: 32px; z-index: 1; }
+  .vc .form { display: grid; place-items: center; padding: 32px; }
+  .vc .col { width: 100%; max-width: 380px; }
+  .vc h1 { margin: 0; font-size: 28px; letter-spacing: -0.03em; } .vc .sub { margin: 8px 0 26px; color: var(--text-2); }
+
+  @media (max-width: 760px) {
+    .va { padding: 16px; } .va footer { flex-wrap: wrap; justify-content: center; } .va h1 { font-size: 26px; }
+    .vb, .vc { grid-template-columns: minmax(0, 1fr); }
+    .vb .show { display: none; }
+    .vb .form, .vc .form { padding: 24px 16px; align-items: start; }
+    .vc .photo { min-height: 180px; } .vc .photo .over { left: 16px; right: 16px; bottom: 16px; } .vc .photo .over p { font-size: 20px; } .vc .photo .brand { left: 16px; top: 16px; }
+    .vc .photo .over small { display: none; }
+  }
+</style>
+</head>
+<body>
+<script>document.body.className = (location.hash.slice(1) || 'a');</script>
+
+<!-- A -->
+<div class="v va">
+  <header><span class="brand"><img src="../../g-fitness-admin/public/core-fitness-logo.png" alt="">Core Fitness</span><span class="small">New gym? <a href="#">Register →</a></span></header>
+  <main><div class="col">
+    <h1>Sign in to your gym</h1>
+    <p class="sub">Owners and the front desk.</p>
+    <div class="btn google"><span class="g"></span>Continue with Google</div>
+    <div class="or">or with your email or username</div>
+    <div class="field"><label>Email or username</label><div class="in">name@yourgym.com or username</div></div>
+    <div class="field"><label>Password</label><div class="in pw"><span></span><span style="font-size:13px;font-weight:600;color:var(--text-2)">Show</span></div></div>
+    <div class="row"><span class="check"><i></i>Keep me signed in</span><span class="forgot">Forgot password?</span></div>
+    <div class="btn primary">Sign in</div>
+    <p class="small who">Coach or member? You sign in on the phone app. <a href="#">Get the app →</a></p>
+  </div></main>
+  <footer><span class="small">Made in Mamburao, Occidental Mindoro</span><span class="small"><a href="#">Terms</a> · <a href="#">Privacy</a> · <a href="#">Help</a></span></footer>
+</div>
+
+<!-- B -->
+<div class="v vb">
+  <section class="show">
+    <span class="brand"><img src="../../g-fitness-admin/public/core-fitness-logo.png" alt="">Core Fitness</span>
+    <div class="stage"><div class="win">
+      <div class="win-bar"><i></i><i></i><i></i>&nbsp; Gym app · Today</div>
+      <div class="win-body">
+        <div style="display:flex;justify-content:space-between"><b>Good morning</b><span class="small">sample data</span></div>
+        <div class="tiles"><div class="tile lead"><small>Checked in today</small><b>46</b></div><div class="tile"><small>Cash today</small><b>₱8,500</b></div><div class="tile"><small>Needs you</small><b>3</b></div></div>
+        <div class="rows">
+          <div><span>Lea R.<small>renews in 2 days</small></span><em>Remind</em></div>
+          <div><span>Jon M.<small>asked for Thu 6:00 PM</small></span><em>Decide</em></div>
+          <div><span>Ana S.<small>last visit 18 days ago</small></span><span class="small">At risk</span></div>
+        </div>
+      </div>
+    </div></div>
+    <p class="cap"><b>What is waiting for you.</b> What needs you, check-ins and cash, before the first member walks in.</p>
+  </section>
+  <section class="form"><div class="col">
+    <h1>Sign in</h1><p class="sub">Owners and the front desk.</p>
+    <div class="field"><label>Email or username</label><div class="in">name@yourgym.com or username</div></div>
+    <div class="field"><label>Password</label><div class="in pw"><span></span><span style="font-size:13px;font-weight:600;color:var(--text-2)">Show</span></div></div>
+    <div class="row"><span class="check"><i></i>Keep me signed in</span><span class="forgot">Forgot password?</span></div>
+    <div class="btn primary">Sign in</div>
+    <div class="or">or</div>
+    <div class="btn google"><span class="g"></span>Continue with Google</div>
+    <p class="small" style="margin-top:24px">Coach or member? <a href="#">Get the app →</a> &nbsp; New gym? <a href="#">Register →</a></p>
+  </div></section>
+</div>
+
+<!-- C -->
+<div class="v vc">
+  <section class="photo">
+    <img src="../../corefitness-site/public/hero-floor.webp" alt="">
+    <span class="brand"><img src="../../g-fitness-admin/public/core-fitness-logo.png" alt="">Core Fitness</span>
+    <div class="over"><p>For the people who open the doors.</p><small>Gym software made in Mamburao, Occidental Mindoro.</small></div>
+  </section>
+  <section class="form"><div class="col">
+    <h1>Sign in to your gym</h1><p class="sub">Owners and the front desk.</p>
+    <div class="field"><label>Email or username</label><div class="in">name@yourgym.com or username</div></div>
+    <div class="field"><label>Password</label><div class="in pw"><span></span><span style="font-size:13px;font-weight:600;color:var(--text-2)">Show</span></div></div>
+    <div class="row"><span class="check"><i></i>Keep me signed in</span><span class="forgot">Forgot password?</span></div>
+    <div class="btn primary">Sign in</div>
+    <div class="or">or</div>
+    <div class="btn google"><span class="g"></span>Continue with Google</div>
+    <p class="small" style="margin-top:24px">Coach or member? <a href="#">Get the app →</a> &nbsp; New gym? <a href="#">Register →</a></p>
+  </div></section>
+</div>
+</body>
+</html>

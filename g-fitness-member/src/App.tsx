@@ -295,7 +295,7 @@ function App() {
         {/* Where Google sends an account back (0190). */}
         <Route path="/auth/callback" element={<AuthCallback />} />
         {/* The page a gym sends members to: the Android download and how to join. */}
-        <Route path="/get-app" element={<StandalonePage><GetApp /></StandalonePage>} />
+        <Route path="/get-app" element={<StandalonePage wide><GetApp /></StandalonePage>} />
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />

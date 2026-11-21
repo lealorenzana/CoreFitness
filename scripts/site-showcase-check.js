@@ -1,10 +1,14 @@
 /**
  * The website's scroll-told showcase (2026-10-11): every feature in the
  * catalogue, and each scroll technique doing its job — words lighting up with
- * the scroll (text reveal), the phone turning in 3D, the canvas sequence
- * scrubbing with the scrollbar, group titles pinned while features pass,
- * parallax on the photos, the marquee answering the scroll — on a desktop and
- * a phone, with no sideways scroll. Pricing's four tiers sit in one row.
+ * the scroll (text reveal), the member's screen assembling, the month calendar
+ * scrubbing with the scrollbar (both tappable), group titles pinned while features pass,
+ * parallax on the photos — on a desktop and a phone, with no sideways scroll.
+ * Pricing's four tiers sit in one row.
+ *
+ * Redesign 2026-11-21 (design/lessons/LESSONS.md): the marquee, the orbiting hero chips and every
+ * pointer effect (cursor glow, tilt, magnetic buttons) were removed as decoration; the hero now shows
+ * the gym app and the member app over the owner's photo, with three depths of scroll parallax.
  *
  * Website dev server on :5176.
  */
@@ -31,11 +35,8 @@ async (page) => {
     }, [sel, k]);
     await page.waitForTimeout(450);
   };
-  const canvasHash = () => page.evaluate(() => {
-    const c = document.querySelector('.scrub-canvas');
-    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
-    let h = 0; for (let i = 0; i < d.length; i += 997) h = (h * 31 + d[i]) >>> 0; return h;
-  });
+  const litDays = () => page.evaluate(() => Number(document.querySelector('.month').dataset.lit));
+  const piecesIn = () => page.evaluate(() => document.querySelectorAll('.as-piece.in').length);
 
   for (const [label, w, h] of [['desktop', 1440, 900], ['phone', 390, 844]]) {
     await page.setViewportSize({ width: w, height: h });
@@ -52,17 +53,27 @@ async (page) => {
     await scrollInto('.manifesto', 0.9); const m2 = await page.evaluate(() => getComputedStyle(document.querySelectorAll('.mw')[20]).opacity);
     out.push(`${label}: words light up with the scroll: ` + (Number(m1) < 0.5 && Number(m2) > 0.9 ? 'yes' : `MISSING ${m1}→${m2}`));
 
-    await scrollInto('.p3d', 0.05); const t1 = await page.evaluate(() => getComputedStyle(document.querySelector('.p3d-phone')).transform);
-    await scrollInto('.p3d', 0.95); const t2 = await page.evaluate(() => getComputedStyle(document.querySelector('.p3d-phone')).transform);
-    out.push(`${label}: the phone turns in 3D: ` + (t1 !== t2 && /matrix3d/.test(t2) ? 'yes' : 'MISSING'));
-    if (label === 'phone') await page.screenshot({ path: 'shots/site-3d-phone.png' });
+    await scrollInto('.assemble', 0.05); const a1 = await piecesIn();
+    await scrollInto('.assemble', 0.97); const a2 = await piecesIn();
+    out.push(`${label}: the member's screen assembles piece by piece with the scroll: ` + (a1 === 1 && a2 === 4 ? 'yes' : `MISSING ${a1}→${a2}`));
+    const clipped = await page.evaluate(() => { const scr = document.querySelector('.as-phone .phone-screen').getBoundingClientRect();
+      const last = document.querySelector('.as-piece[data-piece="ai"]').getBoundingClientRect(); return last.bottom - scr.bottom; });
+    out.push(`${label}: …and the last piece fits inside the phone: ` + (clipped <= 1 ? 'yes' : `MISSING ${Math.round(clipped)}px cut`));
+    if (label === 'phone') await page.screenshot({ path: 'shots/site-assemble-phone.png' });
+    await page.locator('.as-key button').nth(1).click(); await page.waitForTimeout(1200);
+    out.push(`${label}: tapping a line jumps to its piece: ` + ((await page.locator('.as-key button[aria-current="step"]').count()) === 1
+      && /next session/i.test(await page.locator('.as-key button[aria-current="step"]').innerText()) ? 'yes' : 'MISSING'));
 
-    await scrollInto('.scrub', 0.05); const c1 = await canvasHash(); const p1 = await pinOf('.scrub');
-    await scrollInto('.scrub', 0.6); const c2 = await canvasHash();
-    await scrollInto('.scrub', 0.05); const c3 = await canvasHash();
-    out.push(`${label}: the sequence scrubs with the scrollbar, both ways: ` + (c1 !== c2 && c1 === c3 && p1 < 0.2 ? 'yes' : `MISSING ${c1} ${c2} ${c3}`));
-    await scrollInto('.scrub', 0.6);
-    await page.screenshot({ path: `shots/site-scrub-${label}.png` });
+    await scrollInto('.month', 0.05); const c1 = await litDays(); const p1 = await pinOf('.month');
+    await scrollInto('.month', 0.7); const c2 = await litDays();
+    await scrollInto('.month', 0.05); const c3 = await litDays();
+    out.push(`${label}: the month fills with the scrollbar, both ways: ` + (c1 < c2 && c1 === c3 && p1 < 0.2 ? 'yes' : `MISSING ${c1} ${c2} ${c3}`));
+    await scrollInto('.month', 0.7);
+    const future = await page.locator('.cal-d:not(.past)').first().isDisabled();
+    await page.locator('.cal-d.record').click(); await page.waitForTimeout(250);
+    const said = await page.locator('.cal-info').innerText();
+    out.push(`${label}: a passed day can be tapped and says what happened, a future one cannot: ` + (future && /personal record/.test(said) ? 'yes' : `MISSING ${future} ${said.slice(0, 60)}`));
+    await page.screenshot({ path: `shots/site-month-${label}.png` });
 
     // Pinning: a group's title holds while its items pass.
     await page.evaluate(() => { document.getElementById('cat-owner').scrollIntoView(); window.scrollBy(0, 260); });
@@ -78,14 +89,24 @@ async (page) => {
     out.push(`${label}: no sideways scroll: ` + (overflow <= 1 ? 'yes' : `MISSING ${overflow}px`));
   }
 
-  // Parallax and the marquee, desktop.
+  // Parallax, desktop; and no decoration that follows the mouse.
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('http://localhost:5176/', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(1200);
   await page.addStyleTag({ content: 'html { scroll-behavior: auto !important; }' });
-  const tk = () => page.evaluate(() => getComputedStyle(document.querySelector('.ticker-row')).translate);
-  const a = await tk(); await page.evaluate(() => window.scrollTo(0, 2400)); await page.waitForTimeout(400); const b = await tk();
-  out.push('the marquee moves with the scroll: ' + (a !== b ? 'yes' : `MISSING ${a}`));
+  // The hero (2026-11-22): a floor plan to explore. It tours on its own, a tap shows that area, and it tilts with the scroll.
+  const title = () => page.locator('.hp-card__title').innerText();
+  const zones = await page.locator('[data-hero-plan] .hp-zone').count();
+  const t0 = await title(); await page.waitForTimeout(4200); const t1 = await title();
+  out.push(`the hero plan has its areas (${zones}) and tours them on its own: ` + (zones === 10 && t0 !== t1 ? 'yes' : `MISSING ${zones} ${t0}→${t1}`));
+  await page.locator('[data-zone="floor"]').click(); await page.waitForTimeout(300);
+  const picked = await title(); await page.waitForTimeout(4200); const stayed = await title();
+  out.push('a tapped area shows what happens there, and the tour stops: ' + (/Personal training/.test(picked) && picked === stayed ? 'yes' : `MISSING ${picked}→${stayed}`));
+  const tilt = () => page.evaluate(() => getComputedStyle(document.querySelector('.hp-board')).transform);
+  const a = await tilt(); await page.evaluate(() => window.scrollTo(0, 500)); await page.waitForTimeout(400); const b = await tilt();
+  out.push('the hero plan tilts back as the page scrolls: ' + (a !== b ? 'yes' : `MISSING ${a}`));
+  const deco = await page.evaluate(() => document.querySelectorAll('.cursor-glow, .tilt, .magnetic, .ticker, .blob, .orbit, .grain').length);
+  out.push('no cursor glow, tilt, magnetic buttons, marquee, blobs or grain: ' + (deco === 0 ? 'yes' : `MISSING ${deco} left`));
   await page.evaluate(() => document.getElementById('floor').scrollIntoView({ block: 'end' })); await page.waitForTimeout(300);
   const pa = await page.evaluate(() => getComputedStyle(document.querySelector('.pb-img img')).transform);
   await page.evaluate(() => document.getElementById('floor').scrollIntoView({ block: 'start' })); await page.waitForTimeout(300);
@@ -94,14 +115,16 @@ async (page) => {
 
   await page.evaluate(() => document.getElementById('pricing').scrollIntoView());
   await page.waitForTimeout(800);
-  const tops = await page.evaluate(() => [...document.querySelectorAll('.card.tier')].map((c) => Math.round(c.getBoundingClientRect().top)));
+  const tops = await page.evaluate(() => [...document.querySelectorAll('.tiers .tier')].map((c) => Math.round(c.getBoundingClientRect().top)));
   out.push('pricing: four tiers in one row on a desktop: ' + (tops.length === 4 && new Set(tops).size === 1 ? 'yes' : 'MISSING ' + JSON.stringify(tops)));
   await page.screenshot({ path: 'shots/site-pricing.png' });
 
   // The hero names the strongest features; the Google button is one clean line.
   await page.evaluate(() => window.scrollTo(0, 0)); await page.waitForTimeout(400);
-  const orbits = await page.locator('.hero-visual .orbit').allInnerTexts();
-  out.push('the hero names the AI assistant, paying in the app, the coach app and check-in: ' + (orbits.some((o) => /AI assistant/.test(o)) && orbits.some((o) => /QRPh/.test(o)) && orbits.some((o) => /coach app/.test(o)) && !orbits.some((o) => /Filipino/.test(o)) ? 'yes' : 'MISSING ' + JSON.stringify(orbits)));
+  const lede = await page.locator('.hero .lede').innerText();
+  out.push('the hero names the AI assistant, check-in and paying in the app: ' + (/AI assistant/.test(lede) && /check-in/.test(lede) && /in the app/.test(lede) ? 'yes' : 'MISSING ' + lede.slice(0, 80)));
+  const primaries = await page.locator('.hero .cta:not(.ghost)').count();
+  out.push('the hero has one primary button: ' + (primaries === 1 ? 'yes' : `MISSING ${primaries}`));
   await page.screenshot({ path: 'shots/site-hero.png' });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.evaluate(() => document.getElementById('apply').scrollIntoView()); await page.waitForTimeout(600);

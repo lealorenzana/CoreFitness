@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from './supabase';
 import { storageWords, toTier, withStorage, type PublicPlanRow, type Tier } from './pricing';
 import StatusPage from './Status';
@@ -6,13 +6,14 @@ import Account from './Account';
 import { GoogleButton } from './google';
 import Icon, { type IconName } from './Icon';
 import Story from './Story';
+import HeroPlan from './HeroPlan';
 import { Catalogue, Manifesto, Phone3D, Scrub } from './Showcase';
 import PlacePicker from './PlacePicker';
 import Legal, { parseLegalHash } from './Legal';
 import { inEffect, VERSION } from './legalText';
 import { usePlatformFacts } from './usePlatformFacts';
 import { useSiteTexts } from './siteTexts';
-import { useCountUp, useMotionEngine } from './motion';
+import { useMotionEngine } from './motion';
 import { currentTheme, setTheme, type Theme } from './theme';
 
 const MEMBER_APP = 'https://corefitness-gym.vercel.app';
@@ -25,6 +26,12 @@ const peso = (n: number) => '₱' + n.toLocaleString('en-PH');
 /**
  * The public page: what Core Fitness is, what it costs, who already uses it,
  * and the form a gym owner fills in to be let in.
+ *
+ * Redesigned 2026-11-21 (design/lessons/LESSONS.md): the product is the picture — app screens with
+ * sample data, said so — and the four scroll techniques each carry real content: reveals as you
+ * arrive (scroll-triggered), the manifesto, the 3D phone, the month scrub and the how-it-works line
+ * (scroll-linked), the hero and the coaches band (parallax), and one day at a gym (scrollytelling).
+ * No cursor effects, no glow, no invented numbers.
  *
  * Everything claimed here is something the system does — the features are the
  * ones in the apps, the gym list is read from the database, and a price that
@@ -41,95 +48,41 @@ const isAccount = () => window.location.hash === '#account';
 const initials = (name: string) =>
   name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join('');
 
-const FEATURES: { icon: IconName; title: string; body: string; tag: string }[] = [
-  { icon: 'desk', tag: 'Desk', title: 'The front desk', body: 'Members and memberships, payments with a receipt number — cash at the desk, or GCash, Maya and bank transfers members send from the app for your desk to confirm (you can keep it desk-only), QR check-in and a kiosk members use themselves, a shop with stock that counts itself, and waivers signed in the app. Freezes, renewals and refunds follow rules you set.' },
-  { icon: 'calendar', tag: 'Floor', title: 'Classes and coaches', body: 'A weekly timetable that generates itself, bookings your coaches accept, a waitlist that tells everyone waiting the moment a seat frees, and one-to-one sessions with clash checks.' },
-  { icon: 'sparkle', tag: 'AI assistant', title: 'A training assistant in their pocket', body: 'On the membership plans you choose, members get an AI assistant that builds and adjusts their routines, weekly schedule and goals. Nothing changes until they tap Apply, every change can be undone, and a stated injury gets a referral to a person, never a changed exercise. You set its daily and monthly limits.' },
-  { icon: 'message', tag: 'Coaching', title: 'Coaching between sessions', body: 'A room for every class and one-to-one trainee, where coaches post, set workouts and check-ins members turn in from the app. Private coach–member chat, programs you build, and progress photos only the member — and the coaches they share with — can see.' },
-  { icon: 'phone', tag: 'Phone', title: "The member's app", body: "Installs like an app on Android, and from the browser on iPhone. Their membership, bookings, check-in code, workouts, goals, progress and the gym's announcements — in English or Filipino." },
-  { icon: 'star', tag: 'Loyalty', title: 'Points that keep them coming', body: 'Points for turning up and personal records, badges for milestones, rewards they redeem at your desk, challenges and weekly quests — monthly seasons and squads if you switch them on — and invite-a-friend rewards that pay only when the friend pays. The rules are yours to set.' },
-  { icon: 'brush', tag: 'Brand', title: 'Your gym, your look', body: "Your name, your logo and your colour in your members' app — even your own words for members and coaches. Your plans, your prices, your cancellation reasons and your refund policy." },
-  { icon: 'shield', tag: 'Privacy', title: 'Your data stays yours', body: "One gym can never see another's members — the database enforces it, and every change is checked automatically. Core Fitness looks inside your gym only when you grant support access, only for a few hours, and only to read." },
-  { icon: 'toggle', tag: 'Fit', title: 'Switch off what you don’t run', body: 'No classes? No shop? Turn whole parts of the system off, and your members’ app and your menus simply stop showing them.' },
+/** The four people who use it every day, and what each one opens. */
+const ROLES: { icon: IconName; who: string; where: string; does: string[] }[] = [
+  { icon: 'chart', who: 'The owner', where: 'The gym app, on a computer',
+    does: ['Each morning: what needs you, cash and check-ins', 'Your plans, prices, refund rules and look', 'Who is drifting away, before they leave'] },
+  { icon: 'desk', who: 'The front desk', where: 'The same gym app, with only what you allow',
+    does: ['Scan check-in codes, or let the kiosk do it', 'Take payments with a receipt number', 'Renew, freeze, walk-ins and the shop'] },
+  { icon: 'message', who: 'The coaches', where: 'The phone app, built like a chat',
+    does: ['Decide their own booking requests', 'A place for each trainee: chat, workouts, progress', 'See only what their members choose to share'] },
+  { icon: 'phone', who: 'The members', where: 'The phone app, Android and iPhone',
+    does: ['Their check-in code and membership', 'Workouts that log every set and find records', 'Their coach, points and the gym’s news'] },
 ];
 
-const TICKER = ['QR check-in', 'Cash & GCash', 'AI assistant', 'Personal training', 'Monthly packages', 'Coach chat', 'Class timetable', 'Programs', 'Points', 'Badges', 'Rewards', 'Challenges', 'Squads', 'Seasons', 'Workout logs', 'Personal records', 'Progress photos', 'The shop', 'Waivers', 'Freeze & renew', 'Lobby TV', 'English · Filipino', 'Your logo, your colour'];
+/** Answers to what owners ask first — each one something the system does today. */
+const FAQ: [string, string][] = [
+  ['Do my members need Android or iPhone?', 'Either. On Android the member app installs like any other app. On an iPhone it opens from the browser and goes on the home screen. Members and coaches use the same app.'],
+  ['We take cash. Does that still work?', 'Yes. Cash is the default. Every desk payment gets a receipt number the database issues, never typed and never repeated, and the drawer closes out each day. If you want, members can also pay in the app (QRPh, GCash, Maya or card through your own PayMongo account) or send a GCash or bank reference for your desk to confirm.'],
+  ['What happens when the signal drops?', 'The member app keeps showing what it last loaded and says that it is offline. Sets logged in the middle of a workout are kept on the phone and sent when the signal is back.'],
+  ['Who can see my members’ information?', 'Your gym only. One gym can never see another’s members. The database enforces it, and it is tested on every change. Core Fitness looks inside your gym only when you grant support access, read-only, for a few hours. You are the controller under RA 10173 and we are your processor, in a signed agreement.'],
+  ['We don’t run classes, or a shop. Is it still for us?', 'Yes. Whole parts of the system switch off, and your members’ app and your menus simply stop showing them. Most gyms start with memberships, check-in and personal training.'],
+  ['Can it look like our gym?', 'Your name, your logo and your two colours in your members’ app, and even your own words for members, coaches and sessions. Your plans, prices, cancellation reasons and refund rules are yours to set.'],
+  ['Is the AI assistant safe for beginners?', 'It only proposes. Every change to a routine, schedule or goal is a card the member accepts or discards, and can be undone. A stated injury gets a referral to a person, never a changed exercise, and it gives no calorie or macro targets. You choose which plans include it and set its limits.'],
+  ['How do we start?', 'Fill in the form below. We read every application ourselves and answer on your application’s own page. Once you are in, sign in to the gym app, add your logo, colours and plans, and print your join poster for members to scan.'],
+];
 
-/** "Nine parts." — the heading counts the cards, so adding one can never leave it wrong. */
-const COUNT_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve'];
-
-const NAV: [string, string][] = [['top', 'Start'], ['day', 'A day'], ['features', 'Features'], ['inside', 'Everything'], ['floor', 'The floor'], ['how', 'How'], ['pricing', 'Pricing'], ['apply', 'Apply']];
+const NAV: [string, string][] = [['inside', 'Features'], ['day', 'A day'], ['pricing', 'Pricing'], ['faq', 'Questions']];
 
 /** Splits a line into words that rise one after another (CSS staggers by --w). */
 const Words = ({ text, from = 0 }: { text: string; from?: number }) => (
   <>
     {text.split(' ').map((w, i) => (
-      <span key={i}><span className="word" style={{ ['--w' as string]: i + from }}><span>{w}</span></span>{' '}</span>
+      <span key={i}><span className="word"><span style={{ ['--w' as string]: i + from }}>{w}</span></span>{' '}</span>
     ))}
   </>
 );
 
-function Stat({ to, suffix = '', label, sub }: { to: number | null; suffix?: string; label: string; sub: string }) {
-  const [ref, shown] = useCountUp(to);
-  return (
-    <div className="stat tilt" data-reveal>
-      <b ref={ref}>{shown === null ? '—' : shown.toLocaleString('en-PH')}{suffix}</b>
-      <span>{label}</span>
-      <small>{sub}</small>
-    </div>
-  );
-}
-
-/** Features as a horizontal track, pinned while vertical scroll drives it sideways. On a phone it is a swipeable row. */
-function FeatureTrack() {
-  const sec = useRef<HTMLElement>(null);
-  const track = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const measure = () => {
-      if (!sec.current || !track.current) return;
-      const dist = Math.max(0, track.current.scrollWidth - window.innerWidth);
-      sec.current.style.setProperty('--dist', `${dist}px`);
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    if (track.current) ro.observe(track.current);
-    window.addEventListener('resize', measure);
-    return () => { ro.disconnect(); window.removeEventListener('resize', measure); };
-  }, []);
-  return (
-    <section className="htrack" id="features" ref={sec} data-pin>
-      <div className="htrack-stage">
-        <div className="wrap htrack-head">
-          <span className="eyebrow">What you get</span>
-          <h2 className="big">{COUNT_WORDS[FEATURES.length] ?? FEATURES.length} parts.<br /><span className="dim">One system.</span></h2>
-          <p className="section-lede">Everything here is in the system today, not on a roadmap.</p>
-        </div>
-        <div className="htrack-track" ref={track}>
-          {FEATURES.map((f, i) => (
-            <article className="fcard tilt" key={f.title}>
-              <span className="fnum">{String(i + 1).padStart(2, '0')}</span>
-              <div className="fglyph"><Icon name={f.icon} /></div>
-              <span className="ftag">{f.tag}</span>
-              <h3>{f.title}</h3>
-              <p>{f.body}</p>
-            </article>
-          ))}
-          <div className="fcard fend">
-            <h3>Want to see it with your own gym in it?</h3>
-            <a className="cta magnetic" href="#apply">Register your gym <Icon name="arrow" className="arrow" /></a>
-          </div>
-        </div>
-        <div className="htrack-bar" aria-hidden="true"><span /></div>
-      </div>
-    </section>
-  );
-}
-
-/**
- * The footer, with the documents split by who they are for: a gym's agreement
- * with Core Fitness lives here; a member's Terms and Privacy are the gym's,
- * in the member app. The footer used to send a gym owner to the member Terms.
- */
 /** Light or dark (2026-10-21) — index.html picked one before paint; this flips it and remembers. */
 function ThemeToggle() {
   const [theme, setThemeState] = useState<Theme>(() => currentTheme());
@@ -142,6 +95,76 @@ function ThemeToggle() {
   );
 }
 
+/**
+ * The coaches band's try-it (2026-11-21): a coach's request queue with three sample requests. Accept tells
+ * the member; Decline asks for a reason first, as the app does; each decided card closes without a jump.
+ * Sample data, said so. Behaviour shown is the system's: coaches decide their own bookings (0071).
+ */
+const COACH_REQS = [
+  { id: 'lea', who: 'Lea R.', what: 'One-to-one session', when: 'Thu · 6:00 PM', note: 'Week 3 of her package' },
+  { id: 'jon', who: 'Jon M.', what: 'One-to-one session', when: 'Fri · 7:00 AM', note: 'His first session' },
+  { id: 'mia', who: 'Mia T.', what: 'Monthly package', when: 'Starts Monday', note: '8 sessions, asked in the app' },
+];
+const DECLINE_WHY = ['Fully booked then', 'Outside my hours', 'On leave that day'];
+type ReqState = { step: 'open' | 'why' | 'done' | 'gone'; said?: string };
+
+function CoachDemo() {
+  const fresh = () => Object.fromEntries(COACH_REQS.map((r) => [r.id, { step: 'open' } as ReqState]));
+  const [st, setSt] = useState<Record<string, ReqState>>(fresh);
+  const decide = (id: string, said: string) => {
+    setSt((s) => ({ ...s, [id]: { step: 'done', said } }));
+    window.setTimeout(() => setSt((s) => (s[id]?.step === 'done' ? { ...s, [id]: { ...s[id]!, step: 'gone' } } : s)), 1400);
+  };
+  const open = COACH_REQS.filter((r) => st[r.id]?.step !== 'done' && st[r.id]?.step !== 'gone').length;
+  const allGone = COACH_REQS.every((r) => st[r.id]?.step === 'gone');
+  return (
+    <div className="cq" data-coach-demo>
+      <div className="cq-head">
+        <span><b>Requests</b><small>{open === 0 ? 'Nothing to decide' : `${open} to decide`}</small></span>
+        <em>Try it · sample data</em>
+      </div>
+      <ul className="cq-list" aria-live="polite">
+        {COACH_REQS.map((r) => {
+          const s = st[r.id]!;
+          const first = r.who.split(' ')[0];
+          return (
+            <li key={r.id} className={`cq-item${s.step === 'gone' ? ' gone' : ''}`}>
+              <div className="cq-clip"><div className="cq-card">
+                <div className="cq-top">
+                  <span className="cq-av" aria-hidden="true">{initials(r.who)}</span>
+                  <span className="cq-who"><b>{r.who}</b><small>{r.what} · {r.when}</small></span>
+                </div>
+                <p className="cq-note">{r.note}</p>
+                {s.step === 'open' && (
+                  <div className="cq-actions">
+                    <button type="button" className="cq-btn" onClick={() => setSt((x) => ({ ...x, [r.id]: { step: 'why' } }))}>Decline</button>
+                    <button type="button" className="cq-btn yes" onClick={() => decide(r.id, `Accepted. ${first} was told.`)}>Accept</button>
+                  </div>
+                )}
+                {s.step === 'why' && (
+                  <div className="cq-why">
+                    <small>Tell {first} why</small>
+                    <div>{DECLINE_WHY.map((w) => (
+                      <button type="button" key={w} className="cq-chip" onClick={() => decide(r.id, `Declined: ${w.toLowerCase()}. ${first} was told why.`)}>{w}</button>
+                    ))}</div>
+                  </div>
+                )}
+                {(s.step === 'done' || s.step === 'gone') && <p className="cq-done"><Icon name="check" /> {s.said}</p>}
+              </div></div>
+            </li>
+          );
+        })}
+      </ul>
+      {allGone && (
+        <div className="cq-empty">
+          <b>All caught up.</b>
+          <button type="button" className="cq-again" onClick={() => setSt(fresh())}>Try again</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SiteFooter() {
   const siteAccount = useSiteAccount();
   return (
@@ -151,7 +174,7 @@ function SiteFooter() {
           <img src="/logo-320.webp" alt="" width={26} height={26} />
           <span>Core Fitness</span>
         </a>
-        <span>Mamburao, Occidental Mindoro</span>
+        <span>Made in Mamburao, Occidental Mindoro</span>
         <span className="grow" />
         {showGymSignIn(siteAccount) && <a href={GYM_SIGN_IN}>Gym sign in</a>}
       </div>
@@ -168,8 +191,14 @@ function SiteFooter() {
           <a href={`${MEMBER_APP}/privacy`}>Member Privacy</a>
           <a href={`${MEMBER_APP}/get-app`}>Get the member app</a>
         </div>
+        <div>
+          <b>On this page</b>
+          <a href="#inside">Features</a>
+          <a href="#pricing">Pricing</a>
+          <a href="#apply">Register your gym</a>
+        </div>
       </div>
-      <div className="mega" aria-hidden="true">CORE FITNESS</div>
+      <p className="wrap foot-small">Core Fitness · gym software for Philippine gyms</p>
     </footer>
   );
 }
@@ -206,7 +235,7 @@ export default function App() {
       window.removeEventListener('scroll', onScroll);
     };
   }, []);
-  // The section dots watch the page's sections — re-attached when the page comes back from a document,
+  // The header marks the section on screen — re-attached when the page comes back from a document,
   // and the header's "#pricing" from a document lands on Pricing once the page has rendered.
   useEffect(() => {
     if (legal || token || account) return;
@@ -247,146 +276,131 @@ export default function App() {
   return (
     <>
       <div className="progress" aria-hidden="true"><span /></div>
-      <div className="cursor-glow" aria-hidden="true" />
-      <div className="grain" aria-hidden="true" />
 
       <header className={`top${scrolled ? ' scrolled' : ''}`}>
         {tx.notice && <div className="site-notice" role="status" data-site-notice>{tx.notice}</div>}
         <div className="wrap">
           <a className="brand" href="#top" aria-label="Core Fitness, back to top">
-            <img src="/logo-320.webp" alt="" width={34} height={34} />
+            <img src="/logo-320.webp" alt="" width={30} height={30} />
             <span>Core Fitness</span>
           </a>
           <nav aria-label="Sections">
-            <a href="#day">A day</a>
-            <a href="#features">Features</a>
-            <a href="#how">How it works</a>
-            <a href="#pricing">Pricing</a>
+            {NAV.map(([id, label]) => <a key={id} href={`#${id}`} className={section === id ? 'on' : ''}>{label}</a>)}
           </nav>
           <span className="grow" />
-          <a className="link-quiet hide-sm" href={`${MEMBER_APP}/get-app`}>Get the member app</a>
+          <a className="link-quiet hide-md" href={`${MEMBER_APP}/get-app`}>Get the member app</a>
           <a className="link-quiet hide-sm" href="#account">My application</a>
           {/* Hidden for an applicant whose gym is still pending — they have no gym to sign in to yet (2026-11-08). */}
           {showGymSignIn(siteAccount) && <a className="link-quiet" href={GYM_SIGN_IN} aria-label="Gym sign in" data-gym-sign-in><span className="hide-sm">Gym sign in</span><span className="only-sm">Sign in</span></a>}
           <ThemeToggle />
-          <a className="cta magnetic" href="#apply">Register</a>
+          <a className="cta" href="#apply">Register</a>
         </div>
       </header>
-
-      <nav className="dots" aria-label="Jump to section" hidden={!!legal || !!token || account}>
-        {NAV.map(([id, label]) => (
-          <a key={id} href={`#${id}`} className={section === id ? 'on' : ''}><span>{label}</span></a>
-        ))}
-      </nav>
 
       <main id="top">
         {legal ? <><Legal doc={legal.doc} section={legal.section} /><SiteFooter /></>
         : token ? <><div className="wrap status-wrap"><StatusPage token={token} /></div><SiteFooter /></>
         : account ? <><div className="wrap status-wrap"><Account /></div><SiteFooter /></> : <>
 
-        <section className="hero" data-scroll>
-          <div className="hero-bg" aria-hidden="true">
-            <img src="/hero-floor.webp" alt="" />
-          </div>
-          <div className="hero-grid" aria-hidden="true" />
-          <div className="blob b1" aria-hidden="true" />
-          <div className="blob b2" aria-hidden="true" />
+        <section className="hero" data-scroll data-hero>
           <div className="wrap hero-inner">
             <div className="hero-copy">
-              <span className="eyebrow">{tx.hero_eyebrow ?? 'Gym software, made in Occidental Mindoro'}</span>
+              <p className="hero-where"><Icon name="globe" /> {tx.hero_eyebrow ?? 'Gym software, made in Occidental Mindoro'}</p>
               <h1>
                 <Words text={title1} />
                 <br />
                 <em><Words text={tx.hero_title_2 ?? 'give your members an app.'} from={title1.split(/\s+/).length} /></em>
               </h1>
               <p className="lede">
-                {tx.hero_lede ?? <>Memberships, payments in cash or in the app, QR check-in, personal training, coaches and an AI assistant —
+                {tx.hero_lede ?? <>Memberships, payments in cash or in the app, QR check-in, personal training, coaches and an AI assistant,
                 with a phone app your members actually install. Built for a real gym in Mamburao, and open to yours.</>}
               </p>
               <div className="cta-row">
-                <a className="cta magnetic" href="#apply">Register your gym <Icon name="arrow" className="arrow" /></a>
-                <a className="cta ghost magnetic" href="#day">See a day in it</a>
+                <a className="cta" href="#apply">Register your gym <Icon name="arrow" className="arrow" /></a>
+                <a className="tlink" href="#day">See a day at a gym <Icon name="arrow" /></a>
               </div>
+              <ul className="hero-facts">
+                <li><Icon name="cash" /> Cash, GCash or Maya</li>
+                <li><Icon name="phone" /> Android and iPhone</li>
+                <li><Icon name="globe" /> English and Filipino</li>
+              </ul>
             </div>
-            <div className="hero-visual" aria-hidden="true">
-              <span className="ring r1" /><span className="ring r2" /><span className="ring r3" />
-              <img src="/logo-320.webp" alt="" width={320} height={320} />
-              <span className="orbit o1"><Icon name="sparkle" /> An AI assistant that plans their training</span>
-              <span className="orbit o2"><Icon name="cash" /> Paid in the app · QRPh, GCash, Maya</span>
-              <span className="orbit o3"><Icon name="message" /> A coach app built like a chat</span>
-              <span className="orbit o4"><Icon name="qr" /> QR check-in and a kiosk</span>
-            </div>
+            <HeroPlan />
           </div>
-          <a className="scroll-cue" href="#day" aria-label="Scroll to the story"><Icon name="mouse" /><span>Scroll</span></a>
         </section>
 
-        <div className="ticker" aria-hidden="true">
-          <div className="ticker-row">
-            {[0, 1].map((k) => <span key={k}>{TICKER.map((t) => <b key={t}>{t}<i>✦</i></b>)}</span>)}
+        <section className="roles" aria-labelledby="roles-h">
+          <div className="wrap">
+            <div className="sec-head">
+              <h2 id="roles-h" data-reveal>Four people use it every day.</h2>
+              <p className="section-lede" data-reveal style={{ ['--d' as string]: 1 }}>The owner, the desk, the coaches and the members. Each has their own screen, all on one system, so nothing is typed twice.</p>
+            </div>
+            <div className="role-grid">
+              {ROLES.map((r, i) => (
+                <div className="role" key={r.who} data-reveal style={{ ['--d' as string]: i }}>
+                  <h3><Icon name={r.icon} /> {r.who}</h3>
+                  <span className="where">{r.where}</span>
+                  <ul>{r.does.map((d) => <li key={d}>{d}</li>)}</ul>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="ticker-row rev">
-            {[0, 1].map((k) => <span key={k}>{[...TICKER].reverse().map((t) => <b key={t}>{t}<i>✦</i></b>)}</span>)}
-          </div>
-        </div>
+        </section>
 
         <Manifesto />
 
         <Story />
 
-        <FeatureTrack />
+        <Catalogue />
 
         <Phone3D />
 
         <Scrub />
 
         <section className="photo-band" id="floor" data-scroll>
-          <div className="pb-img" aria-hidden="true"><img src="/band-lifter.webp" alt="" loading="lazy" /></div>
           <div className="wrap pb-inner">
-            <span className="eyebrow">Built on a real gym floor</span>
-            <h2 className="big">{tx.coaches_title ?? <>Coaches carry <br />the app too.</>}</h2>
-            <p className="lede">
+            <div className="pb-copy">
+            <h2 data-reveal>{tx.coaches_title ?? <>Coaches carry <br />the app too.</>}</h2>
+            <p className="lede" data-reveal style={{ ['--d' as string]: 1 }}>
               {tx.coaches_lede ?? <>Trainers sign in to the same phone app. They run their own classes, decide their own bookings,
-              and see only the members they train — and only what those members choose to share.</>}
+              and see only the members they train, and only what those members choose to share.</>}
             </p>
-          </div>
-        </section>
-
-        <Catalogue />
-
-        <section className="stats-sec">
-          <div className="wrap">
-            <div className="stats">
-              <Stat to={229} label="exercises" sub="in the shared library, each with cues and steps" />
-              <Stat to={19} label="switches" sub="to turn off the parts your gym does not run" />
-              <Stat to={2} label="languages" sub="English and Filipino in the member app" />
-              <Stat to={gymsFailed ? null : gyms?.length ?? null} label={gyms?.length === 1 ? 'gym on it now' : 'gyms on it now'} sub="read live from the system" />
+            <ul className="pb-facts">
+              {['Accept or decline each request, with a reason', 'A place per trainee: chat, workouts and check-ins', 'Programs that get harder on their own'].map((f, i) => (
+                <li key={f} data-reveal style={{ ['--d' as string]: i + 2 }}><Icon name="check" /> {f}</li>
+              ))}
+            </ul>
+            </div>
+            <div className="pb-visual">
+              <div className="pb-img" aria-hidden="true"><img src="/band-lifter.webp" alt="" loading="lazy" /></div>
+              <CoachDemo />
             </div>
           </div>
         </section>
 
         <section className="how" id="how" data-scroll>
           <div className="wrap">
-            <span className="eyebrow">How it works</span>
-            <h2 className="big">From this page<br /><span className="dim">to your first member.</span></h2>
+            <div className="sec-head">
+              <h2 data-reveal>From this page to your first member.</h2>
+              <p className="section-lede" data-reveal style={{ ['--d' as string]: 1 }}>No card and no commitment to apply. We talk it through with you before anything is paid.</p>
+            </div>
             <div className="how-path">
-              <svg className="how-line" viewBox="0 0 1000 120" preserveAspectRatio="none" aria-hidden="true">
-                <path d="M20 60 C 200 -10, 300 130, 500 60 S 800 -10, 980 60" pathLength={1} />
-              </svg>
+              <span className="how-line" aria-hidden="true"><i /></span>
               <ol className="steps">
                 <li data-reveal style={{ ['--d' as string]: 0 }}>
-                  <span className="node"><Icon name="sparkle" /></span>
+                  <span className="node">1</span>
                   <h3>Apply</h3>
                   <p>Pick a plan and tell us about your gym. You get a private link to your application’s own page.</p>
                 </li>
                 <li data-reveal style={{ ['--d' as string]: 1 }}>
-                  <span className="node"><Icon name="message" /></span>
+                  <span className="node">2</span>
                   <h3>Talk it through</h3>
-                  <p>We read every application ourselves. Our answer and our messages arrive on your link — write back there any time.</p>
+                  <p>We read every application ourselves. Our answer and our messages arrive on your link. Write back there any time.</p>
                 </li>
                 <li data-reveal style={{ ['--d' as string]: 2 }}>
-                  <span className="node"><Icon name="users" /></span>
+                  <span className="node">3</span>
                   <h3>Set up and go</h3>
-                  <p>Sign in to the gym app, add your name, logo, colour and plans, then print your join poster for members to scan.</p>
+                  <p>Sign in to the gym app, add your name, logo, colours and plans, then print your join poster for members to scan.</p>
                 </li>
               </ol>
             </div>
@@ -395,12 +409,11 @@ export default function App() {
 
         <section id="pricing">
           <div className="wrap">
-            <span className="eyebrow">Pricing</span>
             <div className="price-head">
-              <h2 className="big">
+              <h2 data-reveal>
                 {tiers === null ? 'What it costs'
                   : tiers.length === 0 ? 'Ask us what it costs'
-                  : trial ? <>Start free for <span className="hl">{trial} days.</span></>
+                  : trial ? <>Start free for {trial} days.</>
                   : 'What it costs'}
               </h2>
               {anyYearly && (
@@ -411,22 +424,19 @@ export default function App() {
                 </div>
               )}
             </div>
-            <p className="section-lede">Pay in the gym app — QRPh, GCash, Maya or card, confirmed the moment it is paid — or send a bank or GCash reference and we confirm it. Cancel by telling us.</p>
-            <div className="pay-note">
-              {['QRPh', 'GCash', 'Maya', 'Card', 'Bank transfer'].map((m) => <span className="pill" key={m}><Icon name="cash" /> {m}</span>)}
-            </div>
+            <p className="pay-line">Pay in the gym app with QRPh, GCash, Maya or card, confirmed the moment it is paid. Or send a bank or GCash reference and we confirm it. Cancel by telling us.</p>
             {tiers?.length === 0 && (
               <p className="note bad" style={{ marginTop: 24 }}>
                 <Icon name="alert" /> Our price list is not loading right now. Send the form below and we will answer with it.
               </p>
             )}
-            <div className="grid tiers">
+            <div className="tiers" style={{ ['--cols' as string]: Math.max(1, Math.min(4, tiers?.length || 3)) }} aria-busy={tiers === null}>
               {tiers === null && [0, 1, 2].map((i) => <div className="skeleton" key={i} aria-hidden="true" />)}
               {tiers?.map((t, i) => {
                 const showYear = yearly && t.yearly !== null && t.yearly > 0;
                 return (
-                  <div className={`card tier tilt${t.trialDays ? ' has-trial' : ''}`} key={t.key} data-reveal style={{ ['--d' as string]: i }}>
-                    {t.trialDays ? <span className="badge">{t.trialDays} days free</span> : null}
+                  <div className={`tier${t.trialDays ? ' has-trial' : ''}`} key={t.key} data-reveal style={{ ['--d' as string]: i }}>
+                    <span className={`badge${t.trialDays ? '' : ' none'}`}>{t.trialDays ? `${t.trialDays} days free` : ''}</span>
                     <h3>{t.name}</h3>
                     <div className="price" key={showYear ? 'y' : 'm'}>
                       {showYear ? <>{peso(t.yearly!)}<small> / year</small></>
@@ -434,14 +444,16 @@ export default function App() {
                     </div>
                     {!showYear && t.yearly !== null && t.yearly > 0 && <p className="yearly">or {peso(t.yearly)} a year</p>}
                     {yearly && !showYear && t.monthly !== 0 && t.monthly !== null && <p className="yearly">Monthly only</p>}
+                    {/* Keeps every column's list on the same line, so the plans compare row by row. */}
+                    {!(!showYear && t.yearly !== null && t.yearly > 0) && !(yearly && !showYear && t.monthly !== 0 && t.monthly !== null) && <p className="yearly" aria-hidden="true">&nbsp;</p>}
                     <p className="line">{t.line}</p>
                     {(t.maxMembers !== null || t.aiMonthly !== null || t.includes.length > 0) && (
                       <ul>
-                        <li><Icon name="check" /> {t.maxMembers !== null ? `Up to ${t.maxMembers.toLocaleString('en-PH')} members` : 'Any number of members'}
-                          {t.maxStaff !== null ? `, ${t.maxStaff} staff accounts` : t.maxMembers === null ? ' and staff' : ''}</li>
-                        {t.storageMb !== undefined && <li data-plan-storage><Icon name="check" /> {t.storageMb === null ? 'No limit on storage for your videos and photos' : `${storageWords(t.storageMb)} for your videos and photos`}</li>}
-                        {t.aiMonthly !== null && <li><Icon name="check" /> {t.aiMonthly.toLocaleString('en-PH')} AI assistant messages a month, more as you need them</li>}
-                        {t.includes.map((line) => <li key={line}><Icon name="check" /> {line}</li>)}
+                        <li><Icon name="check" /> <span>{t.maxMembers !== null ? `Up to ${t.maxMembers.toLocaleString('en-PH')} members` : 'Any number of members'}
+                          {t.maxStaff !== null ? `, ${t.maxStaff} staff accounts` : t.maxMembers === null ? ' and staff' : ''}</span></li>
+                        {t.storageMb !== undefined && <li data-plan-storage><Icon name="check" /> <span>{t.storageMb === null ? 'No limit on storage for your videos and photos' : `${storageWords(t.storageMb)} for your videos and photos`}</span></li>}
+                        {t.aiMonthly !== null && <li><Icon name="check" /> <span>{t.aiMonthly.toLocaleString('en-PH')} AI assistant messages a month, more as you need them</span></li>}
+                        {t.includes.map((line) => <li key={line}><Icon name="check" /> <span>{line}</span></li>)}
                       </ul>
                     )}
                     <div className="choose-wrap">
@@ -455,21 +467,37 @@ export default function App() {
           </div>
         </section>
 
+        <section id="faq">
+          <div className="wrap faq-grid">
+            <div>
+              <h2 data-reveal>Questions owners ask first.</h2>
+              <p className="section-lede" data-reveal style={{ ['--d' as string]: 1 }}>Something else? Ask in the form below. We answer every application ourselves.</p>
+            </div>
+            <div className="faq-list">
+              {FAQ.map(([q, a], i) => (
+                <details key={q} data-reveal style={{ ['--d' as string]: Math.min(i, 4) }}>
+                  <summary>{q}<span className="plus" aria-hidden="true" /></summary>
+                  <p>{a}</p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+
         <section id="gyms">
           <div className="wrap">
-            <span className="eyebrow">Already on Core Fitness</span>
-            <h2>{gyms === null || gymsFailed ? 'Gyms on Core Fitness'
-              : gyms.length === 1 ? 'One gym, so far' : `${gyms.length} gyms`}</h2>
+            <h2 className="mid">{gyms === null || gymsFailed ? 'Gyms on Core Fitness'
+              : gyms.length === 1 ? 'One gym, so far.' : `${gyms.length} gyms on Core Fitness.`}</h2>
             <p className="section-lede">
               {gymsFailed ? 'The list of gyms is not loading right now.' : 'Members of these gyms sign in with the same app. Tap one to join it.'}
             </p>
             <div className="gyms">
               {gyms?.map((g, i) => (
-                <a className="gym" key={g.id} href={`${MEMBER_APP}/join/${g.slug}`} data-reveal style={{ ['--d' as string]: i }}>
+                <a className="gym" key={g.id} href={`${MEMBER_APP}/join/${g.slug}`} data-reveal style={{ ['--d' as string]: Math.min(i, 6) }}>
                   <span className="mono" aria-hidden="true">{initials(g.name)}</span>
-                  {g.name}
+                  <span>{g.name}</span>
                   {/* One of the platform's demo gyms for a load test (0238). */}
-                  {g.is_demo && <span className="gym-demo">Demo</span>}
+                  {g.is_demo ? <span className="gym-demo">Demo</span> : <span />}
                   <Icon name="arrow" />
                 </a>
               ))}
@@ -550,7 +578,7 @@ function ApplySection({ tiers, chosen, siteAccount }: { tiers: Tier[]; chosen: s
   const shows = (n: number) => !google || gstep === (tiers.length > 0 ? n : n - 1);
   const stepOk = (): string | null => {
     const at = tiers.length > 0 ? gstep : gstep + 1;
-    if (at === 1 && !form.plan) return 'Choose a plan first — you can change it later.';
+    if (at === 1 && !form.plan) return 'Choose a plan first. You can change it later.';
     if (at === 2 && (!form.gym_name.trim() || !form.owner_name.trim() || !form.phone.trim())) return 'Fill in the gym\u2019s name, your name and your mobile number.';
     return null;
   };
@@ -563,7 +591,7 @@ function ApplySection({ tiers, chosen, siteAccount }: { tiers: Tier[]; chosen: s
     e.preventDefault();
     if (trap) return;                       // quietly ignored
     if (!supabase) { setError('This page cannot reach Core Fitness right now. Please email us instead.'); return; }
-    if (tiers.length > 0 && !form.plan) { setError('Choose a plan first — you can change it later.'); return; }
+    if (tiers.length > 0 && !form.plan) { setError('Choose a plan first. You can change it later.'); return; }
     if (IN_EFFECT && !agreed) { setError('Tick the box to agree to the terms for gyms before sending.'); return; }
     // A password even with Google, so the account can also sign in with email and password.
     if (form.password.length < 8) { setError('Choose a password of at least 8 characters for your account.'); return; }
@@ -627,14 +655,14 @@ function ApplySection({ tiers, chosen, siteAccount }: { tiers: Tier[]; chosen: s
     return (
       <section id="apply">
         <span className="eyebrow">Register your gym</span>
-        <h2>Got it — thank you.</h2>
+        <h2>Got it. Thank you.</h2>
         <div className="sent">
           <p style={{ marginTop: 0 }}>
             We read every application ourselves and will reach you by {CONTACT.find(([k]) => k === form.contact_pref)?.[1] ?? 'email'}{' '}
             or at <strong style={{ color: 'var(--text)' }}>{form.email}</strong>.
           </p>
           {acct === 'google' && (
-            <p data-account-google><strong style={{ color: 'var(--text)' }}>You are signed in with Google</strong> — and your password works too. Open{' '}
+            <p data-account-google><strong style={{ color: 'var(--text)' }}>You are signed in with Google</strong>, and your password works too. Open{' '}
               <a href="#account" style={{ color: 'var(--violet-text)' }}>My application</a> to send your business documents and follow our answer.</p>
           )}
           {acct === 'made' && (
@@ -644,7 +672,7 @@ function ApplySection({ tiers, chosen, siteAccount }: { tiers: Tier[]; chosen: s
           )}
           {acct === 'exists' && (
             <p>You already have a Core Fitness account with {form.email}. <a href="#account" style={{ color: 'var(--violet-text)' }}>Sign in</a> with
-              it to send your business documents — the application is found by your email.</p>
+              it to send your business documents. The application is found by your email.</p>
           )}
           {acct === 'failed' && (
             <p>Your application went in, but the account could not be made. <a href="#account" style={{ color: 'var(--violet-text)' }}>Make one</a> with
@@ -653,7 +681,7 @@ function ApplySection({ tiers, chosen, siteAccount }: { tiers: Tier[]; chosen: s
           {link && (
             <>
               <p><strong style={{ color: 'var(--text)' }}>Keep this link.</strong> It is your application's own page: where it stands,
-                our messages, and — once you are in — how to pay from wherever you are.</p>
+                our messages and, once you are in, how to pay from wherever you are.</p>
               <p style={{ wordBreak: 'break-all' }}><a href={link} style={{ color: 'var(--violet-text)' }}>{link}</a></p>
               <div className="cta-row" style={{ marginTop: 18 }}>
                 <button className="cta" type="button" onClick={() => void navigator.clipboard.writeText(link).then(() => setCopied(true))}>
@@ -692,7 +720,7 @@ function ApplySection({ tiers, chosen, siteAccount }: { tiers: Tier[]; chosen: s
           <small>{done === needed.length ? 'Ready to send' : `${done} of ${needed.length} required answers`}</small>
         </div>
         {google ? (
-          <p className="note google-note" data-google-apply>Applying as <strong>{google.email}</strong> with Google — step {gstep} of {gSteps}.</p>
+          <p className="note google-note" data-google-apply>Applying as <strong>{google.email}</strong> with Google. Step {gstep} of {gSteps}.</p>
         ) : (
           <GoogleButton hash="#apply" label="Apply with Google" hint="Fills in your name and email, then asks the rest one step at a time." divider="or fill it in yourself" />
         )}
@@ -754,7 +782,7 @@ function ApplySection({ tiers, chosen, siteAccount }: { tiers: Tier[]; chosen: s
             <legend><span className="num">{tiers.length > 0 ? 3 : 2}</span> Your account</legend>
             <p className="full note" style={{ marginTop: 0 }}>{google
               ? 'You can sign in with Google. Choose a password as well, so you can also sign in with your email and password.'
-              : 'You sign in with your email and this password to follow your application, send your business documents and — once you are in — run your gym. No temporary password to pass around.'}</p>
+              : 'You sign in with your email and this password to follow your application, send your business documents and, once you are in, run your gym. No temporary password to pass around.'}</p>
             <div className="field">
               <label htmlFor="password">Password</label>
               <input id="password" type="password" required minLength={8} autoComplete="new-password" value={form.password} onChange={set('password')} />
@@ -825,7 +853,7 @@ function ApplySection({ tiers, chosen, siteAccount }: { tiers: Tier[]; chosen: s
             </label>
           ) : (
             <p className="note">
-              Our terms for gyms are being finalised — you can read the <a href="#legal/terms" target="_blank" rel="noopener">draft</a>.
+              Our terms for gyms are being finalised. You can read the <a href="#legal/terms" target="_blank" rel="noopener">draft</a>.
             </p>
           )}
 

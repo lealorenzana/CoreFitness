@@ -166,8 +166,8 @@ async (page) => {
   await page.evaluate(() => localStorage.clear());
   NOROLE = true;
   await page.goto('http://localhost:5174/admin/login', { waitUntil: 'domcontentloaded' });
-  await page.locator('input[type=email]').first().waitFor({ timeout: 10000 });
-  await page.locator('input[type=email]').first().fill('gabby@x.test');
+  await page.getByLabel('Email or username').waitFor({ timeout: 10000 });
+  await page.getByLabel('Email or username').fill('gabby@x.test');
   await page.locator('input[type=password]').first().fill('test-only-pass');
   await page.locator('form button[type=submit]').first().click();
   await page.waitForURL('**/admin/application', { timeout: 10000 }).catch(() => {});

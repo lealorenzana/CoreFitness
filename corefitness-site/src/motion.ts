@@ -42,29 +42,24 @@ export function useMotionEngine() {
     );
     const watch = () => document.querySelectorAll('[data-reveal]:not(.in)').forEach((el) => io.observe(el));
     watch();
-    const mo = new MutationObserver(watch);
-    mo.observe(document.body, { childList: true, subtree: true });
+    // Also on class changes: if anything rewrites an element's classes and drops `in` (React re-rendering a
+    // className, 2026-11-22), it is shown again at once instead of sitting invisible until the next DOM change.
+    const mo = new MutationObserver((records) => {
+      for (const r of records) {
+        const el = r.target as Element;
+        if (r.type === 'attributes' && el.hasAttribute?.('data-reveal') && !el.classList.contains('in')) {
+          const b = el.getBoundingClientRect();
+          if (b.bottom > 0 && b.top < window.innerHeight) el.classList.add('in'); else io.observe(el);
+        }
+      }
+      watch();
+    });
+    mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
 
     // --- scroll-driven custom properties -------------------------------------------------
     let frame = 0;
-    // Scroll speed, for the marquee's lean (--vel): eased back to 0 when the scroll stops.
-    let lastY = window.scrollY, vel = 0, settle = 0;
-    const ease = () => {
-      settle = 0;
-      vel *= 0.85;
-      if (Math.abs(vel) < 0.2) vel = 0;
-      root.style.setProperty('--vel', vel.toFixed(2));
-      if (vel !== 0) settle = requestAnimationFrame(ease);
-    };
     const paint = () => {
       frame = 0;
-      if (!still) {
-        const dy = window.scrollY - lastY;
-        lastY = window.scrollY;
-        vel = Math.max(-30, Math.min(30, dy));
-        root.style.setProperty('--vel', vel.toFixed(2));
-        if (!settle) settle = requestAnimationFrame(ease);
-      }
       const vh = window.innerHeight;
       const max = root.scrollHeight - vh;
       root.style.setProperty('--page', String(max > 0 ? clamp(window.scrollY / max) : 0));
@@ -83,50 +78,13 @@ export function useMotionEngine() {
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onScroll);
 
-    // --- pointer: tilt, spotlight, magnetic buttons, cursor glow ---------------------------
-    const fine = window.matchMedia('(pointer: fine)').matches;
-    const glow = document.querySelector<HTMLElement>('.cursor-glow');
-    const onMove = (e: PointerEvent) => {
-      if (glow) glow.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
-      const t = e.target as Element | null;
-      const tilt = t?.closest<HTMLElement>('.tilt');
-      if (tilt) {
-        const r = tilt.getBoundingClientRect();
-        const x = (e.clientX - r.left) / r.width;
-        const y = (e.clientY - r.top) / r.height;
-        tilt.style.setProperty('--mx', `${(x * 100).toFixed(1)}%`);
-        tilt.style.setProperty('--my', `${(y * 100).toFixed(1)}%`);
-        if (!still) {
-          tilt.style.setProperty('--ry', `${((x - 0.5) * 10).toFixed(2)}deg`);
-          tilt.style.setProperty('--rx', `${((0.5 - y) * 10).toFixed(2)}deg`);
-        }
-      }
-      const mag = t?.closest<HTMLElement>('.magnetic');
-      if (mag && !still) {
-        const r = mag.getBoundingClientRect();
-        mag.style.setProperty('--tx', `${((e.clientX - r.left - r.width / 2) * 0.25).toFixed(1)}px`);
-        mag.style.setProperty('--ty', `${((e.clientY - r.top - r.height / 2) * 0.35).toFixed(1)}px`);
-      }
-    };
-    const onLeave = (e: PointerEvent) => {
-      const el = e.target as HTMLElement;
-      if (el.classList?.contains('tilt')) { el.style.setProperty('--rx', '0deg'); el.style.setProperty('--ry', '0deg'); }
-      if (el.classList?.contains('magnetic')) { el.style.setProperty('--tx', '0px'); el.style.setProperty('--ty', '0px'); }
-    };
-    if (fine) {
-      document.addEventListener('pointermove', onMove, { passive: true });
-      document.addEventListener('pointerout', onLeave, { passive: true });
-      root.classList.add('fine');
-    }
+    // No pointer effects (2026-11-21): tilt, magnetic buttons and the cursor glow were removed as decoration.
 
     return () => {
       io.disconnect(); mo.disconnect();
       if (frame) cancelAnimationFrame(frame);
-      if (settle) cancelAnimationFrame(settle);
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onScroll);
-      document.removeEventListener('pointermove', onMove);
-      document.removeEventListener('pointerout', onLeave);
     };
   }, []);
 }

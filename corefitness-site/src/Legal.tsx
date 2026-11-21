@@ -94,7 +94,7 @@ export default function Legal({ doc, section }: { doc: DocKey; section: string |
           <div className="lg-meta">
             <span className="pill"><Icon name="clock" /> Version of {prettyDate(VERSION)}</span>
             <span className="pill"><Icon name="shield" /> Written to {d.law}</span>
-            {!live && <span className="pill lg-draft"><Icon name="alert" /> Draft — not yet in effect</span>}
+            {!live && <span className="pill lg-draft"><Icon name="alert" /> Draft, not yet in effect</span>}
           </div>
           <p className="lede">{d.lede}</p>
           {!live && (

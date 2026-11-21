@@ -39,7 +39,7 @@ export default function DeleteAccount({ onDeleted }: { onDeleted: () => void }) 
   return (
     <div className="sign-in-methods" data-delete-account>
       <h2 className="status-h">Delete my account</h2>
-      <p className="status-sub">Locked straight away and erased after 7 days — sign back in before then to keep it. An application still
+      <p className="status-sub">Locked straight away and erased after 7 days. Sign back in before then to keep it. An application still
         waiting is called off and your documents erased; we keep the application itself as the record of what was asked and answered.</p>
       {blocked ? <p className="note bad" data-delete-blocked>{blocked}</p> : asking ? (
         <div className="cta-row" style={{ alignItems: 'center' }}>
@@ -76,7 +76,7 @@ export function DeletionPending({ eraseAfter, onKept, onSignOut }: { eraseAfter:
       <p className="status-lede">It will be erased on {day(eraseAfter)}. Keep it, and everything stays as it was.</p>
       <div className="cta-row">
         <button type="button" className="cta" disabled={busy} onClick={() => void keep()} data-keep-account>{busy ? 'Keeping…' : 'Keep my account'}</button>
-        <button type="button" className="cta ghost" onClick={onSignOut}>Sign out — let it be deleted</button>
+        <button type="button" className="cta ghost" onClick={onSignOut}>Sign out and let it be deleted</button>
       </div>
       {error && <p className="note bad">{error}</p>}
     </div>

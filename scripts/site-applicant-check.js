@@ -133,7 +133,7 @@ async (page) => {
   const up = CALLS.find((c) => c[0] === 'upload');
   out.push('a document uploads into the application\'s folder, then is attached as a draft: ' + (up && up[1].includes(`/applications/${APP}/bir_2303-`)
     && add && add[1].p_application === APP && add[1].p_kind === 'bir_2303' && add[1].p_path.startsWith(`${APP}/bir_2303-`) && add[1].p_expires_on === null ? 'yes' : 'MISSING ' + JSON.stringify([up, add])));
-  out.push('…and shows as attached, not sent: ' + (/Attached — not sent yet/.test(await page.locator('[data-doc="bir_2303"]').innerText()) ? 'yes' : 'MISSING'));
+  out.push('…and shows as attached, not sent: ' + (/Attached, not sent yet/.test(await page.locator('[data-doc="bir_2303"]').innerText()) ? 'yes' : 'MISSING'));
   const idRow = page.locator('[data-doc="owner_id"]');
   await idRow.locator('input[type=file]').setInputFiles({ name: 'id.jpg', mimeType: 'image/jpeg', buffer: Buffer.from([0xff, 0xd8, 0xff]) });
   await page.waitForTimeout(300);
@@ -195,7 +195,7 @@ async (page) => {
   await page.goto('about:blank');
   await page.goto('http://localhost:5176/#apply', { waitUntil: 'domcontentloaded' });
   await page.locator('[data-google-apply]').waitFor({ timeout: 10000 }).catch(async () => { throw new Error('no google mode: ' + JSON.stringify(await page.evaluate(() => Object.keys(localStorage))) + ' ' + (await page.locator('#apply').innerText()).slice(0, 160)); });
-  out.push('applying with Google says who, and that it goes step by step: ' + (/Applying as gabby\.owner@gmail\.com with Google — step 1 of 2/.test(await page.locator('#apply').innerText()) ? 'yes' : 'MISSING'));
+  out.push('applying with Google says who, and that it goes step by step: ' + (/Applying as gabby\.owner@gmail\.com with Google\. Step 1 of 2/.test(await page.locator('#apply').innerText()) ? 'yes' : 'MISSING'));
   out.push('the name and email come from Google, the email fixed: ' + ((await page.locator('#owner_name').inputValue()) === 'Gabby Owner'
     && (await page.locator('#email').inputValue()) === 'gabby.owner@gmail.com' && (await page.locator('#email').getAttribute('readonly')) !== null ? 'yes' : 'MISSING'));
   out.push('the password waits for the last step: ' + ((await page.locator('#password').count()) === 0 ? 'yes' : 'STILL SHOWN'));

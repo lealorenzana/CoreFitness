@@ -24,7 +24,7 @@ export default function SignInMethods() {
     })();
     // Back from Google after linking: say so once and clean the address.
     if (window.location.hash.includes('linked=google')) {
-      setNote('Google is connected — you can sign in with it from now on.');
+      setNote('Google is connected. You can sign in with it from now on.');
       window.history.replaceState(null, '', `${window.location.pathname}#account`);
     }
   }, []);
@@ -40,13 +40,13 @@ export default function SignInMethods() {
     const { error } = await supabase.auth.linkIdentity({
       provider: 'google', options: { redirectTo: `${window.location.origin}${window.location.pathname}#account?linked=google` },
     });
-    if (error) { setBusy(false); setNote(/manual linking|disabled/i.test(error.message) ? 'Connecting Google is not switched on yet — write to us below.' : error.message); }
+    if (error) { setBusy(false); setNote(/manual linking|disabled/i.test(error.message) ? 'Connecting Google is not switched on yet. Write to us below.' : error.message); }
   };
 
   return (
     <div className="card" data-signin-methods>
       <h2 className="status-h">How you sign in</h2>
-      <p className="status-sub">This account is your login to the gym app once your gym is let in — no second password.</p>
+      <p className="status-sub">This account is your login to the gym app once your gym is let in. No second password.</p>
       <ul className="doc-list">
         {password && (
           <li className="doc"><div className="doc-head"><strong>Email and password</strong><span className="doc-state">{email}</span></div></li>

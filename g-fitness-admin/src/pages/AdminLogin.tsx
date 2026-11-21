@@ -1,53 +1,26 @@
 import { useEffect, useState } from 'react';
-import { motion, AnimatePresence, useMotionValue, useTransform, useScroll } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, ChevronDown } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { showToast } from '../utils/toast';
-import LandingFooter from '../components/ui/LandingFooter';
-import OwnerStory from '../components/landing/OwnerStory';
 import { arrivedByResetLink, supabase } from '../lib/supabaseClient';
 import { clearGymContext, getGymContext, myGyms, usableGyms } from '../lib/gymContext';
 import { myApplications } from '../lib/api/applications';
 import { getSessionPersistence, setSessionPersistence } from '../lib/authStorage';
 import { realEmail, signInWithLogin } from '../lib/api/logins';
 import { clearAdminCaches } from '../lib/adminCaches';
+import './login.css';
+import LoginFloorPlan from './LoginFloorPlan';
 
-// Floating particles
-function Particles() {
-  // Rolled once, when the page opens — a re-render must not scatter them again.
-  const [dots] = useState(() => Array.from({ length: 30 }, () => ({
-    left: Math.random() * 100, top: Math.random() * 100, rise: 30 + Math.random() * 50, drift: (Math.random() - 0.5) * 30,
-    grow: 1 + Math.random(), duration: 4 + Math.random() * 4, delay: Math.random() * 5,
-  })));
-  return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none z-[1]">
-      {dots.map((d, i) => (
-        <motion.div
-          key={i}
-          className="absolute w-1 h-1 rounded-full"
-          style={{
-            background: i % 3 === 0 ? 'rgba(124,58,237,0.6)' : 'rgba(255,255,255,0.3)',
-            left: `${d.left}%`,
-            top: `${d.top}%`,
-          }}
-          animate={{
-            y: [0, -d.rise, 0],
-            x: [0, d.drift, 0],
-            opacity: [0, 0.8, 0],
-            scale: [0, d.grow, 0],
-          }}
-          transition={{
-            duration: d.duration,
-            repeat: Infinity,
-            delay: d.delay,
-            ease: 'easeInOut',
-          }}
-        />
-      ))}
-    </div>
-  );
-}
+const MEMBER_APP = 'https://corefitness-gym.vercel.app';
+const SITE = 'https://corefitness-site.vercel.app';
 
+/**
+ * The gym sign-in (redesigned 2026-11-21, design/lessons/LESSONS.md): the owner picked the "quiet column"
+ * (design/admin-login/mockups.html). The particles, glow orbs, light beams, mouse tilt, gradient headline and the
+ * scroll story below the form are gone; every way in is kept —
+ * email or username, Keep me signed in, Forgot password, Google, the from-website "already signed in"
+ * question, the deleted-account note, reset links and invitations.
+ */
 export default function AdminLogin() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
@@ -57,31 +30,23 @@ export default function AdminLogin() {
   // Defaults to the last choice, and to ON for a first-time sign-in — the
   // expectation here is Facebook-style: signed in until you press Logout.
   const [rememberMe, setRememberMe] = useState(getSessionPersistence);
-  const [focusedInput, setFocusedInput] = useState<string | null>(null);
 
-  // 3D tilt effect
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-  const rotateX = useTransform(mouseY, [-300, 300], [8, -8]);
-  const rotateY = useTransform(mouseX, [-300, 300], [-8, 8]);
-
-  // Scroll-based parallax for login content
-  const { scrollY } = useScroll();
-  const loginOpacity = useTransform(scrollY, [0, 400], [1, 0]);
-  const loginY = useTransform(scrollY, [0, 400], [0, -60]);
-  const loginScale = useTransform(scrollY, [0, 400], [1, 0.95]);
-  const loginBlur = useTransform(scrollY, [0, 400], [0, 8]);
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    mouseX.set(e.clientX - rect.left - rect.width / 2);
-    mouseY.set(e.clientY - rect.top - rect.height / 2);
+  /** What went wrong, said under the password field (never only a toast that vanishes), and a shake to point at it. */
+  const [formError, setFormError] = useState<string | null>(null);
+  const [shake, setShake] = useState(false);
+  const [capsOn, setCapsOn] = useState(false);
+  /** Signed in: the button turns into a check while the dashboard opens. */
+  const [signedIn, setSignedIn] = useState(false);
+  const refuse = (message: string) => {
+    setFormError(message);
+    setShake(false);
+    requestAnimationFrame(() => setShake(true));
   };
-  const handleMouseLeave = () => { mouseX.set(0); mouseY.set(0); };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) { showToast('Please enter both email and password', 'error'); return; }
+    if (!email || !password) { refuse('Enter your email or username, and your password.'); return; }
+    setFormError(null);
     setIsLoading(true);
 
     // BEFORE the sign-in, not after: the storage adapter is consulted when
@@ -92,11 +57,14 @@ export default function AdminLogin() {
     // 0236: an email or a username.
     const { error } = await signInWithLogin(email, password);
     if (error) {
-      showToast(/invalid login credentials/i.test(error) ? 'That email or username and password don’t match.' : error, 'error');
+      refuse(/invalid login credentials/i.test(error) ? 'That email or username and password don’t match.' : error);
       setIsLoading(false);
       return;
     }
+    setSignedIn(true);
     await routeSignedIn();
+    // Still here (no admin access, or an application): the check goes back to a button.
+    setSignedIn(false);
   };
 
   // From the website's "Gym sign in" (?from=site, 2026-11-08) with this browser already signed in: say who, and ask —
@@ -154,7 +122,7 @@ export default function AdminLogin() {
       }
       await supabase.auth.signOut({ scope: 'local' });
       clearGymContext();
-      showToast('This account does not have admin access', 'error');
+      refuse('This account does not have admin access. Coaches and members sign in on the phone app.');
       setIsLoading(false);
       return;
     }
@@ -202,300 +170,102 @@ export default function AdminLogin() {
       ? 'Google sign-in is not switched on yet. Use your email and password.' : error.message, 'error');
   };
 
+  const deletedNote = new URLSearchParams(window.location.search).get('deleted') === '1';
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   return (
     // A dark branded page in both modes (0234): .keep-dark keeps light mode's overrides off it.
-    <div className="w-full relative keep-dark" style={{ background: '#000' }}>
-    {already && (
-      <div className="fixed inset-0 z-[80] grid place-items-center p-6" style={{ background: 'rgba(5,5,10,0.82)', backdropFilter: 'blur(8px)' }}
-        role="dialog" aria-modal="true" aria-label="Already signed in" data-already-signed-in>
-        <div className="w-full max-w-[440px] rounded-2xl p-7" style={{ background: '#13121c', border: '1px solid rgba(255,255,255,0.12)' }}>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: '#A78BFA' }}>You came from the website</p>
-          <h2 className="mt-3 text-[21px] font-semibold text-white">This browser is signed in as {already.name}</h2>
-          <p className="mt-2 text-[14px]" style={{ color: 'rgba(255,255,255,0.7)' }}>
-            {already.email ? <>{already.email}{already.gym ? ' · ' : ''}</> : null}{already.gym ?? ''}
-          </p>
-          <p className="mt-3 text-[13.5px]" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            If you meant another account — the one you applied with on the website — sign out here and sign in with it.
-          </p>
-          <button type="button" className="mt-5 w-full h-11 rounded-xl font-semibold bg-white text-black" data-continue
-            onClick={() => { setAlready(null); void routeSignedIn(); }}>Continue as {already.name}</button>
-          <button type="button" className="mt-2 w-full h-11 rounded-xl font-semibold text-white" data-switch
-            style={{ border: '1px solid rgba(255,255,255,0.2)' }} onClick={() => void switchAccount()}>Sign out and use another account</button>
-        </div>
-      </div>
-    )}
-    {/* Login Section — full viewport */}
-    <div className="min-h-screen w-full relative overflow-hidden flex flex-col items-center justify-center">
-      {/* Background violet gradient */}
-      <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(124,58,237,0.4), rgba(124,58,237,0.15), #000)' }} />
-      {/* Bottom fade to next section */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 pointer-events-none z-20"
-        style={{ background: 'linear-gradient(to bottom, transparent, #000)' }} />
-
-      {/* Noise texture */}
-      <div className="absolute inset-0 opacity-[0.03] mix-blend-soft-light"
-        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`, backgroundSize: '200px 200px' }} />
-
-      {/* Animated glow orbs */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[120vh] h-[60vh] rounded-b-[50%]" style={{ background: 'rgba(124,58,237,0.2)', filter: 'blur(80px)' }} />
-      {/* `x: '-50%'` is handed to Framer instead of using `-translate-x-1/2`.
-          Admin is Tailwind v3, where that class compiles to `transform:
-          translate(…)` — and these orbs animate `scale`, so Framer overwrites
-          `transform` every frame and the centring is silently dropped. (Member
-          is v4, which compiles to the standalone `translate` property and is
-          immune; verified in both built bundles.) Framer composes `x` into the
-          transform it owns, so the two no longer fight. */}
-      <motion.div className="absolute top-0 left-1/2 w-[100vh] h-[60vh] rounded-b-full"
-        style={{ background: 'rgba(124,58,237,0.2)', filter: 'blur(60px)', x: '-50%' }}
-        animate={{ opacity: [0.15, 0.3, 0.15], scale: [0.98, 1.02, 0.98] }}
-        transition={{ duration: 8, repeat: Infinity, repeatType: 'mirror' }} />
-      <motion.div className="absolute bottom-0 left-1/2 w-[90vh] h-[90vh] rounded-t-full"
-        style={{ background: 'rgba(124,58,237,0.2)', filter: 'blur(60px)', x: '-50%' }}
-        animate={{ opacity: [0.3, 0.5, 0.3], scale: [1, 1.1, 1] }}
-        transition={{ duration: 6, repeat: Infinity, repeatType: 'mirror', delay: 1 }} />
-
-      {/* Extra mesh gradient orbs */}
-      <motion.div className="absolute top-1/4 left-[15%] w-64 h-64 rounded-full"
-        style={{ background: 'rgba(245,158,11,0.08)', filter: 'blur(80px)' }}
-        animate={{ x: [0, 30, 0], y: [0, -20, 0] }}
-        transition={{ duration: 10, repeat: Infinity, repeatType: 'mirror' }} />
-      <motion.div className="absolute bottom-1/3 right-[15%] w-72 h-72 rounded-full"
-        style={{ background: 'rgba(124,58,237,0.1)', filter: 'blur(90px)' }}
-        animate={{ x: [0, -25, 0], y: [0, 15, 0] }}
-        transition={{ duration: 12, repeat: Infinity, repeatType: 'mirror', delay: 2 }} />
-
-      {/* Floating particles */}
-      <Particles />
-
-      {/* All login content — fades/moves on scroll */}
-      <motion.div
-        style={{ opacity: loginOpacity, y: loginY, scale: loginScale, filter: useTransform(loginBlur, v => `blur(${v}px)`) }}
-        className="relative z-10 flex flex-col items-center"
-      >
-
-      {/* Tagline above card */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 1, delay: 0.3 }}
-        className="relative z-10 text-center mb-8"
-      >
-        <motion.p
-          className="text-xs font-semibold uppercase tracking-[0.3em] mb-2"
-          style={{ color: 'rgba(124,58,237,0.8)' }}
-          animate={{ opacity: [0.6, 1, 0.6] }}
-          transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-        >
-          Gym Management Platform
-        </motion.p>
-        <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
-          <span className="text-white">The Future of </span>
-          <span className="relative inline-block">
-            <span className="relative z-10 text-transparent bg-clip-text"
-              style={{ backgroundImage: 'linear-gradient(90deg, #7C3AED, #F59E0B, #7C3AED)', backgroundSize: '200% 100%', animation: 'gradient-shift 4s ease-in-out infinite' }}>
-              Fitness
-            </span>
-          </span>
-          <span className="text-white"> Starts Here </span>
-        </h2>
-      </motion.div>
-
-      {/* Card with 3D tilt */}
-      <motion.div
-        initial={{ opacity: 0, y: 30, scale: 0.95, filter: 'blur(10px)' }}
-        animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-        transition={{ duration: 0.8, delay: 0.5 }}
-        className="w-full max-w-sm relative z-10"
-        style={{ perspective: 1500 }}
-      >
-        <motion.div
-          className="relative"
-          style={{ rotateX, rotateY }}
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
-          whileHover={{ z: 10 }}
-        >
-          <div className="relative group">
-            {/* Card glow effect */}
-            <motion.div className="absolute -inset-[1px] rounded-2xl opacity-0 group-hover:opacity-70 transition-opacity duration-700"
-              animate={{ boxShadow: ['0 0 10px 2px rgba(255,255,255,0.03)', '0 0 15px 5px rgba(255,255,255,0.05)', '0 0 10px 2px rgba(255,255,255,0.03)'], opacity: [0.2, 0.4, 0.2] }}
-              transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', repeatType: 'mirror' }} />
-
-            {/* Traveling light beams */}
-            <div className="absolute -inset-[1px] rounded-2xl overflow-hidden pointer-events-none">
-              <motion.div className="absolute top-0 left-0 h-[3px] w-[50%] opacity-70"
-                style={{ background: 'linear-gradient(to right, transparent, white, transparent)', filter: 'blur(1.5px)' }}
-                animate={{ left: ['-50%', '100%'], opacity: [0.3, 0.7, 0.3] }}
-                transition={{ left: { duration: 2.5, ease: 'easeInOut', repeat: Infinity, repeatDelay: 1 }, opacity: { duration: 1.2, repeat: Infinity, repeatType: 'mirror' } }} />
-              <motion.div className="absolute top-0 right-0 h-[50%] w-[3px] opacity-70"
-                style={{ background: 'linear-gradient(to bottom, transparent, white, transparent)', filter: 'blur(1.5px)' }}
-                animate={{ top: ['-50%', '100%'], opacity: [0.3, 0.7, 0.3] }}
-                transition={{ top: { duration: 2.5, ease: 'easeInOut', repeat: Infinity, repeatDelay: 1, delay: 0.6 }, opacity: { duration: 1.2, repeat: Infinity, repeatType: 'mirror', delay: 0.6 } }} />
-              <motion.div className="absolute bottom-0 right-0 h-[3px] w-[50%] opacity-70"
-                style={{ background: 'linear-gradient(to right, transparent, white, transparent)', filter: 'blur(1.5px)' }}
-                animate={{ right: ['-50%', '100%'], opacity: [0.3, 0.7, 0.3] }}
-                transition={{ right: { duration: 2.5, ease: 'easeInOut', repeat: Infinity, repeatDelay: 1, delay: 1.2 }, opacity: { duration: 1.2, repeat: Infinity, repeatType: 'mirror', delay: 1.2 } }} />
-              <motion.div className="absolute bottom-0 left-0 h-[50%] w-[3px] opacity-70"
-                style={{ background: 'linear-gradient(to bottom, transparent, white, transparent)', filter: 'blur(1.5px)' }}
-                animate={{ bottom: ['-50%', '100%'], opacity: [0.3, 0.7, 0.3] }}
-                transition={{ bottom: { duration: 2.5, ease: 'easeInOut', repeat: Infinity, repeatDelay: 1, delay: 1.8 }, opacity: { duration: 1.2, repeat: Infinity, repeatType: 'mirror', delay: 1.8 } }} />
-              {/* Corner spots */}
-              <motion.div className="absolute top-0 left-0 h-[5px] w-[5px] rounded-full bg-white/40" style={{ filter: 'blur(1px)' }} animate={{ opacity: [0.2, 0.4, 0.2] }} transition={{ duration: 2, repeat: Infinity, repeatType: 'mirror' }} />
-              <motion.div className="absolute top-0 right-0 h-[8px] w-[8px] rounded-full bg-white/60" style={{ filter: 'blur(2px)' }} animate={{ opacity: [0.2, 0.4, 0.2] }} transition={{ duration: 2.4, repeat: Infinity, repeatType: 'mirror', delay: 0.5 }} />
-              <motion.div className="absolute bottom-0 right-0 h-[8px] w-[8px] rounded-full bg-white/60" style={{ filter: 'blur(2px)' }} animate={{ opacity: [0.2, 0.4, 0.2] }} transition={{ duration: 2.2, repeat: Infinity, repeatType: 'mirror', delay: 1 }} />
-              <motion.div className="absolute bottom-0 left-0 h-[5px] w-[5px] rounded-full bg-white/40" style={{ filter: 'blur(1px)' }} animate={{ opacity: [0.2, 0.4, 0.2] }} transition={{ duration: 2.3, repeat: Infinity, repeatType: 'mirror', delay: 1.5 }} />
-            </div>
-
-            {/* Hover border glow */}
-            <div className="absolute -inset-[0.5px] rounded-2xl opacity-0 group-hover:opacity-70 transition-opacity duration-500"
-              style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.07), rgba(255,255,255,0.03))' }} />
-
-            {/* Glass card */}
-            <div className="relative rounded-2xl p-7 overflow-hidden"
-              style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(20px)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.05)', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' }}>
-              <div className="absolute inset-0 opacity-[0.03]"
-                style={{ backgroundImage: 'linear-gradient(135deg, white 0.5px, transparent 0.5px), linear-gradient(45deg, white 0.5px, transparent 0.5px)', backgroundSize: '30px 30px' }} />
-
-              {/* Logo — staggered entrance */}
-              <div className="text-center space-y-2 mb-6 relative">
-                <motion.div initial={{ scale: 0, opacity: 0, rotate: -180 }} animate={{ scale: 1, opacity: 1, rotate: 0 }}
-                  transition={{ type: 'spring', duration: 1, delay: 0.6 }}
-                  className="mx-auto w-12 h-12 rounded-full overflow-hidden relative"
-                  style={{ border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)' }}>
-                  <img src="/core-fitness-logo.png" alt="Core Fitness" className="w-full h-full object-cover" />
-                  <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom right, rgba(255,255,255,0.1), transparent)' }} />
-                </motion.div>
-                <motion.h1 initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8, duration: 0.5 }}
-                  className="text-xl font-bold text-white">Welcome Back</motion.h1>
-                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }}
-                  className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Sign in to Core Fitness Admin</motion.p>
-              </div>
-
-              {/* 0225: just asked to delete the account — what happens next. */}
-              {new URLSearchParams(window.location.search).get('deleted') === '1' && (
-                <p role="status" data-deleted-note className="text-xs text-center mb-3" style={{ color: 'rgba(255,255,255,0.75)' }}>
-                  Your account is locked and will be erased in 7 days. Sign in before then if you want to keep it.
-                </p>
-              )}
-              {/* Form — staggered field reveals */}
-              <form onSubmit={handleLogin} className="space-y-3 relative">
-                <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1.0 }}
-                  className="relative" whileHover={{ scale: 1.01 }}>
-                  <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 transition-colors duration-300"
-                    style={{ color: focusedInput === 'email' ? '#fff' : 'rgba(255,255,255,0.35)' }} />
-                  <input type="text" inputMode="email" autoCapitalize="off" autoComplete="username" placeholder="Email or username" aria-label="Email or username" value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    onFocus={() => setFocusedInput('email')} onBlur={() => setFocusedInput(null)}
-                    className="w-full h-10 pl-10 pr-4 rounded-lg text-sm text-white placeholder-white/30 transition-all duration-300"
-                    style={{ background: focusedInput === 'email' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${focusedInput === 'email' ? 'rgba(255,255,255,0.2)' : 'transparent'}` }} />
-                </motion.div>
-
-                <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1.1 }}
-                  className="relative" whileHover={{ scale: 1.01 }}>
-                  <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 transition-colors duration-300"
-                    style={{ color: focusedInput === 'password' ? '#fff' : 'rgba(255,255,255,0.35)' }} />
-                  <input type={showPassword ? 'text' : 'password'} placeholder="Password" value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    onFocus={() => setFocusedInput('password')} onBlur={() => setFocusedInput(null)}
-                    className="w-full h-10 pl-10 pr-10 rounded-lg text-sm text-white placeholder-white/30 transition-all duration-300"
-                    style={{ background: focusedInput === 'password' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${focusedInput === 'password' ? 'rgba(255,255,255,0.2)' : 'transparent'}` }} />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors duration-300 hover:text-white"
-                    style={{ color: 'rgba(255,255,255,0.35)' }}>
-                    {showPassword ? <Eye size={16} /> : <EyeOff size={16} />}
-                  </button>
-                </motion.div>
-
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2 }}
-                  className="flex items-center justify-between pt-1">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <div className="relative">
-                      <input type="checkbox" checked={rememberMe} onChange={() => setRememberMe(!rememberMe)}
-                        className="appearance-none w-4 h-4 rounded border border-white/20 bg-white/5 checked:bg-white checked:border-white transition-all duration-200" />
-                      {rememberMe && (
-                        <motion.div initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }}
-                          className="absolute inset-0 flex items-center justify-center text-black pointer-events-none">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                        </motion.div>
-                      )}
-                    </div>
-                    <span className="text-xs text-white/60">Remember me</span>
-                  </label>
-                  <button type="button" data-forgot-link onClick={() => navigate('/admin/forgot-password', { state: { email } })} className="text-xs text-white/60 hover:text-white transition-colors">Forgot password?</button>
-                </motion.div>
-
-                <motion.button type="submit" disabled={isLoading} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.3 }}
-                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                  className="w-full relative group/button mt-5">
-                  <div className="absolute inset-0 bg-white/10 rounded-lg opacity-0 group-hover/button:opacity-70 transition-opacity duration-300" style={{ filter: 'blur(12px)' }} />
-                  <div className="relative overflow-hidden bg-white text-black font-medium h-10 rounded-lg flex items-center justify-center">
-                    <AnimatePresence mode="wait">
-                      {isLoading ? (
-                        <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                          <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                        </motion.div>
-                      ) : (
-                        <motion.span key="text" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                          className="flex items-center gap-1.5 text-sm font-medium">
-                          Sign In <ArrowRight size={14} className="group-hover/button:translate-x-1 transition-transform duration-300" />
-                        </motion.span>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                </motion.button>
-
-              </form>
-              {/* Google (0190): an owner or desk whose Google address is their account's. */}
-              <button type="button" onClick={() => void signInWithGoogle()} data-google-button
-                className="relative z-10 mt-3 w-full h-11 rounded-xl flex items-center justify-center gap-2.5 text-sm font-semibold"
-                style={{ background: '#fff', color: '#1f1f1f' }}>
-                <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
-                  <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z" />
-                  <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" />
-                  <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z" />
-                  <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z" />
-                </svg>
-                Continue with Google
-              </button>
-            </div>
+    <div className="al keep-dark">
+      <LoginFloorPlan />
+      {already && (
+        <div className="al-dialog" role="dialog" aria-modal="true" aria-label="Already signed in" data-already-signed-in>
+          <div>
+            <h2>This browser is signed in as {already.name}</h2>
+            <p>{already.email ? <>{already.email}{already.gym ? ' · ' : ''}</> : null}{already.gym ?? ''}</p>
+            <p>You came from the website. If you meant another account, the one you applied with there, sign out here and sign in with it.</p>
+            <button type="button" className="al-btn primary" data-continue
+              onClick={() => { setAlready(null); void routeSignedIn(); }}>Continue as {already.name}</button>
+            <button type="button" className="al-btn ghost" data-switch onClick={() => void switchAccount()}>Sign out and use another account</button>
           </div>
-        </motion.div>
-      </motion.div>
+        </div>
+      )}
 
+      <header className="al-edge">
+        <a className="al-brand" href={SITE}><img src="/core-fitness-logo.png" alt="" width={28} height={28} />Core Fitness</a>
+        <span className="al-quiet">New gym? <a href={`${SITE}/#apply`}>Register <ArrowRight size={14} aria-hidden /></a></span>
+      </header>
 
+      <main className="al-main">
+        <div className="al-col">
+          <p className="al-hello">{greeting}.</p>
+          <h1>Sign in to your gym</h1>
+          <p className="al-sub">Owners and the front desk.</p>
+          {/* 0225: just asked to delete the account: what happens next. */}
+          {deletedNote && (
+            <p role="status" data-deleted-note className="al-note">Your account is locked and will be erased in 7 days. Sign in before then if you want to keep it.</p>
+          )}
 
-      </motion.div>
-      {/* End of scroll-animated login content */}
+          {/* Google (0190) first: most owners sign in with the Google address their account was made with. */}
+          <button type="button" className="al-btn google" onClick={() => void signInWithGoogle()} data-google-button>
+            <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+              <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z" />
+              <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" />
+              <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z" />
+              <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z" />
+            </svg>
+            Continue with Google
+          </button>
+          <div className="al-or">or with your email or username</div>
 
-      {/* Scroll indicator */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 2.5 }}
-        className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2"
-      >
-        <span className="text-[10px] uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.3)' }}>Scroll to explore</span>
-        <motion.div
-          animate={{ y: [0, 6, 0] }}
-          transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
-        >
-          <ChevronDown size={18} style={{ color: 'rgba(255,255,255,0.4)' }} />
-        </motion.div>
-      </motion.div>
-    </div>
+          <form onSubmit={handleLogin} className={`al-form${shake ? ' shake' : ''}`} onAnimationEnd={() => setShake(false)} noValidate>
+            <div className="al-field">
+              <label htmlFor="al-login">Email or username</label>
+              <input id="al-login" className="al-input" type="text" inputMode="email" autoCapitalize="off" autoCorrect="off" spellCheck={false} autoComplete="username"
+                placeholder="name@yourgym.com or username" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </div>
+            <div className="al-field">
+              <label htmlFor="al-password">Password</label>
+              <div className="al-pw">
+                <input id="al-password" className="al-input" type={showPassword ? 'text' : 'password'} autoComplete="current-password"
+                  aria-invalid={!!formError} aria-describedby="al-msg"
+                  onKeyUp={(e) => setCapsOn(e.getModifierState('CapsLock'))} onBlur={() => setCapsOn(false)}
+                  value={password} onChange={(e) => { setPassword(e.target.value); if (formError) setFormError(null); }} />
+                <button type="button" className="al-show" onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword}>
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
+              {/* The space is kept, so the button below never moves when a message appears. */}
+              <p id="al-msg" className={`al-msg${formError ? ' bad' : ''}`} role={formError ? 'alert' : undefined} aria-live="polite">
+                {formError ?? (capsOn ? 'Caps Lock is on.' : '')}
+              </p>
+            </div>
+            <div className="al-row">
+              <label className="al-check">
+                <input type="checkbox" checked={rememberMe} onChange={() => setRememberMe(!rememberMe)} />
+                Keep me signed in
+              </label>
+              <button type="button" className="al-link" data-forgot-link onClick={() => navigate('/admin/forgot-password', { state: { email } })}>Forgot password?</button>
+            </div>
+            <button type="submit" className={`al-btn primary${signedIn ? ' done' : ''}`} disabled={isLoading} aria-busy={isLoading}>
+              {signedIn
+                ? <><svg className="al-tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" pathLength={1} /></svg>Signed in</>
+                : isLoading ? <><span className="al-spin" aria-hidden />Signing in…</> : 'Sign in'}
+            </button>
+          </form>
 
-    {/* The story (2026-11-07): the statement, an owner's day pinned, everything in it — then the ending. */}
-    <OwnerStory />
-    <LandingFooter />
+          <p className="al-who">Coach or member? You sign in on the phone app. <a href={`${MEMBER_APP}/get-app`}>Get the app <ArrowRight size={14} aria-hidden /></a></p>
+        </div>
+      </main>
 
-    {/* Gradient text animation */}
-    <style>{`
-      @keyframes gradient-shift {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
-      }
-    `}</style>
+      <footer className="al-edge al-foot">
+        <span>Made in Mamburao, Occidental Mindoro</span>
+        <span className="al-links">
+          <a href={`${SITE}/#legal/terms`}>Terms</a>
+          <a href={`${SITE}/#legal/privacy`}>Privacy</a>
+          <a href={SITE}>About Core Fitness</a>
+        </span>
+      </footer>
     </div>
   );
 }

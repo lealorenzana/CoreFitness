@@ -1207,31 +1207,86 @@ html, body {
 }
 .streak-plan-hint b { color: var(--color-secondary); font-weight: 700; }
 
-/* Get the app (/get-app): a panel per platform, numbered steps with the real icons. */
-.getapp-panel { margin-top: 14px; display: flex; flex-direction: column; gap: 14px; }
-.getapp-steps { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 0; list-style: none; }
-.getapp-step { display: flex; gap: 12px; align-items: flex-start; }
-.getapp-step__n {
-  flex: none; width: 26px; height: 26px; border-radius: 999px; display: grid; place-items: center;
-  font-size: 12.5px; font-weight: 700; color: var(--color-primary-300);
-  background: color-mix(in srgb, var(--color-primary) 16%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-primary) 40%, transparent);
+/* Get the app (/get-app), redesigned 2026-11-21 (design/lessons/LESSONS.md): a real page at every width.
+   Phone: one column. Computer: the steps beside a code that opens the page on the phone. No glow; one action. */
+.gp { width: 100%; max-width: 1040px; margin: 0 auto; padding: 8px 0 48px; }
+.gp-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; }
+.gp-back { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 2px; border: 0; background: none; cursor: pointer;
+  font-size: 14px; font-weight: 600; color: var(--color-text-secondary); }
+.gp-back:hover { color: var(--color-text-primary); }
+.gp-brand { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 650; color: var(--color-text-primary); }
+.gp-brand img { width: 26px; height: 26px; border-radius: 50%; }
+.gp-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 40px; margin-top: 18px; }
+.gp-title { font-size: 34px; font-weight: 700; letter-spacing: -0.035em; line-height: 1.05; color: var(--color-text-primary); }
+.gp-lede { margin-top: 12px; font-size: 15.5px; line-height: 1.55; color: var(--color-text-secondary); max-width: 46ch; }
+.gp-facts { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 16px 0 0; padding: 0; list-style: none; font-size: 13px; font-weight: 600; color: var(--color-text-muted); }
+.gp-facts li { display: inline-flex; align-items: center; gap: 8px; }
+.gp-facts li + li::before { content: ''; width: 3px; height: 3px; border-radius: 50%; background: currentColor; }
+
+.gp-install, .gp-join { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--color-hairline); }
+.gp-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.gp-install h2, .gp-join h2 { font-size: 18px; font-weight: 650; letter-spacing: -0.015em; color: var(--color-text-primary); }
+.gp-join h2 { margin-bottom: 8px; }
+.gp-panel { margin-top: 18px; display: flex; flex-direction: column; gap: 18px; }
+.gp-wait { height: 48px; border-radius: 12px; background: var(--color-surface-high); }
+
+/* The one action: amber, solid, no glow. Dark words on bright amber; white words on light mode's deep amber. */
+.gp-cta { width: 100%; min-height: 50px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 12px;
+  border: 1px solid transparent; background: var(--color-secondary); color: var(--color-bg); font-size: 15px; font-weight: 650; cursor: pointer;
+  touch-action: manipulation; transition: filter .12s, transform .16s cubic-bezier(.22, 1, .36, 1); }
+:root[data-mode="light"] .gp-cta { color: #fff; }
+.gp-cta:active:not(:disabled) { transform: scale(.97); }
+.gp-cta:disabled { opacity: .7; cursor: default; }
+@media (hover: hover) { .gp-cta:hover:not(:disabled) { filter: brightness(1.06); } }
+.gp-cta--quiet { background: transparent; color: var(--color-text-primary); border-color: var(--color-hairline); }
+:root[data-mode="light"] .gp-cta--quiet { color: var(--color-text-primary); }
+.gp-cta:focus-visible, .gp-back:focus-visible, .gp-row:focus-visible { outline: 2px solid var(--color-primary-300); outline-offset: 2px; }
+
+/* Steps: numbers on a line, so the order reads at a glance. */
+.gp-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.gp-step { position: relative; display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 14px; padding-bottom: 18px; }
+.gp-step:last-child { padding-bottom: 0; }
+.gp-step:not(:last-child)::before { content: ''; position: absolute; left: 13.5px; top: 30px; bottom: 4px; width: 1px; background: var(--color-hairline); }
+.gp-step__n { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700;
+  font-variant-numeric: tabular-nums; color: var(--color-primary-300); border: 1px solid var(--color-hairline); background: var(--color-surface); }
+.gp-step__body { min-width: 0; padding-top: 3px; }
+.gp-step__title { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; color: var(--color-text-primary); }
+.gp-step__icon { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 7px; background: var(--color-surface-high); color: var(--color-text-primary); }
+.gp-step__text { display: block; margin-top: 3px; font-size: 13.5px; line-height: 1.5; color: var(--color-text-muted); overflow-wrap: anywhere; }
+.gp-note { font-size: 13.5px; line-height: 1.55; color: var(--color-text-muted); }
+.gp-note--action { padding: 12px 14px; border-radius: 12px; color: var(--color-text-secondary); background: var(--color-surface); border: 1px solid var(--color-secondary); }
+.gp-note--action b { color: var(--color-text-primary); }
+.gp-alt { display: flex; flex-direction: column; gap: 10px; padding-top: 18px; border-top: 1px solid var(--color-hairline); }
+.gp-alt p { font-size: 13.5px; color: var(--color-text-muted); }
+
+/* Joining: rows, not cards. A row that only explains is not a button. */
+.gp-rows { list-style: none; margin: 0; padding: 0; }
+.gp-rows > li + li { border-top: 1px solid var(--color-hairline); }
+.gp-row { width: 100%; display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 12px; align-items: center; min-height: 64px; padding: 10px 0;
+  text-align: left; background: none; border: 0; color: inherit; }
+button.gp-row { cursor: pointer; transition: transform .16s cubic-bezier(.22, 1, .36, 1); }
+button.gp-row:active { transform: scale(.99); }
+.gp-row__icon { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--color-surface-high); color: var(--color-text-primary); }
+.gp-row__body b { display: block; font-size: 15px; font-weight: 600; color: var(--color-text-primary); }
+.gp-row__body span { display: block; margin-top: 2px; font-size: 13.5px; color: var(--color-text-muted); }
+.gp-row__go { color: var(--color-text-muted); transition: transform .2s cubic-bezier(.22, 1, .36, 1); }
+@media (hover: hover) { button.gp-row:hover .gp-row__go { transform: translateX(3px); color: var(--color-text-primary); } }
+
+/* On a computer: the page opens beside a code for the phone. */
+.gp-qr { border-radius: 16px; border: 1px solid var(--color-hairline); background: var(--color-surface); padding: 24px; }
+.gp-qr__code { display: inline-block; padding: 10px; border-radius: 12px; background: #fff; line-height: 0; }
+.gp-qr__title { margin-top: 18px; font-size: 17px; font-weight: 650; letter-spacing: -0.01em; color: var(--color-text-primary); }
+.gp-qr__text { margin-top: 6px; font-size: 14px; line-height: 1.55; color: var(--color-text-secondary); }
+.gp-qr__text b { color: var(--color-text-primary); font-weight: 600; overflow-wrap: anywhere; }
+
+@media (min-width: 900px) {
+  .gp { padding-top: 16px; }
+  .gp-grid { grid-template-columns: minmax(0, 1fr) 320px; gap: 72px; margin-top: 40px; align-items: start; }
+  .gp-title { font-size: 52px; letter-spacing: -0.045em; }
+  .gp-lede { font-size: 17px; }
+  .gp-side { position: sticky; top: 24px; }
 }
-.getapp-step__title { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--color-text-primary); }
-.getapp-step__icon {
-  display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 7px;
-  color: var(--color-text-primary); background: var(--color-surface-high);
-}
-.getapp-step__text { display: block; margin-top: 2px; font-size: 12.5px; line-height: 1.5; color: var(--color-text-muted); }
-.getapp-note { font-size: 12.5px; line-height: 1.55; color: var(--color-text-muted); }
-.getapp-note--action {
-  padding: 10px 12px; border-radius: 10px; color: var(--color-text-secondary);
-  background: color-mix(in srgb, var(--color-secondary) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-secondary) 45%, transparent);
-}
-.getapp-note--action b { color: var(--color-secondary); }
-.getapp-alt { display: flex; flex-direction: column; gap: 8px; padding-top: 14px; border-top: 1px solid rgba(233, 233, 237, 0.08); }
-.getapp-alt p { font-size: 12.5px; color: var(--color-text-muted); }
+@media (prefers-reduced-motion: reduce) { .gp-cta, button.gp-row, .gp-row__go { transition: none; } }
 
 /* Find your gym map (GymMap): each dot carries its gym's name. */
 .leaflet-tooltip.gym-label { background: var(--color-bg); color: var(--color-text-primary); border: 1px solid var(--color-separator);

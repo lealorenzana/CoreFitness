@@ -15,11 +15,12 @@ import { Toaster } from '../ui/Toast';
  * It carries its own Toaster: the shell's lives in Layout, so a toast raised
  * here (a refused join, a join request sent) used to go nowhere.
  */
-export default function StandalonePage({ children }: { children: ReactNode }) {
+/** `wide`: a page with its own layout for a computer too (Get the app, 2026-11-21) gets 1040px instead of a phone column. */
+export default function StandalonePage({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
   return (
     <MobileFrame>
       <Toaster />
-      <div className="mx-auto w-full max-w-[480px] px-5 pt-4 pb-8">{children}</div>
+      <div className={wide ? "mx-auto w-full max-w-[1104px] px-5 md:px-8 pt-4 pb-8" : "mx-auto w-full max-w-[480px] px-5 pt-4 pb-8"}>{children}</div>
     </MobileFrame>
   );
 }

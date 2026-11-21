@@ -1,9 +1,11 @@
 import { GuideButton } from '../components/guides/GuidePlayer';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AndroidLogo, AppleLogo, Compass, DotsThreeVertical, Export, PlusSquare } from '@phosphor-icons/react';
-import { Page, PageTitle } from '../components/ui/page';
-import { LineRow, NocButton, SectionHead, TextTabs } from '../components/ui/noc';
+import { QRCodeSVG } from 'qrcode.react';
+import {
+  AndroidLogo, AppleLogo, ArrowLeft, CaretRight, Compass, DotsThreeVertical, DownloadSimple, Export, Hash, LinkSimple, PlusSquare, SignIn,
+} from '@phosphor-icons/react';
+import { TextTabs } from '../components/ui/noc';
 
 /** Where the signed Android package lives once it is copied into public/ (docs/DEPLOYMENT.md). */
 const APK = '/core-fitness.apk';
@@ -15,10 +17,20 @@ const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
 const isIOS = /iphone|ipad|ipod/i.test(ua) || (/macintosh/i.test(ua) && typeof document !== 'undefined' && 'ontouchend' in document);
 /** On iOS only Safari can add to the Home Screen; Chrome and others there are WebKit shells without it. */
 const isIOSNotSafari = isIOS && /crios|fxios|edgios|opios/i.test(ua);
+/**
+ * A computer (the website's "Get the member app" opens here): it cannot install a phone app, so the page
+ * offers a code that opens itself on the phone (2026-11-21). A wide screen with a mouse and no phone UA.
+ */
+const onComputer = typeof window !== 'undefined' && !isIOS && !/android|mobile/i.test(ua)
+  && window.matchMedia('(pointer: fine) and (min-width: 768px)').matches;
 
 /**
  * Get the app — the page a gym sends members to: Android and iPhone, each
  * with exactly what works on it.
+ *
+ * Redesigned 2026-11-21 (design/lessons/LESSONS.md): a real page at every width, not a phone column on a
+ * monitor. On a phone: what it is, the steps for this phone, then how to join a gym. On a computer: the same,
+ * beside a code that opens this page on the phone. No glow, no decoration; one action per platform.
  *
  * Android: the signed package (a TWA around this same website, docs/DEPLOYMENT.md
  * — one download for every gym, never updated for a code change), or Chrome's
@@ -79,85 +91,132 @@ export default function GetApp() {
     }
   };
 
+  const back = () => (window.history.length > 1 ? navigate(-1) : navigate('/'));
+  const host = typeof window !== 'undefined' ? window.location.host : 'corefitness-gym.vercel.app';
+
   return (
-    <Page>
-      <PageTitle title="Get the app" subtitle="For members and coaches of every gym on Core Fitness" back fallback="/" />
-      <div style={{ margin: '-4px 0 14px' }}><GuideButton id="install-app" label="Watch how to install" /></div>
+    <div className="gp" data-getapp>
+      <header className="gp-top">
+        <button type="button" className="gp-back" onClick={back}><ArrowLeft size={18} aria-hidden />Back</button>
+        <span className="gp-brand"><img src="/logo.png" alt="" width={26} height={26} />Core Fitness</span>
+      </header>
 
-      <SectionHead title="1. Install it" />
-      <TextTabs<Platform> label="Your phone" active={tab} onChange={setTab} tabs={[
-        { id: 'android', label: 'Android', icon: <AndroidLogo size={16} weight="fill" /> },
-        { id: 'iphone', label: 'iPhone', icon: <AppleLogo size={16} weight="fill" /> },
-      ]} />
+      <div className="gp-grid">
+        <main className="gp-main">
+          <h1 className="gp-title">Get the app</h1>
+          <p className="gp-lede">For members and coaches of every gym on Core Fitness. Your check-in code, your workouts, your coach and your gym’s news, in English or Filipino.</p>
+          <ul className="gp-facts">
+            <li>Free to install</li>
+            <li>About 2 MB</li>
+            <li>Updates itself</li>
+          </ul>
 
-      {tab === 'android' ? (
-        <div className="getapp-panel" role="tabpanel" aria-label="Android">
-          {apk ? (
-            <>
-              <NocButton variant="fill" className="w-full" onClick={() => void download()} disabled={downloading}>
-                {downloading ? 'Downloading…' : 'Download for Android'}
-              </NocButton>
-              <ol className="getapp-steps">
-                <Step n={1} title="Download the app" text="The file is core-fitness.apk, about 2 MB." />
-                <Step n={2} title="Allow the install" text="Android asks to allow installing from this browser. That is expected for an app that is not from the Play Store." />
-                <Step n={3} title="Open Core Fitness" text="It is on your home screen, ready to sign in." />
-              </ol>
-            </>
-          ) : apk === false ? (
-            <p className="getapp-note">
-              The Android app file is not uploaded yet. Install it from Chrome instead — it is the same app.
-            </p>
-          ) : null}
-
-          {/* Chrome's own install, where the browser offers it — an alternative, never the iPhone way. */}
-          {prompt ? (
-            <div className="getapp-alt">
-              <p>{apk ? 'Or install straight from Chrome' : 'Install from Chrome'}</p>
-              <NocButton variant={apk ? 'structure' : 'fill'} className="w-full" onClick={() => void prompt.prompt()}>
-                Install from this browser
-              </NocButton>
+          <section className="gp-install" aria-labelledby="gp-install-h">
+            <div className="gp-head">
+              <h2 id="gp-install-h">Install it</h2>
+              <GuideButton id="install-app" label="Watch how" />
             </div>
-          ) : apk === false ? (
-            <ol className="getapp-steps">
-              <Step n={1} icon={<DotsThreeVertical size={16} weight="bold" />} title="Open Chrome's menu" text="The three dots at the top right." />
-              <Step n={2} title='Tap "Install app" or "Add to Home screen"' text="It installs the same app." />
-            </ol>
-          ) : null}
-        </div>
-      ) : (
-        <div className="getapp-panel" role="tabpanel" aria-label="iPhone">
-          {isIOSNotSafari && (
-            <p className="getapp-note getapp-note--action">
-              Open this page in <b>Safari</b> first — on an iPhone, only Safari can add an app to the Home Screen.
-            </p>
-          )}
-          <ol className="getapp-steps">
-            <Step n={1} icon={<Compass size={16} weight="bold" />} title="Open this page in Safari" text="corefitness-gym.vercel.app/get-app" />
-            <Step n={2} icon={<Export size={16} weight="bold" />} title="Tap Share" text="The square with an arrow, at the bottom of the screen (at the top on iPad)." />
-            <Step n={3} icon={<PlusSquare size={16} weight="bold" />} title='Tap "Add to Home Screen"' text="Scroll down the list if you do not see it, then tap Add." />
-            <Step n={4} title="Open Core Fitness" text="From your Home Screen. It opens full screen, like any app." />
-          </ol>
-          <p className="getapp-note">There is no App Store download: on iPhone the app installs from Safari, and it is the same app.</p>
-        </div>
-      )}
+            <TextTabs<Platform> label="Your phone" active={tab} onChange={setTab} tabs={[
+              { id: 'android', label: 'Android', icon: <AndroidLogo size={16} weight="fill" /> },
+              { id: 'iphone', label: 'iPhone', icon: <AppleLogo size={16} weight="fill" /> },
+            ]} />
 
-      <div className="mt-6">
-        <SectionHead title="2. Join your gym" />
-        <LineRow title="I have a link from my gym" meta="Open the link — it signs you up to that gym" />
-        <LineRow title="I have a join code" meta="Type it on the next screen" onClick={() => navigate('/join')} />
-        <LineRow title="I already have an account" meta="Sign in" onClick={() => navigate('/login')} last />
+            {tab === 'android' ? (
+              <div className="gp-panel" role="tabpanel" aria-label="Android">
+                {apk ? (
+                  <>
+                    <button type="button" className="gp-cta" onClick={() => void download()} disabled={downloading} aria-busy={downloading}>
+                      <DownloadSimple size={18} weight="bold" aria-hidden />{downloading ? 'Downloading…' : 'Download for Android'}
+                    </button>
+                    <ol className="gp-steps">
+                      <Step n={1} title="Download the app" text="The file is core-fitness.apk, about 2 MB." />
+                      <Step n={2} title="Allow the install" text="Android asks to allow installing from this browser. That is expected for an app that is not from the Play Store." />
+                      <Step n={3} title="Open Core Fitness" text="It is on your home screen, ready to sign in. It updates itself, so you never download it again." />
+                    </ol>
+                  </>
+                ) : apk === false ? (
+                  <p className="gp-note">The Android app file is not uploaded yet. Install it from Chrome instead. It is the same app.</p>
+                ) : <div className="gp-wait" aria-hidden />}
+
+                {/* Chrome's own install, where the browser offers it: an alternative, never the iPhone way. */}
+                {prompt ? (
+                  <div className="gp-alt">
+                    <p>{apk ? 'Or install straight from Chrome' : 'Install from Chrome'}</p>
+                    <button type="button" className={apk ? 'gp-cta gp-cta--quiet' : 'gp-cta'} onClick={() => void prompt.prompt()}>
+                      Install from this browser
+                    </button>
+                  </div>
+                ) : apk === false ? (
+                  <ol className="gp-steps">
+                    <Step n={1} icon={<DotsThreeVertical size={15} weight="bold" />} title="Open Chrome's menu" text="The three dots at the top right." />
+                    <Step n={2} title='Tap "Install app" or "Add to Home screen"' text="It installs the same app." />
+                  </ol>
+                ) : null}
+              </div>
+            ) : (
+              <div className="gp-panel" role="tabpanel" aria-label="iPhone">
+                {isIOSNotSafari && (
+                  <p className="gp-note gp-note--action">
+                    Open this page in <b>Safari</b> first. On an iPhone, only Safari can add an app to the Home Screen.
+                  </p>
+                )}
+                <ol className="gp-steps">
+                  <Step n={1} icon={<Compass size={15} weight="bold" />} title="Open this page in Safari" text={`${host}/get-app`} />
+                  <Step n={2} icon={<Export size={15} weight="bold" />} title="Tap Share" text="The square with an arrow, at the bottom of the screen (at the top on iPad)." />
+                  <Step n={3} icon={<PlusSquare size={15} weight="bold" />} title='Tap "Add to Home Screen"' text="Scroll down the list if you do not see it, then tap Add." />
+                  <Step n={4} title="Open Core Fitness" text="From your Home Screen. It opens full screen, like any app." />
+                </ol>
+                <p className="gp-note">There is no App Store download. On iPhone the app installs from Safari, and it is the same app.</p>
+              </div>
+            )}
+          </section>
+
+          <section className="gp-join" aria-labelledby="gp-join-h">
+            <h2 id="gp-join-h">Then join your gym</h2>
+            <ul className="gp-rows">
+              <li className="gp-row">
+                <span className="gp-row__icon" aria-hidden><LinkSimple size={18} /></span>
+                <span className="gp-row__body"><b>I have a link from my gym</b><span>Open the link. It signs you up to that gym.</span></span>
+              </li>
+              <li>
+                <button type="button" className="gp-row" onClick={() => navigate('/join')}>
+                  <span className="gp-row__icon" aria-hidden><Hash size={18} /></span>
+                  <span className="gp-row__body"><b>I have a join code</b><span>Type it on the next screen.</span></span>
+                  <CaretRight size={16} className="gp-row__go" aria-hidden />
+                </button>
+              </li>
+              <li>
+                <button type="button" className="gp-row" onClick={() => navigate('/login')}>
+                  <span className="gp-row__icon" aria-hidden><SignIn size={18} /></span>
+                  <span className="gp-row__body"><b>I already have an account</b><span>Sign in.</span></span>
+                  <CaretRight size={16} className="gp-row__go" aria-hidden />
+                </button>
+              </li>
+            </ul>
+          </section>
+        </main>
+
+        {onComputer && (
+          <aside className="gp-side" data-getapp-qr>
+            <div className="gp-qr">
+              <div className="gp-qr__code" aria-hidden><QRCodeSVG value={`${window.location.origin}/get-app`} size={188} level="M" marginSize={2} /></div>
+              <p className="gp-qr__title">On a computer? Scan this with your phone.</p>
+              <p className="gp-qr__text">The app installs on a phone. This code opens this page there, or type <b>{host}/get-app</b> in your phone’s browser.</p>
+            </div>
+          </aside>
+        )}
       </div>
-    </Page>
+    </div>
   );
 }
 
 function Step({ n, title, text, icon }: { n: number; title: string; text: string; icon?: ReactNode }) {
   return (
-    <li className="getapp-step">
-      <span className="getapp-step__n" aria-hidden>{n}</span>
-      <span className="min-w-0">
-        <span className="getapp-step__title">{icon && <span className="getapp-step__icon">{icon}</span>}{title}</span>
-        <span className="getapp-step__text">{text}</span>
+    <li className="gp-step">
+      <span className="gp-step__n" aria-hidden>{n}</span>
+      <span className="gp-step__body">
+        <span className="gp-step__title">{icon && <span className="gp-step__icon">{icon}</span>}{title}</span>
+        <span className="gp-step__text">{text}</span>
       </span>
     </li>
   );

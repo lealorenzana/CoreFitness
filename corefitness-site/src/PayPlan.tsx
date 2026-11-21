@@ -108,7 +108,7 @@ export default function PayPlan({ applicationId, onChanged }: { applicationId: s
     setBusy(false);
     if (e) {
       setError(proof && /claim_application_payment|function/i.test(e.message)
-        ? 'Sending a screenshot is not available yet — remove it and send the reference alone.' : e.message);
+        ? 'Sending a screenshot is not available yet. Remove it and send the reference alone.' : e.message);
       return;
     }
     setReference(''); setProof(null);
@@ -122,12 +122,12 @@ export default function PayPlan({ applicationId, onChanged }: { applicationId: s
       <h2 className="status-h">Pay for your plan</h2>
       {st.paid ? (
         <p className="status-sub" data-pay-state="paid">
-          <strong>Paid</strong> — {st.plan_name}, {peso(amount)} for {term}
+          <strong>Paid:</strong> {st.plan_name}, {peso(amount)} for {term}
           {st.last?.method_label ? ` by ${st.last.method_label}` : ''}. Your plan starts the day we let you in.
         </p>
       ) : !st.ready ? (
         <p className="status-sub" data-pay-state="waiting">
-          {st.plan_name} is {peso(amount)} for {term}. You pay here once all six documents are verified — then we let you in.
+          {st.plan_name} is {peso(amount)} for {term}. You pay here once all six documents are verified. Then we let you in.
           The free trial needs no payment.
         </p>
       ) : st.last?.status === 'pending' ? (
@@ -177,7 +177,7 @@ export default function PayPlan({ applicationId, onChanged }: { applicationId: s
                   </div>
                   <div className="send-to__row">
                     <span className="send-to__lbl">To {chosen.label}</span>
-                    <span className="send-to__who">{chosen.account_name ?? '—'}</span>
+                    <span className="send-to__who">{chosen.account_name ?? 'Name not given'}</span>
                   </div>
                   {chosen.account_number && (
                     <div className="send-to__row">
@@ -199,7 +199,7 @@ export default function PayPlan({ applicationId, onChanged }: { applicationId: s
                 {proof ? <img src={proof} alt="Your receipt" /> : <span className="proof-pick__box" aria-hidden>+</span>}
                 <span>
                   <b>{proof ? 'Receipt added' : 'Add a screenshot of the receipt'}</b>
-                  <span className="note" style={{ display: 'block', margin: 0 }}>{proof ? 'Tap to change it.' : 'Optional — it helps us find your payment faster.'}</span>
+                  <span className="note" style={{ display: 'block', margin: 0 }}>{proof ? 'Tap to change it.' : 'Optional. It helps us find your payment faster.'}</span>
                 </span>
                 <input type="file" accept="image/*" hidden onChange={(ev) => {
                   const f = ev.target.files?.[0];
@@ -211,7 +211,7 @@ export default function PayPlan({ applicationId, onChanged }: { applicationId: s
               </div>
             </form>
           ) : !online && (
-            <p className="note">Ask us below how to pay — we send our GCash, Maya or bank details here.</p>
+            <p className="note">Ask us below how to pay. We send our GCash, Maya or bank details here.</p>
           )}
         </>
       )}

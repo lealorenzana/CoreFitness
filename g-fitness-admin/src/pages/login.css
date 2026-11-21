@@ -1,0 +1,162 @@
+/*
+ * The gym sign-in, "quiet column" (owner's pick of three mock-ups, 2026-11-21; design/admin-login/mockups.html).
+ * A dark branded page in both modes (0234: .keep-dark). One centred column with no card: Google first, then email
+ * or username and password; the brand and Register sit at the top edge, Terms and Privacy at the bottom. No scroll
+ * story, no parallax, no particles, glow, beams, tilt or gradient words. Labels above fields; 48px fields with 16px
+ * text; one amber action; a visible 2px focus ring. Motion: one short entrance, press 0.97.
+ */
+.al { --al-bg: #0e0d12; --al-surface: #16151c; --al-high: #1b1a22; --al-line: rgb(255 255 255 / .1); --al-line-strong: rgb(255 255 255 / .18);
+  --al-text: #ececf1; --al-text-2: #a9a8b8; --al-text-3: #8b8a9d; --al-violet: #7c3aed; --al-violet-text: #c4b5fd; --al-amber: #f5a524; --al-on-amber: #1a1205;
+  min-height: 100svh; display: grid; grid-template-rows: auto 1fr auto; background: var(--al-bg); color: var(--al-text); font-family: Inter, system-ui, sans-serif; }
+.al a { color: var(--al-text); font-weight: 600; text-decoration: none; }
+.al a:focus-visible, .al button:focus-visible, .al input:focus-visible { outline: 2px solid var(--al-violet-text); outline-offset: 2px; }
+
+.al-edge { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 32px; }
+.al-brand { display: inline-flex; align-items: center; gap: 10px; font-size: 15px; letter-spacing: -0.02em; }
+.al-brand img { width: 28px; height: 28px; border-radius: 50%; }
+.al-quiet { font-size: 14px; color: var(--al-text-3); }
+.al-quiet a, .al-who a { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; }
+.al-quiet a svg, .al-who a svg { transition: transform .2s cubic-bezier(.22, 1, .36, 1); }
+@media (hover: hover) { .al-quiet a:hover svg, .al-who a:hover svg { transform: translateX(3px); } }
+
+.al-main { display: grid; place-items: center; padding: 24px 16px 40px; }
+.al-col { width: 100%; max-width: 380px; animation: al-in .5s cubic-bezier(.22, 1, .36, 1) both; }
+@keyframes al-in { from { opacity: 0; transform: translateY(10px); } }
+.al-col h1 { margin: 0; font-size: 30px; font-weight: 700; letter-spacing: -0.035em; line-height: 1.1; }
+.al-sub { margin: 8px 0 28px; font-size: 15px; color: var(--al-text-2); }
+.al-note { margin: -12px 0 20px; padding: 12px 14px; border-radius: 10px; background: var(--al-surface); border: 1px solid var(--al-line); font-size: 13.5px; color: var(--al-text-2); }
+
+.al-or { display: flex; align-items: center; gap: 12px; margin: 22px 0; font-size: 13px; color: var(--al-text-3); white-space: nowrap; }
+.al-or::before, .al-or::after { content: ''; flex: 1; height: 1px; background: var(--al-line); }
+
+.al-form { display: grid; gap: 16px; }
+.al-field label { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 550; color: var(--al-text-2); }
+.al-input { width: 100%; height: 48px; padding: 0 14px; border-radius: 10px; font: inherit; font-size: 16px; color: var(--al-text);
+  background: var(--al-high); border: 1px solid var(--al-line-strong); transition: border-color .12s; }
+.al-input::placeholder { color: var(--al-text-3); }
+.al-input:focus { outline: none; border-color: var(--al-violet); }
+.al-input:-webkit-autofill { -webkit-text-fill-color: var(--al-text); -webkit-box-shadow: 0 0 0 1000px var(--al-high) inset; caret-color: var(--al-text); }
+.al-pw { position: relative; }
+.al-pw .al-input { padding-right: 68px; }
+.al-show { position: absolute; right: 2px; top: 2px; height: 44px; min-width: 60px; padding: 0 12px; border: 0; border-radius: 8px; background: none; cursor: pointer;
+  font-size: 13px; font-weight: 600; color: var(--al-text-2); }
+.al-show:hover { color: var(--al-text); }
+.al-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: -4px; }
+.al-check { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; color: var(--al-text-2); cursor: pointer; }
+.al-check input { width: 18px; height: 18px; accent-color: var(--al-violet); }
+.al-link { border: 0; background: none; padding: 0; min-height: 44px; font-size: 14px; font-weight: 600; color: var(--al-violet-text); cursor: pointer; }
+
+.al-btn { width: 100%; min-height: 48px; border-radius: 12px; border: 1px solid transparent; display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  font: inherit; font-size: 15px; font-weight: 650; cursor: pointer; touch-action: manipulation;
+  transition: background-color .12s, border-color .12s, transform .16s cubic-bezier(.22, 1, .36, 1); }
+.al-btn:active:not(:disabled) { transform: scale(.97); }
+.al-btn:disabled { opacity: .7; cursor: default; }
+.al-btn.primary { background: var(--al-amber); color: var(--al-on-amber); }
+.al-btn.primary:hover:not(:disabled) { background: #f8b542; }
+.al-btn.google { background: #fff; color: #1f1f1f; }
+.al-btn.ghost { background: transparent; color: var(--al-text); border-color: var(--al-line-strong); }
+.al-spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgb(26 18 5 / .3); border-top-color: var(--al-on-amber); animation: al-spin .8s linear infinite; }
+@keyframes al-spin { to { transform: rotate(360deg); } }
+
+.al-who { margin: 28px 0 0; padding-top: 16px; border-top: 1px solid var(--al-line); font-size: 13.5px; color: var(--al-text-3); line-height: 1.5; }
+
+.al-foot { font-size: 13px; color: var(--al-text-3); }
+.al-links { display: flex; gap: 20px; }
+.al-links a { font-weight: 550; color: var(--al-text-2); min-height: 44px; display: inline-flex; align-items: center; }
+.al-links a:hover { color: var(--al-text); }
+
+/* Already signed in (from the website): a plain dialog. */
+.al-dialog { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 24px; background: rgb(5 5 10 / .82); }
+.al-dialog > div { width: 100%; max-width: 440px; border-radius: 16px; padding: 28px; background: var(--al-surface); border: 1px solid var(--al-line-strong); }
+.al-dialog h2 { margin: 0; font-size: 21px; font-weight: 650; }
+.al-dialog p { margin: 8px 0 0; font-size: 14px; color: var(--al-text-2); }
+.al-dialog .al-btn { margin-top: 10px; }
+.al-dialog .al-btn:first-of-type { margin-top: 22px; }
+
+/* ---- The floor plan behind it all (LoginFloorPlan.tsx): drawn once, never looping. ---- */
+.al { position: relative; isolation: isolate; overflow: hidden; }
+.al > :not(.al-plan) { position: relative; z-index: 1; }
+/* Between the header and the footer, whole (meet), so no wall crosses their words. */
+.al-plan { position: absolute; top: 76px; bottom: 64px; left: 0; width: 100%; height: calc(100% - 140px); z-index: 0; pointer-events: none; }
+.al-plan path, .al-plan rect, .al-plan circle { fill: none; stroke: rgb(255 255 255 / .085); stroke-width: 1.4; vector-effect: non-scaling-stroke;
+  stroke-dasharray: 1; stroke-dashoffset: 0; }
+.al-plan .pl-thin { stroke: rgb(255 255 255 / .05); }
+.al-plan text { fill: rgb(255 255 255 / .2); font: 600 11px/1 Inter, system-ui, sans-serif; letter-spacing: .14em; }
+.al-plan .pl-here circle { fill: var(--al-violet); stroke: none; }
+.al-plan .pl-here text { fill: var(--al-violet-text); opacity: .7; }
+@media (prefers-reduced-motion: no-preference) {
+  .al-plan g:not(.pl-here) > :is(path, rect, circle), .al-plan g g > :is(path, rect) { animation: pl-draw 1.6s cubic-bezier(.65, 0, .35, 1) both;
+    animation-delay: calc(var(--s, 0) * 160ms + 150ms); }
+  .al-plan g { --s: inherit; }
+  .al-plan text { animation: pl-fade .6s ease-out both; animation-delay: calc(var(--s, 0) * 160ms + 900ms); }
+  .al-plan .pl-here { transform-box: fill-box; transform-origin: center; animation: pl-here .5s cubic-bezier(.34, 1.4, .64, 1) 1.5s both; }
+}
+@keyframes pl-draw { from { stroke-dashoffset: 1; } }
+@keyframes pl-fade { from { opacity: 0; } }
+@keyframes pl-here { from { opacity: 0; transform: scale(.4); } }
+
+/* ---- The plan, drawn like the website's: walls are walls. ---- */
+.al-plan .pl-wall path { stroke: rgb(255 255 255 / .16); stroke-width: 6; vector-effect: none; stroke-linecap: square; stroke-linejoin: miter; }
+
+/* ---- People, as a plan draws them: shoulders and a head, from above. ---- */
+.al-plan .pl-person > *, .al-plan .pl-walker * { animation: none; stroke-dasharray: none; }
+.al-plan .pl-person ellipse { fill: rgb(255 255 255 / .07); stroke: rgb(196 181 253 / .3); stroke-width: 1; }
+.al-plan .pl-person circle { fill: rgb(196 181 253 / .5); stroke: none; }
+.al-plan .pl-walker .pl-person circle { fill: rgb(236 236 241 / .65); }
+.al-plan .pl-walker .pl-person ellipse { stroke: rgb(236 236 241 / .35); }
+.al-plan .pl-bar { fill: rgb(255 255 255 / .32); stroke: none; }
+.al-plan .pl-person { transform-box: fill-box; transform-origin: center; }
+.al-plan .pl-people { opacity: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .al-plan .pl-people { animation: pl-in .8s ease-out 1.4s both; }
+  /* Running: a light bounce, each at their own pace. */
+  .al-plan .run { animation: pl-run .4s ease-in-out infinite alternate; }
+  .al-plan .run-1 { animation-duration: .36s; animation-delay: -.1s; } .al-plan .run-2 { animation-duration: .46s; animation-delay: -.2s; }
+  /* Squatting: down, hold, up; the bar goes with them. */
+  .al-plan .squat { animation: pl-squat 2.8s ease-in-out infinite; } .al-plan .squat-1 { animation-delay: -1.4s; }
+  /* A curl, the class in time with its instructor, the desk at work. */
+  .al-plan .curl { animation: pl-curl 1.6s ease-in-out infinite; }
+  .al-plan .lead, .al-plan .move { animation: pl-move 1.3s ease-in-out infinite; }
+  .al-plan .move-1 { animation-delay: -.1s; } .al-plan .move-2 { animation-delay: -.2s; }
+  .al-plan .desk { animation: pl-desk 7s ease-in-out infinite; }
+  /* Stretching: a slow reach, held. */
+  .al-plan .stretch { animation: pl-stretch 5s ease-in-out infinite; } .al-plan .stretch-1 { animation-delay: -2.2s; }
+}
+@media (prefers-reduced-motion: reduce) { .al-plan .pl-people { opacity: 1; } }
+@keyframes pl-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pl-run { to { transform: translateY(-4px); } }
+@keyframes pl-squat { 0%, 25%, 100% { transform: scale(1); } 50%, 62% { transform: scale(.8); } }
+@keyframes pl-curl { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(14deg); } }
+@keyframes pl-move { 0%, 100% { transform: translateY(0) scale(1); } 40% { transform: translateY(-7px) scale(1.08); } }
+@keyframes pl-stretch { 0%, 100% { transform: scaleX(1) rotate(0deg); } 45%, 60% { transform: scaleX(1.25) rotate(-10deg); } }
+@keyframes pl-desk { 0%, 100% { transform: translateX(0); } 30% { transform: translateX(-18px); } 60% { transform: translateX(14px); } }
+
+/* ---- The column comes in a line at a time. ---- */
+.al-col { animation: none; }
+.al-col > * { animation: al-in .55s cubic-bezier(.22, 1, .36, 1) both; }
+.al-col > :nth-child(1) { animation-delay: .05s; } .al-col > :nth-child(2) { animation-delay: .1s; } .al-col > :nth-child(3) { animation-delay: .15s; }
+.al-col > :nth-child(4) { animation-delay: .2s; } .al-col > :nth-child(5) { animation-delay: .25s; } .al-col > :nth-child(6) { animation-delay: .3s; }
+.al-col > :nth-child(7) { animation-delay: .35s; } .al-col > :nth-child(8) { animation-delay: .4s; }
+.al-hello { margin: 0 0 6px; font-size: 14px; font-weight: 600; color: var(--al-violet-text); }
+
+/* ---- Saying no: a shake that points at the form, and the reason under the password, in a kept slot. ---- */
+.al-form.shake { animation: al-shake .42s cubic-bezier(.36, .07, .19, .97); }
+@keyframes al-shake { 15%, 85% { transform: translateX(-3px); } 30%, 70% { transform: translateX(6px); } 45%, 55% { transform: translateX(-8px); } 50% { transform: translateX(8px); } }
+.al-msg { min-height: 20px; line-height: 20px; margin: 6px 0 -12px; font-size: 13.5px; color: var(--al-text-2); }
+.al-msg.bad { color: var(--al-amber); font-weight: 550; }
+.al-input[aria-invalid="true"] { border-color: var(--al-amber); }
+
+/* ---- Saying yes: the button turns into a check while the dashboard opens. ---- */
+.al-btn.primary.done { background: var(--al-violet); color: #fff; opacity: 1; }
+.al-tick { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; }
+.al-tick path { stroke-dasharray: 1; animation: pl-draw .35s ease-out both; }
+
+@media (max-width: 640px) {
+  /* On a phone the form is the whole screen: no plan behind it. */
+  .al-plan { display: none; }
+  .al-edge { padding: 12px 16px; }
+  .al-main { align-items: start; padding-top: 28px; }
+  .al-col h1 { font-size: 26px; }
+  .al-foot { flex-direction: column; gap: 4px; padding-bottom: 20px; }
+}
+@media (prefers-reduced-motion: reduce) { .al-col, .al-col > *, .al-spin, .al-form.shake, .al-tick path { animation: none; } .al-btn, .al-quiet a svg, .al-who a svg { transition: none; } }

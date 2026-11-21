@@ -285,7 +285,8 @@ async (page) => {
   say('a username goes to the server, never a lookup in the browser', !!si && si[1].username === 'desk.ana' && si[1].password === 'whatever1', JSON.stringify(si?.[1]));
   say("…and the server's answer is shown as it is", /do not match/.test(res?.error ?? ''), JSON.stringify(res));
   const src = await page.evaluate(async () => (await fetch('/src/pages/AdminLogin.tsx')).text());
-  say('the admin login field says "Email or username"', /placeholder["=: ]+"Email or username"/.test(src));
+  // Since the 2026-11-21 redesign the words are the field's label (a placeholder vanishes as you type).
+  say('the admin login field says "Email or username"', /htmlFor: "al-login"/.test(src) && /children: "Email or username"/.test(src));
 
   // ---- dark, to look at ----
   await page.emulateMedia({ colorScheme: 'dark' });

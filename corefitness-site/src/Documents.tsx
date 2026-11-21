@@ -11,7 +11,7 @@ const day = (v: string) => { const [y, m, d] = v.slice(0, 10).split('-').map(Num
 /** Manila's date, never the UTC one (it is yesterday for the first eight hours of each day). */
 const manilaToday = () => new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10);
 const STATUS: Record<string, string> = {
-  pending: 'Sent — we are checking it', verified: 'Verified', rejected: 'Send this one again', requested: 'Send this one again',
+  pending: 'Sent. We are checking it', verified: 'Verified', rejected: 'Send this one again', requested: 'Send this one again',
 };
 
 /**
@@ -52,7 +52,7 @@ export default function Documents({ applicationId, documents, onChanged, locked 
     const { data, error: e } = await supabase.rpc('submit_documents', { p_application: applicationId });
     setBusy(false);
     if (e) { setError(e.message); return; }
-    setSentNote(`Sent ${data} document${data === 1 ? '' : 's'} — we will check ${data === 1 ? 'it' : 'them'} and tell you here and by email.`);
+    setSentNote(`Sent ${data} document${data === 1 ? '' : 's'}. We will check ${data === 1 ? 'it' : 'them'} and tell you here and by email.`);
     await onChanged();
   };
 
@@ -62,7 +62,7 @@ export default function Documents({ applicationId, documents, onChanged, locked 
       <p className="status-sub">{firstTime
         ? `Attach ${toSend.length === kinds.length ? `all ${kinds.length}` : `the ${toSend.length} still to send`}, then press Submit documents to send them together. A clear photo or a PDF, up to 10 MB each. Only you and Core Fitness can open them.`
         : toSend.length > 0
-          ? `We need ${toSend.length === 1 ? 'one document' : `${toSend.length} documents`} again — the reason is under each. Attach ${toSend.length === 1 ? 'it' : 'them'}, then send.`
+          ? `We need ${toSend.length === 1 ? 'one document' : `${toSend.length} documents`} again. The reason is under each. Attach ${toSend.length === 1 ? 'it' : 'them'}, then send.`
           : 'We let a gym in once all are verified.'}</p>
       <ul className="doc-list">
         {kinds.map((k) => (
@@ -75,7 +75,7 @@ export default function Documents({ applicationId, documents, onChanged, locked 
           <button type="button" className="cta" disabled={busy || attached < toSend.length} onClick={() => void submit()} data-submit-documents>
             {busy ? 'Sending…' : firstTime ? 'Submit documents' : `Send ${toSend.length === 1 ? 'it' : `these ${toSend.length}`} again`}
           </button>
-          <span className="note">{attached} of {toSend.length} attached{attached < toSend.length ? ' — attach every one to send' : ' — ready to send'}</span>
+          <span className="note">{attached} of {toSend.length} attached{attached < toSend.length ? '. Attach every one to send' : ', ready to send'}</span>
         </div>
       )}
       {error && <p className="note bad">{error}</p>}
@@ -115,7 +115,7 @@ function DocRow({ applicationId, kind, doc, draft, open, onChanged }: {
     await onChanged();
   };
 
-  const state = open ? (draft ? 'Attached — not sent yet' : doc ? STATUS[doc.status] : 'Not attached yet') : doc ? STATUS[doc.status] : 'Not sent yet';
+  const state = open ? (draft ? 'Attached, not sent yet' : doc ? STATUS[doc.status] : 'Not attached yet') : doc ? STATUS[doc.status] : 'Not sent yet';
   return (
     <li className={`doc is-${open ? (draft ? 'draft' : doc?.status ?? 'missing') : doc?.status ?? 'missing'}`} data-doc={kind.kind}>
       <div className="doc-head">

@@ -79,7 +79,7 @@ export default function Account() {
       </div>
       <span className="eyebrow">Signed in as {session.user.email}</span>
       <h1 className="status-title">You already run {runs.map((g) => g.name).join(' and ')}</h1>
-      <p className="status-lede">Your gym is on Core Fitness — there is no application to follow. Run it from its dashboard.</p>
+      <p className="status-lede">Your gym is on Core Fitness, so there is no application to follow. Run it from its dashboard.</p>
       <a className="cta" href={GYM_SIGN_IN}>Open your dashboard</a>
       {apps.length > 0 && (
         <p className="note" style={{ marginTop: 18 }}>
@@ -141,7 +141,7 @@ function SignIn({ deleted = false }: { deleted?: boolean }) {
   const resend = async () => {
     if (!supabase || !email.trim()) { setError('Type the email you applied with first.'); return; }
     const { error: e } = await supabase.auth.resend({ type: 'signup', email: email.trim(), options: { emailRedirectTo: `${window.location.origin}/#account` } });
-    setResent(e ? e.message : `Sent again to ${email.trim()} — open the newest email.`);
+    setResent(e ? e.message : `Sent again to ${email.trim()}. Open the newest email.`);
   };
   const unconfirmed = !!error && /Confirm your email/.test(error);
   const submit = async (e: React.FormEvent) => {
@@ -159,7 +159,7 @@ function SignIn({ deleted = false }: { deleted?: boolean }) {
     }
     const { error: e2 } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     setBusy(false);
-    if (e2) setError(/confirm/i.test(e2.message) ? 'Confirm your email first — open the link we sent when you applied.' : e2.message);
+    if (e2) setError(/confirm/i.test(e2.message) ? 'Confirm your email first. Open the link we sent when you applied.' : e2.message);
   };
   if (made) {
     return (
@@ -174,12 +174,27 @@ function SignIn({ deleted = false }: { deleted?: boolean }) {
     );
   }
   return (
-    <div className="status-page">
+    <div className="status-page acct">
       <a className="status-back" href="#top">← Core Fitness</a>
-      <span className="eyebrow">Your application</span>
-      <h1 className="status-title">{making ? 'Make an account' : 'Sign in'}</h1>
+      <div className="acct-grid">
+      {/* What this page is for (2026-11-21): the four things an applicant comes back to do. */}
+      <div className="acct-side">
+        <h1 className="status-title">Your application</h1>
+        <p className="status-lede">For gym owners who registered on this site. Sign in to follow it to the day you are let in.</p>
+      </div>
+      <div className="acct-more">
+        <ul className="acct-list">
+          <li><b>Where it stands</b><span>Being read, decided, or let in, with the date.</span></li>
+          <li><b>Six documents</b><span>Send them here and see each one checked.</span></li>
+          <li><b>Pay for your plan</b><span>Online, or by GCash, Maya or bank, once they are verified.</span></li>
+          <li><b>Messages</b><span>Ask us anything. We answer here and by email.</span></li>
+        </ul>
+        <p className="note">Not registered yet? <a href="#apply">Register your gym</a>.</p>
+      </div>
+      <div className="acct-card">
+      <h2 className="acct-h">{making ? 'Make an account' : 'Sign in'}</h2>
       {deleted && <p className="note" role="status" data-deleted-note>Your account is locked and will be erased in 7 days. Sign in before then if you want to keep it.</p>}
-      <p className="status-lede">{making
+      <p className="acct-sub">{making
         ? 'Use the email you applied with. Once you confirm it, your application appears here.'
         : 'With the email and password you chose when you registered your gym.'}</p>
       {!making && <div className="account-form"><GoogleButton hash="#account" label="Continue with Google" /></div>}
@@ -201,10 +216,12 @@ function SignIn({ deleted = false }: { deleted?: boolean }) {
         <div className="submit-row full">
           <button className="cta" type="submit" disabled={busy}>{busy ? 'One moment…' : making ? 'Make my account' : 'Sign in'}</button>
           <p className="note">{making
-            ? <button type="button" className="link-btn" onClick={() => setMaking(false)}>I have an account — sign in</button>
+            ? <button type="button" className="link-btn" onClick={() => setMaking(false)}>I have an account. Sign in</button>
             : <>Applied before accounts existed? <button type="button" className="link-btn" onClick={() => setMaking(true)}>Make one with the same email</button>.</>}</p>
         </div>
       </form>
+      </div>
+      </div>
     </div>
   );
 }
