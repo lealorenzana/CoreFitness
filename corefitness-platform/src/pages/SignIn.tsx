@@ -10,14 +10,16 @@ import './door.css';
  *
  * The look is the gym sign-in's (g-fitness-admin login.css, "quiet column"): the same dark ground, hairlines,
  * fields and one amber action. Above the form, the Core Fitness mark redrawn as line art in the floor plan's
- * colours (grey lines, one violet trace) draws itself on opening, and the platform's own pages circle it on
- * three tilted orbits, the inner ones the pages used most. Decorative only. With reduced motion, all still.
+ * colours (grey lines, one violet trace). "Eclipse" (the owner's pick of three, design/platform-login/mockups.html):
+ * an opening shot where the mark draws large in the middle of the dark, then settles above the form as three
+ * tilted orbits open around the whole sign-in, carrying the platform's pages, the inner ones the pages used most.
+ * On a phone the orbits circle the mark instead. Decorative only. With reduced motion, everything starts in place.
  */
 type Planet = { name: string; a: number };
 const ORBITS: { r: number; dur: number; planets: Planet[] }[] = [
-  { r: 150, dur: 70, planets: [{ name: 'Gyms', a: 20 }, { name: 'Applications', a: 140 }, { name: 'Money', a: 260 }] },
-  { r: 228, dur: 105, planets: [{ name: 'Plans', a: 70 }, { name: 'Support', a: 160 }, { name: 'Website', a: 250 }, { name: 'What’s new', a: 340 }] },
-  { r: 306, dur: 150, planets: [{ name: 'Growth', a: 0 }, { name: 'Capacity', a: 72 }, { name: 'Activity', a: 144 }, { name: 'Platform', a: 216 }, { name: 'Announcements', a: 288 }] },
+  { r: 250, dur: 70, planets: [{ name: 'Gyms', a: 20 }, { name: 'Applications', a: 140 }, { name: 'Money', a: 260 }] },
+  { r: 400, dur: 110, planets: [{ name: 'Plans', a: 70 }, { name: 'Support', a: 160 }, { name: 'Website', a: 250 }, { name: 'What’s new', a: 340 }] },
+  { r: 560, dur: 160, planets: [{ name: 'Growth', a: 0 }, { name: 'Capacity', a: 72 }, { name: 'Activity', a: 144 }, { name: 'Platform', a: 216 }, { name: 'Announcements', a: 288 }] },
 ];
 const ADMIN = 'https://corefitness-admin.vercel.app/admin/login';
 
@@ -95,20 +97,20 @@ export default function SignIn({ onSignedIn }: { onSignedIn: () => void }) {
       </header>
 
       <main className="pd-main">
-        <div className="pd-sys" aria-hidden="true">
-          {ORBITS.map((o, i) => (
-            <div key={o.r} className={`pd-orbit o${i}`} style={{ ['--r' as string]: `${o.r}px`, ['--dur' as string]: `${o.dur}s`, ['--i' as string]: i } as CSSProperties}>
-              <span className="pd-ring" />
-              {o.planets.map((p, k) => (
-                <span key={p.name} className="pd-planet" style={{ ['--a' as string]: `${p.a}deg`, ['--k' as string]: k } as CSSProperties}>
-                  <i /><b>{p.name}</b>
-                </span>
-              ))}
-            </div>
-          ))}
-          <Mark />
-        </div>
-
+        <div className="pd-stack">
+          <div className="pd-sys" aria-hidden="true">
+            {ORBITS.map((o, i) => (
+              <div key={o.r} className={`pd-orbit o${i}`} style={{ ['--r' as string]: `${o.r}px`, ['--dur' as string]: `${o.dur}s`, ['--i' as string]: i } as CSSProperties}>
+                <span className="pd-ring" />
+                {o.planets.map((p, k) => (
+                  <span key={p.name} className="pd-planet" style={{ ['--a' as string]: `${p.a}deg`, ['--k' as string]: k } as CSSProperties}>
+                    <i /><b>{p.name}</b>
+                  </span>
+                ))}
+              </div>
+            ))}
+          </div>
+          <div className="pd-markbox"><Mark /></div>
         <div className="pd-col">
           <p className="pd-hello">{greeting()}</p>
           <h1>Run Core Fitness</h1>
@@ -133,6 +135,7 @@ export default function SignIn({ onSignedIn }: { onSignedIn: () => void }) {
               {busy && <span className="pd-spin" aria-hidden="true" />}{busy ? 'Signing in' : 'Sign in'}
             </button>
           </form>
+        </div>
         </div>
       </main>
 

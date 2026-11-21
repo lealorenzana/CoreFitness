@@ -10,7 +10,7 @@
 .pd { --bg: #0e0d12; --surface: #16151c; --high: #1b1a22; --line: rgb(255 255 255 / .1); --line-strong: rgb(255 255 255 / .18);
   --plan: rgb(255 255 255 / .2); --plan-thin: rgb(255 255 255 / .1); --plan-faint: rgb(255 255 255 / .06);
   --text: #ececf1; --text-2: #a9a8b8; --text-3: #8b8a9d; --violet: #7c3aed; --violet-text: #c4b5fd; --amber: #f5a524; --on-amber: #1a1205;
-  --u: 1; --s: .4;
+  --u: 1; --s: .3;
   min-height: 100svh; display: grid; grid-template-rows: auto 1fr auto; background: var(--bg); color: var(--text);
   font-family: Inter, system-ui, sans-serif; overflow: hidden; }
 .pd a { color: var(--text); font-weight: 600; text-decoration: none; }
@@ -25,9 +25,11 @@
 
 .pd-main { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 8px 16px 32px; }
 
-/* ---- The system ---- */
-.pd-sys { position: relative; width: 100%; max-width: 800px; height: calc(300px * var(--u)); margin-bottom: calc(18px * var(--u)); }
-.pd-mark { position: absolute; left: 50%; top: 50%; width: calc(164px * var(--u)); height: calc(164px * var(--u)); transform: translate(-50%, -50%); z-index: 2; overflow: visible; }
+/* ---- The system: the sign-in in the middle, the mark at its head, orbits round the whole of it ---- */
+.pd-stack { position: relative; width: 100%; max-width: 380px; display: flex; flex-direction: column; align-items: center; }
+.pd-sys { position: absolute; left: 50%; top: var(--oy, 50%); width: 0; height: 0; z-index: 0; }
+.pd-markbox { position: relative; z-index: 4; width: calc(120px * var(--u)); height: calc(120px * var(--u)); margin-bottom: calc(12px * var(--u)); flex: none; }
+.pd-mark { display: block; width: 100%; height: 100%; overflow: visible; }
 .pd-mark .pd-disc { fill: var(--bg); stroke: var(--plan-faint); stroke-width: 1; }
 .pd-mark :is(path, rect, circle):not(.pd-disc) { fill: none; stroke: var(--plan); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round;
   vector-effect: non-scaling-stroke; stroke-dasharray: 1; stroke-dashoffset: 0; }
@@ -36,44 +38,47 @@
 .pd-mark .pd-beat { stroke: color-mix(in srgb, var(--violet-text) 45%, transparent); }
 .pd-mark .pd-beat-run { stroke: var(--violet-text); stroke-width: 2; stroke-dasharray: .16 .84; opacity: 0; }
 
-.pd-orbit { position: absolute; left: 50%; top: 50%; width: 0; height: 0; --R: calc(var(--r) * var(--u)); }
+.pd-orbit { position: absolute; left: 0; top: 0; width: 0; height: 0; --R: calc(var(--r) * var(--uo, var(--u))); }
 .pd-ring { position: absolute; left: calc(var(--R) * -1); top: calc(var(--R) * var(--s) * -1); width: calc(var(--R) * 2); height: calc(var(--R) * var(--s) * 2);
-  border: 1px solid var(--plan-faint); border-radius: 50%; z-index: 0; }
+  border: 1px solid var(--plan-faint); border-radius: 50%; }
+/* Every page passes behind the form (it never covers a field); the far side dims and shrinks a little. */
 .pd-planet { --ang: calc(var(--t) + var(--a)); --right: round(up, cos(var(--ang)), 1); position: absolute; left: 0; top: 0; width: 0; height: 0;
   font-size: 11px; font-weight: 650; letter-spacing: .14em; text-transform: uppercase; color: var(--text-3);
-  transform: translate(calc(cos(var(--ang)) * var(--R)), calc(sin(var(--ang)) * var(--R) * var(--s)));
-  opacity: calc(.35 + .65 * (sin(var(--ang)) + 1) / 2);
-  z-index: calc(1 + 2 * round(up, sin(var(--ang)), 1)); }
+  transform: translate(calc(cos(var(--ang)) * var(--R)), calc(sin(var(--ang)) * var(--R) * var(--s))) scale(calc(.84 + .16 * (sin(var(--ang)) + 1) / 2));
+  opacity: calc(.3 + .7 * (sin(var(--ang)) + 1) / 2); }
 .pd-planet i { position: absolute; left: 0; top: 0; width: 7px; height: 7px; border-radius: 50%; transform: translate(-50%, -50%); background: var(--bg); border: 1.5px solid var(--plan); box-sizing: border-box; }
 .pd-orbit.o0 .pd-planet i { width: 9px; height: 9px; }
-/* A label faces outward, away from the mark: right of its dot on the right half, left of it on the left half. */
+/* A label faces outward, away from the middle: right of its dot on the right half, left of it on the left half. */
 .pd-planet b { position: absolute; left: 0; top: 0; white-space: nowrap; font-weight: inherit;
   transform: translate(calc(12px + (-100% - 24px) * (1 - var(--right))), -50%); }
 
-/* ---- Motion: the mark draws itself, then the orbits open and turn. ---- */
+/* ---- Motion: the opening shot. The mark draws large in the middle of the dark, then settles at the head of
+   the form while the orbits tilt open and the form rises in. ---- */
 @media (prefers-reduced-motion: no-preference) {
-  .pd-mark g > *, .pd-mark .pd-beat { animation: pd-draw 1.4s cubic-bezier(.65, 0, .35, 1) both; animation-delay: calc(var(--s-step, 0) * 220ms + 150ms); }
+  .pd-markbox { animation: pd-settle 1.1s cubic-bezier(.7, 0, .2, 1) 2s both; }
+  .pd-mark g > *, .pd-mark .pd-beat { animation: pd-draw 1.4s cubic-bezier(.65, 0, .35, 1) both; animation-delay: calc(var(--s-step, 0) * 200ms + 200ms); }
   .pd-mark g:nth-of-type(1) > * { --s-step: 0; } .pd-mark g:nth-of-type(2) > * { --s-step: 1; }
   .pd-mark g:nth-of-type(3) > * { --s-step: 2; } .pd-mark g:nth-of-type(4) > * { --s-step: 3; }
   .pd-mark .pd-beat { --s-step: 4; }
   .pd-mark .pd-disc { animation: pd-fade .6s ease-out both; }
   /* After drawing, a pulse runs along the heartbeat every few seconds, like a monitor. */
-  .pd-mark .pd-beat-run { animation: pd-trace 2.8s linear 2.4s infinite; }
+  .pd-mark .pd-beat-run { animation: pd-trace 2.8s linear 3.4s infinite; }
   .pd-orbit { animation: pd-turn var(--dur) linear infinite; animation-delay: calc(var(--i) * -9s); }
-  .pd-ring { animation: pd-open 1.1s cubic-bezier(.22, 1, .36, 1) both; animation-delay: calc(1.1s + var(--i) * 150ms); }
-  .pd-planet { animation: pd-fade .6s ease-out both; animation-delay: calc(1.5s + var(--i) * 150ms + var(--k) * 90ms); }
-  .pd-col { animation: pd-in .6s cubic-bezier(.22, 1, .36, 1) .25s both; }
+  .pd-ring { animation: pd-tilt 1.2s cubic-bezier(.22, 1, .36, 1) both; animation-delay: calc(2.4s + var(--i) * 150ms); }
+  .pd-planet { animation: pd-fade .6s ease-out both; animation-delay: calc(2.8s + var(--i) * 150ms + var(--k) * 80ms); }
+  .pd-col { animation: pd-in .7s cubic-bezier(.22, 1, .36, 1) 2.6s both; }
+  .pd-edge, .pd-foot { animation: pd-fade .8s ease-out 2.4s both; }
 }
+@keyframes pd-settle { from { transform: translateY(var(--drop, 220px)) scale(1.8); } }
 @keyframes pd-draw { from { stroke-dashoffset: 1; } }
 @keyframes pd-fade { from { opacity: 0; } }
-@keyframes pd-open { from { opacity: 0; transform: scale(.55); } }
+@keyframes pd-tilt { from { opacity: 0; transform: scaleY(2.6) scale(.4); } }
 @keyframes pd-turn { to { --t: 360deg; } }
 @keyframes pd-trace { 0% { opacity: 1; stroke-dashoffset: 1.16; } 55% { opacity: 1; stroke-dashoffset: 0; } 56%, 100% { opacity: 0; stroke-dashoffset: 0; } }
 @keyframes pd-in { from { opacity: 0; transform: translateY(10px); } }
-/* The planets' fade must not fight their depth opacity: it animates from 0 to the computed value. */
 
 /* ---- The column: the gym sign-in's. ---- */
-.pd-col { width: 100%; max-width: 380px; position: relative; z-index: 3; }
+.pd-col { width: calc(100% + 48px); margin: 0 -24px; padding: 8px 24px 12px; border-radius: 20px; background: var(--bg); position: relative; z-index: 3; }
 .pd-hello { margin: 0 0 6px; font-size: 14px; font-weight: 600; color: var(--violet-text); }
 .pd-col h1 { margin: 0; font-size: 30px; font-weight: 700; letter-spacing: -0.035em; line-height: 1.1; text-wrap: balance; }
 .pd-sub { margin: 8px 0 24px; font-size: 15px; line-height: 1.5; color: var(--text-2); text-wrap: pretty; }
@@ -103,11 +108,16 @@
 
 .pd-foot { padding: 18px 32px 22px; text-align: center; font-size: 13px; color: var(--text-3); }
 
-/* ---- Sizes: the system shrinks on short and narrow screens; the outer orbit leaves phones. ---- */
-@media (min-height: 1000px) and (min-width: 1300px) { .pd { --u: 1.22; } .pd-sys { max-width: 960px; } }
-@media (max-height: 860px) { .pd { --u: .85; } .pd-sub { margin-bottom: 18px; } }
-@media (max-height: 760px) { .pd { --u: .66; } .pd-col h1 { font-size: 26px; } .pd-edge { padding: 14px 32px; } .pd-main { padding-bottom: 12px; } .pd-sub { margin-bottom: 14px; } .pd-form { gap: 12px; } }
-@media (max-width: 720px) { .pd { --u: .62; } .pd-edge { padding: 16px; } .pd-foot { padding: 16px; } .pd-planet { font-size: 10px; letter-spacing: .1em; } }
-@media (max-width: 520px) { .pd-orbit.o2 { display: none; } .pd { --u: .7; --s: .46; } .pd-quiet { display: none; }
+/* ---- Sizes: everything scales on short and narrow screens; on a phone the orbits circle the mark instead. ---- */
+@media (min-height: 1000px) and (min-width: 1700px) { .pd { --u: 1.15; --drop: 250px; } }
+@media (max-width: 1360px) { .pd { --uo: .86; } }
+@media (max-height: 860px) { .pd { --u: .85; --drop: 200px; } .pd-sub { margin-bottom: 18px; } }
+@media (max-height: 760px) { .pd { --u: .7; --drop: 180px; } .pd-col h1 { font-size: 26px; } .pd-edge { padding: 14px 32px; } .pd-main { padding-bottom: 12px; } .pd-sub { margin-bottom: 14px; } .pd-form { gap: 12px; } }
+@media (max-width: 960px) { .pd-orbit.o2 { display: none; } .pd { --uo: .8; } }
+@media (max-width: 720px) { .pd-edge { padding: 16px; } .pd-foot { padding: 16px; } .pd-planet { font-size: 10px; letter-spacing: .1em; } }
+@media (max-width: 520px) { .pd { --u: .78; --uo: .38; --s: .46; --oy: calc(60px * var(--u)); --drop: 210px; } .pd-quiet { display: none; }
+  .pd-col { width: 100%; margin: 0; padding: 0; background: none; }
+  /* The orbits fit between the mark and the heading, so nothing cuts them. */
+  .pd-markbox { margin-bottom: 46px; }
   /* On a phone a label sits under its dot, so none runs off the screen. */
   .pd-planet b { transform: translate(-50%, 9px); } }

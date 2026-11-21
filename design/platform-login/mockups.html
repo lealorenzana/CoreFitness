@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Platform sign-in mock-ups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+/* Three directions for the platform's sign-in (2026-11-22). Floor plan colours only: white hairlines at low alpha,
+   one violet line, one amber action. No glow, no gradient. Each replays its entrance from the switcher. */
+@property --t { syntax: '<angle>'; inherits: true; initial-value: 0deg; }
+:root { --bg: #0e0d12; --high: #1b1a22; --line: rgb(255 255 255 / .1); --line-strong: rgb(255 255 255 / .18);
+  --plan: rgb(255 255 255 / .22); --plan-thin: rgb(255 255 255 / .1); --plan-faint: rgb(255 255 255 / .06);
+  --text: #ececf1; --text-2: #a9a8b8; --text-3: #8b8a9d; --violet: #7c3aed; --violet-text: #c4b5fd; --amber: #f5a524; --on-amber: #1a1205; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: Inter, system-ui, sans-serif; }
+button, input { font: inherit; }
+:is(a, button, input):focus-visible { outline: 2px solid var(--violet-text); outline-offset: 2px; }
+
+/* The switcher: a pinned bar, outside the mock-up. */
+.pick { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 50; display: flex; gap: 4px; padding: 4px; border-radius: 12px;
+  background: #1b1a22; border: 1px solid var(--line-strong); }
+.pick button { min-height: 40px; padding: 0 14px; border: 0; border-radius: 9px; background: none; color: var(--text-2); font-size: 13.5px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.pick button[aria-pressed="true"] { background: #2a2933; color: var(--text); }
+.pick .replay { color: var(--violet-text); }
+@media (max-width: 520px) { .pick button { padding: 0 9px; font-size: 12.5px; } }
+
+.stage { position: fixed; inset: 0; overflow: hidden; display: grid; grid-template-rows: auto 1fr auto; }
+.edge { display: flex; justify-content: space-between; align-items: center; padding: 20px 32px; position: relative; z-index: 5; }
+.brand { display: inline-flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; letter-spacing: -.02em; }
+.brand svg { width: 28px; height: 28px; fill: none; stroke: var(--text-2); stroke-width: 1.8; stroke-linecap: round; }
+.tag { padding: 3px 8px; border-radius: 6px; border: 1px solid var(--line-strong); font-size: 11px; font-weight: 650; letter-spacing: .1em; text-transform: uppercase; color: var(--text-2); }
+.quiet { font-size: 13px; color: var(--text-3); }
+.foot { padding: 16px 32px 76px; text-align: center; font-size: 13px; color: var(--text-3); position: relative; z-index: 5; }
+.foot a { color: var(--text); font-weight: 600; text-decoration: none; }
+@media (max-width: 520px) { .edge { padding: 16px; } .quiet { display: none; } }
+
+/* The mark, as plan line art. */
+.mark :is(path, rect, circle):not(.disc) { fill: none; stroke: var(--plan); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round;
+  vector-effect: non-scaling-stroke; stroke-dasharray: 1; stroke-dashoffset: 0; }
+.mark .disc { fill: var(--bg); stroke: var(--plan-faint); }
+.mark .thin { stroke: var(--plan-thin); }
+.mark .beat { stroke: color-mix(in srgb, var(--violet-text) 45%, transparent); }
+.mark .run { stroke: var(--violet-text); stroke-width: 2; stroke-dasharray: .16 .84; opacity: 0; }
+.mark g > *, .mark .beat { animation: draw 1.3s cubic-bezier(.65, 0, .35, 1) both; animation-delay: calc(var(--d, 0) * 200ms + var(--d0, 150ms)); }
+.mark .run { animation: trace 2.8s linear calc(var(--d0, 150ms) + 2.2s) infinite; }
+@keyframes draw { from { stroke-dashoffset: 1; } }
+@keyframes trace { 0% { opacity: 1; stroke-dashoffset: 1.16; } 55% { opacity: 1; stroke-dashoffset: 0; } 56%, 100% { opacity: 0; } }
+@keyframes fade { from { opacity: 0; } }
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+
+/* The form: the gym sign-in's quiet column. */
+.col { width: 100%; max-width: 360px; }
+.hello { margin: 0 0 6px; font-size: 14px; font-weight: 600; color: var(--violet-text); }
+.col h1 { margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -.035em; line-height: 1.1; }
+.sub { margin: 8px 0 20px; font-size: 14.5px; line-height: 1.5; color: var(--text-2); }
+.form { display: grid; gap: 14px; }
+.field label { display: block; margin-bottom: 7px; font-size: 14px; font-weight: 550; color: var(--text-2); }
+.input { width: 100%; height: 48px; padding: 0 14px; border-radius: 10px; font-size: 16px; color: var(--text); background: var(--high); border: 1px solid var(--line-strong); }
+.input:focus { outline: none; border-color: var(--violet); }
+.pw { position: relative; } .pw .input { padding-right: 68px; }
+.show { position: absolute; right: 2px; top: 2px; height: 44px; min-width: 60px; border: 0; border-radius: 8px; background: none; color: var(--text-2); font-size: 13px; font-weight: 600; cursor: pointer; }
+.msg { margin: -4px 0 -2px; min-height: 20px; font-size: 13.5px; line-height: 20px; color: var(--text-3); }
+.btn { width: 100%; min-height: 48px; border: 0; border-radius: 12px; background: var(--amber); color: var(--on-amber); font-size: 15px; font-weight: 650; cursor: pointer;
+  transition: transform .16s cubic-bezier(.22, 1, .36, 1), background-color .12s; }
+.btn:hover { background: #f8b542; } .btn:active { transform: scale(.97); }
+
+/* Orbit labels: an animated angle places each page on its ellipse; labels stay upright and face outward. */
+.planet { --ang: calc(var(--t) + var(--a)); --right: round(up, cos(var(--ang)), 1); position: absolute; left: 0; top: 0; width: 0; height: 0;
+  font-size: 11px; font-weight: 650; letter-spacing: .14em; text-transform: uppercase; color: var(--text-3); }
+.planet i { position: absolute; width: 7px; height: 7px; border-radius: 50%; transform: translate(-50%, -50%); background: var(--bg); border: 1.5px solid var(--plan); }
+.planet b { position: absolute; white-space: nowrap; font-weight: inherit; transform: translate(calc(12px + (-100% - 24px) * (1 - var(--right))), -50%); }
+@keyframes turn { to { --t: 360deg; } }
+
+/* ======================= A · Astrolabe =======================
+   Flat rings centred on the form itself, like the plates of an astrolabe: degree ticks on the outer plate,
+   each plate turning at its own pace, the pages riding them. The mark sits at the head of the form. */
+.A .main { position: relative; display: grid; place-items: center; }
+.A .plates { position: absolute; left: 50%; top: 50%; width: 0; height: 0; }
+.A .plate { position: absolute; left: 0; top: 0; width: 0; height: 0; --R: calc(var(--r) * var(--u, 1)); animation: turn var(--dur) linear infinite; animation-direction: var(--dir, normal); }
+.A .plate .ring { position: absolute; left: calc(var(--R) * -1); top: calc(var(--R) * -1); width: calc(var(--R) * 2); height: calc(var(--R) * 2); border-radius: 50%;
+  border: 1px solid var(--plan-faint); animation: ringIn 1.2s cubic-bezier(.22, 1, .36, 1) both; animation-delay: calc(1.2s + var(--i) * 160ms); }
+@keyframes ringIn { from { opacity: 0; transform: scale(.82); } }
+.A .planet { transform: translate(calc(cos(var(--ang)) * var(--R)), calc(sin(var(--ang)) * var(--R))); animation: fade .6s ease-out both; animation-delay: calc(1.6s + var(--i) * 160ms + var(--k) * 80ms); }
+.A .ticks { position: absolute; left: 50%; top: 50%; width: calc(var(--tr) * 2 * var(--u, 1)); height: calc(var(--tr) * 2 * var(--u, 1)); transform: translate(-50%, -50%);
+  animation: fade 1s ease-out 1.1s both; }
+.A .ticks svg { width: 100%; height: 100%; overflow: visible; animation: spin 240s linear infinite reverse; }
+.A .ticks line { stroke: var(--plan-thin); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.A .ticks line.big { stroke: var(--plan); }
+.A .ticks text { fill: var(--text-3); font: 600 9px Inter; letter-spacing: .1em; opacity: .7; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.A .cross { position: absolute; inset: 0; pointer-events: none; }
+.A .cross::before, .A .cross::after { content: ''; position: absolute; background: var(--plan-faint); animation: fade 1s ease-out .8s both; }
+.A .cross::before { left: 0; right: 0; top: 50%; height: 1px; } .A .cross::after { top: 0; bottom: 0; left: 50%; width: 1px; }
+.A .core { position: relative; z-index: 3; padding: 28px; border-radius: 50%; }
+.A .core::before { content: ''; position: absolute; inset: -40px -60px; border-radius: 50%; background: var(--bg); z-index: -1; }
+.A .mark { display: block; width: 84px; height: 84px; margin: 0 0 14px; }
+.A .col { animation: rise .6s cubic-bezier(.22, 1, .36, 1) .3s both; }
+@media (max-height: 860px) { .A { --u: .85; } }
+@media (max-width: 720px) { .A { --u: .62; } .A .plate.o2 .planet { display: none; } }
+
+/* ======================= B · Eclipse =======================
+   An opening shot: the mark draws large in the dark, then rises into place while the orbits tilt open in real
+   3D around the whole sign-in, so the pages pass behind the form and in front below it. */
+.B .main { position: relative; display: grid; place-items: center; perspective: 1200px; }
+.B .bigmark { position: absolute; left: 50%; top: 50%; width: 220px; height: 220px; z-index: 6;
+  animation: settle 1.1s cubic-bezier(.7, 0, .2, 1) 2s both; }
+@keyframes settle { from { transform: translate(-50%, -50%) scale(1); } to { transform: translate(-50%, calc(-50% - var(--lift))) scale(.56); } }
+.B { --lift: 240px; }
+.B .bigmark .mark { width: 100%; height: 100%; }
+.B .orbits { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform-style: preserve-3d; }
+.B .orbit { position: absolute; left: 0; top: 0; width: 0; height: 0; --R: calc(var(--r) * var(--u, 1)); animation: turn var(--dur) linear infinite; }
+.B .orbit .ring { position: absolute; left: calc(var(--R) * -1); top: calc(var(--R) * -.3); width: calc(var(--R) * 2); height: calc(var(--R) * .6); border-radius: 50%;
+  border: 1px solid var(--plan-faint); animation: tilt 1.2s cubic-bezier(.22, 1, .36, 1) both; animation-delay: calc(2.4s + var(--i) * 150ms); }
+@keyframes tilt { from { opacity: 0; transform: scaleY(2.6) scale(.4); } }
+.B .planet { transform: translate(calc(cos(var(--ang)) * var(--R)), calc(sin(var(--ang)) * var(--R) * .3)) scale(calc(.82 + .18 * (sin(var(--ang)) + 1) / 2));
+  opacity: calc(.25 + .75 * (sin(var(--ang)) + 1) / 2); z-index: calc(1 + 4 * round(up, sin(var(--ang)), 1));
+  animation: fade .6s ease-out both; animation-delay: calc(2.8s + var(--i) * 150ms + var(--k) * 80ms); }
+.B .col { position: relative; z-index: 3; margin-top: 60px; padding: 24px 28px; border-radius: 20px; background: var(--bg); animation: rise .7s cubic-bezier(.22, 1, .36, 1) 2.6s both; }
+@media (max-height: 860px) { .B { --u: .85; --lift: 225px; } }
+@media (max-height: 760px) { .B { --u: .72; --lift: 200px; } .B .col { margin-top: 70px; } }
+@media (max-width: 720px) { .B { --u: .55; } .B .orbit.o2 { display: none; } .B .planet b { transform: translate(-50%, 9px); } }
+
+/* ======================= C · Radar =======================
+   The mark at the centre of a plan scope: range rings and a crosshair; one line sweeps round, and each page
+   lights as the line passes it, then fades until the next pass. The form sits under the scope. */
+.C .main { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; }
+.C .scope { position: relative; width: calc(300px * var(--u, 1)); height: calc(300px * var(--u, 1)); flex: none; }
+.C .scope .rr { position: absolute; left: 50%; top: 50%; border-radius: 50%; border: 1px solid var(--plan-faint); transform: translate(-50%, -50%);
+  animation: ringC 1s cubic-bezier(.22, 1, .36, 1) both; }
+@keyframes ringC { from { opacity: 0; transform: translate(-50%, -50%) scale(.6); } }
+.C .scope .hair { position: absolute; background: var(--plan-faint); animation: fade 1s ease-out 1s both; }
+.C .mark { position: absolute; left: 50%; top: 50%; width: 34%; height: 34%; transform: translate(-50%, -50%); z-index: 2; }
+.C .sweep { position: absolute; left: 50%; top: 50%; width: 50%; height: 1px; transform-origin: 0 50%; background: var(--violet-text); opacity: .55;
+  animation: sweep 6s linear 1.6s infinite, fade .4s ease-out 1.6s both; }
+@keyframes sweep { from { transform: rotate(-90deg); } to { transform: rotate(270deg); } }
+.C .blip { position: absolute; left: calc(50% + cos(var(--a)) * var(--rr)); top: calc(50% + sin(var(--a)) * var(--rr)); width: 0; height: 0;
+  font-size: 11px; font-weight: 650; letter-spacing: .14em; text-transform: uppercase; color: var(--text-2); --right: round(up, cos(var(--a)), 1);
+  animation: blip 6s linear infinite; animation-delay: calc(1.6s + ((var(--a) + 90deg) / 360deg) * 6s); opacity: .18; }
+.C .blip i { position: absolute; width: 7px; height: 7px; border-radius: 50%; transform: translate(-50%, -50%); background: var(--violet-text); }
+.C .blip b { position: absolute; white-space: nowrap; font-weight: inherit; transform: translate(calc(12px + (-100% - 24px) * (1 - var(--right))), -50%); }
+@keyframes blip { 0% { opacity: 1; } 8% { opacity: 1; } 60%, 100% { opacity: .18; } }
+.C .col { animation: rise .6s cubic-bezier(.22, 1, .36, 1) .4s both; }
+@media (max-height: 860px) { .C { --u: .8; } .C .main { gap: 14px; } .C .sub { margin-bottom: 14px; } .C .form { gap: 10px; } }
+@media (max-height: 760px) { .C { --u: .62; } .C .col h1 { font-size: 24px; } }
+@media (max-width: 520px) { .C { --u: .78; } .C .blip b { transform: translate(-50%, 9px); } }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; } .B .bigmark { transform: translate(-50%, calc(-50% - var(--lift))) scale(.56); } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<nav class="pick" aria-label="Mock-ups">
+  <button data-v="A" aria-pressed="true">A · Astrolabe</button>
+  <button data-v="B" aria-pressed="false">B · Eclipse</button>
+  <button data-v="C" aria-pressed="false">C · Radar</button>
+  <button class="replay" data-replay>Replay</button>
+</nav>
+<script>
+const MARK = (d0 = 150) => `<svg class="mark" viewBox="0 0 200 200" aria-hidden="true" style="--d0:${d0}ms">
+  <circle class="disc" cx="100" cy="100" r="96"/>
+  <g style="--d:0"><path pathLength="1" d="M150.1 40.2 A78 78 0 1 0 150.1 159.8" style="stroke-width:2.2"/><path pathLength="1" class="thin" d="M142.4 49.4 A66 66 0 1 0 142.4 150.6"/></g>
+  <g style="--d:1"><path pathLength="1" d="M30 100 H170"/><rect pathLength="1" x="40" y="82" width="8" height="36" rx="2"/><rect pathLength="1" x="50" y="88" width="6" height="24" rx="2"/><rect pathLength="1" x="152" y="82" width="8" height="36" rx="2"/><rect pathLength="1" x="144" y="88" width="6" height="24" rx="2"/></g>
+  <g style="--d:2"><circle pathLength="1" cx="121" cy="58" r="8"/><path pathLength="1" d="M114 70 L100 98"/><path pathLength="1" d="M112 75 L127 82 L135 72"/><path pathLength="1" d="M111 75 L95 73 L86 84"/><path pathLength="1" d="M100 98 L116 110 L111 128"/><path pathLength="1" d="M100 98 L85 112 L71 108"/></g>
+  <g style="--d:3">${[[156,30,7],[168,22,5],[166,38,5],[178,32,4],[180,16,3],[172,46,3]].map(([x,y,s]) => `<rect pathLength="1" x="${x}" y="${y}" width="${s}" height="${s}" rx="1"/>`).join('')}</g>
+  <path pathLength="1" class="beat" style="--d:4" d="M58 146 H104 L110 136 L116 156 L121 140 L125 148 L129 146 H146"/>
+  <path pathLength="1" class="run" d="M58 146 H104 L110 136 L116 156 L121 140 L125 148 L129 146 H146"/>
+</svg>`;
+const hour = new Date().getHours();
+const HELLO = hour < 12 ? 'Good morning.' : hour < 18 ? 'Good afternoon.' : 'Good evening.';
+const FORM = `<div class="col">
+  <p class="hello">${HELLO}</p><h1>Run Core Fitness</h1>
+  <p class="sub">The platform owner’s account. Every gym on the service, in one place.</p>
+  <form class="form" onsubmit="event.preventDefault()">
+    <div class="field"><label for="e">Email</label><input id="e" class="input" type="email" autocomplete="off"></div>
+    <div class="field"><label for="p">Password</label><div class="pw"><input id="p" class="input" type="password" autocomplete="off"><button type="button" class="show">Show</button></div></div>
+    <p class="msg" aria-live="polite"></p>
+    <button class="btn" type="submit">Sign in</button>
+  </form></div>`;
+const EDGE = `<header class="edge"><span class="brand"><svg viewBox="0 0 28 28"><path d="M21 6.5 A10.5 10.5 0 1 0 21 21.5"/><path d="M5 14 H23"/></svg> Core Fitness <span class="tag">Platform</span></span><span class="quiet">This computer only</span></header>`;
+const FOOT = `<footer class="foot">Gym owners and their front desk sign in to the <a href="#">admin app</a>.</footer>`;
+const ORBITS = [
+  { r: 300, dur: 90, names: ['Gyms', 'Applications', 'Money'] },
+  { r: 380, dur: 130, names: ['Plans', 'Support', 'Website', 'What’s new'] },
+  { r: 460, dur: 180, names: ['Growth', 'Capacity', 'Activity', 'Platform', 'Announcements'] },
+];
+const planets = (names, off = 20) => names.map((n, k) => `<span class="planet" style="--a:${off + k * (360 / names.length)}deg;--k:${k}"><i></i><b>${n}</b></span>`).join('');
+
+const ticks = (r) => {
+  let s = '';
+  for (let i = 0; i < 72; i++) {
+    const a = i * 5 * Math.PI / 180, big = i % 6 === 0, r1 = big ? r - 12 : r - 6;
+    s += `<line class="${big ? 'big' : ''}" x1="${(Math.cos(a) * r1).toFixed(1)}" y1="${(Math.sin(a) * r1).toFixed(1)}" x2="${(Math.cos(a) * r).toFixed(1)}" y2="${(Math.sin(a) * r).toFixed(1)}"/>`;
+    if (big) s += `<text x="${(Math.cos(a) * (r - 26)).toFixed(1)}" y="${(Math.sin(a) * (r - 26) + 3).toFixed(1)}" text-anchor="middle">${String(i * 5).padStart(3, '0')}</text>`;
+  }
+  return `<svg viewBox="${-r} ${-r} ${2 * r} ${2 * r}">${s}</svg>`;
+};
+
+const VIEWS = {
+  A: () => `<div class="stage A">${EDGE}<main class="main"><div class="cross"></div>
+      <div class="ticks" style="--tr:600px">${ticks(600)}</div>
+      <div class="plates">${ORBITS.map((o, i) => `<div class="plate o${i}" style="--r:${o.r}px;--dur:${o.dur}s;--i:${i};--dir:${i % 2 ? 'reverse' : 'normal'}"><span class="ring"></span>${planets(o.names, 30 + i * 25)}</div>`).join('')}</div>
+      <div class="core">${MARK()}${FORM}</div></main>${FOOT}</div>`,
+  B: () => `<div class="stage B">${EDGE}<main class="main">
+      <div class="orbits">${[{ r: 250, dur: 70, names: ORBITS[0].names }, { r: 400, dur: 110, names: ORBITS[1].names }, { r: 560, dur: 160, names: ORBITS[2].names }]
+        .map((o, i) => `<div class="orbit o${i}" style="--r:${o.r}px;--dur:${o.dur}s;--i:${i}"><span class="ring"></span>${planets(o.names, 10 + i * 30)}</div>`).join('')}</div>
+      <div class="bigmark">${MARK(200)}</div>${FORM}</main>${FOOT}</div>`,
+  C: () => {
+    const pages = ['Gyms', 'Applications', 'Money', 'Plans', 'Support', 'Website', 'What’s new', 'Growth', 'Capacity', 'Activity', 'Platform', 'Announcements'];
+    const blips = pages.map((n, k) => `<span class="blip" style="--a:${(k * 30 + 12) % 360 - 90}deg;--rr:calc(${[100, 62, 88][k % 3] * 1.5}px * var(--u,1))"><i></i><b>${n}</b></span>`).join('');
+    return `<div class="stage C">${EDGE}<main class="main"><div class="scope">
+        ${[34, 62, 88, 100].map((p, i) => `<span class="rr" style="width:${p}%;height:${p}%;animation-delay:${.6 + i * .12}s"></span>`).join('')}
+        <span class="hair" style="left:0;right:0;top:50%;height:1px"></span><span class="hair" style="top:0;bottom:0;left:50%;width:1px"></span>
+        <span class="sweep"></span>${blips}${MARK()}</div>${FORM}</main>${FOOT}</div>`;
+  },
+};
+let current = 'A';
+const show = (v) => {
+  current = v;
+  document.getElementById('root').innerHTML = VIEWS[v]();
+  document.querySelectorAll('.pick [data-v]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === v)));
+  history.replaceState(null, '', '#' + v);
+};
+document.querySelector('.pick').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  show(b.dataset.replay !== undefined ? current : b.dataset.v);
+});
+show(['A', 'B', 'C'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'A');
+</script>
+</body>
+</html>
