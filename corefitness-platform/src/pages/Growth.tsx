@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { downloadCsv } from '../lib/csv';
-import { AlertTriangle, BarChart3, Building2, Download, CheckCircle2, Filter, Mail, Repeat, Sparkles, TrendingUp, Users, Wallet } from 'lucide-react';
+import { AlertTriangle, BarChart3, Download, CheckCircle2, Filter, Mail, Sparkles } from 'lucide-react';
 import MessageOwner from '../components/MessageOwner';
 import { detail } from '../components/DetailLayer';
 import GymMark from '../components/GymMark';
 import DemoNotice from '../components/DemoNotice';
+import './growth.css';
 import {
   adoption, explain, funnel, gymHealth, growth,
   type Adoption, type Funnel, type GrowthMonth, type GymHealth,
@@ -31,6 +32,8 @@ export default function Growth() {
   /** The gym whose owner is being written to (0240). */
   const [writing, setWriting] = useState<{ id: string; name: string; reasons: string[] } | null>(null);
   const [sentNote, setSentNote] = useState<string | null>(null);
+  /** The risk list: every gym worth a look, or only the high ones. */
+  const [onlyHigh, setOnlyHigh] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -69,13 +72,17 @@ export default function Growth() {
     Members: 'Active members across every gym at the end of the month, a floor, not a peak.',
     'Gyms at risk': 'Scored from quiet check-ins, lapsed payments, trials ending unpaid and owners not signing in (0136).',
   };
-  const kpis = [
-    { icon: Repeat, label: 'MRR', value: peso(mrr), foot: mrrChange === null ? 'monthly recurring revenue' : `${mrrChange >= 0 ? '+' : ''}${mrrChange}% vs last month` },
-    { icon: TrendingUp, label: 'ARR', value: peso(mrr * 12), foot: 'MRR × 12' },
-    { icon: Wallet, label: 'Collected this month', value: peso(now?.revenue ?? 0), foot: 'payments recorded' },
-    { icon: Building2, label: 'Gyms', value: String(now?.gyms ?? 0), foot: `${now?.new_gyms ?? 0} new · ${now?.lost_gyms ?? 0} suspended this month` },
-    { icon: Users, label: 'Members', value: (now?.members ?? 0).toLocaleString('en-PH'), foot: 'active, across every gym' },
-    { icon: AlertTriangle, label: 'Gyms at risk', value: String(atRisk.length), foot: `${atRisk.filter((a) => a.level === 'high').length} high`, act: atRisk.length > 0 },
+  const high = atRisk.filter((x) => x.level === 'high');
+  const riskShown = [...(onlyHigh ? high : atRisk)].sort((x, y) => y.score - x.score);
+  const noRevenue = months.every((m) => Number(m.mrr) === 0);
+  const ranked = [...adopt].sort((x, y) => y.gyms_30d - x.gyms_30d);
+  /** A gym added by hand skips "Applied", so a step can outnumber the one before it; a share over 100% would be nonsense. */
+  const share = (i: number) => (i > 0 && stages[i - 1].n > 0 && stages[i].n <= stages[i - 1].n ? `${Math.round((stages[i].n / stages[i - 1].n) * 100)}%` : '');
+  const skipped = stages.some((st, i) => i > 0 && st.n > stages[i - 1].n);
+  const money = [
+    { label: 'MRR', value: peso(mrr), foot: mrrChange === null ? 'monthly recurring revenue' : `${mrrChange >= 0 ? '+' : ''}${mrrChange}% vs last month` },
+    { label: 'ARR', value: peso(mrr * 12), foot: 'MRR × 12' },
+    { label: 'Collected this month', value: peso(now?.revenue ?? 0), foot: 'payments recorded' },
   ];
 
   return (
@@ -86,114 +93,124 @@ export default function Growth() {
         <MessageOwner open onClose={() => setWriting(null)} gymId={writing.id} gymName={writing.name} reasons={writing.reasons}
           onSent={(n) => setSentNote(`Sent to ${writing.name}'s owner${n > 1 ? `s (${n})` : ''}, it is in their bell and on their phone.`)} />
       )}
-      <div className="kpis">
-        {kpis.map((k) => {
-          const Icon = k.icon;
-          return (
-            <div key={k.label} className={`kpi${k.act ? ' act' : ''}`} tabIndex={0} data-tip={GROWTH_TIPS[k.label]}>
-              <span className="kpi-icon"><Icon size={18} /></span>
-              <span className="kpi-label">{k.label}</span>
-              <span className="kpi-value">{k.value}</span>
-              <span className="kpi-foot">{k.foot}</span>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* The four boxes, two by two, in their own box — a notice above them can never shift them (2026-11-08). */}
-      <div className="growth-grid">
-      <section className="card" style={{ marginTop: 16 }}>
-        <h2 className="section-title"><AlertTriangle size={14} /> Gyms at risk of leaving</h2>
-        {atRisk.length === 0 ? (
-          <p className="empty" style={{ padding: '20px 0' }}>
-            <CheckCircle2 size={20} style={{ color: 'var(--accent-text)', display: 'block', margin: '0 auto 6px' }} />
-            Every gym looks healthy: checking in, paid up, owner around.
-          </p>
-        ) : atRisk.map((g) => (
-          // The row opens the gym; Write to the owner sits beside it, never inside the link (0240).
-          <div key={g.gym_id} className="risk-row" data-risk-gym={g.name}>
-            <Link to={`/gyms/${g.gym_id}`} className="todo">
-              <GymMark name={g.name} logoUrl={g.logo_url} accent={g.accent} size={36} />
-              <span className="todo-text" style={{ fontWeight: 600 }}>{g.name}
-                <span className="chips">{g.reasons.map((r) => <span key={r} className="chip warn">{r}</span>)}</span>
-              </span>
-              <span className={`pill ${g.level === 'high' ? 'warn' : ''}`}>{g.level === 'high' ? 'High' : 'Medium'} · {g.score}</span>
-            </Link>
-            <button type="button" className="btn ghost sm" onClick={() => setWriting({ id: g.gym_id, name: g.name, reasons: g.reasons })} data-write-owner>
-              <Mail size={13} /> Write to the owner
-            </button>
-          </div>
-        ))}
-      </section>
-
-      <div className="grid-2">
-        <section className="card">
-          <h2 className="section-title" style={{ display: 'flex' }}><BarChart3 size={14} /> MRR by month
-            <button className="btn ghost" style={{ marginLeft: 'auto', height: 30, fontSize: 12 }} disabled={months.length === 0}
+      {/* Every box here scrolls its own list, so the shell's View all stays out (data-va-keep). */}
+      <div className="gw" data-va-keep>
+        <section className="card gw-rev">
+          <header className="gw-head">
+            <h2 className="section-title" data-tip="MRR counts each paid plan whose paid time covers that month. Click a month for its gyms, members and what was collected."><BarChart3 size={14} /> Revenue</h2>
+            <button className="btn ghost sm" disabled={months.length === 0}
               onClick={() => downloadCsv('core-fitness-growth', months, [
                 ['Month', (m) => m.month.slice(0, 7)], ['Gyms', (m) => m.gyms], ['New gyms', (m) => m.new_gyms], ['Gyms lost', (m) => m.lost_gyms],
                 ['Members', (m) => m.members], ['MRR', (m) => Number(m.mrr)], ['Collected', (m) => Number(m.revenue)],
               ])}><Download size={13} /> CSV</button>
-          </h2>
-          <div className="bars">
-            {months.map((m, i) => {
-              const v = Number(m.mrr);
-              const label = new Date(`${m.month.slice(0, 10)}T00:00:00`).toLocaleDateString('en-PH', { month: 'short' });
+          </header>
+          <div className="gw-figs">
+            {money.map((k) => (
+              <div key={k.label} tabIndex={0} data-tip={GROWTH_TIPS[k.label]}>
+                <span>{k.label}</span><b>{k.value}</b><small>{k.foot}</small>
+              </div>
+            ))}
+          </div>
+          {noRevenue ? (
+            <div className="gw-none">
+              <b>No revenue yet</b>
+              <span>No gym's paid time has covered a month in the last twelve, so MRR is ₱0. It counts from the first month a gym's payment covers.</span>
+            </div>
+          ) : (
+            <div className="bars gw-bars">
+              {months.map((m, i) => {
+                const v = Number(m.mrr);
+                const label = new Date(`${m.month.slice(0, 10)}T00:00:00`).toLocaleDateString('en-PH', { month: 'short' });
+                return (
+                  <div key={m.month} className={`bar${i === months.length - 1 ? ' now' : ''}`}
+                    data-detail={detail({ title: `MRR, ${new Date(`${m.month.slice(0, 10)}T00:00:00`).toLocaleDateString('en-PH', { month: 'long', year: 'numeric' })}`, value: peso(v), rows: [
+                      ['Paying gyms', String(m.gyms)], ['New gyms', String(m.new_gyms)], ['Suspended', String(m.lost_gyms)],
+                      ['Members across them', Number(m.members).toLocaleString('en-PH')], ['Collected that month', peso(m.revenue)],
+                    ], note: 'MRR counts each paid plan whose paid time covers this month; collected is what was actually paid in it.' })}>
+                    <span className="bar-value">{v ? `₱${short(v)}` : ''}</span>
+                    <span className="bar-fill" style={{ height: `${Math.max(1.5, (v / topMrr) * 82)}%` }} />
+                    <span className="bar-label">{label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <p className="gw-foot">MRR counts each paid plan whose paid time covers that month. Click a month for its gyms, members and what was collected.</p>
+        </section>
+
+        <section className="card gw-risk">
+          <header className="gw-head">
+            <h2 className="section-title"><AlertTriangle size={14} /> Gyms at risk of leaving</h2>
+            <div className="gw-seg" role="group" aria-label="Show">
+              <button type="button" className={onlyHigh ? '' : 'on'} aria-pressed={!onlyHigh} onClick={() => setOnlyHigh(false)}>All <b>{atRisk.length}</b></button>
+              <button type="button" className={onlyHigh ? 'on' : ''} aria-pressed={onlyHigh} onClick={() => setOnlyHigh(true)}>High <b>{high.length}</b></button>
+            </div>
+          </header>
+          <p className="gw-sub">Scored from quiet check-ins, lapsed payments, trials ending unpaid and owners not signing in. Highest first.</p>
+          {riskShown.length === 0 ? (
+            <p className="gw-ok"><CheckCircle2 size={16} /> {onlyHigh && atRisk.length ? 'No gym is at high risk.' : 'Every gym looks healthy: checking in, paid up, owner around.'}</p>
+          ) : (
+            <ul className="gw-list">
+              {riskShown.map((g) => (
+                // The row opens the gym; Write to the owner sits beside it, never inside the link (0240).
+                <li key={g.gym_id} data-risk-gym={g.name}>
+                  <Link to={`/gyms/${g.gym_id}`} className="gw-gym">
+                    <GymMark name={g.name} logoUrl={g.logo_url} accent={g.accent} size={32} />
+                    <span className="gw-gym-text">
+                      <b>{g.name}</b>
+                      <span title={g.reasons.join(' · ')}>{g.reasons.join(' · ')}</span>
+                    </span>
+                    <span className={`gw-score${g.level === 'high' ? ' high' : ''}`}>{g.level === 'high' ? 'High' : 'Medium'} · {g.score}</span>
+                  </Link>
+                  <button type="button" className="gw-write" aria-label={`Write to the owner of ${g.name}`} data-tip="Write to the owner"
+                    onClick={() => setWriting({ id: g.gym_id, name: g.name, reasons: g.reasons })} data-write-owner>
+                    <Mail size={15} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="card gw-fun">
+          <h2 className="section-title"><Filter size={14} /> Gyms, from applying to paying</h2>
+          <div className="gw-figs two">
+            <div tabIndex={0} data-tip={GROWTH_TIPS.Gyms}><span>Gyms</span><b>{now?.gyms ?? 0}</b><small>{now?.new_gyms ?? 0} new · {now?.lost_gyms ?? 0} suspended this month</small></div>
+            <div tabIndex={0} data-tip={GROWTH_TIPS.Members}><span>Members</span><b>{(now?.members ?? 0).toLocaleString('en-PH')}</b><small>active, across every gym</small></div>
+          </div>
+          <ol className="gw-steps">
+            {stages.map((st, i) => (
+              <li key={st.label} data-detail={detail({ title: st.label, value: String(st.n), rows: [
+                ...(i > 0 ? [[`From "${stages[i - 1].label}"`, share(i) ? `${share(i)} (${st.n} of ${stages[i - 1].n})` : `${st.n}, more than the ${stages[i - 1].n} before: gyms added by hand skip a step`] as [string, string]] : []),
+              ], note: 'Each step counts gyms that reached it; the percentage is how many of the step before got here.' })}>
+                <span className="gw-step-name">{st.label}</span>
+                <span className="gw-step-bar"><span style={{ width: `${(st.n / widest) * 100}%` }} /></span>
+                <b>{st.n}</b>
+                <small>{share(i)}</small>
+              </li>
+            ))}
+          </ol>
+          {skipped && <p className="gw-foot">Gyms added by hand skip Applied, so a step can count more than the one before. Its share is left out.</p>}
+        </section>
+
+        <section className="card gw-use">
+          <h2 className="section-title"><Sparkles size={14} /> What gyms use, last 30 days</h2>
+          <ol className="gw-steps">
+            {ranked.map((a) => {
+              const pct = a.gyms_total ? Math.round((a.gyms_30d / a.gyms_total) * 100) : 0;
               return (
-                <div key={m.month} className={`bar${i === months.length - 1 ? ' now' : ''}`}
-                  data-detail={detail({ title: `MRR, ${new Date(`${m.month.slice(0, 10)}T00:00:00`).toLocaleDateString('en-PH', { month: 'long', year: 'numeric' })}`, value: peso(v), rows: [
-                    ['Paying gyms', String(m.gyms)], ['New gyms', String(m.new_gyms)], ['Suspended', String(m.lost_gyms)],
-                    ['Members across them', Number(m.members).toLocaleString('en-PH')], ['Collected that month', peso(m.revenue)],
-                  ], note: 'MRR counts each paid plan whose paid time covers this month; collected is what was actually paid in it.' })}>
-                  <span className="bar-value">{v ? `₱${short(v)}` : ''}</span>
-                  <span className="bar-fill" style={{ height: `${Math.max(1.5, (v / topMrr) * 82)}%` }} />
-                  <span className="bar-label">{label}</span>
-                </div>
+                <li key={a.feature} data-detail={detail({ title: a.label, value: `${pct}%`, rows: [
+                  ['Gyms that used it, 30 days', String(a.gyms_30d)], ['Gyms that could', String(a.gyms_total)], ['Gyms that did not', String(Math.max(0, a.gyms_total - a.gyms_30d))],
+                ], note: 'A gym counts once it used this at least once in the last 30 days. Usage has every gym against every feature.' })}>
+                  <span className="gw-step-name">{a.label}</span>
+                  <span className="gw-step-bar"><span style={{ width: `${pct}%` }} /></span>
+                  <b>{pct}%</b>
+                  <small>{a.gyms_30d} of {a.gyms_total} gyms</small>
+                </li>
               );
             })}
-          </div>
-          <p className="meta" style={{ marginTop: 8 }}>MRR counts each paid plan whose paid time covers that month. Click a month for its gyms, members and what was collected.</p>
+          </ol>
         </section>
-
-        <section className="card">
-          <h2 className="section-title"><Filter size={14} /> From applying to paying</h2>
-          {stages.map((s, i) => (
-            <div key={s.label} style={{ padding: '7px 0', cursor: 'pointer' }} data-detail={detail({ title: s.label, value: String(s.n), rows: [
-              ...(i > 0 ? [[`From "${stages[i - 1].label}"`, stages[i - 1].n > 0 ? `${Math.round((s.n / stages[i - 1].n) * 100)}% (${s.n} of ${stages[i - 1].n})` : '—'] as [string, string]] : []),
-              ...(i > 0 && stages[0].n > 0 ? [[`From "${stages[0].label}"`, `${Math.round((s.n / stages[0].n) * 100)}%`] as [string, string]] : []),
-            ], note: 'Each step counts gyms that reached it; the percentage is how many of the step before got here.' })}>
-              <div className="row" style={{ gap: 8 }}>
-                <span className="grow" style={{ flexBasis: 100, fontSize: 13 }}>{s.label}</span>
-                <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{s.n}</span>
-                {i > 0 && stages[i - 1].n > 0 && (
-                  <span className="muted" style={{ fontSize: 11.5, width: 44, textAlign: 'right' }}>{Math.round((s.n / stages[i - 1].n) * 100)}%</span>
-                )}
-              </div>
-              <div className="meter"><span style={{ width: `${(s.n / widest) * 100}%` }} /></div>
-            </div>
-          ))}
-        </section>
-      </div>
-
-      <section className="card" style={{ marginTop: 16 }}>
-        <h2 className="section-title"><Sparkles size={14} /> What gyms use (last 30 days)</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '6px 24px' }}>
-          {adopt.map((a) => {
-            const pct = a.gyms_total ? Math.round((a.gyms_30d / a.gyms_total) * 100) : 0;
-            return (
-              <div key={a.feature} style={{ padding: '6px 0', cursor: 'pointer' }} data-detail={detail({ title: a.label, value: `${pct}%`, rows: [
-                ['Gyms that used it, 30 days', String(a.gyms_30d)], ['Gyms that could', String(a.gyms_total)], ['Gyms that did not', String(Math.max(0, a.gyms_total - a.gyms_30d))],
-              ], note: 'A gym counts once it used this at least once in the last 30 days. Usage has every gym against every feature.' })}>
-                <div className="row" style={{ gap: 8 }}>
-                  <span className="grow" style={{ flexBasis: 120, fontSize: 13 }}>{a.label}</span>
-                  <span className="muted" style={{ fontSize: 12 }}>{a.gyms_30d} of {a.gyms_total} gyms</span>
-                </div>
-                <div className="meter"><span style={{ width: `${pct}%` }} /></div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
       </div>
     </>
   );

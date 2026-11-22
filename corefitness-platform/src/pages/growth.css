@@ -1,0 +1,92 @@
+/*
+ * Growth (redesign 2026-11-22, owner: "fully redesign this part"). Three columns that fill the screen:
+ * revenue across two of them on top (its three money figures are the box's header, the chart below, an honest
+ * sentence instead of flat bars while MRR is ₱0); the at-risk gyms down the whole right column as a tall list,
+ * highest score first, since a long list is the thing this page is for; the funnel and what gyms use underneath.
+ * A step that outnumbers the one before (gyms added by hand skip Applied) shows no share, never "675%".
+ */
+.content .page[data-page="growth"] > .gw { flex: 1 1 auto !important; min-height: 0 !important; overflow: hidden !important;
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: minmax(0, 1.15fr) minmax(0, 1fr); gap: 16px; }
+.gw > .card { margin: 0 !important; min-height: 0; display: flex; flex-direction: column; padding: 16px 18px !important; overflow: hidden; }
+.gw-rev { grid-column: 1 / span 2; grid-row: 1; }
+.gw-risk { grid-column: 3; grid-row: 1 / span 2; }
+.gw-fun { grid-column: 1; grid-row: 2; }
+.gw-use { grid-column: 2; grid-row: 2; }
+.gw .section-title { margin: 0 0 12px; }
+.gw-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.gw-head .section-title { margin: 0; }
+
+/* Figures as a box's header: a row split by hairlines, the first on the box's left edge. */
+.gw-figs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid var(--hairline); flex: none; }
+.gw-figs.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.gw-figs > div { display: flex; flex-direction: column; gap: 3px; padding: 0 16px; min-width: 0; outline-offset: 4px; }
+.gw-figs > div:first-child { padding-left: 0; }
+.gw-figs > div + div { border-left: 1px solid var(--hairline); }
+.gw-figs span { font-size: 12.5px; color: var(--text-3); }
+.gw-figs b { font-size: 26px; font-weight: 650; letter-spacing: -0.025em; line-height: 1.1; color: var(--text); font-variant-numeric: tabular-nums; }
+.gw-fun .gw-figs b { font-size: 22px; }
+.gw-figs small { font-size: 12px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* The chart fills what is left of its box. */
+.gw-bars { flex: 1 1 0% !important; height: auto !important; min-height: 120px; }
+.gw-none { flex: 1 1 0%; min-height: 110px; display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: 0 0 0 16px;
+  border-left: 2px solid var(--line-strong, rgb(255 255 255 / .18)); }
+.gw-none b { font-size: 15px; font-weight: 650; color: var(--text); }
+.gw-none span { font-size: 13.5px; line-height: 1.55; color: var(--text-2); max-width: 62ch; }
+.gw-foot { margin: 12px 0 0; padding-top: 12px; border-top: 1px solid var(--hairline); font-size: 12.5px; color: var(--text-3); flex: none; }
+.gw-sub { margin: -4px 0 10px; font-size: 12.5px; line-height: 1.5; color: var(--text-3); flex: none; }
+
+/* All / High */
+.gw-seg { display: inline-flex; padding: 3px; border-radius: 9px; border: 1px solid var(--hairline); background: var(--surface-high); flex: none; }
+.gw-seg button { height: 26px; padding: 0 10px; border: 0; border-radius: 6px; background: none; color: var(--text-2); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.gw-seg button b { margin-left: 4px; font-weight: 600; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.gw-seg button.on { background: var(--surface); color: var(--text); box-shadow: 0 0 0 1px var(--hairline); }
+.gw-seg button.on b { color: var(--text-2); }
+
+/* The at-risk list: one line a gym, it scrolls inside its own column. */
+.gw-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1 1 0%; min-height: 0; margin-right: -8px; padding-right: 8px; }
+.gw-list li { display: flex; align-items: center; gap: 8px; padding: 9px 0; border-top: 1px solid var(--hairline); }
+.gw-gym { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; border-radius: 8px; }
+.gw-gym:hover b { text-decoration: underline; text-underline-offset: 3px; }
+.gw-gym-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.gw-gym-text b { font-size: 13.5px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gw-gym-text span { font-size: 12.5px; color: var(--warn); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gw-score { flex: none; font-size: 12px; font-weight: 600; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.gw-score.high { color: var(--warn); }
+.gw-write { flex: none; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 8px; border: 1px solid var(--hairline);
+  background: none; color: var(--text-2); cursor: pointer; }
+.gw-write:hover { color: var(--text); border-color: var(--line-strong, rgb(255 255 255 / .18)); background: var(--surface-high); }
+.gw-ok { display: flex; gap: 8px; align-items: center; margin: 4px 0 0; font-size: 13.5px; color: var(--text-2); }
+.gw-ok svg { color: var(--accent-text); }
+
+/* Steps: name, a bar, the count, the share, on one line each, every column lined up. */
+.gw-steps { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1 1 0%; min-height: 0; }
+.gw-steps li { display: grid; grid-template-columns: minmax(0, 7.5em) minmax(0, 1fr) 3.2em 6.4em; align-items: center; gap: 12px; padding: 8px 0; cursor: pointer; }
+.gw-steps li + li { border-top: 1px solid var(--hairline); }
+.gw-step-name { font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gw-step-bar { height: 6px; border-radius: 3px; background: var(--surface-high); overflow: hidden; }
+.gw-step-bar > span { display: block; height: 100%; border-radius: 3px; background: rgb(124 58 237 / .75); }
+.gw-steps b { font-size: 13.5px; font-weight: 650; color: var(--text); text-align: right; font-variant-numeric: tabular-nums; }
+.gw-steps small { font-size: 12px; color: var(--text-3); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.gw-use .gw-steps li { grid-template-columns: minmax(0, 9em) minmax(0, 1fr) 3.2em 7em; }
+
+/* Below 1280 the page scrolls: one column under the other, the list a fixed height. */
+@media (max-width: 1279px) {
+  .content .page[data-page="growth"] > .gw { overflow: visible !important; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; }
+  .gw-rev, .gw-risk, .gw-fun, .gw-use { grid-column: 1; grid-row: auto; }
+  .gw-rev { min-height: 360px; }
+  .gw-risk { max-height: 560px; }
+}
+
+/* Second pass: the chart gives way before the words do; small screens wrap a foot rather than cut it. */
+.gw-bars { min-height: 70px !important; }
+.gw-none { min-height: 70px; }
+.gw-fun .gw-figs small { white-space: normal; }
+@media (max-width: 1440px) {
+  .gw-figs b { font-size: 22px; }
+  .gw-rev .gw-foot { display: none; }
+  .gw-rev .section-title { cursor: help; }
+}
+/* The bar keeps at least 40px at any width; the name column gives way first. */
+.gw-steps li { grid-template-columns: minmax(0, 1.3fr) minmax(40px, 1fr) 2.6em 3.6em !important; font-size: 14px; }
+.gw-use .gw-steps li { grid-template-columns: minmax(0, 1.4fr) minmax(40px, 1fr) 3em 5.8em !important; }
