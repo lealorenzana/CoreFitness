@@ -89,3 +89,42 @@
 .cap-seg button.on { background: var(--surface); color: var(--text); box-shadow: 0 0 0 1px var(--hairline); }
 .cap-side .mx { border: 0 !important; padding: 0 !important; background: none !important; }
 .cap-side-body .section-title { margin-top: 0; }
+
+/* Settings → Email (2026-11-22). */
+.mail { margin: 0 !important; padding: 16px 18px !important; display: grid; gap: 14px; align-content: start; }
+.mail .section-title { margin: 0; }
+.mail-verdict { display: flex; gap: 12px; align-items: center; padding: 14px 16px; border-radius: 10px; border: 1px solid var(--hairline); }
+.mail-verdict > svg { flex: none; color: var(--warn); }
+.mail-verdict.works > svg { color: #34d399; }
+.mail-verdict.none, .mail-verdict.failing { border-color: rgb(245 158 11 / .4); background: rgb(245 158 11 / .07); }
+.mail-verdict span { display: flex; flex-direction: column; gap: 2px; }
+.mail-verdict b { font-size: 14.5px; color: var(--text); }
+.mail-verdict em { font-style: normal; font-size: 12.5px; color: var(--text-2); }
+.mail-test { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--text-2); }
+.mail-test span { flex: 1; min-width: 240px; }
+.mail-test b { color: var(--text); font-weight: 600; }
+.mail-result { margin: 0; font-size: 13px; color: var(--text); }
+.mail-result.bad { color: var(--warn); }
+.mail-how { padding: 12px 14px; border-radius: 10px; background: var(--surface-high); font-size: 13px; color: var(--text-2); }
+.mail-how b { color: var(--text); }
+.mail-how ol { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 4px; line-height: 1.5; }
+.mail-how code { font-size: 12px; color: var(--text); }
+.mail-last { margin: 0; font-size: 12.5px; color: var(--text-3); }
+
+/* Platform → Controls (2026-11-22): the switches and tools in one scrolling column, each card its own height. */
+.content .page[data-page="platform"] > .pf-controls { flex: 1 1 auto !important; min-height: 0 !important; overflow-y: auto !important; display: flex; flex-direction: column; gap: 16px; }
+.pf-controls > .card { flex: none !important; margin: 0 !important; min-height: 0 !important; overflow: visible !important; }
+.content .page[data-page="platform"] > .pf-alert { flex: none !important; min-height: 0 !important; margin: 0; padding: 10px 14px; border-radius: 10px;
+  border: 1px solid rgb(245 158 11 / .4); background: rgb(245 158 11 / .07); font-size: 13px; overflow: visible !important; }
+.pf-alert .linky { color: var(--text); font-weight: 600; background: none; border: 0; padding: 0; cursor: pointer; font: inherit; }
+
+/* Platform's figures as one strip, like the other pages. */
+.page[data-page="platform"] > .tiles { display: grid !important; grid-template-columns: repeat(6, minmax(0, 1fr)) !important; gap: 0 !important;
+  border: 1px solid var(--hairline); border-radius: 12px; background: var(--surface); overflow: hidden; flex: none !important; min-height: 0 !important; margin: 0 !important; }
+.page[data-page="platform"] > .tiles > .tile { border: 0 !important; border-radius: 0 !important; background: none !important; padding: 14px 18px !important; min-height: 0 !important; transform: none !important; }
+.page[data-page="platform"] > .tiles > .tile + .tile { border-left: 1px solid var(--hairline) !important; }
+.page[data-page="platform"] > .tiles .tile-value { font-size: 24px !important; }
+.page[data-page="platform"] > .tiles .tile.act .tile-value { color: var(--warn) !important; }
+
+/* On Controls the health and activity grid is empty: it must not take the space the controls need. */
+.content .page[data-page="platform"] > .pf:empty { display: none !important; }

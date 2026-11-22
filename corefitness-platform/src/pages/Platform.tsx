@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import InfoDot from '../components/InfoDot';
 import { Link } from 'react-router-dom';
-import { Activity, Bug, Building2, DatabaseBackup, GitBranch, History, Mail, ShieldCheck, Users, Wallet } from 'lucide-react';
+import { Activity, Bug, Building2, DatabaseBackup, GitBranch, History, Mail, ShieldCheck, Users, Wallet, Wrench } from 'lucide-react';
 import Tiles from '../components/Tiles';
 import DemoGyms from '../components/DemoGyms';
 import MaintenanceSwitch from '../components/MaintenanceSwitch';
@@ -33,7 +33,7 @@ const peso = (n: string) => '₱' + Number(n).toLocaleString('en-PH', { maximumF
 export default function Platform() {
   const [events, setEvents] = useState<PlatformEvent[] | null>(null);
   // Two tabs (2026-11-02), so each fits the screen: the service's health, and who did what.
-  const [tab, setTab] = useState<'health' | 'people'>('health');
+  const [tab, setTab] = useState<'health' | 'controls' | 'people'>('health');
   const [crashes, setCrashes] = useState<CrashReport[] | null>(null);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [admins, setAdmins] = useState<PlatformAdmin[] | null>(null);
@@ -137,6 +137,22 @@ export default function Platform() {
         </>
       )}
 
+
+      {grants.length > 0 && tab !== 'controls' && (
+        <p className="pf-alert"><button type="button" className="linky" onClick={() => setTab('controls')}>
+          {grants.length === 1 ? 'A gym has asked for help' : `${grants.length} gyms have asked for help`}: open Controls to look inside.</button></p>
+      )}
+      <div className="ptabs" role="tablist" aria-label="Platform">
+        <button type="button" role="tab" aria-selected={tab === 'health'} className={tab === 'health' ? 'on' : ''} onClick={() => setTab('health')}><Bug size={14} /> Health</button>
+        <button type="button" role="tab" aria-selected={tab === 'controls'} className={tab === 'controls' ? 'on' : ''} onClick={() => setTab('controls')}><Wrench size={14} /> Controls</button>
+        <button type="button" role="tab" aria-selected={tab === 'people'} className={tab === 'people' ? 'on' : ''} onClick={() => setTab('people')}><History size={14} /> Activity &amp; access</button>
+      </div>
+
+      {/* Controls (2026-11-22): the switches and one-off tools, in their own tab instead of above the tabs. */}
+      {tab === 'controls' && (
+        <div className="pf-controls" data-va-keep>
+      {/* Maintenance mode (0263) first: the one switch that reaches every gym at once. */}
+      <MaintenanceSwitch />
       {grants.length > 0 && (
         <div className="card notice pf-card pf-12">
           <div className="name">
@@ -237,13 +253,8 @@ export default function Platform() {
       {/* Fifty demo gyms for a load test (0238): built and removed here, in steps, with progress. */}
       <DemoGyms />
 
-      {/* Maintenance mode (0263): cover every gym's apps with a message during an update or an outage. */}
-      <MaintenanceSwitch />
-
-      <div className="ptabs" role="tablist" aria-label="Platform">
-        <button type="button" role="tab" aria-selected={tab === 'health'} className={tab === 'health' ? 'on' : ''} onClick={() => setTab('health')}><Bug size={14} /> Health</button>
-        <button type="button" role="tab" aria-selected={tab === 'people'} className={tab === 'people' ? 'on' : ''} onClick={() => setTab('people')}><History size={14} /> Activity &amp; access</button>
-      </div>
+        </div>
+      )}
 
       <div className="pf">
       {tab === 'health' && <>

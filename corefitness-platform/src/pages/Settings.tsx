@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { BellRing, Building, ChevronRight, FileText, Keyboard, Monitor, Receipt, ShieldCheck, Timer, UserMinus, UserPlus, Wallet } from 'lucide-react';
+import { BellRing, Building, ChevronRight, FileText, Keyboard, Mail, Monitor, Receipt, ShieldCheck, Timer, UserMinus, UserPlus, Wallet } from 'lucide-react';
 import {
   addAdmin, billingSettings, explain, listAdmins, removeAdmin, saveBillingSettings,
   type BillingSettings, type PlatformAdmin,
@@ -8,6 +8,7 @@ import InfoDot from '../components/InfoDot';
 import PaymentMethods from '../components/PaymentMethods';
 import GymDocuments from '../components/GymDocuments';
 import GymDocsEditor from '../components/GymDocsEditor';
+import MailStatus from '../components/MailStatus';
 
 const long = (d: Date) => d.toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
 
@@ -20,13 +21,14 @@ const long = (d: Date) => d.toLocaleDateString('en-PH', { day: 'numeric', month:
  * Since 2026-11-02 one section at a time: the list on the left, the chosen one
  * in full on the right — six cramped boxes with their own scrollbars read badly.
  */
-type Part = 'business' | 'billing' | 'pay' | 'admins' | 'docs' | 'install';
+type Part = 'business' | 'billing' | 'pay' | 'admins' | 'docs' | 'mail' | 'install';
 const PARTS: [Part, string, string, typeof Building][] = [
   ['business', 'Business and receipts', 'What every receipt says', Building],
   ['billing', 'Billing rules', 'Read-only and reminders', Timer],
   ['pay', 'How gyms pay you', 'GCash, Maya, bank, online', Wallet],
   ['admins', 'Who can run the platform', 'Platform owners', ShieldCheck],
   ['docs', 'Gym documents', 'Terms, DPA and privacy', FileText],
+  ['mail', 'Email', 'Whether mail goes out, a test', Mail],
   ['install', 'This installation', 'Where it runs, shortcuts', Monitor],
 ];
 export default function Settings() {
@@ -197,6 +199,7 @@ export default function Settings() {
       )}
 
       {part === 'docs' && <div className="gd-stack" data-va-keep><GymDocsEditor /><GymDocuments /></div>}
+      {part === 'mail' && <MailStatus />}
       </div>
     </div>
   );
