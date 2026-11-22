@@ -52,8 +52,8 @@ export default function SwitchesList({ onOpenSignups, onOpenRequests, onOpenMemb
         {outgoing.map((r) => <SwitchRow key={r.id} r={r} onOpenSignups={onOpenSignups} onOpenRequests={onOpenRequests} onOpenMember={onOpenMember} />)}
       </>)}
       <p style={{ ...SUB, margin: '16px 0 0', lineHeight: 1.55, fontSize: 12.5 }}>
-        A member belongs to one gym at a time. Approving a switch-in is the same as any sign-up — your joining rules and plans apply.
-        When someone leaves, nothing of theirs is deleted here; the other gym is never named — that is the member's business.
+        A member belongs to one gym at a time. Approving a switch-in is the same as any sign-up: your joining rules and plans apply.
+        When someone leaves, nothing of theirs is deleted here; the other gym is never named, since that is the member's business.
       </p>
     </div>
   );
@@ -64,10 +64,10 @@ function SwitchRow({ r, onOpenSignups, onOpenRequests, onOpenMember }: {
 }) {
   const inWaiting = r.direction === 'in' && r.status === 'pending';
   const word = r.direction === 'in'
-    ? (r.status === 'pending' ? `Asked ${day(r.askedAt)} — waiting for you`
-      : r.status === 'completed' ? `Joined ${day(r.decidedAt ?? r.askedAt)} — their training came with them`
+    ? (r.status === 'pending' ? `Asked ${day(r.askedAt)} · waiting for you`
+      : r.status === 'completed' ? `Joined ${day(r.decidedAt ?? r.askedAt)} · their training came with them`
       : r.status === 'declined' ? `Declined ${day(r.decidedAt ?? r.askedAt)}` : `They withdrew it ${day(r.decidedAt ?? r.askedAt)}`)
-    : `Left ${day(r.decidedAt ?? r.askedAt)} — payments and visits stay here`;
+    : `Left ${day(r.decidedAt ?? r.askedAt)} · payments and visits stay here`;
   return (
     <div className="flex items-center gap-3" style={{ padding: '12px 0', borderBottom: '1px solid var(--color-border)' }} data-switch-row={r.direction}>
       <Avatar name={r.name} photoUrl={r.photoUrl} size={38} />

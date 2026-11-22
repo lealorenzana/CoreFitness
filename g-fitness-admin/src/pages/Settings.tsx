@@ -346,7 +346,7 @@ export default function Settings() {
         next === 'active'
           ? `${account.first_name} reactivated`
           : next === 'suspended'
-            ? `${account.first_name} suspended — they can no longer sign in`
+            ? `${account.first_name} suspended: they can no longer sign in`
             : `${account.first_name} archived`,
         'success'
       );
@@ -396,10 +396,10 @@ export default function Settings() {
   return (
     <div className="att" data-settings>
       <div className="a-head">
-        <div className="min-w-0"><h1>Settings</h1><p>How your gym works — every rule members meet comes from here</p></div>
+        <div className="min-w-0"><h1>Settings</h1><p>How your gym works: every rule members meet comes from here</p></div>
         <label className="a-input sm" style={{ marginLeft: 'auto', width: 320 }}>
           <Search size={14} />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search settings — “refund”, “hours”, “waiver”…" aria-label="Search settings"
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search settings: “refund”, “hours”, “waiver”…" aria-label="Search settings"
             onKeyDown={(e) => { if (e.key === 'Enter') { const first = SECTIONS.find((s) => s.id && matches(s)); if (first?.id) { setActiveTab(first.id); setSearch(''); } } }} />
         </label>
       </div>
@@ -446,7 +446,7 @@ export default function Settings() {
                   </div>
                   <div className="a-grid" style={{ gridTemplateColumns: '220px minmax(0, 1fr)', gap: 14, marginTop: 12, alignItems: 'start' }}>
                     <ImageField value={gymForm.logo_url} onChange={(logo_url) => setGymForm({ ...gymForm, logo_url })} kind="logos" label="Logo" aspect={1}
-                      hint="Square works best — it shows in a circle." />
+                      hint="Square works best: it shows in a circle." />
                     <div className="a-hint"><Palette size={15} /><span>The two colours in your members' app live on <Link to="/gym-app" style={{ color: 'var(--a-p300)' }}>Your app</Link>, alongside your words and what you run.</span></div>
                   </div>
                   <div style={{ marginTop: 14 }} id="location"
@@ -507,13 +507,13 @@ export default function Settings() {
                   <div style={{ margin: '0 0 10px' }}><PageGuide id="door-checkin" /> <PageGuide id="kiosk" label="Set up the kiosk" /></div>
                   <div id="checking-in"><DoorSettings /></div>
                   <div className="a-ct" style={{ marginTop: 16 }}><h3><Tags size={16} />Check-in activities</h3></div>
-                  <p className="a-sub">What the front desk can tag a check-in with — and what members pick from on their QR screen. Members can always check in without one.</p>
+                  <p className="a-sub">What the front desk can tag a check-in with: and what members pick from on their QR screen. Members can always check in without one.</p>
                   <div className="flex flex-wrap gap-1.5" style={{ marginTop: 8 }}>
                     {activityOptions.map((opt) => (
                       <span key={opt} className="a-chip on">{opt}
                         <button type="button" onClick={() => setActivityOptions(activityOptions.filter((x) => x !== opt))} aria-label={`Remove ${opt}`} data-tip={`Remove ${opt}`}>×</button></span>
                     ))}
-                    {activityOptions.length === 0 && <span className="a-sub">None — the picker is hidden at check-in.</span>}
+                    {activityOptions.length === 0 && <span className="a-sub">None: the picker is hidden at check-in.</span>}
                   </div>
                   <input className="a-in" style={{ marginTop: 8 }} value={newActivity} onChange={(e) => setNewActivity(e.target.value)} placeholder="Add an activity, then press Enter"
                     onKeyDown={(e) => {
@@ -528,12 +528,12 @@ export default function Settings() {
                 </>
               )}
 
-              {activeTab === 'slots' && <>{head('Time slots', 'Members book a time to come in, and you cap how many train at once — every rule is yours')}<TimeSlotsSettings /></>}
+              {activeTab === 'slots' && <>{head('Time slots', 'Members book a time to come in, and you cap how many train at once: every rule is yours')}<TimeSlotsSettings /></>}
               {activeTab === 'bookings' && <>
-                {head('How your gym works', 'Your gym’s style sets the booking and coaching settings below — you can still change each one')}
+                {head('How your gym works', 'Your gym’s style sets the booking and coaching settings below: you can still change each one')}
                 <GymStyles onApplied={() => setStyleTick((n) => n + 1)} />
                 <div style={{ height: 22 }} />
-                {head('Bookings', 'Who approves bookings — for group classes and 1-on-1 sessions separately')}<BookingApproval key={styleTick} />
+                {head('Bookings', 'Who approves bookings: for group classes and 1-on-1 sessions separately')}<BookingApproval key={styleTick} />
                 <div style={{ height: 22 }} />
                 {head('Repeats, late cancels and no-shows', 'Your rules for weekly bookings, cancelling close to the start, and members who do not come')}<BookingRulesSettings />
               </>}
@@ -579,7 +579,7 @@ export default function Settings() {
                     <div className="a-fld" style={{ gridColumn: '1 / -1' }}><label htmlFor="p-phone">Phone</label>
                       <input id="p-phone" className="a-in" value={profileForm.phone} placeholder="+63 900 000 0000" onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })} /></div>
                   </div>
-                  <p className="a-sub" style={{ marginTop: 8 }}>Email and role are not editable here — changing either affects sign-in and access.</p>
+                  <p className="a-sub" style={{ marginTop: 8 }}>Email and role are not editable here: changing either affects sign-in and access.</p>
                   <button type="button" className="a-btn violet" style={{ marginTop: 14, alignSelf: 'flex-end' }} onClick={handleSaveProfile} disabled={saving}>
                     {saving ? 'Saving…' : 'Save Profile'}
                   </button>
@@ -611,7 +611,7 @@ export default function Settings() {
                   <button type="button" className="a-link flex items-center gap-1.5" style={{ marginTop: 8 }} onClick={() => setShowPw(!showPw)}>
                     {showPw ? <EyeOff size={12} /> : <Eye size={12} />} {showPw ? 'Hide' : 'Show'} passwords
                   </button>
-                  <p className="a-sub" style={{ marginTop: 6 }}>Changing this signs you out of nothing — but you will need the new password next time.</p>
+                  <p className="a-sub" style={{ marginTop: 6 }}>Changing this signs you out of nothing: but you will need the new password next time.</p>
                   <button type="button" className="a-btn violet" style={{ marginTop: 14, alignSelf: 'flex-end' }} onClick={handleChangePassword} disabled={saving}>
                     {saving ? 'Changing…' : 'Change Password'}
                   </button>
@@ -666,7 +666,7 @@ export default function Settings() {
               ? `Let ${staffAction.account.first_name} sign in again? They get their front-desk access back immediately.`
               : staffAction.next === 'suspended'
                 ? `Suspend ${staffAction.account.first_name}? A front-desk login takes payments and checks members in, so this stops both at once. Every payment they have already recorded stays exactly as it is, and this is reversible.`
-                : `Archive ${staffAction.account.first_name}? They drop off this list and can no longer sign in. Nothing they recorded is deleted — every payment stays attributable to them.`
+                : `Archive ${staffAction.account.first_name}? They drop off this list and can no longer sign in. Nothing they recorded is deleted: every payment stays attributable to them.`
             : ''
         }
         confirmText={

@@ -28,13 +28,13 @@ function explain(sub: GymSubscription): State {
   if (sub.lock_reason === 'overdue') return { tone: 'bad', title: 'Read-only until it is paid', lines: [`The plan ran out on ${sub.paid_until ? day(sub.paid_until) : 'its due date'} and the ${sub.grace_days}-day grace has passed.`, 'Members and staff can still sign in and look; nothing can change until a payment is confirmed. Nothing is deleted.'] };
   if (!sub.paid_until) {
     return { tone: 'none', title: 'No billing for this gym', lines: [
-      'Core Fitness has not given this gym a covered-until date, so nothing is due and nothing locks — usually because it is a founding or partner gym.',
+      'Core Fitness has not given this gym a covered-until date, so nothing is due and nothing locks: usually because it is a founding or partner gym.',
       'If that changes, Core Fitness sets a date here first and you are told, with reminders before anything is due.'] };
   }
   const d = sub.days_left ?? 0;
   if (sub.on_trial) {
     return d >= 0
-      ? { tone: d <= 7 ? 'soon' : 'good', title: `Free trial — ${d} day${d === 1 ? '' : 's'} left`, lines: [`Free until ${day(sub.paid_until)}. To keep everything open after that, pay for the plan before then.`, `If no plan is paid by then, the app stops for you, your staff and your members on ${sub.read_only_on ? day(sub.read_only_on) : 'the next day'} — nothing is deleted.`] }
+      ? { tone: d <= 7 ? 'soon' : 'good', title: `Free trial: ${d} day${d === 1 ? '' : 's'} left`, lines: [`Free until ${day(sub.paid_until)}. To keep everything open after that, pay for the plan before then.`, `If no plan is paid by then, the app stops for you, your staff and your members on ${sub.read_only_on ? day(sub.read_only_on) : 'the next day'}: nothing is deleted.`] }
       : { tone: 'bad', title: `The free trial ended ${-d} day${d === -1 ? '' : 's'} ago`, lines: [`Read-only from ${sub.read_only_on ? day(sub.read_only_on) : 'the end of the grace days'} unless it is paid.`] };
   }
   if (d < 0) return { tone: 'bad', title: `${-d} day${d === -1 ? '' : 's'} overdue`, lines: [`Covered until ${day(sub.paid_until)}; the grace runs ${sub.grace_days} days after the due date.`, `Read-only from ${sub.read_only_on ? day(sub.read_only_on) : 'the end of the grace days'} unless a payment is confirmed first.`] };
@@ -104,7 +104,7 @@ export default function Subscription() {
       <b style={{ fontSize: 22 }}>{used}{cap !== null ? <span className="a-sub" style={{ fontSize: 13 }}> of {cap}</span> : <span className="a-sub" style={{ fontSize: 13 }}> · no limit</span>}</b>
       {cap !== null && cap > 0 && <div className="a-meter" style={{ marginTop: 8 }}><i style={{ width: `${Math.min(100, (used / cap) * 100)}%`, background: used >= cap ? 'var(--a-amber)' : undefined }} /></div>}
       <div className="a-sub" style={{ marginTop: 6 }}>
-        {cap === null ? 'this plan has no ceiling' : used >= cap ? `full — ask Core Fitness for a bigger plan` : `${cap - used} more ${unit}${cap - used === 1 ? '' : 's'} on this plan`}
+        {cap === null ? 'this plan has no ceiling' : used >= cap ? `full: ask Core Fitness for a bigger plan` : `${cap - used} more ${unit}${cap - used === 1 ? '' : 's'} on this plan`}
       </div>
     </div>
   );
@@ -141,7 +141,7 @@ export default function Subscription() {
           </div>
           <div className="a-sub" style={{ marginTop: 6 }}>
             {sub.price_monthly === null
-              ? <>Core Fitness has not put a price on this plan — ask in <Link to="/help" style={{ color: 'var(--a-p300)' }}>Help</Link>.</>
+              ? <>Core Fitness has not put a price on this plan: ask in <Link to="/help" style={{ color: 'var(--a-p300)' }}>Help</Link>.</>
               : sub.on_trial ? `Free trial until ${sub.paid_until ? day(sub.paid_until) : '—'}`
               : billed ? `Covered until ${day(sub.paid_until!)}${payments[0]?.method ? ` · last paid by ${payments[0].method}` : ''}`
               : 'No billing for this gym'}
@@ -159,8 +159,8 @@ export default function Subscription() {
             {store.limitBytes !== null && store.limitBytes > 0 && <div className="a-meter" style={{ marginTop: 8 }}><i style={{ width: `${Math.min(100, (store.usedBytes / store.limitBytes) * 100)}%`, background: store.usedBytes >= store.limitBytes ? 'var(--a-amber)' : undefined }} /></div>}
             <div className="a-sub" style={{ marginTop: 6 }}>
               {store.limitBytes === null ? 'this plan has no ceiling'
-                : store.usedBytes >= store.limitBytes ? 'full — remove a video, or ask Core Fitness for a bigger plan'
-                : 'reel videos, chat photos and your gym’s pictures — links use none'}
+                : store.usedBytes >= store.limitBytes ? 'full: remove a video, or ask Core Fitness for a bigger plan'
+                : 'reel videos, chat photos and your gym’s pictures: links use none'}
             </div>
           </div>
         )}
@@ -206,7 +206,7 @@ export default function Subscription() {
             <div id="documents" style={{ marginTop: 16 }}>
               <div className="a-ct"><h3><FileText size={16} />Business documents</h3></div>
               <p className="a-sub">
-                What Core Fitness verified when it let {application.gym_name} in. Send the renewed permit each January, and any document before it runs out — you are reminded.
+                What Core Fitness verified when it let {application.gym_name} in. Send the renewed permit each January, and any document before it runs out: you are reminded.
               </p>
               <div style={{ marginTop: 10 }}><ApplicationDocuments applicationId={application.id} documents={application.documents} onChanged={loadApplication} renewing /></div>
             </div>
@@ -215,7 +215,7 @@ export default function Subscription() {
 
         <div className="a-card glow a-scroll">
           <div className="a-ct"><h3><ListChecks size={16} />{sub.plan_name ?? 'Your plan'} includes</h3></div>
-          {features.length === 0 && <p className="a-sub">What the plan includes could not be loaded — a connection problem, not an empty plan.</p>}
+          {features.length === 0 && <p className="a-sub">What the plan includes could not be loaded: a connection problem, not an empty plan.</p>}
           {sub.max_members !== null || sub.max_staff !== null ? (
             <div className="a-row"><Check size={15} style={{ color: 'var(--a-p300)' }} />
               <div className="t"><b>{sub.max_members !== null ? `Up to ${sub.max_members} members` : 'Any number of members'}, {sub.max_staff !== null ? `${sub.max_staff} staff` : 'any number of staff'}</b></div></div>
@@ -226,7 +226,7 @@ export default function Subscription() {
           ))}
           {notIncluded.map((f) => (
             <div key={f.feature_key} className="a-row"><Lock size={15} style={{ color: 'var(--a-muted)' }} />
-              <div className="t"><b style={{ color: 'var(--a-text2)', whiteSpace: 'normal' }}>{f.label}</b><small style={{ whiteSpace: 'normal' }}>Not on this plan — ask Core Fitness to change plans.</small></div></div>
+              <div className="t"><b style={{ color: 'var(--a-text2)', whiteSpace: 'normal' }}>{f.label}</b><small style={{ whiteSpace: 'normal' }}>Not on this plan: ask Core Fitness to change plans.</small></div></div>
           ))}
         </div>
       </div>

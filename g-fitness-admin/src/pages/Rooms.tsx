@@ -73,7 +73,7 @@ export default function Rooms() {
     setBusy(true);
     try {
       await moderateRoomItem(removing.kind, removing.id, removing.reason);
-      showToast(`${removing.kind === 'post' ? 'Post' : 'Comment'} removed — they have been told why`, 'success');
+      showToast(`${removing.kind === 'post' ? 'Post' : 'Comment'} removed: they have been told why`, 'success');
       setRemoving(null);
       await loadStream(open);
     } catch (e) {
@@ -93,13 +93,13 @@ export default function Rooms() {
   }, [rooms, q, kind, coach, showClosed, memberHit]);
 
   if (rooms === null) return <div className="att"><p className="a-sub">Loading rooms…</p></div>;
-  if (rooms === undefined) return <div className="att"><div className="a-card"><p className="a-sub">Rooms are not switched on yet — migration 0128 is not live on this database.</p></div></div>;
+  if (rooms === undefined) return <div className="att"><div className="a-card"><p className="a-sub">Rooms are not switched on yet: migration 0128 is not live on this database.</p></div></div>;
   const count = (k: Kind) => rooms.filter((r) => (showClosed || !r.archived) && (k === 'all' || r.kind === k)).length;
 
   const reasonRow = (k: 'post' | 'comment', itemId: string) => removing?.id === itemId ? (
     <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
       <input className="a-in" style={{ padding: '6px 9px', fontSize: 12 }} autoFocus maxLength={200} value={removing.reason} aria-label="Why it is removed"
-        onChange={(e) => setRemoving({ kind: k, id: itemId, reason: e.target.value })} placeholder="Why — the person is told" />
+        onChange={(e) => setRemoving({ kind: k, id: itemId, reason: e.target.value })} placeholder="Why: the person is told" />
       <button type="button" className="a-btn violet sm" disabled={busy || !removing.reason.trim()} onClick={() => void remove()} data-confirm-remove><Check size={13} />Remove</button>
       <button type="button" className="a-btn ghost sm" aria-label="Cancel" onClick={() => setRemoving(null)}><X size={13} /></button>
     </div>
@@ -108,7 +108,7 @@ export default function Rooms() {
   return (
     <div className="att" data-rooms>
       <div className="a-head">
-        <div className="min-w-0"><h1>Rooms</h1><p>Where coaches talk to their classes and groups — you can read every room and remove what does not belong</p></div>
+        <div className="min-w-0"><h1>Rooms</h1><p>Where coaches talk to their classes and groups: you can read every room and remove what does not belong</p></div>
       </div>
       <div className="a-grid" style={{ gridTemplateColumns: '360px minmax(0, 1fr)', flex: 1 }}>
         <div className="a-card" data-room-list>

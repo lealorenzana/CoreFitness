@@ -111,7 +111,7 @@ export default function Help() {
       {/* The animated set-up guides (2026-11-14): every feature that needs setting up, in English and Filipino. */}
       {tab === 'guides' && (
         <div className="a-card" data-help-guides style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
-          <div className="a-ct"><h3><PlayCircle size={16} />Guides</h3><small>short animated how-tos — online payments, the kiosk, the lobby TV and the rest</small>
+          <div className="a-ct"><h3><PlayCircle size={16} />Guides</h3><small>short animated how-tos: online payments, the kiosk, the lobby TV and the rest</small>
             <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6 }}>
               {(['en', 'fil'] as GuideLang[]).map((l) => (
                 <button key={l} type="button" className={`a-btn sm ${guideLang === l ? 'violet' : 'ghost'}`} onClick={() => setGuideLang(l)}>{l === 'en' ? 'English' : 'Filipino'}</button>
@@ -125,7 +125,7 @@ export default function Help() {
       {/* The tours (guides G4): each main page's, with Replay. */}
       {tab === 'tours' && (
         <div className="a-card" data-help-tours style={{ flex: 1 }}>
-          <div className="a-ct"><h3><PlayCircle size={16} />Tours</h3><small>a short walk through each page — replay any of them</small></div>
+          <div className="a-ct"><h3><PlayCircle size={16} />Tours</h3><small>a short walk through each page: replay any of them</small></div>
           {TOURS.map((x) => (
             <div key={x.id} className="a-row">
               <div className="t"><b>{x.name}</b><small>{x.steps.length} steps · {x.steps.map((s) => s.title).join(', ')}</small></div>
@@ -144,12 +144,12 @@ export default function Help() {
                   <span className={`a-toggle ${grant ? '' : 'off'}`} aria-hidden /></div>
                 {grant ? (
                   <>
-                    <p className="a-sub">Core Fitness can look at your gym until {when(grant.expires_at)}{grant.reason ? `, for: ${grant.reason}` : ''}. {grant.first_used_at ? 'They have looked.' : 'Nobody has looked yet.'} They can only look — the database refuses them every change.</p>
+                    <p className="a-sub">Core Fitness can look at your gym until {when(grant.expires_at)}{grant.reason ? `, for: ${grant.reason}` : ''}. {grant.first_used_at ? 'They have looked.' : 'Nobody has looked yet.'} They can only look: the database refuses them every change.</p>
                     {owner && <button type="button" className="a-btn sm" style={{ marginTop: 8, alignSelf: 'flex-start' }}
                       onClick={() => void revokeSupportAccess().then(loadFeedback).then(() => showToast('Access withdrawn', 'success')).catch((e) => showToast(e instanceof Error ? e.message : 'Could not withdraw it', 'error'))}>Take it back now</button>}
                   </>
                 ) : (
-                  <p className="a-sub">Off. When Core Fitness needs to see what you see, it asks on your question for a few hours of look-only access — you answer there, and it ends by itself.</p>
+                  <p className="a-sub">Off. When Core Fitness needs to see what you see, it asks on your question for a few hours of look-only access: you answer there, and it ends by itself.</p>
                 )}
               </div>
               {owner && (
@@ -256,10 +256,10 @@ function Questions({ tickets, extras, owner, gymId, composing, setComposing, rel
     const list = await myTickets();
     const t = list?.find((x) => x.id === id);
     if (t) await show(t); else setComposing(false);
-  }, shot ? 'Sent — with your screenshot' : 'Sent to Core Fitness');
+  }, shot ? 'Sent: with your screenshot' : 'Sent to Core Fitness');
 
   if (tickets === null) return <p className="a-sub">Loading…</p>;
-  if (tickets === undefined) return <div className="a-card"><p className="a-sub">Questions are not switched on yet — paste migration 0137.</p></div>;
+  if (tickets === undefined) return <div className="a-card"><p className="a-sub">Questions are not switched on yet: paste migration 0137.</p></div>;
   const shown = tickets.filter((t) => !q.trim() || t.subject.toLowerCase().includes(q.trim().toLowerCase()));
   const writing = composing || !open;
 
@@ -269,7 +269,7 @@ function Questions({ tickets, extras, owner, gymId, composing, setComposing, rel
         <label className="a-input sm" style={{ marginBottom: 8 }}><Search size={14} />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search your questions…" aria-label="Search your questions" /></label>
         <div className="a-lbl" style={{ margin: '4px 0 6px' }}>Your messages</div>
-        {tickets.length === 0 && <p className="a-sub">None yet — ask anything.</p>}
+        {tickets.length === 0 && <p className="a-sub">None yet: ask anything.</p>}
         {tickets.length > 0 && shown.length === 0 && <p className="a-sub">Nothing matches.</p>}
         {shown.map((t) => (
           <button key={t.id} type="button" onClick={() => void show(t)} className="a-row" data-ticket={t.id}
@@ -294,7 +294,7 @@ function Questions({ tickets, extras, owner, gymId, composing, setComposing, rel
       <div className="a-card a-scroll">
         {writing ? (
           <>
-            <div className="a-ct"><div><h3>Ask Core Fitness</h3><div className="a-sub">A problem, a question, an idea — we reply here and you get a notification</div></div>
+            <div className="a-ct"><div><h3>Ask Core Fitness</h3><div className="a-sub">A problem, a question, an idea: we reply here and you get a notification</div></div>
               {composing && open && <button type="button" className="a-btn ghost sm" onClick={() => setComposing(false)}>Back to “{open.subject}”</button>}</div>
             <div className="a-fld"><label htmlFor="h-subject">Subject</label>
               <input id="h-subject" className="a-in" value={subject} maxLength={120} onChange={(e) => setSubject(e.target.value)} placeholder="e.g. Receipts will not print" aria-label="Subject" /></div>
@@ -331,10 +331,10 @@ function Questions({ tickets, extras, owner, gymId, composing, setComposing, rel
                 <span className="ok"><ShieldCheck size={15} /></span>
                 <div style={{ flex: 1 }}>
                   <b>Core Fitness asks to look at your gym for {access.hours} hour{access.hours === 1 ? '' : 's'}</b>
-                  <div className="a-sub" style={{ marginTop: 2 }}>Why: {access.why}. They can only look — the database refuses them every change — it ends by itself, and every visit is in your activity log.</div>
+                  <div className="a-sub" style={{ marginTop: 2 }}>Why: {access.why}. They can only look: the database refuses them every change: it ends by itself, and every visit is in your activity log.</div>
                   {owner ? (
                     <div className="flex gap-2" style={{ marginTop: 8 }}>
-                      <button type="button" className="a-btn amber sm" disabled={busy} onClick={() => void run(() => approveTicketAccess(open.id), 'Access open — it ends by itself')}>Approve</button>
+                      <button type="button" className="a-btn amber sm" disabled={busy} onClick={() => void run(() => approveTicketAccess(open.id), 'Access open: it ends by itself')}>Approve</button>
                       <button type="button" className="a-btn ghost sm" disabled={busy} onClick={() => void run(() => declineTicketAccess(open.id), 'Declined')}>Decline</button>
                     </div>
                   ) : <div className="a-sub" style={{ marginTop: 6 }}>Only the gym owner can answer this.</div>}
@@ -405,7 +405,7 @@ function RateCard({ rating, onSaved }: { rating: MyRating | null; onSaved: () =>
   const [busy, setBusy] = useState(false);
   const save = async () => {
     setBusy(true);
-    try { await rateCoreFitness(stars, comment.trim()); showToast('Thank you — rating sent', 'success'); setStars(0); setComment(''); await onSaved(); }
+    try { await rateCoreFitness(stars, comment.trim()); showToast('Thank you: rating sent', 'success'); setStars(0); setComment(''); await onSaved(); }
     catch (e) { showToast(e instanceof Error ? e.message : 'Could not send', 'error'); }
     finally { setBusy(false); }
   };
@@ -413,7 +413,7 @@ function RateCard({ rating, onSaved }: { rating: MyRating | null; onSaved: () =>
     <div className="a-card" data-feedback="rate">
       <div className="a-ct"><h3><Star size={16} />Rate Core Fitness</h3></div>
       <p className="a-sub">
-        {rating ? `Your current rating: ${rating.stars} of 5, on ${day(rating.created_at)}. Rate again any time — the newest one counts.` : 'Any time, as often as you like. The newest rating counts.'}
+        {rating ? `Your current rating: ${rating.stars} of 5, on ${day(rating.created_at)}. Rate again any time: the newest one counts.` : 'Any time, as often as you like. The newest rating counts.'}
       </p>
       <div className="flex gap-1" role="radiogroup" aria-label="Stars" style={{ marginTop: 10 }}>
         {[1, 2, 3, 4, 5].map((n) => (
@@ -453,7 +453,7 @@ function QuoteCard({ quotes, onSaved }: { quotes: Testimonial[]; onSaved: () => 
   return (
     <div className="a-card" data-feedback="testimonial">
       <div className="a-ct"><h3><MessageSquareQuote size={16} />A few words for the website</h3></div>
-      <p className="a-sub">Optional. Core Fitness shows it on its website only after approving it, with the name you give — and you can take it down here at any time.</p>
+      <p className="a-sub">Optional. Core Fitness shows it on its website only after approving it, with the name you give: and you can take it down here at any time.</p>
       {live && (
         <div className="a-post" style={{ marginTop: 10 }} data-quote={live.status}>
           <b>“{live.quote}”</b>

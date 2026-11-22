@@ -166,8 +166,8 @@ export default function Achievements() {
 
   const save = async () => {
     const problem = !draft.title.trim() ? 'Give it a name.' : !draft.description.trim() ? 'Write what it says when earned.'
-      : !requirement.trim() ? 'Write what it takes — a locked badge that will not say what it wants is a tease.'
-      : !editing && rows.some((r) => r.key === (draft.key || slugify(draft.title))) ? 'That name is taken — change it a little.'
+      : !requirement.trim() ? 'Write what it takes: a locked badge that will not say what it wants is a tease.'
+      : !editing && rows.some((r) => r.key === (draft.key || slugify(draft.title))) ? 'That name is taken: change it a little.'
       : !ruleReady ? 'Finish the rule: what it counts, and the number to reach.' : null;
     if (problem) { showErrorToast(problem); return; }
     setSaving(true);
@@ -193,7 +193,7 @@ export default function Achievements() {
         showSuccessToast(`"${payload.title}" saved`);
       } else {
         await createAchievement({ ...payload, key: draft.key || slugify(draft.title) });
-        showSuccessToast(payload.rule_kind === 'manual' ? `"${payload.title}" created — give it from its card` : `"${payload.title}" created — everyone who already qualifies gets it on their next sync`);
+        showSuccessToast(payload.rule_kind === 'manual' ? `"${payload.title}" created: give it from its card` : `"${payload.title}" created: everyone who already qualifies gets it on their next sync`);
         startNew();
       }
       await load();
@@ -206,7 +206,7 @@ export default function Achievements() {
   const toggleActive = async (a: AchievementRow) => {
     try {
       await setAchievementActive(a.key, !a.active);
-      showSuccessToast(a.active ? `"${a.title}" retired — nobody new earns it, and everyone who has it keeps it` : `"${a.title}" is being awarded again`);
+      showSuccessToast(a.active ? `"${a.title}" retired: nobody new earns it, and everyone who has it keeps it` : `"${a.title}" is being awarded again`);
       await load();
       setEditing((e) => (e && e.key === a.key ? { ...e, active: !a.active } : e));
     } catch (err) {
@@ -234,12 +234,12 @@ export default function Achievements() {
   const kindChips: [Kind, string][] = [['all', 'All'], ['metric', 'Automatic'], ['manual', 'Given by you'], ['builtin', 'Levels'], ['retired', 'Retired'], ...(rarity ? [['never', 'Nobody yet'] as [Kind, string]] : [])];
 
   if (state === 'unavailable') {
-    return <div className="att"><div className="a-card"><p className="a-sub">The achievement catalogue needs migration 0038 — until then the built-in badges still work, they are just not editable.</p></div></div>;
+    return <div className="att"><div className="a-card"><p className="a-sub">The achievement catalogue needs migration 0038: until then the built-in badges still work, they are just not editable.</p></div></div>;
   }
   return (
     <div className="att" data-achievements>
       <div className="a-head">
-        <div className="min-w-0"><h1>Achievements</h1><p>Badges members and coaches earn — automatically from what they do, or given by you</p></div>
+        <div className="min-w-0"><h1>Achievements</h1><p>Badges members and coaches earn: automatically from what they do, or given by you</p></div>
         <nav className="a-tabs" aria-label="Who earns them" data-rd-tabs style={{ marginLeft: 'auto' }}>
           <button type="button" className={audience === 'member' ? 'on' : ''} onClick={() => { setAudience('member'); setKind('all'); if (!editing) setDraft(blank('member', 0)); }}><Users size={14} />For members <em>{rows.filter((r) => r.audience === 'member').length}</em></button>
           <button type="button" className={audience === 'trainer' ? 'on' : ''} onClick={() => { setAudience('trainer'); setKind('all'); if (!editing) setDraft(blank('trainer', 0)); }} data-audience="trainer"><Dumbbell size={14} />For coaches <em>{rows.filter((r) => r.audience === 'trainer').length}</em></button>
@@ -256,7 +256,7 @@ export default function Achievements() {
           <div className="a-num truncate" style={{ fontSize: 20 }}>{rarest && rarest !== most ? rarest.title : '—'}</div><div className="a-sub">{rarest && rarest !== most ? `${holders(rarest.key)} · ${pct(rarest.key)}%` : 'of the ones anybody has'}</div></div>
         <button type="button" className="a-card" style={{ padding: '12px 14px', borderColor: never.length ? 'var(--a-warn-line, #3e310f)' : undefined, textAlign: 'left' }} onClick={() => setKind(kind === 'never' ? 'all' : 'never')} data-never>
           <div className="a-lbl" style={{ color: never.length ? 'var(--a-a300)' : undefined }}>Nobody has these yet</div>
-          <div className="a-num">{rarity ? never.length : '—'}</div><div className="a-sub">{never.length ? 'maybe too hard — check them' : live.length ? 'every live badge has been earned' : 'no badges yet'}</div></button>
+          <div className="a-num">{rarity ? never.length : '—'}</div><div className="a-sub">{never.length ? 'maybe too hard: check them' : live.length ? 'every live badge has been earned' : 'no badges yet'}</div></button>
       </div>
 
       <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) 420px', flex: 1 }}>
@@ -271,7 +271,7 @@ export default function Achievements() {
             </div>
           </div>
           <div className="a-scroll grow">
-            {state === 'loading' ? <p className="a-sub">Loading…</p> : visible.length === 0 ? <p className="a-sub" style={{ padding: '10px 0' }}>{q ? 'Nothing matches that.' : 'None of this kind yet — make one on the right.'}</p> : groups.map((g) => {
+            {state === 'loading' ? <p className="a-sub">Loading…</p> : visible.length === 0 ? <p className="a-sub" style={{ padding: '10px 0' }}>{q ? 'Nothing matches that.' : 'None of this kind yet: make one on the right.'}</p> : groups.map((g) => {
               const items = visible.filter((r) => r.category === g);
               return (
                 <div key={g}>
@@ -323,10 +323,10 @@ export default function Achievements() {
               <div className="a-sub" style={{ color: 'var(--a-a300)', marginTop: 3, textTransform: 'capitalize' }}>{draft.tier}{pts && draft.audience === 'member' ? ` · +${pts} points` : ''} · {draft.category || 'General'}</div>
             </div>
           </div>
-          <div className="a-sub" style={{ marginTop: 6 }}>While locked, {draft.audience === 'member' ? 'members' : 'coaches'} read: <b style={{ color: '#fff' }}>{draft.secret ? 'Secret badge — it shows itself when earned.' : requirement || '…'}</b></div>
+          <div className="a-sub" style={{ marginTop: 6 }}>While locked, {draft.audience === 'member' ? 'members' : 'coaches'} read: <b style={{ color: '#fff' }}>{draft.secret ? 'Secret badge: it shows itself when earned.' : requirement || '…'}</b></div>
 
           {locked ? (
-            <div className="a-hint" style={{ marginTop: 10 }}><Lock size={14} /><span>A level badge. Its rule reads the same thresholds as the level on Home, so the two cannot disagree — the words and looks are editable, the rule is not.</span></div>
+            <div className="a-hint" style={{ marginTop: 10 }}><Lock size={14} /><span>A level badge. Its rule reads the same thresholds as the level on Home, so the two cannot disagree: the words and looks are editable, the rule is not.</span></div>
           ) : draft.rule_kind === 'metric' ? (<>
             <div className="a-lbl" style={{ margin: '12px 0 6px' }}>Earned when</div>
             <div className="a-cond">
@@ -366,7 +366,7 @@ export default function Achievements() {
               <datalist id="badge-groups">{[...new Set(rows.map((r) => r.category))].map((c) => <option key={c} value={c} />)}</datalist></div>
             <div className="a-fld" style={{ gridColumn: '1 / -1' }}><label htmlFor="b-said">What it says when earned</label>
               <input id="b-said" className="a-in" value={draft.description} onChange={(e) => set({ description: e.target.value })} placeholder="Ten workouts before 7am. The gym is yours at dawn." /></div>
-            <div className="a-fld" style={{ gridColumn: '1 / -1' }}><label htmlFor="b-req">What it says while locked {draft.ownRequirement ? '' : <span style={{ fontWeight: 500 }}>· written from the rule — type to change</span>}</label>
+            <div className="a-fld" style={{ gridColumn: '1 / -1' }}><label htmlFor="b-req">What it says while locked {draft.ownRequirement ? '' : <span style={{ fontWeight: 500 }}>· written from the rule: type to change</span>}</label>
               <input id="b-req" className="a-in" value={requirement} onChange={(e) => set({ ownRequirement: true, requirement: e.target.value })} /></div>
           </div>
 
@@ -412,7 +412,7 @@ export default function Achievements() {
 
       {awarding && <AwardModal achievement={awarding} onClose={() => setAwarding(null)} onDone={() => void load()} />}
       <ConfirmDialog isOpen={confirmDelete !== null} type="danger" title={`Delete "${confirmDelete?.title ?? ''}"`}
-        message="This removes it from the catalogue entirely. If anyone has already earned it the database will refuse — retire it instead, which keeps their badge and stops new ones."
+        message="This removes it from the catalogue entirely. If anyone has already earned it the database will refuse: retire it instead, which keeps their badge and stops new ones."
         confirmText="Delete" onConfirm={(why) => void doDelete(why)} reason={REASON_FIELD} onClose={() => setConfirmDelete(null)} />
     </div>
   );

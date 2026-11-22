@@ -75,12 +75,12 @@ export default function Equipment() {
   const setStatus = (id: string, s: Status) => run(async () => {
     const { error } = await supabase.rpc('set_equipment_status', { p_item: id, p_status: s });
     if (error) throw new Error(error.message);
-  }, s === 'available' ? 'Marked available — reporters are told' : `Marked ${STATUS[s].toLowerCase()}`);
+  }, s === 'available' ? 'Marked available: reporters are told' : `Marked ${STATUS[s].toLowerCase()}`);
   const notAProblem = () => dismiss && run(async () => {
     const { error } = await supabase.rpc('dismiss_equipment_report', { p_report: dismiss.id, p_reason: dismiss.reason.trim() });
     if (error) throw new Error(/dismiss_equipment_report/.test(error.message) ? 'Closing a report as not a problem needs migration 0207.' : error.message.replace(/^.*?: /, ''));
     setDismiss(null);
-  }, 'Closed — they have been told what you found');
+  }, 'Closed: they have been told what you found');
 
   const save = () => edit && run(async () => {
     const f = edit.f;
@@ -138,7 +138,7 @@ export default function Equipment() {
   return (
     <div className="att" data-equipment>
       <div className="a-head">
-        <div className="min-w-0"><h1>Equipment</h1><p>What your gym has and where — members see it, and report what is broken</p></div>
+        <div className="min-w-0"><h1>Equipment</h1><p>What your gym has and where: members see it, and report what is broken</p></div>
         {isOwner && <button type="button" className="a-btn violet" style={{ marginLeft: 'auto' }} onClick={() => openEdit(null)}><Plus size={15} />Add equipment</button>}
       </div>
 
@@ -163,8 +163,8 @@ export default function Equipment() {
             <label className="a-input" style={{ padding: '6px 10px', fontSize: 12, width: 170 }}><Search size={14} /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find equipment…" aria-label="Find equipment" /></label>
           </div>
           <div className="a-scroll grow">
-            {items === null ? <p className="a-sub">The equipment list could not be loaded — a connection problem, not an empty list.</p>
-              : list.length === 0 ? <p className="a-sub" style={{ padding: '10px 0' }}>{isOwner ? 'Nothing listed yet. Add what your gym has — members see where each machine is.' : 'The owner adds the equipment list.'}</p>
+            {items === null ? <p className="a-sub">The equipment list could not be loaded: a connection problem, not an empty list.</p>
+              : list.length === 0 ? <p className="a-sub" style={{ padding: '10px 0' }}>{isOwner ? 'Nothing listed yet. Add what your gym has: members see where each machine is.' : 'The owner adds the equipment list.'}</p>
               : shown.length === 0 ? <p className="a-sub" style={{ padding: '10px 0' }}>Nothing matches.</p> : (
               <table className="a-table">
                 <thead><tr><th>Equipment</th><th>Where</th><th>How many</th><th>Status</th><th /></tr></thead>
@@ -197,11 +197,11 @@ export default function Equipment() {
             {reports.length === 0 ? <p className="a-sub">Nothing reported. Members report a broken machine from Equipment in the app.</p> : reports.map((r) => (
               <div key={r.id} className="a-post" data-report={r.equipment_name}>
                 <b>{r.equipment_name}{r.location_note ? ` · ${r.location_note}` : ''}</b>
-                <div className="a-sub">“{r.note}” — {r.member_name} · {when(r.created_at, today)}{r.status !== 'available' ? ` · ${STATUS[r.status].toLowerCase()}` : ''}</div>
+                <div className="a-sub">“{r.note}” · {r.member_name} · {when(r.created_at, today)}{r.status !== 'available' ? ` · ${STATUS[r.status].toLowerCase()}` : ''}</div>
                 {dismiss?.id === r.id ? (
                   <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                     <input className="a-in" style={{ padding: '6px 9px', fontSize: 12 }} autoFocus value={dismiss.reason} maxLength={200} onChange={(e) => setDismiss({ id: r.id, reason: e.target.value })}
-                      placeholder="What you found — they are told" aria-label="What you found" />
+                      placeholder="What you found: they are told" aria-label="What you found" />
                     <button type="button" className="a-btn violet sm" disabled={busy || !dismiss.reason.trim()} onClick={() => void notAProblem()}><Check size={13} /></button>
                     <button type="button" className="a-btn ghost sm" aria-label="Cancel" onClick={() => setDismiss(null)}><X size={13} /></button>
                   </div>

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ArrowRight, Gift, UserPlus } from 'lucide-react';
-import { RdCard, Pill } from './ui/rd';
-import { TONE } from './ui/rdTokens';
+import { RdCard, Pill, EmptyBlock } from './ui/rd';
 import { supabase } from '../lib/supabaseClient';
 import { getGymContext } from '../lib/gymContext';
 import { moduleOn, useGymModules } from '../hooks/useGymModules';
@@ -106,9 +105,9 @@ export default function ReferralsSection() {
   return (
     <RdCard className="flex flex-col min-h-0 overflow-hidden rd-fit-fill" data-referrals>
       <div className="flex items-center gap-3 px-4 py-3.5" style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.06)' }}>
-        <UserPlus size={20} style={{ color: TONE.violet.fg }} />
+        <UserPlus size={18} style={{ color: 'var(--color-text-secondary)' }} />
         <div className="min-w-0 flex-1">
-          <h2 className="text-[16px] font-semibold" style={{ color: 'var(--color-text-primary)' }}>Referrals</h2>
+          <h2 className="text-[15px] font-semibold" style={{ color: 'var(--color-text-primary)' }}>Referrals</h2>
           <p className="text-[12.5px]" style={{ color: 'var(--color-text-secondary)' }}>
             {rows.length} invited · {paid.length} joined and paid · {paidThisMonth} this month.{' '}
             {pointsOn ? 'Points are paid when you record the friend’s first payment above ₱0.'
@@ -122,7 +121,7 @@ export default function ReferralsSection() {
           <div className="rounded-xl p-3.5" style={{ border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)' }}>
             <p className="text-[13.5px] font-semibold" style={{ color: 'var(--color-text-primary)' }}>Desk rewards</p>
             <p className="text-[12.5px] mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
-              What you hand over at the desk when a friend first pays — leave one empty to give nothing. The member who invited gets at most five a month.
+              What you hand over at the desk when a friend first pays. Leave one empty to give nothing. The member who invited gets at most five a month.
             </p>
             <div className="grid gap-2.5 mt-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))' }}>
               <label className="text-[12.5px]" style={{ color: 'var(--color-text-secondary)' }}>For the member who invited
@@ -146,9 +145,11 @@ export default function ReferralsSection() {
           ? tile('Points paid out', pointsOut.toLocaleString('en-PH'), 'to both sides, all time')
           : tile('Rewards to hand over', deskOwed, 'at the desk, not given yet')}
       </div>
-      <div className="rd-fit-scroll p-4">
+      <div className="rd-fit-scroll p-4 flex-1 flex flex-col">
         {rows.length === 0 ? (
-          <p className="text-[13px]" style={{ color: MUTED }}>No referrals yet. Members share their link from Invite a friend.</p>
+          <div className="flex-1 grid place-items-center">
+            <EmptyBlock icon={UserPlus} title="No referrals yet" body="Members share their link from Invite a friend in the app. Each friend who joins and pays shows here." />
+          </div>
         ) : (
           <div className="space-y-1.5">
             {rows.map((r) => (

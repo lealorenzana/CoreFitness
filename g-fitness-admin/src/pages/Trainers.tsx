@@ -88,7 +88,7 @@ function SuspendCoachDialog({ coach, onClose, onConfirm }: { coach: TrainerDispl
       setBooked({ classes: c.count ?? 0, sessions: s.count ?? 0 });
     })();
   }, [coach.id]);
-  const text = [tag && tag !== 'Other' ? tag : '', why.trim()].filter(Boolean).join(' — ');
+  const text = [tag && tag !== 'Other' ? tag : '', why.trim()].filter(Boolean).join(': ');
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{ background: 'rgba(5,4,10,0.72)', backdropFilter: 'blur(4px)' }} onClick={onClose}>
       <div className="att" style={{ height: 'auto', overflow: 'visible', width: 440 }} onClick={(e) => e.stopPropagation()}>
@@ -99,7 +99,7 @@ function SuspendCoachDialog({ coach, onClose, onConfirm }: { coach: TrainerDispl
             They can’t sign in to the trainer app.{' '}
             {booked == null ? 'Checking what is booked with them…'
               : booked.classes + booked.sessions === 0 ? 'Nothing is booked with them.'
-                : <>Their {booked.classes} upcoming class{booked.classes === 1 ? '' : 'es'} and {booked.sessions} booked session{booked.sessions === 1 ? '' : 's'} stay — <b style={{ color: '#fff' }}>reassign them first</b> or the desk handles them.</>}
+                : <>Their {booked.classes} upcoming class{booked.classes === 1 ? '' : 'es'} and {booked.sessions} booked session{booked.sessions === 1 ? '' : 's'} stay: <b style={{ color: '#fff' }}>reassign them first</b> or the desk handles them.</>}
           </div>
           <div className="a-lbl" style={{ margin: '12px 0 6px' }}>Why? <span style={{ color: 'var(--a-a300)' }}>*</span></div>
           <div className="flex gap-1.5 flex-wrap">
@@ -332,7 +332,7 @@ export default function Trainers() {
         <div className="a-head">
           <div className="min-w-0">
             <h1>Coach pay</h1>
-            <p>The gym&rsquo;s share of what members paid each coach, and each coach&rsquo;s dues — the rules you set in Settings → Personal training.</p>
+            <p>The gym&rsquo;s share of what members paid each coach, and each coach&rsquo;s dues: the rules you set in Settings → Personal training.</p>
           </div>
           <nav className="a-tabs" aria-label="Trainers views">
             <a href="#" onClick={(e) => { e.preventDefault(); setPaying(false); setShowArchived(false); }}><Users size={14} />Coaches<em>{trainers.length}</em></a>
@@ -351,7 +351,7 @@ export default function Trainers() {
         <div className="a-head">
           <div className="min-w-0">
             <h1>Credentials</h1>
-            <p>Coaches&rsquo; certificates — look at each document, then verify or reject it.{waitingTotal ? ` ${waitingTotal} waiting.` : ''}</p>
+            <p>Coaches&rsquo; certificates: look at each document, then verify or reject it.{waitingTotal ? ` ${waitingTotal} waiting.` : ''}</p>
           </div>
           <nav className="a-tabs" aria-label="Trainers views">
             <a href="#" onClick={(e) => { e.preventDefault(); setReviewing(false); setShowArchived(false); }}><Users size={14} />Coaches<em>{trainers.length}</em></a>
@@ -378,7 +378,7 @@ export default function Trainers() {
   const firstWaitingName = firstWaiting ? trainers.find((t) => t.id === firstWaiting[0])?.name.split(' ')[0] : null;
   const head = (label: string, key: TSortKey) => (
     <button type="button" onClick={() => setTSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }))}
-      className="inline-flex items-center gap-1 uppercase" style={{ color: tSort.key === key ? 'var(--a-p300)' : 'inherit', letterSpacing: 'inherit' }}>
+      className="inline-flex items-center gap-1" style={{ color: tSort.key === key ? 'var(--a-p300)' : 'inherit', letterSpacing: 'inherit' }}>
       {label}{tSort.key === key && (tSort.dir === 'asc' ? <ChevronUp size={11} /> : <ChevronDown size={11} />)}
     </button>
   );
@@ -426,7 +426,7 @@ export default function Trainers() {
           <button type="button" className="a-card press text-left" onClick={() => setShowTotals(true)}>
             <div className="a-lbl">This month</div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}><div className="a-num">{extra.month ? extra.month.classes : '—'}</div><span className="a-sub">classes led{extra.month ? ` · ${extra.month.pt} PT session${extra.month.pt === 1 ? '' : 's'}` : ''}</span></div>
-            <div className="a-sub" style={{ marginTop: 6 }}>for paying them — open Monthly totals</div>
+            <div className="a-sub" style={{ marginTop: 6 }}>for paying them: open Monthly totals</div>
           </button>
         </div>
       )}
@@ -484,7 +484,7 @@ export default function Trainers() {
                     <td onClick={(e) => { if (waiting) { e.stopPropagation(); setReviewing(true); } }}>
                       <span className="inline-flex flex-col items-start gap-1">
                         {list.length > 0 && <span className={`a-pill ${soon ? 'a' : 'v'}`} data-tip={`Verified by you: ${list.map((c) => c.title).join(', ')}`}>{list.length} verified{soon ? ` · ${soon} expiring` : ''}</span>}
-                        {waiting > 0 && <span className="a-pill a" data-needs-review data-tip="Certificates waiting for you — verify or reject them">Needs review · {waiting}</span>}
+                        {waiting > 0 && <span className="a-pill a" data-needs-review data-tip="Certificates waiting for you: verify or reject them">Needs review · {waiting}</span>}
                         {list.length === 0 && waiting === 0 && <span className="a-sub">None uploaded</span>}
                       </span>
                     </td>
@@ -542,7 +542,7 @@ export default function Trainers() {
       {/* Suspending a coach (2026-10-19/20): why, in a word or a sentence, and what is still booked with them. */}
       {toSuspend && toSuspend.status !== 'suspended' && (
         <SuspendCoachDialog key={toSuspend.id} coach={toSuspend} onClose={() => setToSuspend(null)}
-          onConfirm={(why) => void changeStatus(toSuspend, 'suspended', `${toSuspend.name} suspended — they can no longer log in`, why)} />
+          onConfirm={(why) => void changeStatus(toSuspend, 'suspended', `${toSuspend.name} suspended: they can no longer log in`, why)} />
       )}
 
       <ConfirmDialog
@@ -575,7 +575,7 @@ export default function Trainers() {
             toSuspend,
             next,
             next === 'suspended'
-              ? `${toSuspend.name} suspended — they can no longer log in`
+              ? `${toSuspend.name} suspended: they can no longer log in`
               : `${toSuspend.name} reactivated`,
             why,
           );
@@ -588,7 +588,7 @@ export default function Trainers() {
         title={toSuspend?.status === 'suspended' ? 'Reactivate Trainer' : 'Suspend Trainer'}
         message={
           toSuspend?.status === 'suspended'
-            ? `Let ${toSuspend?.name ?? 'this trainer'} log in again? Their classes and sessions are untouched — this only restores access.`
+            ? `Let ${toSuspend?.name ?? 'this trainer'} log in again? Their classes and sessions are untouched: this only restores access.`
             : `Suspend ${toSuspend?.name ?? 'this trainer'}? They will not be able to log in to the trainer app. Their classes and booked sessions stay exactly as they are, so anything already scheduled still needs handling at the desk. Reversible at any time.`
         }
         confirmText={toSuspend?.status === 'suspended' ? 'Reactivate' : 'Suspend'}
@@ -613,7 +613,7 @@ export default function Trainers() {
         message={
           showArchived
             ? `Restore ${toArchive?.name ?? 'this trainer'} to the active roster? They will be able to log in again.`
-            : `Archive ${toArchive?.name ?? 'this trainer'}? They drop off the roster and can no longer log in, but every class they taught and every session they ran is kept — deleting them would orphan all of it. You can restore them later.`
+            : `Archive ${toArchive?.name ?? 'this trainer'}? They drop off the roster and can no longer log in, but every class they taught and every session they ran is kept: deleting them would orphan all of it. You can restore them later.`
         }
         confirmText={showArchived ? 'Restore' : 'Archive'}
         type={showArchived ? 'info' : 'danger'}

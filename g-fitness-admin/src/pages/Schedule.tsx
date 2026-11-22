@@ -254,7 +254,7 @@ export default function Schedule() {
         showToast('Class updated. Sessions already scheduled keep their old time.', 'success');
       } else {
         await createClassTemplate(payload);
-        showToast('Class added — its sessions are made for the next four weeks', 'success');
+        showToast('Class added: its sessions are made for the next four weeks', 'success');
       }
       setShowTemplateModal(false);
       setEditingTemplate(null);
@@ -328,7 +328,7 @@ export default function Schedule() {
     setBooking(true);
     try {
       await deskBookClass(memberId, selected.id);
-      showToast(`${memberName(memberId)} is booked into ${selected.name} — they have been told`, 'success');
+      showToast(`${memberName(memberId)} is booked into ${selected.name}: they have been told`, 'success');
       setBookQ('');
       reloadDated();
     } catch (err) { showToast(err instanceof Error ? err.message : 'Could not book them', 'error'); }
@@ -467,7 +467,7 @@ export default function Schedule() {
               })}
             </div>
             <div className="a-sub" style={{ paddingTop: 8 }}>
-              {shownWeek.length === 0 ? (sessions.length ? 'Nothing matches the search or filters this week.' : 'No classes this week — click an hour to add one, or set up the weekly timetable.') : 'Click a class to see who booked · click an empty hour to add a class there'}
+              {shownWeek.length === 0 ? (sessions.length ? 'Nothing matches the search or filters this week.' : 'No classes this week: click an hour to add one, or set up the weekly timetable.') : 'Click a class to see who booked · click an empty hour to add a class there'}
             </div>
           </div>
 
@@ -494,7 +494,7 @@ export default function Schedule() {
                 {new Date(selected.startsAt).getTime() > Date.parse(`${today}T00:00:00`) && (
                   <div className="relative" style={{ marginTop: 10 }}>
                     <label className="a-input sm" style={{ fontSize: 12.5 }}><UserPlus size={14} />
-                      <input value={bookQ} onChange={(e) => setBookQ(e.target.value)} placeholder="Book a member — type a name…" aria-label="Book a member" disabled={booking} /></label>
+                      <input value={bookQ} onChange={(e) => setBookQ(e.target.value)} placeholder="Book a member: type a name…" aria-label="Book a member" disabled={booking} /></label>
                     {bookHits.length > 0 && (
                       <div className="a-card" style={{ position: 'absolute', zIndex: 5, left: 0, right: 0, top: 40, padding: '4px 10px' }}>
                         {bookHits.map((m) => (
@@ -521,7 +521,7 @@ export default function Schedule() {
             )}
             <div className="a-card" style={{ flexShrink: 0 }} data-needs-look>
               <div className="a-ct"><h3><AlertTriangle size={16} style={{ color: 'var(--a-a300)' }} />Needs a look</h3></div>
-              {conflicts.length === 0 && fullWeek.length === 0 && noHours.length === 0 && <p className="a-sub">Nothing — the week is clear.</p>}
+              {conflicts.length === 0 && fullWeek.length === 0 && noHours.length === 0 && <p className="a-sub">Nothing: the week is clear.</p>}
               {conflicts.slice(0, 3).map((c: Conflict, i) => (
                 <div key={`${c.a}-${c.b}-${i}`} className="a-row"><div className="a-ic a" style={{ width: 30, height: 30 }}><AlertTriangle size={14} /></div>
                   <div className="t"><b>{c.kind === 'hours' ? 'Outside opening hours' : 'Clash'}</b><small style={{ whiteSpace: 'normal' }}>{c.message}</small></div>
@@ -617,7 +617,7 @@ export default function Schedule() {
           </div>
           <div className="a-card">
             <div className="a-ct"><h3><Info size={16} />How the timetable works</h3></div>
-            <p className="a-sub" style={{ lineHeight: 1.55 }}>A class here repeats every week. From it, the dated sessions members book are made four weeks ahead. Editing a class changes the sessions made from now on — ones already booked keep their time. Retiring stops new sessions; booked ones stay.</p>
+            <p className="a-sub" style={{ lineHeight: 1.55 }}>A class here repeats every week. From it, the dated sessions members book are made four weeks ahead. Editing a class changes the sessions made from now on: ones already booked keep their time. Retiring stops new sessions; booked ones stay.</p>
             {conflicts.length > 0 && <div className="a-hint" style={{ marginTop: 12, borderColor: '#5a4512' }}><AlertTriangle size={15} /><span>{conflicts.map((c) => c.message).join(' ')}</span></div>}
           </div>
         </div>
@@ -636,7 +636,7 @@ export default function Schedule() {
                       <tr key={t.profile.id} data-hours-row>
                         <td><div className="a-who"><Av name={`${t.profile.first_name} ${t.profile.last_name}`} photo={t.profile.photo_url} small /><b>{t.profile.first_name} {t.profile.last_name}</b></div></td>
                         {rows.length === 0 ? (
-                          <td colSpan={7}><span className="a-pill a"><AlertTriangle size={12} />No hours — members cannot book them</span></td>
+                          <td colSpan={7}><span className="a-pill a"><AlertTriangle size={12} />No hours: members cannot book them</span></td>
                         ) : [1, 2, 3, 4, 5, 6, 0].map((d) => (
                           <td key={d} style={{ cursor: 'pointer' }} onClick={() => setHoursForm({ ...emptyHours, trainerId: t.profile.id, dayOfWeek: String(d) })}>
                             <div className="flex flex-col gap-1">
@@ -688,7 +688,7 @@ export default function Schedule() {
       <ConfirmDialog isOpen={!!toRetire} onClose={() => setToRetire(null)} onConfirm={(why) => void handleRetire(why)} reason={toRetire?.active ? REASON_FIELD : undefined}
         title={toRetire?.active ? 'Retire class' : 'Put the class back'}
         message={toRetire?.active
-          ? `Retire "${toRetire?.name}"? It stops making new sessions, but every session already scheduled from it stays — including anyone who has booked. Reversible at any time.`
+          ? `Retire "${toRetire?.name}"? It stops making new sessions, but every session already scheduled from it stays: including anyone who has booked. Reversible at any time.`
           : `Put "${toRetire?.name}" back on the timetable? It starts making sessions again.`}
         confirmText={toRetire?.active ? 'Retire' : 'Put back'} type={toRetire?.active ? 'warning' : 'info'} />
       <ConfirmDialog isOpen={!!toDeleteHours} onClose={() => setToDeleteHours(null)} onConfirm={(why) => void handleDeleteHours(why)} reason={REASON_FIELD} title="Remove working hours"
@@ -699,7 +699,7 @@ export default function Schedule() {
         subtitle={selected ? `${roster?.filter((r) => r.status === 'approved').length ?? 0} confirmed · in the app` : undefined}
         footer={<><RdButton variant="ghost" onClick={() => setMsgOpen(false)}>Cancel</RdButton><RdButton variant="primary" onClick={() => void sendMessage()} disabled={!msg.trim()}>Send</RdButton></>}>
         <textarea className={RD_INPUT} style={{ ...RD_INPUT_STYLE, minHeight: 110 }} value={msg} onChange={(e) => setMsg(e.target.value)} maxLength={500}
-          placeholder="e.g. Bring water — we're doing intervals today." aria-label="Message" />
+          placeholder="e.g. Bring water: we're doing intervals today." aria-label="Message" />
       </Modal>
 
       <Modal isOpen={showTemplateModal} onClose={() => setShowTemplateModal(false)} size="md"

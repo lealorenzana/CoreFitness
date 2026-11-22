@@ -181,7 +181,7 @@ async (page) => {
   await page.locator('[data-view="hours"]').click();
   await page.waitForTimeout(400);
   t = await text();
-  has('coach hours: a row per coach, and who has none', (await page.locator('[data-hours-row]').count()) === 3 && /No hours — members cannot book them/.test(t));
+  has('coach hours: a row per coach, and who has none', (await page.locator('[data-hours-row]').count()) === 3 && /No hours: members cannot book them/.test(t));
   has('…and the page still does not scroll', await noScroll());
   await page.screenshot({ path: 'shots/ops-schedule-hours.png' });
   await page.getByRole('combobox', { name: 'Coach' }).click();

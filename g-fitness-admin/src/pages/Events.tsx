@@ -90,7 +90,7 @@ const COMMS_TABS = [
 const EVENT_STEPS = ['What and when', 'Where and who', 'Picture and preview'];
 const DURATION_LABEL: Record<string, string> = { '30': '30 min', '45': '45 min', '60': '1 h', '90': '1 h 30', '120': '2 h' };
 const BRING = ['Water', 'A towel', 'Shoes you can move in', 'A mat', 'Gym clothes'];
-const FOR_WHOM = ['Everyone — beginners welcome', 'Members and their friends', 'Members only', 'For those already training regularly'];
+const FOR_WHOM = ['Everyone: beginners welcome', 'Members and their friends', 'Members only', 'For those already training regularly'];
 const CANCEL_REASONS = ['Bad weather', 'The coach is unavailable', 'Too few sign-ups', 'Moved to another date'];
 const DELETE_REASONS = ['Made by mistake', 'A duplicate', 'An old test event'];
 
@@ -427,7 +427,7 @@ export default function Events() {
 
       {/* Create or edit: three steps, the member's view at the end. */}
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} size="lg" title={editing ? 'Edit event' : 'New event'}
-        subtitle={`Step ${step + 1} of 3 — ${EVENT_STEPS[step]}`}
+        subtitle={`Step ${step + 1} of 3: ${EVENT_STEPS[step]}`}
         footer={<>
           <RdButton variant="ghost" onClick={() => (step > 0 ? setStep(step - 1) : setShowModal(false))}>{step > 0 ? 'Back' : 'Cancel'}</RdButton>
           {step < 2 && !editing ? (
@@ -493,7 +493,7 @@ export default function Events() {
               <div className="flex gap-1.5 flex-wrap mb-2">
                 {FOR_WHOM.map((w) => <Pick key={w} on={form.whoIsItFor === w} onClick={() => setForm({ ...form, whoIsItFor: w })}>{w}</Pick>)}
               </div>
-              <input className={RD_INPUT} style={RD_INPUT_STYLE} value={form.whoIsItFor} placeholder="e.g. Everyone — half the group will be first-timers" aria-label="Who it is for"
+              <input className={RD_INPUT} style={RD_INPUT_STYLE} value={form.whoIsItFor} placeholder="e.g. Everyone: half the group will be first-timers" aria-label="Who it is for"
                 onChange={(e) => setForm({ ...form, whoIsItFor: e.target.value })} />
             </RdField>
             <RdField group label="What to bring">
@@ -511,7 +511,7 @@ export default function Events() {
                 onChange={(e) => setForm({ ...form, whatToBring: e.target.value })} />
             </RdField>
             <RdField group label="Fee" hint={form.fee.trim() === '' ? 'Blank means free, and the app says "Free".'
-              : Number(form.fee) === 0 ? 'Zero shows as "₱0" — use blank if you mean free.' : 'Members pay at the desk; the app does not take payments.'}>
+              : Number(form.fee) === 0 ? 'Zero shows as "₱0": use blank if you mean free.' : 'Members pay at the desk; the app does not take payments.'}>
               <div className="flex items-center gap-1.5 flex-wrap">
                 <Pick on={form.fee.trim() === ''} onClick={() => setForm({ ...form, fee: '' })}>Free</Pick>
                 {['50', '100', '200', '500'].map((f) => <Pick key={f} on={form.fee === f} onClick={() => setForm({ ...form, fee: f })}>₱{f}</Pick>)}
@@ -531,7 +531,7 @@ export default function Events() {
             <label className="flex items-start gap-2.5 cursor-pointer">
               <input type="checkbox" checked={form.isFeatured} className="mt-1 accent-violet-500" onChange={(e) => setForm({ ...form, isFeatured: e.target.checked })} />
               <span className="text-[13px] leading-relaxed" style={{ color: SECOND }}>
-                <strong className="text-white">Feature this event.</strong> Pins it to the top of members&rsquo; Events. Use it sparingly — if everything is featured, nothing is.
+                <strong className="text-white">Feature this event.</strong> Pins it to the top of members&rsquo; Events. Use it sparingly: if everything is featured, nothing is.
               </span>
             </label>
             <p className="text-[12.5px] font-semibold" style={{ color: MUTED }}>How members will see it</p>
@@ -556,7 +556,7 @@ export default function Events() {
       </Modal>
 
       <Modal isOpen={!!attendeesFor} onClose={() => setAttendeesFor(null)} hideFooter size="md"
-        title={attendeesFor ? `Signed up — ${attendeesFor.title}` : 'Signed up'}
+        title={attendeesFor ? `Signed up: ${attendeesFor.title}` : 'Signed up'}
         subtitle={attendeesFor ? `${attendees?.length ?? '…'} of ${attendeesFor.capacity} places` : undefined}>
         <div className="flex flex-col gap-2 max-h-[55vh] overflow-y-auto" data-attendees>
           {attendees === null ? (

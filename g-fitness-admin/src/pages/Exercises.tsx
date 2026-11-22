@@ -87,7 +87,7 @@ export default function Exercises() {
       showToast(/unique|duplicate/i.test(error.message) ? 'That exercise already exists (names are matched ignoring case)' : error.message, 'error');
       return;
     }
-    showToast('Exercise added — add its photo, video and steps next', 'success');
+    showToast('Exercise added: add its photo, video and steps next', 'success');
     setForm(emptyForm);
     await load();
     setPickId((data as { id: string }).id);
@@ -121,7 +121,7 @@ export default function Exercises() {
     if (!row) return;
     const { data, error } = await supabase.from('exercises').delete().eq('id', row.id).select('id');
     if (error) {
-      showToast(error.code === '23503' ? `${row.name} has been logged by members or is in a routine or program, so it cannot be deleted. Hide it instead — their history stays.` : error.message, 'error');
+      showToast(error.code === '23503' ? `${row.name} has been logged by members or is in a routine or program, so it cannot be deleted. Hide it instead: their history stays.` : error.message, 'error');
       return;
     }
     if (!data || data.length === 0) { showToast('Only the owner can delete an exercise', 'error'); return; }
@@ -132,7 +132,7 @@ export default function Exercises() {
   };
 
   if (state === 'loading') return <div className="att"><p className="a-sub">Loading exercises…</p></div>;
-  if (state === 'failed') return <div className="att"><div className="a-card"><p className="a-sub">The exercise catalogue could not be loaded — a connection problem, not an empty catalogue. Reload to try again.</p></div></div>;
+  if (state === 'failed') return <div className="att"><div className="a-card"><p className="a-sub">The exercise catalogue could not be loaded: a connection problem, not an empty catalogue. Reload to try again.</p></div></div>;
 
   const own = rows.filter(isOwn);
   const hidden = rows.filter((r) => !shown(r));
@@ -167,7 +167,7 @@ export default function Exercises() {
       )}
       <div className="a-head">
         <div className="min-w-0"><h1>Exercises</h1>
-          <p>What members pick from when they track a workout — {rows.length - own.length} shared, {own.length} your own{photos ? ` · ${photos.used}${photos.cap !== null ? ` of ${photos.cap}` : ''} photos` : ''}</p></div>
+          <p>What members pick from when they track a workout: {rows.length - own.length} shared, {own.length} your own{photos ? ` · ${photos.used}${photos.cap !== null ? ` of ${photos.cap}` : ''} photos` : ''}</p></div>
         <nav className="a-tabs" aria-label="Which exercises" data-rd-tabs style={{ marginLeft: 'auto' }}>
           <button type="button" className={tab === 'all' ? 'on' : ''} onClick={() => setTab('all')}>All <em>{rows.length}</em></button>
           <button type="button" className={tab === 'own' ? 'on' : ''} onClick={() => setTab('own')}>Your own <em>{own.length}</em></button>
@@ -215,7 +215,7 @@ export default function Exercises() {
                 <select id="ex-equip" className="a-in" value={form.equipment} onChange={(e) => setForm({ ...form, equipment: e.target.value })}>{EQUIPMENT.map((g) => <option key={g} value={g}>{word(g)}</option>)}</select></div>
             </div>
             <div className="a-setting" style={{ borderTop: 0, marginTop: 6 }}>
-              <div className="t"><b>Measured in time, not reps</b><small>the member is asked for minutes and seconds — planks, treadmill, rowing</small></div>
+              <div className="t"><b>Measured in time, not reps</b><small>the member is asked for minutes and seconds: planks, treadmill, rowing</small></div>
               <button type="button" className={`a-toggle ${form.is_timed ? '' : 'off'}`} aria-pressed={form.is_timed} aria-label="Measured in time" onClick={() => setForm({ ...form, is_timed: !form.is_timed })} />
             </div>
             <button type="button" className="a-btn violet" style={{ marginTop: 10 }} disabled={saving || !form.name.trim()} onClick={() => void add()} data-add-exercise><Plus size={15} />{saving ? 'Adding…' : 'Add it'}</button>
@@ -228,14 +228,14 @@ export default function Exercises() {
             <div className="a-ct" style={{ margin: '10px 0 6px' }}><h3>{pick.name}</h3><span className={`a-pill ${isOwn(pick) ? 'v' : ''}`}>{isOwn(pick) ? 'yours' : guides ? 'Core Fitness library' : 'catalogue'}</span></div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}><span className="a-chip">{word(pick.muscle_group)}</span><span className="a-chip">{word(pick.equipment)}</span><span className="a-chip">{pick.is_timed ? 'Timed' : 'Reps & weight'}</span>{!shown(pick) && <span className="a-chip on">Hidden</span>}</div>
             <div className="a-lbl" style={{ margin: '12px 0 6px' }}>How to do it <span style={{ fontWeight: 500 }}>· members see these steps{m?.steps?.length ? ' (yours)' : ''}</span></div>
-            {steps.length === 0 ? <p className="a-sub">No steps yet{guides ? ' — add them with Edit guide.' : '.'}</p>
+            {steps.length === 0 ? <p className="a-sub">No steps yet{guides ? ': add them with Edit guide.' : '.'}</p>
               : steps.map((s, i) => <div key={i} className="a-step" style={{ fontWeight: 500, alignItems: 'flex-start' }}><span>{i + 1}</span><div style={{ fontSize: 12.5 }}>{s}</div></div>)}
             {cues.length > 0 && <div className="a-sub" style={{ marginBottom: 6 }}>Cues: {cues.join(' · ')}</div>}
             <div style={{ display: 'flex', gap: 14, margin: '8px 0', flexWrap: 'wrap' }}>
               <span className="a-sub" style={{ display: 'inline-flex', gap: 5, alignItems: 'center' }}><ListChecks size={13} />{used ? `in ${used.routines} routine${used.routines === 1 ? '' : 's'}` : 'in no saved routine'}</span>
               {used && used.members > 0 && <span className="a-sub" style={{ display: 'inline-flex', gap: 5, alignItems: 'center' }}><Users size={13} />{used.members} member{used.members === 1 ? '' : 's'}</span>}
             </div>
-            <div className="a-hint"><Info size={14} /><span>{isOwn(pick) ? 'Yours: delete it until members log it or a routine or program uses it — then hide it, and their history stays intact.' : 'From the shared library: hiding takes it out of your members\' picker only — other gyms are not affected.'}</span></div>
+            <div className="a-hint"><Info size={14} /><span>{isOwn(pick) ? 'Yours: delete it until members log it or a routine or program uses it: then hide it, and their history stays intact.' : 'From the shared library: hiding takes it out of your members\' picker only: other gyms are not affected.'}</span></div>
             <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
               <button type="button" className="a-btn ghost" style={{ flex: 1 }} onClick={() => void toggleShown(pick)} aria-label={`${shown(pick) ? 'Hide' : 'Show'} ${pick.name} ${shown(pick) ? 'from' : 'to'} members`}>{shown(pick) ? <><EyeOff size={15} />Hide</> : <><Eye size={15} />Show</>}</button>
               {guides && <button type="button" className="a-btn violet" style={{ flex: 2 }} onClick={() => setPanel('guide')} aria-label={`Guide for ${pick.name}`} data-edit-guide><Pencil size={15} />Edit guide</button>}
@@ -246,7 +246,7 @@ export default function Exercises() {
       </div>
 
       <ConfirmDialog isOpen={confirmDelete !== null} type="danger" title={`Delete ${confirmDelete?.name ?? ''}`}
-        message="This removes it from your gym's list for good. If members have logged it, or a routine or program uses it, it cannot be deleted — hide it instead."
+        message="This removes it from your gym's list for good. If members have logged it, or a routine or program uses it, it cannot be deleted: hide it instead."
         confirmText="Delete" onConfirm={(why) => void doDelete(why)} reason={REASON_FIELD} onClose={() => setConfirmDelete(null)} />
     </div>
   );

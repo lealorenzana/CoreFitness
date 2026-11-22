@@ -11,7 +11,7 @@ import {
 } from '../lib/api/invitations';
 import { isStandInEmail, suggestUsername, usernameShape, USERNAME_HINT } from '../lib/api/logins';
 import LoginSlip from '../components/LoginSlip';
-import { RdHeader, RdCard, StatTile, RdButton, Pill, RdTable, Tr, Td, TableFooter, EmptyBlock, IconTile } from '../components/ui/rd';
+import { RdHeader, RdCard, StatTile, RdButton, Pill, RdTable, Tr, Td, TableFooter, EmptyBlock } from '../components/ui/rd';
 import type { Tone } from '../components/ui/rdTokens';
 
 const when = (iso: string) =>
@@ -100,7 +100,7 @@ export default function Invitations() {
     setBusy(true);
     try {
       // 0236: an email or a username — they sign in with either.
-      if (!one.email.trim() && !one.username.trim()) { showToast('Give an email or a username — they sign in with it.', 'error'); return; }
+      if (!one.email.trim() && !one.username.trim()) { showToast('Give an email or a username: they sign in with it.', 'error'); return; }
       const shape = usernameShape(one.username);
       if (shape) { showToast(`Username: ${shape}`, 'error'); return; }
       const out = await inviteAccount({ ...one, role });
@@ -160,9 +160,9 @@ export default function Invitations() {
     catch (e) { showToast(e instanceof Error ? e.message : 'Could not withdraw it', 'error'); }
   };
 
-  const labelCls = 'block text-[14.5px] mb-2 font-medium';
+  const labelCls = 'block text-[13px] mb-1.5 font-medium';
   const labelSt = { color: 'var(--color-text-primary)' };
-  const input = 'w-full h-12 rounded-xl px-4 text-[15px] text-white outline-none';
+  const input = 'w-full h-10 rounded-lg px-3 text-[14px] text-white outline-none';
   const inputSt = { background: 'rgba(255,255,255,0.025)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)' };
   const muted = { color: 'var(--color-text-secondary)' };
   const roleWord = role === 'member' ? 'members' : role === 'trainer' ? 'coaches' : 'front desk';
@@ -182,28 +182,24 @@ export default function Invitations() {
 
       <div className="rd-fit-split">
         <RdCard className="flex flex-col min-h-0 overflow-hidden" data-invite-ways>
-          <div className="flex gap-2 p-3" role="tablist" style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.06)' }}>
+          <div className="px-4 py-3" style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.06)' }}><div className="v2-seg" role="tablist">
             {([['one', 'Invite one person', UserPlus], ['group', 'Invite a group', FileText]] as const).map(([k, label, Icon]) => (
               <button key={k} type="button" role="tab" aria-selected={way === k} onClick={() => setWay(k)} data-way={k}
-                className="flex-1 h-11 rounded-xl inline-flex items-center justify-center gap-2 text-[14.5px] font-semibold transition-colors"
-                style={way === k ? { background: 'rgba(124,58,237,0.2)', border: '1px solid rgba(139,92,246,0.7)', color: '#EDE9FE' }
-                  : { border: '1px solid transparent', color: 'var(--color-text-secondary)' }}>
-                <Icon size={17} /> {label}
+                data-on={way === k ? '' : undefined}>
+                <Icon size={15} /> {label}
               </button>
             ))}
-          </div>
+          </div></div>
           <div className="rd-fit-scroll p-5">
         {/* ── One person ── */}
         {way === 'one' && (
           <form onSubmit={inviteOne} data-invite-one>
             <p className={labelCls} style={labelSt} id="iv-role">Joining as</p>
-            <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }} role="radiogroup" aria-labelledby="iv-role" data-invite-role>
+            <div className="v2-seg" role="radiogroup" aria-labelledby="iv-role" data-invite-role>
               {ROLE_PICK.filter((r) => !r.ownerOnly || isAdmin).map(({ key, label, icon: Icon }) => (
                 <button key={key} type="button" role="radio" aria-checked={role === key} onClick={() => setRole(key)} data-role={key}
-                  className="h-12 rounded-xl inline-flex items-center justify-center gap-2 text-[14.5px] font-semibold transition-colors"
-                  style={role === key ? { background: 'rgba(124,58,237,0.2)', border: '1px solid rgba(139,92,246,0.7)', color: '#EDE9FE' }
-                    : { background: 'rgba(255,255,255,0.025)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)', color: 'var(--color-text-secondary)' }}>
-                  <Icon size={16} />{label}
+                  data-on={role === key ? '' : undefined}>
+                  <Icon size={15} />{label}
                 </button>
               ))}
             </div>
@@ -262,23 +258,23 @@ export default function Invitations() {
           </p>
           {/* A worked example (the owner asked, 2026-10-18): what the desk actually does, step by step. */}
           <details className="mt-2 rounded-xl px-3 py-2 text-[13px]" style={{ border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)', background: 'rgba(255,255,255,0.02)' }} data-invite-howto>
-            <summary className="cursor-pointer font-semibold text-white">How to — an example</summary>
+            <summary className="cursor-pointer font-semibold text-white">How to: an example</summary>
             <ol className="mt-2 ml-4 list-decimal space-y-1.5" style={muted}>
               <li>Keep one person per line: <b className="text-white">email, first name, last name, mobile</b>. Only the email is required; the mobile is optional.</li>
-              <li>From Excel or Google Sheets, select those columns (no header row needed) and copy — or save the sheet as <b className="text-white">.csv</b> and choose it with Upload CSV.</li>
+              <li>From Excel or Google Sheets, select those columns (no header row needed) and copy: or save the sheet as <b className="text-white">.csv</b> and choose it with Upload CSV.</li>
               <li>Paste into the box below. For example:
-                <pre className="mt-1.5 rounded-lg px-3 py-2 text-[12px] whitespace-pre-wrap" style={{ background: 'rgba(0,0,0,0.3)', color: '#C4B5FD' }}>{'maria.santos@gmail.com, Maria, Santos, 09171234567\njuan.delacruz@yahoo.com, Juan, Dela Cruz\nana.reyes@gmail.com, Ana, Reyes, 09989876543'}</pre>
+                <pre className="mt-1.5 rounded-lg px-3 py-2 text-[12px] whitespace-pre-wrap" style={{ background: 'rgb(var(--hair-rgb, 255 255 255) / 0.05)', color: 'var(--color-text-primary)' }}>{'maria.santos@gmail.com, Maria, Santos, 09171234567\njuan.delacruz@yahoo.com, Juan, Dela Cruz\nana.reyes@gmail.com, Ana, Reyes, 09989876543'}</pre>
               </li>
-              <li>Press <b className="text-white">Review invitations</b>. You see who will be invited and any line that cannot be used (a missing or broken email) — fix those or leave them out.</li>
+              <li>Press <b className="text-white">Review invitations</b>. You see who will be invited and any line that cannot be used (a missing or broken email): fix those or leave them out.</li>
               <li>Press <b className="text-white">Invite</b>. Each person is emailed their own login (email and a one-time password). At first sign-in they choose a password and fill in a short form, and arrive already approved as {roleWord}. They show under &ldquo;Waiting to be accepted&rdquo; until they do.</li>
             </ol>
           </details>
 
           <label className="mt-4 flex flex-col items-center justify-center text-center rounded-2xl px-4 py-5 cursor-pointer transition-colors hover:bg-white/[0.02]"
-            style={{ border: '1.5px dashed rgba(139,92,246,0.5)', background: 'rgba(124,58,237,0.05)' }}>
+            style={{ border: '1.5px dashed rgb(var(--hair-rgb, 255 255 255) / 0.2)' }}>
             <span className="flex items-center gap-2 text-[16px] font-semibold text-white"><FileText size={20} /> Choose a CSV file</span>
             <span className="text-[13.5px] mt-1" style={muted}>Supports .csv files with email, name and mobile (optional)</span>
-            <span className="mt-3 h-10 px-4 rounded-xl inline-flex items-center gap-2 text-[14px] font-semibold" style={{ color: '#C4B5FD', border: '1px solid rgba(139,92,246,0.55)' }}>
+            <span className="mt-3 h-9 px-3.5 rounded-lg inline-flex items-center gap-2 text-[13px] font-semibold" style={{ color: 'var(--color-text-primary)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.16)' }}>
               <Upload size={16} /> Upload CSV
             </span>
             <input type="file" accept=".csv,text/csv,text/plain" className="hidden"
@@ -316,7 +312,7 @@ export default function Invitations() {
               {usable.length > 0 && (
                 <ul className="mt-2 flex flex-col gap-1 max-h-40 overflow-y-auto">
                   {usable.slice(0, 50).map((r) => (
-                    <li key={r.line} className="text-[13px]" style={muted}>{r.email}{r.firstName ? ` — ${[r.firstName, r.lastName].filter(Boolean).join(' ')}` : ''}</li>
+                    <li key={r.line} className="text-[13px]" style={muted}>{r.email}{r.firstName ? `: ${[r.firstName, r.lastName].filter(Boolean).join(' ')}` : ''}</li>
                   ))}
                 </ul>
               )}
@@ -324,26 +320,26 @@ export default function Invitations() {
                 <ul className="mt-2 flex flex-col gap-1">
                   {broken.slice(0, 8).map((r) => <li key={r.line} className="text-[13px]" style={{ color: '#FBBF24' }}>Line {r.line}: {r.problem}</li>)}
                   {broken.length > 8 && <li className="text-[13px]" style={muted}>…and {broken.length - 8} more</li>}
-                  <li className="text-[13px] mt-1" style={muted}>The lines that cannot be used are skipped — the rest still go.</li>
+                  <li className="text-[13px] mt-1" style={muted}>The lines that cannot be used are skipped: the rest still go.</li>
                 </ul>
               )}
             </div>
           )}
 
           {result && (
-            <div className="mt-4 rounded-xl p-4" style={{ background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(139,92,246,0.45)' }}>
+            <div className="mt-4 rounded-xl p-4" style={{ border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.14)' }}>
               <p className="text-[14.5px] text-white">{result.invited.length} invited{result.failed.length > 0 && `, ${result.failed.length} refused`}</p>
               {result.failed.length > 0 && (
                 <ul className="mt-2 flex flex-col gap-1">
                   {result.failed.slice(0, 10).map((f) => (
-                    <li key={f.email} className="text-[13px]" style={muted}><strong className="text-white">{f.email}</strong> — {f.reason}</li>
+                    <li key={f.email} className="text-[13px]" style={muted}><strong className="text-white">{f.email}</strong>: {f.reason}</li>
                   ))}
                 </ul>
               )}
               {result.invited.filter((i) => i.password).length > 0 && (
                 <div className="mt-3" data-invite-handover>
                   <p className="text-[13px] flex items-start gap-2" style={{ color: '#FBBF24' }}><AlertTriangle size={14} className="flex-none mt-0.5" />
-                    {result.invited.filter((i) => i.password).length} could not be emailed. Hand each their one-time password — it is shown only now.</p>
+                    {result.invited.filter((i) => i.password).length} could not be emailed. Hand each their one-time password: it is shown only now.</p>
                   <RdButton className="mt-2" variant="soft" icon={Copy}
                     onClick={() => copy(result.invited.filter((i) => i.password).map((i) => `${i.email}\t${i.password}`).join('\n'), 'bulk')}>
                     {copied === 'bulk' ? 'Copied' : 'Copy their logins'}
@@ -360,20 +356,20 @@ export default function Invitations() {
       {/* ── The list ── */}
       <RdCard className="overflow-hidden rd-fit-fill" id="waiting" data-invite-list>
         <div className="flex items-center gap-4 px-5 py-3.5 flex-wrap">
-          <IconTile icon={Users} size={42} />
+          <Users size={18} style={{ color: 'var(--color-text-secondary)' }} />
           <div className="flex-1 min-w-[220px]">
-            <h2 className="text-[20px] font-semibold text-white">{showDone ? 'Every invitation' : 'Waiting to be accepted'}</h2>
-            <p className="text-[14px]" style={muted}>Not signed in and finished yet. Send a new login, or withdraw — a withdrawn login opens nothing.</p>
+            <h2 className="text-[15px] font-semibold text-white">{showDone ? 'Every invitation' : 'Waiting to be accepted'}</h2>
+            <p className="text-[12.5px]" style={muted}>Not signed in and finished yet. Send a new login, or withdraw: a withdrawn login opens nothing.</p>
           </div>
           {counts.waiting > 0 && <Pill tone="violet">{counts.waiting} pending</Pill>}
-          <button type="button" onClick={() => setShowDone((v) => !v)} className="text-[14.5px] font-semibold inline-flex items-center gap-1.5" style={{ color: '#A78BFA' }}>
-            {showDone ? 'Waiting only' : 'View all'} <ArrowRight size={15} />
+          <button type="button" onClick={() => setShowDone((v) => !v)} className="text-[13px] font-semibold inline-flex items-center gap-1.5" style={{ color: 'var(--color-text-primary)' }}>
+            {showDone ? 'Waiting only' : 'View all'} <ArrowRight size={14} />
           </button>
         </div>
         <RdTable boxRef={fit.ref} head={['Email', 'Invited date', 'Expires', 'Role', ...(showDone ? ['State'] : []), { label: 'Actions', align: 'right' }]}
           empty={rows === null ? <p className="py-10 text-center text-[14.5px]" style={muted}>Loading…</p>
             : rows.length === 0 ? <EmptyBlock icon={Mail} title={showDone ? 'Nobody has been invited yet.' : 'Nobody is waiting.'}
-                body="Invite one person or a whole list above — each gets their own login by email." /> : undefined}>
+                body="Invite one person or a whole list above: each gets their own login by email." /> : undefined}>
           {paged.visible.map((r) => {
             const soon = r.state === 'waiting' && new Date(r.expires_at).getTime() - nowMs <= 3 * 86_400_000;
             const name = [r.first_name, r.last_name].filter(Boolean).join(' ');
@@ -381,7 +377,7 @@ export default function Invitations() {
               <Tr key={r.id} data-invite-row style={{ height: (rows?.length ?? 0) > paged.perPage ? fit.rowHeight : undefined }}>
                 <Td>
                   <p className="text-[15px] text-white">{isStandInEmail(r.email) ? `@${r.email.split('@')[0]}` : r.email}</p>
-                  {isStandInEmail(r.email) && <p className="text-[12.5px]" style={muted}>No email — signs in with a username</p>}
+                  {isStandInEmail(r.email) && <p className="text-[12.5px]" style={muted}>No email: signs in with a username</p>}
                   {name && <p className="text-[13px]" style={muted}>{name}</p>}
                 </Td>
                 <Td>
@@ -419,7 +415,7 @@ function IconAct({ label, icon: Icon, onClick, disabled, danger }: { label: stri
   return (
     <button type="button" aria-label={label} data-tip={label} onClick={onClick} disabled={disabled}
       className="w-10 h-10 rounded-xl grid place-items-center transition-colors hover:bg-white/5 disabled:opacity-40"
-      style={{ border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)', color: danger ? '#F87171' : '#C4B5FD' }}>
+      style={{ border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)', color: danger ? '#F87171' : 'var(--color-text-secondary)' }}>
       <Icon size={17} />
     </button>
   );

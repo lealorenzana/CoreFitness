@@ -89,7 +89,7 @@ export default function Programs() {
   return (
     <div className="att" data-programs>
       <div className="a-head">
-        <div className="min-w-0"><h1>Programs</h1><p>Multi-week plans members follow — a workout for each training day · {published} published</p></div>
+        <div className="min-w-0"><h1>Programs</h1><p>Multi-week plans members follow: a workout for each training day · {published} published</p></div>
         <nav className="a-tabs" aria-label="Programs or workouts" data-rd-tabs style={{ marginLeft: 'auto' }}>
           <button type="button" className={tab === 'programs' ? 'on' : ''} onClick={() => setTab('programs')}><CalendarRange size={14} />Programs <em>{programs.length}</em></button>
           <button type="button" className={tab === 'workouts' ? 'on' : ''} onClick={() => setTab('workouts')} data-tab="workouts"><Dumbbell size={14} />Workouts <em>{workouts.length}</em></button>
@@ -98,7 +98,7 @@ export default function Programs() {
           <Plus size={15} />{tab === 'programs' ? 'New program' : 'New workout'}</button>
       </div>
       {programs.length > 0 && published === 0 && (
-        <div className="a-hint" style={{ flex: 'none' }}><AlertTriangle size={14} /><span>Members cannot see any of your programs yet — open one and press Publish.</span></div>
+        <div className="a-hint" style={{ flex: 'none' }}><AlertTriangle size={14} /><span>Members cannot see any of your programs yet: open one and press Publish.</span></div>
       )}
 
       <div className="a-grid" style={{ gridTemplateColumns: '300px minmax(0, 1fr)', flex: 1 }}>
@@ -106,7 +106,7 @@ export default function Programs() {
           {tab === 'programs' ? (<>
             <div className="a-ct"><h3><CalendarRange size={16} />Your programs</h3><small>{programs.length}</small></div>
             <div className="a-scroll grow" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {programs.length === 0 && <p className="a-sub">No programs yet — start from a ready-made one below, or build your own.</p>}
+              {programs.length === 0 && <p className="a-sub">No programs yet: start from a ready-made one below, or build your own.</p>}
               {programs.map((p) => (
                 <button key={p.id} type="button" className={`a-tile ${editingProgram === p.id ? 'on' : ''}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
                   onClick={() => setEditingProgram(p.id)} data-program={p.name}>
@@ -116,7 +116,7 @@ export default function Programs() {
                   <span style={{ flex: 1, minWidth: 0 }}>
                     <b className="truncate" style={{ display: 'block' }}>{p.name} {p.premium && <Crown size={11} style={{ display: 'inline', color: 'var(--a-a300)' }} aria-label="Premium" />}</b>
                     <small style={{ display: 'block' }}>{p.weeks} week{p.weeks === 1 ? '' : 's'} · {levelWord(p.level).toLowerCase()} · {p.days.length} training days</small>
-                    <small style={{ color: p.published ? 'var(--a-p300)' : 'var(--a-a300)' }}>{p.published ? 'published — members see it' : 'draft — members cannot see it'}</small>
+                    <small style={{ color: p.published ? 'var(--a-p300)' : 'var(--a-a300)' }}>{p.published ? 'published: members see it' : 'draft: members cannot see it'}</small>
                   </span>
                 </button>
               ))}
@@ -243,7 +243,7 @@ function ProgramEditor({ program, workouts, exercises, onSaved, onClose, onEditW
   return (<>
     <div className="a-ct">
       <div className="min-w-0"><h3 style={{ fontSize: 17 }}>{program ? program.name : 'New program'}</h3>
-        <div className="a-sub">{program ? `${program.published ? 'Published — members can follow it' : 'Draft — only you and your staff see it'} · ${program.days.length} training days over ${program.weeks} weeks` : 'Save it, then fill in the weeks.'}</div></div>
+        <div className="a-sub">{program ? `${program.published ? 'Published: members can follow it' : 'Draft: only you and your staff see it'} · ${program.days.length} training days over ${program.weeks} weeks` : 'Save it, then fill in the weeks.'}</div></div>
       <div style={{ display: 'flex', gap: 6 }}>
         {program && <button type="button" className={`a-btn sm ${program.published ? '' : 'amber'}`} disabled={busy} onClick={() => void publish(!program.published)} data-publish>
           {program.published ? <><EyeOff size={13} />Unpublish</> : <><Eye size={13} />Publish</>}</button>}
@@ -267,7 +267,7 @@ function ProgramEditor({ program, workouts, exercises, onSaved, onClose, onEditW
           <button type="button" className={`a-chip ${premium ? 'on' : ''}`} aria-pressed={premium} aria-label="Premium members only" onClick={() => setPremium(!premium)}><Crown size={12} style={{ display: 'inline' }} /> Premium only</button>
         </div>
         {premium && <div className="a-sub">Members whose plan does not include "Premium programs" (Plans) see it with a lock and the reason, never hidden.</div>}
-        {program && (weeks !== program.weeks || deloadEvery !== program.deloadEvery || level !== program.level || premium !== program.premium || name !== program.name) && <div className="a-sub" style={{ color: 'var(--a-a300)' }}>Changes are not saved yet — press Save.</div>}
+        {program && (weeks !== program.weeks || deloadEvery !== program.deloadEvery || level !== program.level || premium !== program.premium || name !== program.name) && <div className="a-sub" style={{ color: 'var(--a-a300)' }}>Changes are not saved yet: press Save.</div>}
       </div>
       <div>
         {cover ? (
@@ -329,7 +329,7 @@ function ProgramEditor({ program, workouts, exercises, onSaved, onClose, onEditW
               <button key={id} type="button" className="a-tile" onClick={() => onEditWorkout(id)} aria-label={`Edit workout ${wName(id)}`} data-tip="Rename it or choose its exercises">
                 <b className={`a-wkg-name ${tone(id)}`}>{wName(id)}</b>
                 {names.length === 0
-                  ? <small style={{ color: 'var(--a-a300)' }}>No exercises yet — tap to choose them</small>
+                  ? <small style={{ color: 'var(--a-a300)' }}>No exercises yet: tap to choose them</small>
                   : <small>{names.slice(0, 3).join(' · ')}{names.length > 3 ? ` · +${names.length - 3}` : ''}</small>}
               </button>
             );
@@ -393,7 +393,7 @@ function WorkoutEditor({ workout, exercises, onSaved, onClose }: {
         </select>
       </div>
       <input value={notes ?? ''} onChange={(e) => setNotes(e.target.value)} maxLength={500} aria-label="Workout notes"
-        placeholder="Notes for members (optional) — warm up first, etc."
+        placeholder="Notes for members (optional): warm up first, etc."
         className="w-full h-9 px-3 rounded-lg text-xs text-white mt-2" style={FIELD} />
 
       <div className="space-y-1.5 mt-3">

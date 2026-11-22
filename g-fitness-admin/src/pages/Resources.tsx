@@ -97,7 +97,7 @@ export default function Resources() {
   const handlePaste = () => {
     const url = paste.trim();
     if (!url) return;
-    try { new URL(url); } catch { showToast('That is not a link — include https://', 'error'); return; }
+    try { new URL(url); } catch { showToast('That is not a link: include https://', 'error'); return; }
     openNew(url);
     setPaste('');
   };
@@ -107,14 +107,14 @@ export default function Resources() {
     const f = editing.f;
     if (!f.title.trim() || !f.provider.trim() || !f.url.trim()) { showToast('Title, provider and link are all required', 'error'); return; }
     // Catch a typo here rather than shipping a dead link to every member's phone.
-    try { new URL(f.url.trim()); } catch { showToast('That link isn\'t a valid URL — include https://', 'error'); return; }
+    try { new URL(f.url.trim()); } catch { showToast('That link isn\'t a valid URL: include https://', 'error'); return; }
     setSaving(true);
     const row = { title: f.title.trim(), provider: f.provider.trim(), url: f.url.trim(),
       // Empty means "no preview", a supported state — never an empty string that renders as a broken image.
       image_url: f.imageUrl.trim() || null, description: f.description.trim() || null, category: f.category.trim() || null, level: f.level, sort_order: Number(f.sortOrder) || 100 };
     try {
       if (editing.id) { await updateWorkoutResource(editing.id, row); showToast('Saved', 'success'); }
-      else { await createWorkoutResource({ ...row, is_active: true }); showToast('Added — members see it under Workouts', 'success'); }
+      else { await createWorkoutResource({ ...row, is_active: true }); showToast('Added: members see it under Workouts', 'success'); }
       setEditing(null);
       await load();
     } catch (err) {
@@ -143,7 +143,7 @@ export default function Resources() {
   return (
     <div className="att" data-resources>
       <div className="a-head">
-        <div className="min-w-0"><h1>Resources</h1><p>Free videos and guides members find under Workouts — never locked, for members who cannot pay</p></div>
+        <div className="min-w-0"><h1>Resources</h1><p>Free videos and guides members find under Workouts: never locked, for members who cannot pay</p></div>
         <button type="button" className="a-btn violet" style={{ marginLeft: 'auto' }} onClick={() => openNew()}><Link2 size={15} />Add a link</button>
       </div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 'none', flexWrap: 'wrap' }}>
@@ -160,7 +160,7 @@ export default function Resources() {
       <div className="a-card" style={{ flex: 1 }} data-resource-grid>
         <div className="a-scroll grow">
           {loading ? <p className="a-sub">Loading…</p> : rows.length > 0 && visible.length === 0 ? (
-            <p className="a-sub" style={{ padding: '10px 0' }}>Nothing matches{search ? ` “${search}”` : ''} — {rows.length} resources in the library.</p>
+            <p className="a-sub" style={{ padding: '10px 0' }}>Nothing matches{search ? ` “${search}”` : ''}: {rows.length} resources in the library.</p>
           ) : (
             <div className="a-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 12 }}>
               {visible.map((r) => {
@@ -189,7 +189,7 @@ export default function Resources() {
       </div>
 
       <Modal isOpen={!!editing} onClose={() => !saving && setEditing(null)} title={editing?.id ? 'Edit resource' : 'Add a link'}
-        subtitle="Links out to the source — nothing is copied into your library." size="md"
+        subtitle="Links out to the source: nothing is copied into your library." size="md"
         footer={<>
           <button type="button" className="px-4 py-2 rounded-lg text-[13px]" style={{ color: 'var(--color-text-secondary)' }} onClick={() => setEditing(null)}>Cancel</button>
           <button type="button" className="px-4 py-2 rounded-lg text-[13px] font-semibold text-white disabled:opacity-50" style={{ background: 'var(--color-primary)' }} disabled={saving} onClick={() => void save()} data-save-resource>
@@ -220,15 +220,15 @@ export default function Resources() {
               <label className="block text-[12px]" style={{ color: 'var(--color-text-secondary)' }}>Order <span style={{ color: 'var(--color-text-muted)' }}>· lower shows first</span>
                 <input className={fld} style={fldStyle} type="number" value={editing.f.sortOrder} aria-label="Sort order" onChange={(e) => set({ sortOrder: e.target.value })} /></label>
             </div>
-            <p className="text-[12px] flex gap-1.5" style={{ color: 'var(--color-text-muted)' }}><Info size={13} className="flex-none mt-0.5" />Every resource is free for every member — this library is never locked by a plan.</p>
+            <p className="text-[12px] flex gap-1.5" style={{ color: 'var(--color-text-muted)' }}><Info size={13} className="flex-none mt-0.5" />Every resource is free for every member: this library is never locked by a plan.</p>
           </div>
         )}
       </Modal>
 
       <ConfirmDialog isOpen={!!toDelete} onClose={() => setToDelete(null)} onConfirm={(why) => void handleDelete(why)} reason={REASON_FIELD} title="Remove resource"
         message={`Remove "${toDelete?.title}" from the library?${toDelete && saves?.get(toDelete.id)?.saved
-          ? ` ${saves.get(toDelete.id)!.saved} member${saves.get(toDelete.id)!.saved === 1 ? ' has' : 's have'} it saved — it disappears from their Saved list too.`
-          : ''} If you only want it out of the member app for now, Hide keeps it — and members' saves — and brings it back with one click.`}
+          ? ` ${saves.get(toDelete.id)!.saved} member${saves.get(toDelete.id)!.saved === 1 ? ' has' : 's have'} it saved: it disappears from their Saved list too.`
+          : ''} If you only want it out of the member app for now, Hide keeps it: and members' saves: and brings it back with one click.`}
         confirmText="Remove" type="danger" />
     </div>
   );

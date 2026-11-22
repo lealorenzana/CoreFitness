@@ -182,7 +182,7 @@ export default function Revenue() {
   return (
     <div className="att" data-revenue>
       <div className="a-head">
-        <div className="min-w-0"><h1>Revenue</h1><p>Money recorded at the desk and online — by when it was paid</p></div>
+        <div className="min-w-0"><h1>Revenue</h1><p>Money recorded at the desk and online: by when it was paid</p></div>
         <div style={{ display: 'flex', gap: 6, marginLeft: 'auto', flexWrap: 'wrap' }} role="group" aria-label="Period">
           {([['week', 'This week'], ['month', new Date(`${today}T00:00:00`).toLocaleDateString('en-PH', { month: 'long' })], ['last', 'Last month'], ['year', 'This year']] as const).map(([k, l]) => (
             <button key={k} type="button" className={`a-chip ${preset === k ? 'v' : ''}`} aria-pressed={preset === k} onClick={() => setPreset(k)}>{l}</button>
@@ -232,7 +232,7 @@ export default function Revenue() {
         </div>
       </div>
 
-      {payments === 'failed' && <div className="a-hint" style={{ flex: 'none' }}><Receipt size={14} /><span>The payments could not be loaded — a connection problem, not an empty ledger. Reload to try again.</span></div>}
+      {payments === 'failed' && <div className="a-hint" style={{ flex: 'none' }}><Receipt size={14} /><span>The payments could not be loaded: a connection problem, not an empty ledger. Reload to try again.</span></div>}
 
       <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) 340px', flex: 1 }}>
         <div className="a-grid" style={{ gridTemplateRows: 'minmax(0, 1.1fr) minmax(0, 1fr)' }}>
@@ -251,7 +251,7 @@ export default function Revenue() {
                 const future = year === thisYear && b.i > thisMonth;
                 return (
                   <button key={b.i} type="button" className={`b ${cur ? 'cur' : ''}`} disabled={future} onClick={() => openMonth(b.i)} data-month={MONTHS[b.i]}
-                    data-tip={future ? undefined : `${MONTHS[b.i]} ${year}: ${peso(b.all)} — memberships ${peso(b.membership)}${shopOn ? ` · shop ${peso(b.shop)}` : ''} · day passes ${peso(b.pass)}`}>
+                    data-tip={future ? undefined : `${MONTHS[b.i]} ${year}: ${peso(b.all)}: memberships ${peso(b.membership)}${shopOn ? ` · shop ${peso(b.shop)}` : ''} · day passes ${peso(b.pass)}`}>
                     {cur && b.all > 0 && <em>{peso(b.all)} so far</em>}
                     <span style={{ height: b.all > 0 ? `max(4px, ${(b.all / peak) * 88}%)` : 0 }}>
                       {b.pass > 0 && <i style={{ flex: b.pass, background: COLOR.pass }} />}

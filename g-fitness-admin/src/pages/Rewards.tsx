@@ -223,7 +223,7 @@ function MemberPreview({ f }: { f: Form }) {
           <p className="text-[13px] font-bold mt-1.5" style={{ color: '#C4B5FD' }}>{cost ? `${cost.toLocaleString('en-PH')} points` : '— points'}</p>
           {(f.available_until || f.per_member_monthly) && (
             <p className="text-[11.5px] mt-1" style={{ color: MUTED }}>
-              {f.available_until ? `Until ${ymdWords(f.available_until)}` : ''}{f.available_until && f.per_member_monthly ? ' — ' : ''}
+              {f.available_until ? `Until ${ymdWords(f.available_until)}` : ''}{f.available_until && f.per_member_monthly ? ': ' : ''}
               {f.per_member_monthly ? `${f.per_member_monthly} a month each` : ''}
             </p>
           )}
@@ -283,7 +283,7 @@ function InsightRail({ rewards, wishlist, stats, spentThisMonth, onOpen, onResto
               </span>
             </button>
           ))}
-        {wanted.length > 0 && <p className="text-[11.5px] mt-2" style={{ color: MUTED }}>Members saving for each — check before you hide or reprice one.</p>}
+        {wanted.length > 0 && <p className="text-[11.5px] mt-2" style={{ color: MUTED }}>Members saving for each: check before you hide or reprice one.</p>}
       </RdCard>
       <RdCard className="p-4" style={{ flexGrow: 1 }} data-rail-low>
         {head(Package, 'Running low')}
@@ -400,7 +400,7 @@ export default function Rewards() {
     setBusy(null);
     if (res.error) { showToast(res.error.message, 'error'); return; }
     // A zero-row update reports success (CLAUDE.md): only an admin may edit rewards.
-    if (!res.data || res.data.length === 0) { showToast('That reward was not changed — only an admin can edit the catalogue.', 'error'); return; }
+    if (!res.data || res.data.length === 0) { showToast('That reward was not changed: only an admin can edit the catalogue.', 'error'); return; }
     showToast(form.id ? 'Reward saved' : 'Reward added', 'success');
     setForm(emptyForm);
     setAdding(false);
@@ -438,11 +438,11 @@ export default function Rewards() {
         .update({ status, decided_by: me.user?.id ?? null, decided_at: new Date().toISOString(), decision_note: note || null })
         .eq('id', row.id).eq('status', 'pending').select('id');
       error = res.error ?? (!res.data || res.data.length === 0
-        ? { message: 'That request was not changed — it may already be decided.' } as typeof error : null);
+        ? { message: 'That request was not changed: it may already be decided.' } as typeof error : null);
     }
     setBusy(null);
     if (error) { showToast(error.message, 'error'); return; }
-    showToast(status === 'approved' ? 'Approved — the member has been told to collect it' : 'Rejected — the member has been told why', 'success');
+    showToast(status === 'approved' ? 'Approved: the member has been told to collect it' : 'Rejected: the member has been told why', 'success');
     await load();
   };
 
@@ -460,7 +460,7 @@ export default function Rewards() {
     const ok = await patch(r, { is_active: !r.is_active }, r.is_active ? `${r.name} is hidden from members` : `${r.name} is back in the catalogue`);
     const saving = wishlist?.get(r.id) ?? 0;
     if (ok && r.is_active && saving > 0) {
-      showToast(`${saving} member${saving === 1 ? ' was' : 's were'} saving for it — it drops off their target.`, 'info');
+      showToast(`${saving} member${saving === 1 ? ' was' : 's were'} saving for it: it drops off their target.`, 'info');
     }
   };
 
@@ -503,7 +503,7 @@ export default function Rewards() {
         <AlertTriangle size={20} style={{ color: TONE.amber.fg }} />
         <div>
           <p className="text-[16px] font-semibold text-white">Rewards could not be loaded</p>
-          <p className="text-[13.5px] mt-1" style={{ color: SECOND }}>A connection problem, not an empty catalogue — no request has been missed. Reload to try again.</p>
+          <p className="text-[13.5px] mt-1" style={{ color: SECOND }}>A connection problem, not an empty catalogue: no request has been missed. Reload to try again.</p>
         </div>
       </RdCard>
     );
@@ -518,9 +518,9 @@ export default function Rewards() {
         <div className="min-w-0 flex-1">
           <p className="text-[14.5px] font-semibold text-white truncate">{row.rewards?.name ?? 'Reward'}</p>
           <p className="text-[12.5px] truncate" style={{ color: SECOND }}>
-            {memberName(row)} — {row.cost_points.toLocaleString('en-PH')} points, asked {shortDate(row.requested_at)}
+            {memberName(row)}: {row.cost_points.toLocaleString('en-PH')} points, asked {shortDate(row.requested_at)}
           </p>
-          {out && <p className="text-[12px] mt-0.5" style={{ color: TONE.amber.fg }}>Out of stock — restock it under Catalogue, or decline.</p>}
+          {out && <p className="text-[12px] mt-0.5" style={{ color: TONE.amber.fg }}>Out of stock: restock it under Catalogue, or decline.</p>}
         </div>
         {kind === 'pending' ? (
           <div className="flex gap-1.5 flex-none">
@@ -614,7 +614,7 @@ export default function Rewards() {
           </div>
           <div className="rd-fit-scroll p-4">
             {rewards.length === 0 ? (
-              <EmptyBlock icon={Gift} title="No rewards yet" body="Members are already earning points — they just have nothing to spend them on."
+              <EmptyBlock icon={Gift} title="No rewards yet" body="Members are already earning points: they just have nothing to spend them on."
                 action={<RdButton variant="primary" icon={Plus} onClick={() => openForm(emptyForm)}>Add the first one</RdButton>} />
             ) : catalogue.length === 0 ? (
               <EmptyBlock compact icon={Gift} title="Nothing matches" body="No reward matches that search and filter." />
@@ -653,7 +653,7 @@ export default function Rewards() {
                   <div key={row.id} className="flex items-center gap-3 px-4 py-2.5" style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.045)' }}>
                     {rw ? <RewardArt r={rw} size={36} /> : <Gift size={18} style={{ color: MUTED }} />}
                     <div className="min-w-0 flex-1">
-                      <p className="text-[14px] text-white truncate">{memberName(row)} — {row.rewards?.name ?? 'Reward'}</p>
+                      <p className="text-[14px] text-white truncate">{memberName(row)}: {row.rewards?.name ?? 'Reward'}</p>
                       {row.decision_note && <p className="text-[12px] truncate" style={{ color: MUTED }}>&ldquo;{row.decision_note}&rdquo;</p>}
                     </div>
                     <span className="text-[12.5px] tabular-nums" style={{ color: MUTED }}>{row.cost_points.toLocaleString('en-PH')} pts</span>
@@ -743,7 +743,7 @@ export default function Rewards() {
         isOpen={!!rejecting}
         onClose={() => setRejecting(null)}
         title="Decline this request"
-        subtitle={rejecting ? `${memberName(rejecting)} — ${rejecting.rewards?.name ?? 'Reward'}` : undefined}
+        subtitle={rejecting ? `${memberName(rejecting)}: ${rejecting.rewards?.name ?? 'Reward'}` : undefined}
         size="sm"
         footer={
           <>
@@ -761,9 +761,9 @@ export default function Rewards() {
           </>
         }
       >
-        <RdField label="Why — the member reads this" hint="Needed — a decline with no reason reads as a mistake. The member keeps their points.">
+        <RdField label="Why: the member reads this" hint="Needed: a decline with no reason reads as a mistake. The member keeps their points.">
           <textarea value={rejectNote} onChange={(e) => setRejectNote(e.target.value)} rows={3}
-            placeholder="e.g. Out of stock this month — try again in April."
+            placeholder="e.g. Out of stock this month: try again in April."
             className={`${RD_INPUT} h-auto py-2.5 resize-none`} style={RD_INPUT_STYLE} />
         </RdField>
       </Modal>

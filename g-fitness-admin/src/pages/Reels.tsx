@@ -129,7 +129,7 @@ export default function Reels() {
     try {
       if (adding.mode === 'link') await postLinkReel({ title, caption, url: adding.url.trim(), cover: adding.cover });
       else await postUploadedReel({ title, caption, file: adding.file as File });
-      showToast('Posted — members see it on Today and in More', 'success');
+      showToast('Posted: members see it on Today and in More', 'success');
       setAdding(null);
       await load();
     } catch (err) {
@@ -187,7 +187,7 @@ export default function Reels() {
   return (
     <div className="att" data-reels>
       <div className="a-head">
-        <div className="min-w-0"><h1>Reels</h1><p>Short videos your gym posts for its members — a link from YouTube, TikTok, Facebook or Instagram, or a small video of your own</p></div>
+        <div className="min-w-0"><h1>Reels</h1><p>Short videos your gym posts for its members: a link from YouTube, TikTok, Facebook or Instagram, or a small video of your own</p></div>
         <PageGuide id="reels" />
         <button type="button" className="a-btn violet" style={{ marginLeft: 'auto' }} onClick={() => openAdd()} data-add-reel><Plus size={15} />Add a reel</button>
       </div>
@@ -210,18 +210,18 @@ export default function Reels() {
           : failed ? (
             <div data-reels-failed style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start', padding: '10px 0' }}>
               <b>The reels did not load.</b>
-              <p className="a-sub">{failed} Nothing was changed — this is not an empty list.</p>
+              <p className="a-sub">{failed} Nothing was changed: this is not an empty list.</p>
               <button type="button" className="a-btn sm" onClick={() => void load()}><RefreshCw size={13} />Try again</button>
             </div>
           ) : rows.length === 0 ? (
             <div data-reels-empty style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start', padding: '10px 0', maxWidth: 520 }}>
               <b style={{ display: 'flex', gap: 8, alignItems: 'center' }}><Clapperboard size={16} />No reels yet</b>
-              <p className="a-sub" style={{ lineHeight: 1.5 }}>A reel is a short video for your members — a tip, a class highlight, a hello from a coach. Paste a link or upload a small video
+              <p className="a-sub" style={{ lineHeight: 1.5 }}>A reel is a short video for your members: a tip, a class highlight, a hello from a coach. Paste a link or upload a small video
                 (up to 15 MB each, kept within your plan's storage; links use none). Members see reels on Today and in More, and can give each a heart.</p>
               <button type="button" className="a-btn violet" onClick={() => openAdd()}><Plus size={14} />Add a reel</button>
             </div>
           ) : visible.length === 0 ? (
-            <p className="a-sub" style={{ padding: '10px 0' }}>Nothing matches{search ? ` “${search}”` : ''} — {rows.length} reel{rows.length === 1 ? '' : 's'} in all.</p>
+            <p className="a-sub" style={{ padding: '10px 0' }}>Nothing matches{search ? ` “${search}”` : ''}: {rows.length} reel{rows.length === 1 ? '' : 's'} in all.</p>
           ) : (
             <div className="a-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 12 }}>
               {visible.map((r) => {
@@ -291,7 +291,7 @@ export default function Reels() {
                   <p className="text-[12px] flex gap-1.5" style={muted} data-reel-outside-hint><Info size={13} className="flex-none mt-0.5" />{reelOutsideWhy(adding.url) === 'photo'
                     ? 'This is a photo post, not a video, so members see its first picture and swipe through the rest in TikTok.'
                     : reelLinkSource(adding.url) === 'facebook'
-                      ? 'Facebook keeps share links in its own app. To play it here, open the reel on Facebook, tap ⋯ → Copy link on the reel itself (facebook.com/reel/…) and paste that. Add a cover picture below either way — Facebook gives none.'
+                      ? 'Facebook keeps share links in its own app. To play it here, open the reel on Facebook, tap ⋯ → Copy link on the reel itself (facebook.com/reel/…) and paste that. Add a cover picture below either way: Facebook gives none.'
                       : `This is a short share link, so it opens in ${REEL_SOURCE_WORDS[reelLinkSource(adding.url)!]} instead of playing inside the app. The full link from the video's own page plays inside.`}</p>
                 )}
               </>
@@ -303,7 +303,7 @@ export default function Reels() {
                   style={{ ...lbl, background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}><Upload size={14} />{adding.file ? 'Choose another video' : 'Choose a video'}</button>
                 {adding.file && <p className="text-[12px] mt-2" style={lbl} data-reel-file-name>{adding.file.name} · {megabytes(adding.file.size)}</p>}
                 {fileProblem && <p role="alert" data-reel-file-problem className="text-[12px] mt-1" style={{ color: 'var(--a-a300, var(--color-warning))' }}>{fileProblem}</p>}
-                <p className="text-[12px] mt-2 flex gap-1.5" style={muted}><Info size={13} className="flex-none mt-0.5" />MP4, MOV or WebM, up to 15 MB{storage ? ` — your gym has used ${storage} of storage` : ''}. Its cover is taken from the start of the video.</p>
+                <p className="text-[12px] mt-2 flex gap-1.5" style={muted}><Info size={13} className="flex-none mt-0.5" />MP4, MOV or WebM, up to 15 MB{storage ? `: your gym has used ${storage} of storage` : ''}. Its cover is taken from the start of the video.</p>
               </div>
             )}
 
@@ -357,7 +357,7 @@ export default function Reels() {
                   style={{ ...lbl, background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}><ImagePlus size={14} />{editing.hasCover || editing.cover ? 'Change the picture' : 'Add a picture'}</button>
                 {editing.cover && <span className="text-[12px]" style={lbl}>{editing.cover.name}</span>}
               </div>
-              <span className="block text-[12px] mt-1" style={muted}>Shown before it plays — and for a reel that opens in its own app, it is what members see.</span>
+              <span className="block text-[12px] mt-1" style={muted}>Shown before it plays: and for a reel that opens in its own app, it is what members see.</span>
             </div>
           </div>
         )}
@@ -399,7 +399,7 @@ export default function Reels() {
       </Modal>
 
       <ConfirmDialog isOpen={!!toDelete} onClose={() => setToDelete(null)} onConfirm={() => void handleDelete()} title="Remove reel"
-        message={`Remove "${toDelete?.title}"? ${toDelete?.likes ? `Its ${toDelete.likes} like${toDelete.likes === 1 ? ' goes' : 's go'} with it` : 'Any likes go with it'}${toDelete?.source === 'upload' ? ', and the video file is deleted' : ''}. If you only want it out of the member app for now, Hide keeps it — and its likes — and brings it back with one click.`}
+        message={`Remove "${toDelete?.title}"? ${toDelete?.likes ? `Its ${toDelete.likes} like${toDelete.likes === 1 ? ' goes' : 's go'} with it` : 'Any likes go with it'}${toDelete?.source === 'upload' ? ', and the video file is deleted' : ''}. If you only want it out of the member app for now, Hide keeps it: and its likes: and brings it back with one click.`}
         confirmText="Remove" type="danger" />
     </div>
   );

@@ -114,7 +114,7 @@ async (page) => {
   await page.waitForTimeout(800);
   let t = await text();
   out.push('rewards in tabs, out-of-stock counted: ' + ((await page.getByRole('tab').count()) >= 6 && /OUT OF STOCK 1/i.test(t) ? 'yes' : 'MISSING'));
-  out.push('approving the out-of-stock one is blocked and explained: ' + (/Out of stock — restock it under Catalogue, or decline/.test(t)
+  out.push('approving the out-of-stock one is blocked and explained: ' + (/Out of stock: restock it under Catalogue, or decline/.test(t)
     && await page.getByRole('button', { name: /Approve/ }).first().isDisabled() ? 'yes' : 'MISSING'));
   await page.getByRole('button', { name: /Decline/ }).first().click();
   out.push('declining needs a reason: ' + (await page.getByRole('button', { name: 'Decline', exact: true }).last().isDisabled() ? 'yes' : 'NO'));

@@ -9,7 +9,6 @@ import Avatar from '../components/ui/Avatar';
 import {
   RdHeader, RdCard, RdSelect, RdButton, SearchField, TableFooter, EmptyBlock, FitBody, IconTile,
 } from '../components/ui/rd';
-import { TONE } from '../components/ui/rdTokens';
 import { showErrorToast } from '../utils/toast';
 import { dateKey, addDays } from '../utils/dates';
 import {
@@ -307,11 +306,11 @@ export default function Activity() {
     setGroup(null); setRole(null); setActorId(''); setSearch(''); setLiveOnly(false);
   };
 
-  /** One rail filter: a full-width row, violet when on. */
+  /** One rail filter: a full-width row, raised when on (Design V2: flat, the kit's chosen look). */
   const railBtn = (on: boolean): React.CSSProperties => ({
-    background: on ? TONE.violet.bg : 'transparent',
-    border: `1px solid ${on ? TONE.violet.line : 'transparent'}`,
-    color: on ? '#EDE9FE' : TEXT_SECOND,
+    background: on ? 'var(--raised-solid)' : 'transparent',
+    border: `1px solid ${on ? 'rgb(var(--hair-rgb, 255 255 255) / 0.24)' : 'transparent'}`,
+    color: on ? 'var(--color-text-primary)' : TEXT_SECOND,
   });
 
   const rail = (
@@ -332,7 +331,7 @@ export default function Activity() {
       <div className="grid grid-cols-2 gap-1">
         {ROLE_FILTERS.map((r) => (
           <button key={r.id} type="button" onClick={() => setRole(role === r.id ? null : r.id)}
-            className="h-8 px-2.5 rounded-lg text-[13px] font-medium text-left" style={{ ...railBtn(role === r.id), border: `1px solid ${role === r.id ? TONE.violet.line : LINE}` }}>
+            className="h-8 px-2.5 rounded-lg text-[13px] font-medium text-left" style={{ ...railBtn(role === r.id), border: `1px solid ${role === r.id ? 'rgb(var(--hair-rgb, 255 255 255) / 0.24)' : LINE}` }}>
             {r.label}
           </button>
         ))}
@@ -351,7 +350,7 @@ export default function Activity() {
   return (
     <div className="rd-fit" data-activity>
       <RdHeader title="Activity log"
-        subtitle="Every change to a booking, payment, check-in, membership, account, plan or class — recorded by the database itself." />
+        subtitle="Every change to a booking, payment, check-in, membership, account, plan or class: recorded by the database itself." />
 
       {unavailable ? (
         <RdCard className="rd-fit-fill">
@@ -363,7 +362,7 @@ export default function Activity() {
           <RdCard className="flex flex-col min-h-0 overflow-hidden rd-fit-fill" data-activity-list>
             <div className="flex flex-nowrap items-center gap-2.5 px-4 py-3" style={{ borderBottom: `1px solid ${LINE}` }}>
               <div className="flex-1 min-w-0">
-                <SearchField value={search} onChange={setSearch} placeholder="Search the log" label="Search the log — a name, a class, an amount" />
+                <SearchField value={search} onChange={setSearch} placeholder="Search the log" label="Search the log: a name, a class, an amount" />
               </div>
               <RdSelect label="When" value={range} onChange={(v) => setRange(v as RangeId)} className="w-[140px] flex-none">
                 {RANGES.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
@@ -400,7 +399,7 @@ export default function Activity() {
                   {/* The automatic win-back sends, once for the whole range — they used to be
                       folded per page, so one day read "5 members" here and "4" on the next page. */}
                   {winbackShown && (
-                    <div data-winback-group className="mt-3 rounded-xl p-3" style={{ background: 'rgba(124,58,237,0.07)', border: `1px solid ${TONE.violet.line}` }}>
+                    <div data-winback-group className="mt-3 rounded-xl p-3" style={{ border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.14)' }}>
                       <button type="button" className="flex items-start gap-3 w-full text-left" onClick={() => setOpenWinback(!openWinback)} aria-expanded={openWinback}>
                         <IconTile icon={History} size={32} />
                         <span className="flex-1 min-w-0">
@@ -408,7 +407,7 @@ export default function Activity() {
                             Win-back messages sent to {winbacks.length} {winbacks.length === 1 ? 'member' : 'members'}
                           </span>
                           <span className="block text-[12px] mt-0.5" style={{ color: TEXT_MUTED }}>
-                            Automatic, at most one a member a month — {winbackDays.map((d) => `${d.label.split(',')[0]}: ${d.items.length}`).join(', ')} — {openWinback ? 'hide who' : 'show who'}
+                            Automatic, at most one a member a month: {winbackDays.map((d) => `${d.label.split(',')[0]}: ${d.items.length}`).join(', ')}: {openWinback ? 'hide who' : 'show who'}
                           </span>
                         </span>
                         <ChevronRight size={16} className="mt-2 transition-transform" style={{ color: TEXT_MUTED, transform: openWinback ? 'rotate(90deg)' : undefined }} />
@@ -486,9 +485,9 @@ export default function Activity() {
             </div>
 
             {/* The pager, outside the scrolling list, so it is always on screen. `total` is null
-                only if Postgres declined to count — then the page says how many it shows. */}
+                only if Postgres declined to count: then the page says how many it shows. */}
             {/* One fixed height, always there: a footer that grew when page buttons appeared
-                changed the list's height, so the page size, so the query — and it loaded again. */}
+                changed the list's height, so the page size, so the query: and it loaded again. */}
             <div className="flex-none flex items-center" style={{ borderTop: `1px solid ${LINE}`, height: 72 }} data-activity-footer>
               {loadedOnce && total !== null && total > 0 ? (
                 <div className="w-full">

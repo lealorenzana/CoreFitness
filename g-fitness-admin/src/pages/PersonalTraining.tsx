@@ -108,7 +108,7 @@ export default function PersonalTraining() {
     setBusy(r.id);
     try {
       await deskDecideCoaching(r.id, accept, price);
-      showToast(accept ? `${name(r.trainer_id)} is now ${name(r.member_id)}’s coach` : 'Declined — the member has been told', 'success');
+      showToast(accept ? `${name(r.trainer_id)} is now ${name(r.member_id)}’s coach` : 'Declined: the member has been told', 'success');
       await load();
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'That could not be saved', 'error');
@@ -140,7 +140,7 @@ export default function PersonalTraining() {
     setBusy(r.id);
     try {
       await confirmCoachingPayment(r.id, found, found ? (r.pay_reference ? 'online' : 'cash') : null);
-      showToast(found ? 'Confirmed — the package has started' : 'They have been asked to check it', 'success');
+      showToast(found ? 'Confirmed: the package has started' : 'They have been asked to check it', 'success');
       await load();
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'That could not be saved', 'error');
@@ -169,7 +169,7 @@ export default function PersonalTraining() {
         <div className="a-card" style={{ flex: 1, padding: 0 }} data-to-decide>
           {data === undefined ? <p className="a-sub" style={{ padding: 18 }}>Loading…</p>
             : data === null ? <p className="a-sub" style={{ padding: 18, color: 'var(--a-a300)' }}>What waits could not be loaded. Refresh to try again.</p>
-            : data.sessions.length + data.payments.length + data.asked.length === 0 ? <p className="a-sub text-center" style={{ padding: 26 }} data-decide-empty>Nothing waits for you — requests and payments show here as they come in.</p>
+            : data.sessions.length + data.payments.length + data.asked.length === 0 ? <p className="a-sub text-center" style={{ padding: 26 }} data-decide-empty>Nothing waits for you: requests and payments show here as they come in.</p>
             : (
               <div className="a-scroll" style={{ flex: 1 }}>
                 <table className="a-table">
@@ -205,7 +205,7 @@ export default function PersonalTraining() {
                         <td>Asked for a {r.months}-month package</td>
                         <td>{name(r.trainer_id)}</td>
                         <td><span className="a-sub">{waited(r.created_at)} · {approval === 'desk' ? 'you decide'
-                          : approval === 'coach_desk' ? (r.coach_ok_at ? `${name(r.trainer_id)} said yes — you confirm` : `waiting for ${name(r.trainer_id)} first`)
+                          : approval === 'coach_desk' ? (r.coach_ok_at ? `${name(r.trainer_id)} said yes: you confirm` : `waiting for ${name(r.trainer_id)} first`)
                           : 'the coach decides'}</span></td>
                         <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                           {approval === 'coach' ? (

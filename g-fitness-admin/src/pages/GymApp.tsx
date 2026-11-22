@@ -144,7 +144,7 @@ export default function GymApp() {
       // '' clears the logo, a URL sets it; this form always knows which it means.
       await saveGymLook({ accent: look.accent, accentAction: look.action || null, logoUrl: look.logo_url });
       await load();
-      showToast('Published — this dashboard shows it now; members and coaches see it next time they open the app.', 'success');
+      showToast('Published: this dashboard shows it now; members and coaches see it next time they open the app.', 'success');
     } catch (e) { showToast(e instanceof Error ? e.message : 'That could not be saved', 'error'); }
     finally { setSaving(false); }
   };
@@ -175,7 +175,7 @@ export default function GymApp() {
     return (
       <div className="att"><div className="a-card">
         <h3 style={{ fontSize: 15, fontWeight: 700 }}>Not available yet</h3>
-        <p className="a-sub" style={{ marginTop: 4 }}>This page needs migration 0110, which has not been pasted into the database yet. Nothing is broken — your gym works exactly as it did.</p>
+        <p className="a-sub" style={{ marginTop: 4 }}>This page needs migration 0110, which has not been pasted into the database yet. Nothing is broken: your gym works exactly as it did.</p>
       </div></div>
     );
   }
@@ -201,7 +201,7 @@ export default function GymApp() {
   return (
     <div className="att" data-your-app>
       <div className="a-head">
-        <div className="min-w-0"><h1>Your app</h1><p>Everything {app.gym_name}'s members see on their phones — change it here, watch it change on the right</p></div>
+        <div className="min-w-0"><h1>Your app</h1><p>Everything {app.gym_name}'s members see on their phones: change it here, watch it change on the right</p></div>
         <div className="a-tabs" role="tablist" aria-label="Your app sections">
           {APP_TABS.filter(([k]) => k !== 'coach' || coachSold).map(([k, t, Icon]) => (
             <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>
@@ -228,7 +228,7 @@ export default function GymApp() {
         )}>
           {/* Four steps, one at a time (2026-11-02): pairs, saved and premium themes and the two pickers
               were stacked into one long list whose titles did not say how they differ. */}
-          <div className="a-ct"><h3><Palette size={16} />Your look</h3><small>pick a step — the preview follows</small></div>
+          <div className="a-ct"><h3><Palette size={16} />Your look</h3><small>pick a step: the preview follows</small></div>
           <div className="flex gap-1.5 flex-wrap" style={{ marginBottom: 12 }} role="tablist" aria-label="Look steps">
             {([['pair', '1 · Colour pair'], ['own', '2 · Your own colours'], ['premium', '3 · Premium theme'], ['logo', '4 · Logo and name']] as const).map(([k, l]) => (
               <button key={k} type="button" role="tab" aria-selected={lookStep === k} className={`a-chip ${lookStep === k ? 'v' : ''}`} onClick={() => setLookStep(k)} data-look-step={k}>{l}</button>
@@ -258,13 +258,13 @@ export default function GymApp() {
           <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16, marginTop: 4 }}>
             <div>
               <b style={{ fontSize: 12.5 }}>Main colour</b>
-              <div className="a-sub" style={{ margin: '2px 0 8px' }}>where you are and what you have — selected tabs, progress, points</div>
+              <div className="a-sub" style={{ margin: '2px 0 8px' }}>where you are and what you have: selected tabs, progress, points</div>
               <ColourRolePicker compact idPrefix="look-accent" value={look.accent} fallback="violet"
                 onChange={(val) => setLook((l) => ({ ...l, accent: val || 'violet' }))} />
             </div>
             <div>
               <b style={{ fontSize: 12.5 }}>Button colour</b>
-              <div className="a-sub" style={{ margin: '2px 0 8px' }}>what members can do next — book, renew, save, send</div>
+              <div className="a-sub" style={{ margin: '2px 0 8px' }}>what members can do next: book, renew, save, send</div>
               <ColourRolePicker compact idPrefix="look-action" value={look.action} fallback="amber"
                 unsetLabel="Standard amber, the colour every gym started with"
                 onChange={(val) => setLook((l) => ({ ...l, action: val }))} />
@@ -306,7 +306,7 @@ export default function GymApp() {
             </label>
             {look.logo_url && <button type="button" className="a-btn ghost" onClick={() => setLook({ ...look, logo_url: '' })}>Remove</button>}
           </div>
-          <p className="a-sub" style={{ marginTop: 6 }}>Square works best — it shows in a circle. With none, members see the Core Fitness mark.</p>
+          <p className="a-sub" style={{ marginTop: 6 }}>Square works best: it shows in a circle. With none, members see the Core Fitness mark.</p>
           </>}
 
           {/* The look is the members' and coaches' app AND this dashboard (owner, 2026-11-07) — not members alone. */}
@@ -376,7 +376,7 @@ export default function GymApp() {
       {/* ---- What you run ---------------------------------------------------------------- */}
       {tab === 'runs' && (
         <Split preview={<FeatureShow module={modules.find((m) => m.feature_key === pointed) ?? modules.find((m) => !m.parent_key) ?? null} />}>
-          <div className="a-ct"><h3><ToggleRight size={16} />What your gym runs</h3><small>switching off hides it — nothing is deleted · click one to see what it does</small></div>
+          <div className="a-ct"><h3><ToggleRight size={16} />What your gym runs</h3><small>switching off hides it: nothing is deleted · click one to see what it does</small></div>
           <ModuleColumns modules={modules} onToggle={(m) => void toggle(m)} onPoint={setPointed} pointed={pointed} />
         </Split>
       )}
@@ -407,7 +407,7 @@ export default function GymApp() {
           <div className="a-grid" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
             {([
               ['open', 'Anyone can find you', 'listed in the app’s gym list and on the map', Globe],
-              ['code', 'Only with your link or code', 'not listed — you hand out the link', QrCode],
+              ['code', 'Only with your link or code', 'not listed: you hand out the link', QrCode],
               ['closed', 'Only at the front desk', 'the desk makes every account', Building2],
             ] as const).map(([key, title, blurb, Icon]) => (
               <button key={key} type="button" className={`a-door2 ${app.join_policy === key ? 'on' : ''}`} aria-pressed={app.join_policy === key} onClick={() => void changeDoor(key)}>
@@ -426,7 +426,7 @@ export default function GymApp() {
               <div className="a-ct" style={{ marginTop: 14 }}><h3><UserCheck size={16} />When someone signs up</h3></div>
               <div className="a-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 8 }} data-join-approval>
                 {([
-                  ['auto', 'Let them in at once', 'on your free plan — no waiting'],
+                  ['auto', 'Let them in at once', 'on your free plan: no waiting'],
                   ['desk', 'The desk approves each one', 'they wait in Members → Sign-ups'],
                 ] as const).map(([key, title, blurb]) => (
                   <button key={key} type="button" className={`a-door2 ${joinSet.approval === key ? 'on' : ''}`} aria-pressed={joinSet.approval === key}
@@ -462,7 +462,7 @@ export default function GymApp() {
                       <div className="a-fld"><label htmlFor="slug">{MEMBER_APP}/join/</label>
                         <input id="slug" className="a-in" value={slug} autoFocus maxLength={40} placeholder="your-gym" onChange={(e) => setSlug(e.target.value.toLowerCase())} /></div>
                       <p className="a-sub" style={{ marginTop: 6, color: 'var(--a-a300)' }}>
-                        Every /join/{app.slug} link already printed, posted or sent stops working the moment you save this. Nobody is locked out — they just cannot use the old link.
+                        Every /join/{app.slug} link already printed, posted or sent stops working the moment you save this. Nobody is locked out: they just cannot use the old link.
                       </p>
                       <div className="flex gap-2" style={{ marginTop: 8 }}>
                         <button type="submit" className="a-btn violet sm" disabled={slug.trim() === app.slug}>Move my link</button>
@@ -485,7 +485,7 @@ export default function GymApp() {
                     }}><MessageSquare size={13} />{copied === 'message' ? 'Message copied' : 'Copy a message'}</button>
                     <button type="button" className="a-btn amber sm" onClick={() => setPoster(true)}><Printer size={13} />Print a poster</button>
                     {app.join_policy === 'code' && (
-                      <button type="button" className="a-btn ghost sm" onClick={() => void changeDoor('code', true)} data-tip="The old code stops working straight away — use it if your code gets out.">
+                      <button type="button" className="a-btn ghost sm" onClick={() => void changeDoor('code', true)} data-tip="The old code stops working straight away: use it if your code gets out.">
                         <RefreshCw size={13} />New code</button>
                     )}
                   </div>
@@ -600,6 +600,6 @@ function ModuleColumns({ modules, onToggle, onPoint, pointed }: { modules: GymMo
       ))}
     </div>
   );
-  if (parents.length === 0) return <p className="a-sub">The parts of the system could not be loaded — a connection problem, not an empty list.</p>;
+  if (parents.length === 0) return <p className="a-sub">The parts of the system could not be loaded: a connection problem, not an empty list.</p>;
   return <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '4px 24px' }}>{col(left)}{col(right)}</div>;
 }

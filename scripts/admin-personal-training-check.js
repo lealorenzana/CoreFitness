@@ -207,7 +207,7 @@ async (page) => {
   COACHINGS.find((c) => c.id === 'k3').coach_ok_at = new Date().toISOString();
   await go('/personal-training');
   t = await text();
-  say('…once the coach said yes, the desk confirms', /said yes — you confirm/.test(t) && (await page.locator('[data-decide-row="asked"] [data-ask-confirm]').count()) === 1, t.slice(0, 300));
+  say('…once the coach said yes, the desk confirms', /said yes: you confirm/.test(t) && (await page.locator('[data-decide-row="asked"] [data-ask-confirm]').count()) === 1, t.slice(0, 300));
   await page.locator('[data-decide-row="asked"] [data-ask-confirm]').click();
   await page.waitForTimeout(1000);
   const dd = CALLS.find(([f]) => f === 'desk_decide_coaching');
