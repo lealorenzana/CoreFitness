@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Eye, Pencil, Smartphone, Sparkles, Trash2, Users } from 'lucide-react';
+import { Pencil, Smartphone, Sparkles, Trash2, Users } from 'lucide-react';
 import InfoDot from '../components/InfoDot';
 import Tiles from '../components/Tiles';
+import './talk.css';
 import { deleteRelease, explain, listReleases, saveRelease, type Release, type ReleaseApp } from '../lib/platform';
 
 const APPS: { key: ReleaseApp; label: string; who: string }[] = [
@@ -43,58 +44,67 @@ export default function WhatsNew() {
   const latest = (app: ReleaseApp) => items?.find((r) => r.app === app);
 
   if (items === null) return <p className="empty">Loading…</p>;
+  const forApp = APPS.find((a) => a.key === form.app)!;
   return (
     <>
       {error && <p className="err">{error}</p>}
       <Tiles items={APPS.map((a) => ({ icon: a.key === 'admin' ? Users : Smartphone, value: latest(a.key) ? String(latest(a.key)!.seen) : '—',
         label: `${a.label}: seen the newest` }))} />
-      <div className="grid-2" style={{ marginTop: 0 }}>
-        <section className="card">
-          <h2 className="section-title"><Sparkles size={14} /> Written <InfoDot tip="The newest note for each app is the one people see, once. Editing a note others have seen does not show it to them again." /></h2>
-          {items.length === 0 && <p className="empty"><Sparkles size={22} className="empty-icon" />Nothing written yet.</p>}
-          {items.map((r) => (
-            <div key={r.id} className="log" style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }} data-release={r.app}>
-              <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ display: 'block', color: 'var(--text)', fontWeight: 650 }}>{r.title}</span>
-                <ul style={{ margin: '4px 0 0', paddingLeft: 16 }}>{r.items.map((it) => <li key={it}>{it}</li>)}</ul>
-                <span className="chips">
-                  <span className="chip">{APPS.find((a) => a.key === r.app)?.label}</span>
-                  <span className="chip">{day(r.published_at)}</span>
-                  <span className="chip"><Eye size={11} /> {r.seen} seen</span>
-                  {latest(r.app)?.id === r.id && <span className="chip" style={{ color: "var(--violet, #C4B5FD)" }}>Showing now</span>}
-                </span>
-              </span>
-              <span style={{ display: 'flex', gap: 6 }}>
-                <button type="button" className="btn ghost" aria-label={`Edit ${r.title}`} onClick={() => setForm({ id: r.id, app: r.app, title: r.title, items: r.items.join('\n') })}><Pencil size={13} /></button>
-                <button type="button" className="btn ghost" aria-label={`Delete ${r.title}`} onClick={() => void deleteRelease(r.id).then(load).catch((err) => setError(err instanceof Error ? err.message : 'Could not delete it'))}><Trash2 size={13} /></button>
-              </span>
-            </div>
-          ))}
-        </section>
-
-        <form className="card" onSubmit={send}>
-          <h2 className="section-title"><Sparkles size={14} /> {form.id ? 'Edit the note' : 'New note'} <InfoDot tip="Short lines a person reads in ten seconds: what changed and where to find it." /></h2>
-          <p className="meta" style={{ marginTop: -6 }}>Shown once to {APPS.find((a) => a.key === form.app)?.who}. People who joined after it is written never see it.</p>
-          <div className="fields">
-            <div><label htmlFor="rn-app">For</label>
-              <select id="rn-app" value={form.app} onChange={(e) => setForm({ ...form, app: e.target.value as ReleaseApp })}>
-                {APPS.map((a) => <option key={a.key} value={a.key}>{a.label}</option>)}
-              </select></div>
-            <div><label htmlFor="rn-title">Title</label>
-              <input id="rn-title" value={form.title} maxLength={80} required placeholder="What's new in the app"
-                onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
-          </div>
-          <div style={{ marginTop: 14 }}>
-            <label htmlFor="rn-items">What changed, one line each, up to 8</label>
+      {/* 2026-11-22: write on the left; on the right, the note as the person will see it, then every note written. */}
+      <div className="cw" data-va-keep>
+        <form className="card cw-form" onSubmit={send}>
+          <h2 className="section-title"><Sparkles size={14} /> {form.id ? 'Edit the note' : 'New note'}</h2>
+          <p className="cw-sub">Shown once to {forApp.who}. People who joined after it is written never see it. Short lines a person reads in ten seconds.</p>
+          <div className="cw-field"><label htmlFor="rn-app">For</label>
+            <select id="rn-app" value={form.app} onChange={(e) => setForm({ ...form, app: e.target.value as ReleaseApp })}>
+              {APPS.map((a) => <option key={a.key} value={a.key}>{a.label}</option>)}
+            </select></div>
+          <div className="cw-field"><label htmlFor="rn-title">Title</label>
+            <input id="rn-title" value={form.title} maxLength={80} required placeholder="What's new in the app"
+              onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
+          <div className="cw-field"><label htmlFor="rn-items">What changed, one line each, up to 8</label>
             <textarea id="rn-items" rows={7} value={form.items} placeholder={'Alerts now reach your phone straight away.\nBadges can earn you points.'}
               onChange={(e) => setForm({ ...form, items: e.target.value })} />
-            <p className="meta">{lines.length} of 8 lines{lines.some((l) => l.length > 200) ? ', a line is over 200 characters' : ''}</p>
+            <span className={`cw-count${lines.length > 8 || lines.some((l) => l.length > 200) ? ' warn' : ''}`}>{lines.length} of 8 lines{lines.some((l) => l.length > 200) ? ', a line is over 200 characters' : ''}</span>
           </div>
-          <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
+          <div className="cw-actions">
             <button className="btn" type="submit" disabled={busy || form.title.trim().length < 3 || lines.length === 0 || lines.length > 8}>{form.id ? 'Save' : 'Publish'}</button>
             {form.id && <button type="button" className="btn ghost" onClick={() => setForm({ id: null, app: form.app, title: '', items: '' })}>Cancel</button>}
           </div>
         </form>
+
+        <div className="cw-right">
+          <section className="card cw-preview" aria-hidden="true">
+            <span className="cw-preview-lbl">How it looks in the {forApp.label.toLowerCase()}, once, for {forApp.who}</span>
+            <div className="cw-note">
+              <span className="cw-note-kicker"><Sparkles size={13} /> What's new</span>
+              <b>{form.title.trim() || 'Your title'}</b>
+              <ul>{(lines.length ? lines.slice(0, 8) : ['One line for each change.']).map((l, i) => <li key={i}>{l}</li>)}</ul>
+              <span className="cw-note-btn">Got it</span>
+            </div>
+          </section>
+
+          <section className="card cw-list">
+            <h2 className="section-title"><Sparkles size={14} /> Written <InfoDot tip="The newest note for each app is the one people see, once. Editing a note others have seen does not show it to them again." /></h2>
+            {items.length === 0 && <p className="cw-none">Nothing written yet.</p>}
+            <ul>
+              {items.map((r) => (
+                <li key={r.id} data-release={r.app}>
+                  <span className={`cw-mark${latest(r.app)?.id === r.id ? ' now' : ''}`} aria-hidden="true" />
+                  <span className="cw-item">
+                    <b>{r.title}</b>
+                    <ul className="cw-lines">{r.items.map((it) => <li key={it}>{it}</li>)}</ul>
+                    <span className="cw-meta">{APPS.find((a) => a.key === r.app)?.label} · {day(r.published_at)} · {r.seen} seen{latest(r.app)?.id === r.id ? <> · <span className="cw-now">Showing now</span></> : ''}</span>
+                  </span>
+                  <span className="cw-side">
+                    <button type="button" className="btn ghost sm" aria-label={`Edit ${r.title}`} onClick={() => setForm({ id: r.id, app: r.app, title: r.title, items: r.items.join('\n') })}><Pencil size={13} /></button>
+                    <button type="button" className="btn ghost sm" aria-label={`Delete ${r.title}`} onClick={() => void deleteRelease(r.id).then(load).catch((err) => setError(err instanceof Error ? err.message : 'Could not delete it'))}><Trash2 size={13} /></button>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
       </div>
     </>
   );
