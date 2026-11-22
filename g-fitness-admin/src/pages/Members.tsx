@@ -905,7 +905,7 @@ export default function Members() {
             <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
                 className="w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[86vh]" data-pending-dialog
-                style={{ background: 'radial-gradient(120% 70% at 0% 0%, rgba(124,58,237,0.20), transparent 55%), var(--color-surface)', border: '1px solid rgba(139,92,246,0.3)' }}
+                style={{ background: 'var(--surface-solid, #161622)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.12)' }}
                 onClick={(e) => e.stopPropagation()}>
                 <div className="px-6 pt-6 pb-4 flex items-start justify-between gap-4" style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.07)' }}>
                   <div className="flex items-center gap-4">
@@ -1086,7 +1086,7 @@ function ModalShell({ title, subtitle, onClose, children }: { title: string; sub
       <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
         <motion.div initial={{ opacity: 0, scale: 0.95, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }}
           className="w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden"
-          style={{ background: 'radial-gradient(120% 80% at 0% 0%, rgba(124,58,237,0.16), transparent 55%), var(--color-surface)', border: '1px solid rgba(139,92,246,0.25)' }}
+          style={{ background: 'var(--surface-solid, #161622)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.12)' }}
           onClick={(e) => e.stopPropagation()}>
           <div className="p-5 flex items-center justify-between" style={{ borderBottom: '1px solid var(--color-border)' }}>
             <div>

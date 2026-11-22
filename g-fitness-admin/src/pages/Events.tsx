@@ -379,7 +379,7 @@ export default function Events() {
                     <button type="button" onClick={() => void openAttendees(evt)} className="block text-left w-[150px]" data-signups aria-label={`See who signed up for ${evt.title}`}>
                       <span className="flex items-center gap-2">
                         <span className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
-                          <span className="block h-full rounded-full" style={{ width: `${share}%`, background: isFull ? '#F59E0B' : 'linear-gradient(90deg,#6D28D9,#8B5CF6)' }} />
+                          <span className="block h-full rounded-full" style={{ width: `${share}%`, background: isFull ? 'var(--v2-warn, #F59E0B)' : 'var(--color-primary)' }} />
                         </span>
                         <span className="text-[12.5px] tabular-nums" style={{ color: isFull ? '#FBBF24' : '#C4B5FD' }}>{registered}/{evt.capacity}</span>
                       </span>

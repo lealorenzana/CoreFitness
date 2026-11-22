@@ -220,18 +220,15 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, planByMe
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="bg-dark-lighter border border-dark-border rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+              className="bg-dark-lighter border border-dark-border rounded-xl shadow-2xl w-full max-w-md overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="p-6 border-b border-dark-border flex items-center justify-between">
+              <div className="px-5 py-4 border-b border-dark-border flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'var(--color-primary)' }}>
-                    <CreditCard size={24} className="text-white" />
-                  </div>
                   <div>
-                    <h2 className="text-xl font-bold text-white">Record Payment</h2>
-                    <p className="text-gray-400 text-sm">Add a new payment record</p>
+                    <h2 className="text-[15px] font-semibold text-white">Record payment</h2>
+                    <p className="text-gray-400 text-[12.5px]">Add a new payment record</p>
                   </div>
                 </div>
                 <button aria-label="Close"
@@ -239,17 +236,17 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, planByMe
                   disabled={isLoading}
                   className="text-gray-400 hover:text-white transition-colors disabled:opacity-50"
                 >
-                  <X size={24} />
+                  <X size={18} />
                 </button>
               </div>
 
               {/* Form */}
-              <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <form onSubmit={handleSubmit} className="p-5 space-y-4">
                 {/* Member Selection with Search */}
                 <div>
                   <label className="text-gray-400 text-sm block mb-2 flex items-center gap-2">
                     <User size={16} />
-                    Select Member
+                    Member
                   </label>
                   <div className="relative" ref={pickerRef} data-member-picker>
                     <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 z-10" />
@@ -420,7 +417,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, planByMe
                 <div>
                   <label className="text-gray-400 text-sm block mb-2 flex items-center gap-2">
                     <CreditCard size={16} />
-                    Payment Method
+                    How they paid
                   </label>
                   <select
                     value={formData.method}
@@ -439,7 +436,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, planByMe
                 <div>
                   <label className="text-gray-400 text-sm block mb-2 flex items-center gap-2">
                     <Calendar size={16} />
-                    Payment Date
+                    Paid on
                   </label>
                   {/* Cash received this month: never a future day, never before the 1st (0171). */}
                   <DatePicker
@@ -459,7 +456,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, planByMe
                 {/* Notes */}
                 <div>
                   <label className="text-gray-400 text-sm block mb-2">
-                    Notes (Optional)
+                    Notes, optional
                   </label>
                   <textarea
                     value={formData.notes}
@@ -493,7 +490,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, planByMe
                         Recording...
                       </div>
                     ) : (
-                      'Record Payment'
+                      'Record payment'
                     )}
                   </Button>
                 </div>

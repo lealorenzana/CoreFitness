@@ -370,8 +370,9 @@
 .att .a-tabs em, .att .a-tabs .on em,
 :root[data-mode="light"] .att .a-tabs em, :root[data-mode="light"] .att .a-tabs .on em { background: transparent; color: var(--a-muted); padding: 0; font-size: 12px; }
 .att .a-btn, :root[data-mode="light"] .att .a-btn { border-radius: 8px; box-shadow: none; }
-.att .a-btn.amber, :root[data-mode="light"] .att .a-btn.amber { background: var(--amber-solid, #F59E0B); color: var(--on-amber, #1F1A0A); border-color: transparent; box-shadow: none; }
-.att .a-btn.violet, :root[data-mode="light"] .att .a-btn.violet { background: var(--fill-primary, var(--color-primary)); border-color: transparent; box-shadow: none; }
+.att .a-btn.amber, :root[data-mode="light"] .att .a-btn.amber { background: var(--v2-act); color: var(--v2-on-act); border-color: transparent; box-shadow: none; }
+/* The violet button was a second "do this" colour: one action colour per screen (C2). */
+.att .a-btn.violet, :root[data-mode="light"] .att .a-btn.violet { background: var(--v2-act); color: var(--v2-on-act); border-color: transparent; box-shadow: none; }
 .att .a-btn.sm { border-radius: 6px; }
 .att .a-chip { border-radius: 6px; }
 .att .a-chip.on, :root[data-mode="light"] .att .a-chip.on { box-shadow: none; }
@@ -495,3 +496,43 @@
 .att [data-members-table] .a-btn.amber, :root[data-mode="light"] .att [data-members-table] .a-btn.amber,
 .att [data-members-table] .a-btn.soft, :root[data-mode="light"] .att [data-members-table] .a-btn.soft {
   background: transparent; color: var(--a-ink); border-color: var(--a-line); }
+
+/* ── Design V2, the rest of this stylesheet: no gradient fills, no fixed violet, no glow rings (S1 S6 C2) ── */
+.att .a-bar i, .att .a-big i, .att .a-meter i { background: var(--color-primary) !important; }
+.att .a-thumb, :root[data-mode="light"] .att .a-thumb { background: var(--raised-solid, #1E1B30); color: var(--color-text-muted); border-radius: 8px; }
+.att .a-opt.on, :root[data-mode="light"] .att .a-opt.on { background: var(--a-raised); border-color: var(--color-primary); box-shadow: inset 0 0 0 1px var(--color-primary); }
+.att .a-what.on, .att .a-door2.on, .att .a-plan.on,
+:root[data-mode="light"] .att .a-what.on, :root[data-mode="light"] .att .a-door2.on, :root[data-mode="light"] .att .a-plan.on {
+  background: var(--a-raised); border-color: var(--color-primary); box-shadow: inset 0 0 0 1px var(--color-primary); }
+.att .a-prev, :root[data-mode="light"] .att .a-prev { background: var(--a-raised); border-color: var(--a-line); border-radius: 12px; }
+.att .a-stage, :root[data-mode="light"] .att .a-stage { background: var(--a-raised); }
+.att .a-wk .col.today, :root[data-mode="light"] .att .a-wk .col.today {
+  background: repeating-linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 6%, transparent) 0 35px, color-mix(in srgb, var(--color-primary) 12%, transparent) 35px 36px); }
+.att .a-door, :root[data-mode="light"] .att .a-door { background: var(--a-raised); border-color: var(--a-line); border-radius: 12px; }
+.att .a-card.press.on, :root[data-mode="light"] .att .a-card.press.on { background: var(--a-raised); border-color: var(--color-primary); box-shadow: none; }
+.att .a-chip.v, :root[data-mode="light"] .att .a-chip.v { background: var(--a-raised); color: var(--a-ink); border-color: rgb(var(--hair-rgb, 255 255 255) / 0.24); }
+.att .a-chip.v em { color: var(--a-muted); opacity: 1; }
+.att .a-chip.on, :root[data-mode="light"] .att .a-chip.on { background: var(--a-raised); color: var(--a-ink); border-color: var(--color-primary); }
+/* A coloured status menu (Working, Under repair) is a word with a dot, not a tinted box. */
+.att select.a-chip { background-color: transparent; }
+/* Card corners and padding on one scale. */
+.att .a-card { padding: 14px 16px; }
+.att .a-ct h3 { font-size: 13px; font-weight: 650; }
+.att .a-ct h3 svg { color: var(--a-muted); }
+.att .a-lbl { font-size: 12px; font-weight: 500; }
+.att .a-table th { font-size: 12px; font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--a-muted); }
+.att .a-table td { font-size: 13px; }
+.att .a-btn { font-size: 12.5px; }
+.att .a-btn:not(.amber):not(.violet):hover:not(:disabled) { filter: none; background: rgb(var(--hair-rgb, 255 255 255) / 0.05); }
+
+/* Any row of figure cards (every card starts with its label) is one strip split by hairlines (S3), on every
+   page this stylesheet draws: Retention, Plans, Revenue, Rewards, Your app and the rest. */
+.att .a-grid:has(> .a-card + .a-card + .a-card):not(:has(> .a-card:not(:has(> .a-lbl:first-child)))):not(:has(> :not(.a-card))) {
+  gap: 0; background: var(--a-surface); border: 1px solid var(--a-border); border-radius: 12px; overflow: hidden; }
+.att .a-grid:has(> .a-card + .a-card + .a-card):not(:has(> .a-card:not(:has(> .a-lbl:first-child)))):not(:has(> :not(.a-card))) > .a-card,
+:root[data-mode="light"] .att .a-grid:has(> .a-card + .a-card + .a-card):not(:has(> .a-card:not(:has(> .a-lbl:first-child)))):not(:has(> :not(.a-card))) > .a-card {
+  border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.att .a-grid:has(> .a-card + .a-card + .a-card):not(:has(> .a-card:not(:has(> .a-lbl:first-child)))):not(:has(> :not(.a-card))) > .a-card + .a-card {
+  border-left: 1px solid var(--a-border); }
+.att .a-grid:has(> .a-card + .a-card + .a-card):not(:has(> .a-card:not(:has(> .a-lbl:first-child)))):not(:has(> :not(.a-card))) > .a-card:first-child .a-num {
+  font-size: 32px; letter-spacing: -0.03em; }

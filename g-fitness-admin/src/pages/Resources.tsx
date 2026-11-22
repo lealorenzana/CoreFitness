@@ -51,7 +51,7 @@ function Thumb({ r }: { r: WorkoutResourceRow }) {
   const yt = !!youTubeId(r.url);
   return (
     <div style={{ height: 120, borderRadius: 12, position: 'relative', overflow: 'hidden', display: 'grid', placeItems: 'center', color: '#ffffff99',
-      background: yt ? 'linear-gradient(135deg,#3a1d33,#2a2050)' : 'linear-gradient(135deg,#14323a,#1b1a2a)' }}>
+      background: 'var(--raised-solid, #1E1B30)' }}>
       {hasPreview(r) && !broken ? <img src={r.image_url as string} alt="" loading="lazy" onError={() => setBroken(true)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
         : yt ? <Play size={30} /> : <FileText size={30} />}
       {yt && <span style={{ position: 'absolute', bottom: 6, right: 6, fontSize: 10, fontWeight: 700, background: '#000a', borderRadius: 6, padding: '2px 6px', color: '#fff', display: 'flex', gap: 3, alignItems: 'center' }}><Play size={9} />video</span>}

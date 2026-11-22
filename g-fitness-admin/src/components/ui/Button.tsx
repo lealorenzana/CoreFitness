@@ -25,10 +25,11 @@ const baseClasses =
   'disabled:opacity-50 disabled:pointer-events-none';
 
 const sizeClasses: Record<Size, string> = {
-  default: 'h-10 px-5 text-sm rounded-full',
-  sm:      'h-9  px-4 text-sm rounded-full',
-  lg:      'h-11 px-6 text-sm rounded-full',
-  icon:    'h-10 w-10 rounded-full',
+  // Design V2: one control height and 8px corners across the app, never a pill.
+  default: 'h-9 px-4 text-[13px] rounded-lg',
+  sm:      'h-8 px-3 text-[12.5px] rounded-lg',
+  lg:      'h-10 px-5 text-[14px] rounded-lg',
+  icon:    'h-9 w-9 rounded-lg',
 };
 
 const PRIMARY        = 'var(--color-primary)';
@@ -40,13 +41,14 @@ const SECONDARY_BG   = 'var(--color-secondary-light)';
 const BORDER         = 'var(--color-border)';
 
 const variantStyles: Record<Variant, React.CSSProperties> = {
-  primary:     { background: PRIMARY,   color: '#fff' },
-  gradient:    { background: PRIMARY,   color: '#fff' },
-  default:     { background: PRIMARY,   color: '#fff' },
+  // The main button wears the gym's own action colour (Design V2: one "do this" colour per screen).
+  primary:     { background: 'var(--v2-act, #F59E0B)', color: 'var(--v2-on-act, #1a1206)' },
+  gradient:    { background: 'var(--v2-act, #F59E0B)', color: 'var(--v2-on-act, #1a1206)' },
+  default:     { background: 'var(--v2-act, #F59E0B)', color: 'var(--v2-on-act, #1a1206)' },
   // Words on the gym's second colour: black on amber in dark, white on light mode's solid fill (--on-secondary) — fixed black
   // read dark-on-violet on Add staff (owner, 2026-11-07).
   secondary:   { background: SECONDARY, color: 'var(--on-secondary, #000)' },
-  ghost:       { background: 'transparent', color: PRIMARY },
+  ghost:       { background: 'transparent', color: 'var(--color-text-secondary)' },
   danger:      { background: 'transparent', color: SECONDARY, border: `1px solid ${SECONDARY}` },
   destructive: { background: 'transparent', color: SECONDARY, border: `1px solid ${SECONDARY}` },
   outline:     { background: 'transparent', color: 'var(--color-text-primary)', border: `1px solid ${BORDER}` },

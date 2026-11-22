@@ -20,9 +20,8 @@ const BORDER      = 'var(--color-border)';
 const PRIMARY     = 'var(--color-primary)';
 const TEXT_SECOND = 'var(--color-text-secondary)';
 const TEXT_MUTED  = 'var(--color-text-muted)';
-const PANEL       = '#15131F';
 const WELL        = 'rgba(255,255,255,0.035)';
-const HOVER       = 'rgba(124,58,237,0.16)';
+const HOVER       = 'rgb(var(--hair-rgb, 255 255 255) / 0.06)';
 
 const KIND_ICON: Record<SearchKind, LucideIcon> = {
   member: Users, trainer: Dumbbell, staff: ShieldCheck, class: CalendarDays, template: Repeat,
@@ -212,22 +211,21 @@ export default function GlobalSearch() {
     return (
       <div key={r.key}>
         {head && (
-          <p className="px-5 pt-4 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: TEXT_MUTED }}>{head}</p>
+          <p className="px-5 pt-3 pb-1 text-[12px] font-medium" style={{ color: TEXT_MUTED }}>{head}</p>
         )}
         <button
           data-index={index}
           data-search-row={r.section}
           onClick={() => go(r.href)}
           onMouseMove={() => { if (cursor !== index) setCursor(index); }}
-          className="w-[calc(100%-16px)] mx-2 text-left px-3 py-2 flex items-center gap-3 rounded-xl"
-          style={{ background: on ? HOVER : 'transparent', boxShadow: on ? 'inset 0 0 0 1px rgba(139,92,246,0.35)' : 'none' }}
+          className="w-[calc(100%-16px)] mx-2 text-left px-3 py-2 flex items-center gap-3 rounded-lg"
+          style={{ background: on ? HOVER : 'transparent', boxShadow: on ? 'inset 2px 0 0 var(--color-primary)' : 'none' }}
         >
           {r.photoUrl !== undefined
             ? <Avatar name={r.title} photoUrl={r.photoUrl} size={32} />
             : (
-              <span className="w-8 h-8 rounded-lg grid place-items-center flex-none"
-                style={{ background: on ? 'rgba(124,58,237,0.3)' : WELL, color: on ? '#C4B5FD' : TEXT_SECOND }}>
-                <Icon size={15} />
+              <span className="w-5 h-8 grid place-items-center flex-none" style={{ color: on ? 'var(--color-text-primary)' : TEXT_MUTED }}>
+                <Icon size={16} strokeWidth={1.75} />
               </span>
             )}
           <span className="flex-1 min-w-0">
@@ -251,15 +249,15 @@ export default function GlobalSearch() {
       <div className="absolute inset-0 gs-fade" style={{ background: 'rgba(5,4,10,0.66)', backdropFilter: 'blur(3px)' }} onClick={close} />
       <div
         role="dialog" aria-modal="true" aria-label="Search"
-        className="relative mt-[10vh] w-[min(720px,94vw)] rounded-2xl overflow-hidden gs-rise flex flex-col"
-        style={{ background: `var(--gs-panel-bg, radial-gradient(90% 60% at 0% 0%, rgba(124,58,237,0.16), transparent 60%), ${PANEL})`,
-          border: '1px solid rgba(139,92,246,0.3)', boxShadow: '0 40px 100px -30px rgba(0,0,0,0.9)', maxHeight: '76vh' }}
+        className="relative mt-[10vh] w-[min(640px,94vw)] rounded-xl overflow-hidden gs-rise flex flex-col"
+        style={{ background: 'var(--surface-solid, #161622)',
+          border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.12)', boxShadow: '0 24px 64px -24px rgba(0,0,0,0.7)', maxHeight: '76vh' }}
       >
         <style>{'@keyframes gsFade{from{opacity:0}to{opacity:1}}@keyframes gsRise{from{opacity:0;transform:translateY(-10px) scale(.985)}to{opacity:1;transform:none}}.gs-fade{animation:gsFade .15s ease both}.gs-rise{animation:gsRise .18s ease both}@media (prefers-reduced-motion: reduce){.gs-fade,.gs-rise{animation:none}}'}</style>
         <div className="flex items-center gap-3 px-5 h-16 flex-none" style={{ borderBottom: `1px solid ${BORDER}` }}>
           {showLoading
-            ? <Loader2 size={19} className="animate-spin flex-none" style={{ color: '#A78BFA' }} />
-            : <Search size={19} className="flex-none" style={{ color: '#A78BFA' }} />}
+            ? <Loader2 size={18} className="animate-spin flex-none" style={{ color: TEXT_MUTED }} />
+            : <Search size={18} className="flex-none" style={{ color: TEXT_MUTED }} />}
           <input
             ref={inputRef}
             value={term}

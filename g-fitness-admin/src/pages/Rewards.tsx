@@ -121,12 +121,12 @@ function RewardArt({ r, size }: { r: Pick<Reward, 'name' | 'image_url'>; size?: 
     return r.image_url
       ? <img src={r.image_url} alt="" className="rounded-xl object-cover flex-none" style={{ width: size, height: size }} />
       : <span className="rounded-xl grid place-items-center flex-none font-bold" style={{ width: size, height: size, fontSize: Math.round(size * 0.34),
-          background: 'linear-gradient(135deg, rgba(124,58,237,0.45), rgba(245,158,11,0.25))', color: '#EDE9FE' }}>{init || <Gift size={size * 0.4} />}</span>;
+          background: 'var(--raised-solid, #1E1B30)', color: 'var(--color-text-muted)' }}>{init || <Gift size={size * 0.4} />}</span>;
   }
   return r.image_url
     ? <img src={r.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" />
     : (
-      <div className="absolute inset-0 grid place-items-center" style={{ background: 'radial-gradient(120% 120% at 0% 0%, rgba(124,58,237,0.5), transparent 60%), radial-gradient(100% 100% at 100% 100%, rgba(245,158,11,0.28), transparent 60%), #17122A' }}>
+      <div className="absolute inset-0 grid place-items-center" style={{ background: 'var(--raised-solid, #1E1B30)' }}>
         <div className="text-center">
           <Gift size={30} style={{ color: '#C4B5FD' }} className="mx-auto" />
           <p className="text-[22px] font-bold mt-1" style={{ color: 'rgba(237,233,254,0.85)' }}>{init}</p>
@@ -278,7 +278,7 @@ function InsightRail({ rewards, wishlist, stats, spentThisMonth, onOpen, onResto
               <span className="min-w-0 flex-1">
                 <span className="flex justify-between gap-2 text-[13px]"><span className="text-white truncate">{r.name}</span><span className="tabular-nums" style={{ color: TONE.amber.fg }}>{n}</span></span>
                 <span className="block h-1.5 rounded-full mt-1 overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
-                  <span className="block h-full rounded-full" style={{ width: `${(n / top) * 100}%`, background: 'linear-gradient(90deg,#6D28D9,#8B5CF6)' }} />
+                  <span className="block h-full rounded-full" style={{ width: `${(n / top) * 100}%`, background: 'var(--color-primary)' }} />
                 </span>
               </span>
             </button>

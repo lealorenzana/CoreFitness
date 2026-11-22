@@ -34,20 +34,14 @@ export interface RdTab { label: string; to: string; count?: number }
 export function RdTabs({ tabs }: { tabs: RdTab[] }) {
   const { pathname } = useLocation();
   return (
-    <nav className="flex items-center gap-2" role="tablist" data-rd-tabs>
+    <nav className="v2-seg" role="tablist" data-rd-tabs>
       {tabs.map((t) => {
         const on = pathname === t.to;
         return (
           <NavLink key={t.to} to={t.to} role="tab" aria-selected={on}
-            className="h-10 px-5 rounded-xl text-sm font-semibold inline-flex items-center gap-2 transition-colors"
-            style={{
-              background: on ? 'rgba(124, 58, 237, 0.18)' : 'var(--rd-soft-bg, rgba(255,255,255,0.02))',
-              border: `1px solid ${on ? 'rgba(139, 92, 246, 0.7)' : 'var(--rd-input-line, rgba(255,255,255,0.08))'}`,
-              color: on ? 'var(--rd-tab-on, #E9E3FF)' : SECOND,
-              boxShadow: on ? '0 0 0 3px rgba(124, 58, 237, 0.12)' : undefined,
-            }}>
+            data-on={on || undefined}>
             {t.label}
-            {t.count ? <span className="text-xs px-1.5 rounded-full" style={{ background: TONE.amber.bg, color: TONE.amber.fg }}>{t.count}</span> : null}
+            {t.count ? <em>{t.count}</em> : null}
           </NavLink>
         );
       })}
@@ -86,13 +80,11 @@ export function RdCard({ children, className = '', style, glow, ...rest }: React
 }
 
 export function IconTile({ icon: Icon, tone = 'violet', size = 56 }: { icon: LucideIcon; tone?: Tone; size?: number }) {
-  const t = TONE[tone];
+  // Design V2 (S2): no tinted tile behind an icon. A small icon in the words' colour; amber only when it warns.
+  const s = Math.max(14, Math.min(20, Math.round(size * 0.36)));
   return (
-    <span data-tile={tone} className="grid place-items-center flex-none" style={{
-      width: size, height: size, borderRadius: Math.round(size * 0.3), background: t.bg, border: `1px solid ${t.line}`,
-
-    }}>
-      <Icon size={Math.round(size * 0.44)} style={{ color: t.fg }} strokeWidth={1.9} />
+    <span data-tile={tone} data-icon-tile className="grid place-items-center flex-none" style={{ width: s, height: s }}>
+      <Icon size={s} strokeWidth={1.75} style={{ color: tone === 'amber' ? 'var(--v2-warn, #F59E0B)' : 'var(--color-text-muted)' }} />
     </span>
   );
 }
@@ -135,36 +127,37 @@ export function Bar({ value, tone = 'violet' }: { value: number | null; tone?: T
   return (
     <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
       <div className="h-full rounded-full" style={{ width: `${Math.max(0, Math.min(1, value)) * 100}%`,
-        background: tone === 'amber' ? 'var(--fill-action, linear-gradient(90deg,#F59E0B,#FBBF24))' : 'var(--fill-primary, linear-gradient(90deg,#6D28D9,#8B5CF6))' }} />
+        background: tone === 'amber' ? 'var(--v2-warn, #F59E0B)' : 'var(--color-primary)' }} />
     </div>
   );
 }
 
 // ─── Stat tiles ──────────────────────────────────────────────────────────────
 
-export function StatTile({ icon, tone = 'violet', label, value, sub, onClick, tip, active, compact }: {
+export function StatTile({ icon: _icon, tone = 'violet', label, value, sub, onClick, tip, active, compact }: {
   icon: LucideIcon; tone?: Tone; label: string; value: React.ReactNode; sub?: React.ReactNode;
   onClick?: () => void; tip?: string; active?: boolean; compact?: boolean;
 }) {
+  // Design V2: label, the number, one line under it. A row of these is one strip split by hairlines
+  // (v2.css, [data-stat-tile]); `icon` is kept so callers compile, and no longer drawn (S2).
+  void _icon;
   const body = (
     <>
-      <IconTile icon={icon} tone={tone} size={compact ? 46 : 60} />
       <span className="min-w-0 flex-1 text-left">
-        <span className={`block ${compact ? 'text-[13.5px]' : 'text-[15px]'} font-medium truncate`} style={{ color: 'var(--color-text-primary)' }}>{label}</span>
-        <span className={`block ${compact ? 'text-[24px]' : 'text-[30px]'} leading-tight font-bold text-white tabular-nums`}>{value}</span>
-        {sub && <span className={`block ${compact ? 'text-[12px]' : 'text-[13px]'} truncate`} style={{ color: SECOND }}>{sub}</span>}
+        <span className="v2-fig-l flex items-center gap-1.5">
+          {tone === 'amber' && <span className="w-1.5 h-1.5 rounded-full flex-none" style={{ background: 'var(--v2-warn, #F59E0B)' }} />}
+          <span className="truncate">{label}</span>
+        </span>
+        <span className={`v2-fig-n${compact ? ' sm' : ''}`}>{value}</span>
+        {sub && <span className="v2-fig-d">{sub}</span>}
       </span>
-      {onClick && <ChevronRight size={18} style={{ color: SECOND }} className="flex-none" />}
+      {onClick && <ChevronRight size={15} style={{ color: MUTED }} className="flex-none" />}
     </>
   );
-  const style: React.CSSProperties = {
-    background: active ? 'var(--rd-active-bg, radial-gradient(120% 140% at 0% 0%, rgba(124,58,237,0.22), transparent 60%), var(--color-surface))' : CARD_BG,
-    border: active ? '1px solid rgba(139, 92, 246, 0.55)' : CARD_LINE,
-  };
   return onClick ? (
-    <button type="button" onClick={onClick} data-tip={tip} className={`rounded-2xl ${compact ? 'px-4 py-3 gap-3' : 'p-5 gap-4'} flex items-center text-left transition-transform hover:-translate-y-0.5 min-w-0`} style={style}>{body}</button>
+    <button type="button" onClick={onClick} data-tip={tip} data-stat-tile data-active={active || undefined} className="v2-fig">{body}</button>
   ) : (
-    <div data-tip={tip} className={`rounded-2xl ${compact ? 'px-4 py-3 gap-3' : 'p-5 gap-4'} flex items-center min-w-0`} style={style}>{body}</div>
+    <div data-tip={tip} data-stat-tile data-active={active || undefined} className="v2-fig">{body}</div>
   );
 }
 
@@ -179,15 +172,10 @@ export function FilterChips<K extends string>({ items, value, onChange, compact 
         const on = c.key === value;
         return (
           <button key={c.key} type="button" role="tab" aria-selected={on} onClick={() => onChange(c.key)} data-chip={c.key}
-            className={`${compact ? 'h-10 px-3.5 text-[14px]' : 'h-12 px-4 text-[15px]'} flex-none rounded-xl inline-flex items-center gap-2.5 whitespace-nowrap transition-colors`}
-            style={{
-              background: on ? 'rgba(124, 58, 237, 0.2)' : CARD_BG,
-              border: `1px solid ${on ? 'rgba(139, 92, 246, 0.75)' : 'rgba(255,255,255,0.07)'}`,
-              color: on ? '#EDE9FE' : 'var(--color-text-primary)',
-            }}>
-            {c.tone && <span className="w-2.5 h-2.5 rounded-full" style={{ background: TONE[c.tone].dot }} />}
-            <span style={{ color: on ? '#EDE9FE' : SECOND }}>{c.label}</span>
-            {c.count != null && <b className={`${compact ? 'text-[15px]' : 'text-[17px]'} tabular-nums text-white`}>{c.count}</b>}
+            className="v2-chip flex-none">
+            {c.tone && <span className="w-1.5 h-1.5 rounded-full" style={{ background: TONE[c.tone].dot }} />}
+            <span>{c.label}</span>
+            {c.count != null && <em>{c.count}</em>}
           </button>
         );
       })}
@@ -277,19 +265,19 @@ export function RdSelect({ value, onChange, children, label, className = '' }: {
     <div className={`relative inline-block ${className}`}>
       <button ref={setAnchor} type="button" role="combobox" aria-label={label} aria-haspopup="listbox" aria-expanded={open} aria-controls={listId}
         onClick={() => (open ? setOpen(false) : openList())} onKeyDown={onKey} data-rd-select={label}
-        className="h-12 w-full pl-4 pr-10 rounded-xl text-[15px] text-left outline-none cursor-pointer transition-colors focus-visible:ring-2 focus-visible:ring-violet-500/50"
+        className="v2-select h-9 w-full pl-3 pr-9 rounded-lg text-[13px] text-left outline-none cursor-pointer"
         style={{
-          background: open ? 'rgba(124,58,237,0.10)' : 'rgba(255,255,255,0.025)',
-          border: `1px solid ${open ? 'rgba(139,92,246,0.7)' : 'rgba(255,255,255,0.08)'}`,
+          background: 'var(--v2-field, rgba(255,255,255,0.03))',
+          border: `1px solid ${open ? 'var(--color-primary)' : 'rgb(var(--hair-rgb, 255 255 255) / 0.12)'}`,
           color: isPlaceholder ? SECOND : 'var(--color-text-primary)',
         }}>
         <span className="block truncate">{current?.text ?? options[0]?.text ?? label}</span>
-        <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none transition-transform"
+        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none transition-transform"
           style={{ color: SECOND, transform: `translateY(-50%) rotate(${open ? 180 : 0}deg)` }} />
       </button>
       <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} width={Math.max(anchor?.offsetWidth ?? 200, 200)}>
         {/* Theme colours, never a fixed #1A1530: in light that was a dark box with dark words (owner, 2026-11-07). */}
-        <div style={{ background: 'var(--rd-menu-bg, #1A1530)', boxShadow: 'inset 0 0 0 1px var(--rd-menu-line, rgba(139,92,246,0.3))', borderRadius: 12 }}>
+        <div className="v2-menu" style={{ background: 'var(--surface-solid, #161622)', boxShadow: 'inset 0 0 0 1px rgb(var(--hair-rgb, 255 255 255) / 0.12)', borderRadius: 8 }}>
           {searchable && (
             <div className="p-2" style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.07)' }}>
               <label className="relative block">
@@ -309,10 +297,10 @@ export function RdSelect({ value, onChange, children, label, className = '' }: {
                 <button key={`${o.value}-${i}`} type="button" role="option" aria-selected={on} disabled={o.disabled}
                   onMouseEnter={() => setHi(i)} onClick={() => pick(o)}
                   ref={(el) => { if (el && i === hi && open) el.scrollIntoView({ block: 'nearest' }); }}
-                  className="w-full flex items-center gap-2.5 px-3 h-10 rounded-lg text-[14px] text-left disabled:opacity-40"
-                  style={{ background: i === hi ? 'rgba(124,58,237,0.22)' : 'transparent', color: on ? 'var(--rd-menu-on, #EDE9FE)' : o.value === '' ? SECOND : 'var(--color-text-primary)' }}>
+                  className="w-full flex items-center gap-2.5 px-2.5 h-8 rounded-md text-[13px] text-left disabled:opacity-40"
+                  style={{ background: i === hi ? 'rgb(var(--hair-rgb, 255 255 255) / 0.06)' : 'transparent', color: o.value === '' ? SECOND : 'var(--color-text-primary)', fontWeight: on ? 600 : 400 }}>
                   <span className="flex-1 truncate">{o.text}</span>
-                  {on && <Check size={15} style={{ color: 'var(--rd-menu-on, #C4B5FD)' }} />}
+                  {on && <Check size={14} style={{ color: 'var(--color-text-primary)' }} />}
                 </button>
               );
             })}
@@ -325,23 +313,23 @@ export function RdSelect({ value, onChange, children, label, className = '' }: {
 
 type BtnVariant = 'primary' | 'secondary' | 'amber' | 'ghost' | 'danger' | 'soft';
 const BTN: Record<BtnVariant, React.CSSProperties> = {
-  primary: { background: 'var(--fill-primary, var(--color-primary))', color: '#fff', border: '1px solid transparent' },
+  primary: { background: 'var(--v2-act, #F59E0B)', color: 'var(--v2-on-act, #1a1206)', border: '1px solid transparent' },
   secondary: { background: 'var(--rd-soft-bg, rgba(255,255,255,0.025))', color: 'var(--color-text-primary)', border: '1px solid var(--rd-input-line, rgba(255,255,255,0.12))' },
-  amber: { background: TONE.amber.bg, color: TONE.amber.fg, border: `1px solid ${TONE.amber.line}` },
+  amber: { background: 'transparent', color: 'var(--color-text-primary)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.14)' },
   ghost: { background: 'transparent', color: SECOND, border: '1px solid transparent' },
-  danger: { background: TONE.red.bg, color: TONE.red.fg, border: `1px solid ${TONE.red.line}` },
-  soft: { background: TONE.violet.bg, color: TONE.violet.fg, border: `1px solid ${TONE.violet.line}` },
+  danger: { background: 'transparent', color: TONE.red.fg, border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.14)' },
+  soft: { background: 'transparent', color: 'var(--color-text-primary)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.14)' },
 };
 
 export function RdButton({ variant = 'secondary', icon: Icon, children, size = 'md', className = '', ...rest }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: BtnVariant; icon?: LucideIcon; size?: 'sm' | 'md' | 'lg';
 }) {
-  const h = size === 'lg' ? 'h-[52px] px-6 text-base' : size === 'sm' ? 'h-9 px-3 text-[13px]' : 'h-12 px-5 text-[15px]';
+  const h = size === 'lg' ? 'h-10 px-4 text-[14px]' : size === 'sm' ? 'h-8 px-2.5 text-[12.5px]' : 'h-9 px-3.5 text-[13px]';
   return (
     <button type="button" {...rest}
-      className={`${h} rounded-xl inline-flex items-center justify-center gap-2 font-semibold whitespace-nowrap transition-all hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
+      className={`${h} v2-btn rounded-lg inline-flex items-center justify-center gap-1.5 font-semibold whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed ${className}`} data-variant={variant}
       style={{ ...BTN[variant], ...rest.style }}>
-      {Icon && <Icon size={size === 'sm' ? 15 : 18} />}{children}
+      {Icon && <Icon size={size === 'sm' ? 14 : 15} />}{children}
     </button>
   );
 }
@@ -411,8 +399,8 @@ export function RdTable({ head, children, empty, boxRef }: {
             {head.map((h, i) => {
               const cell = typeof h === 'string' ? { label: h } : h;
               return (
-                <th key={i} className={`text-[12.5px] font-semibold uppercase tracking-wider py-4 px-4 whitespace-nowrap ${cell.className ?? ''}`}
-                  style={{ color: SECOND, textAlign: cell.align ?? 'left', borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.06)', background: 'rgba(255,255,255,0.015)' }}>
+                <th key={i} className={`text-[12px] font-medium py-2.5 px-4 whitespace-nowrap sticky top-0 z-[1] ${cell.className ?? ''}`}
+                  style={{ color: MUTED, textAlign: cell.align ?? 'left', borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)', background: 'var(--surface-solid, #161622)' }}>
                   {cell.label}
                 </th>
               );
@@ -428,14 +416,14 @@ export function RdTable({ head, children, empty, boxRef }: {
 
 export function Tr({ children, onClick, ...rest }: React.HTMLAttributes<HTMLTableRowElement>) {
   return (
-    <tr {...rest} onClick={onClick} className={`group transition-colors hover:bg-white/[0.025] ${onClick ? 'cursor-pointer' : ''}`}>{children}</tr>
+    <tr {...rest} onClick={onClick} className={`group v2-tr ${onClick ? 'cursor-pointer' : ''}`}>{children}</tr>
   );
 }
 
 export function Td({ children, className = '', align, ...rest }: React.TdHTMLAttributes<HTMLTableCellElement> & { align?: 'right' | 'center' }) {
   return (
-    <td {...rest} className={`py-3.5 px-4 align-middle text-[14.5px] ${className}`}
-      style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.05)', textAlign: align, color: 'var(--color-text-primary)', ...rest.style }}>
+    <td {...rest} className={`py-2.5 px-4 align-middle text-[13px] tabular-nums ${className}`}
+      style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.06)', textAlign: align, color: 'var(--color-text-primary)', ...rest.style }}>
       {children}
     </td>
   );
@@ -455,23 +443,16 @@ export function TableFooter({ page, perPage, total, noun, onPage }: { page: numb
     if (page < pages - 2) nums.push('…');
     nums.push(pages);
   }
-  const btn = (on: boolean): React.CSSProperties => ({
-    background: on ? 'var(--fill-primary, linear-gradient(180deg,#8B5CF6,#7C3AED))' : 'rgba(255,255,255,0.03)',
-    border: `1px solid ${on ? 'rgba(167,139,250,0.6)' : 'var(--rd-input-line, rgba(255,255,255,0.08))'}`, color: on ? '#fff' : 'var(--color-text-primary)',
-  });
   return (
-    <div className="flex items-center justify-between gap-3 flex-wrap px-4 py-4" data-rd-footer>
-      <p className="text-[14.5px]" style={{ color: SECOND }}>Showing {from}–{to} of {total.toLocaleString('en-PH')} {noun}</p>
+    <div className="flex items-center justify-between gap-3 flex-wrap px-4 py-2.5" data-rd-footer>
+      <p className="text-[12.5px] tabular-nums" style={{ color: MUTED }}>{from}–{to} of {total.toLocaleString('en-PH')} {noun}</p>
       {pages > 1 && (
-        <div className="flex items-center gap-2">
-          <button type="button" aria-label="Previous page" disabled={page <= 1} onClick={() => onPage(page - 1)}
-            className="w-10 h-10 rounded-full grid place-items-center disabled:opacity-30" style={btn(false)}><ChevronLeft size={16} /></button>
+        <div className="v2-pager">
+          <button type="button" aria-label="Previous page" disabled={page <= 1} onClick={() => onPage(page - 1)}><ChevronLeft size={14} /></button>
           {nums.map((n, i) => n === '…'
-            ? <span key={`e${i}`} className="px-1" style={{ color: SECOND }}>…</span>
-            : <button key={n} type="button" onClick={() => onPage(n)} aria-current={n === page ? 'page' : undefined}
-                className="h-10 px-2 rounded-full text-[14px] font-semibold" style={{ ...btn(n === page), minWidth: 40 }}>{n}</button>)}
-          <button type="button" aria-label="Next page" disabled={page >= pages} onClick={() => onPage(page + 1)}
-            className="w-10 h-10 rounded-full grid place-items-center disabled:opacity-30" style={btn(false)}><ChevronRight size={16} /></button>
+            ? <span key={`e${i}`}>…</span>
+            : <button key={n} type="button" onClick={() => onPage(n)} aria-current={n === page ? 'page' : undefined}>{n}</button>)}
+          <button type="button" aria-label="Next page" disabled={page >= pages} onClick={() => onPage(page + 1)}><ChevronRight size={14} /></button>
         </div>
       )}
     </div>
@@ -480,11 +461,11 @@ export function TableFooter({ page, perPage, total, noun, onPage }: { page: numb
 
 export function EmptyBlock({ icon: Icon, title, body, action, compact }: { icon: LucideIcon; title: string; body?: React.ReactNode; action?: React.ReactNode; compact?: boolean }) {
   return (
-    <div className={`flex flex-col items-center justify-center text-center ${compact ? 'py-6' : 'py-14'} px-6`} data-rd-empty>
-      <Icon size={compact ? 40 : 52} strokeWidth={1.4} style={{ color: 'rgba(196, 181, 253, 0.55)' }} />
-      <p className="text-[17px] font-semibold text-white mt-4">{title}</p>
-      {body && <p className="text-[14.5px] mt-1.5 max-w-md" style={{ color: SECOND }}>{body}</p>}
-      {action && <div className="mt-5">{action}</div>}
+    <div className={`flex flex-col items-center justify-center text-center ${compact ? 'py-6' : 'py-12'} px-6`} data-rd-empty>
+      <Icon size={20} strokeWidth={1.75} style={{ color: MUTED }} />
+      <p className="text-[13px] font-semibold mt-3" style={{ color: 'var(--color-text-primary)' }}>{title}</p>
+      {body && <p className="text-[12.5px] mt-1 max-w-sm" style={{ color: SECOND }}>{body}</p>}
+      {action && <div className="mt-4">{action}</div>}
     </div>
   );
 }
@@ -496,50 +477,47 @@ export function RailCard({ icon, tone = 'violet', title, sub, children, ...rest 
 }) {
   const Icon = icon;
   return (
-    <RdCard className="p-5" {...rest}>
-      <div className="flex items-center gap-3">
-        {Icon && <Icon size={26} style={{ color: TONE[tone].fg }} strokeWidth={1.8} />}
-        <h3 className="text-[19px] font-semibold text-white">{title}</h3>
+    <RdCard className="p-4" {...rest}>
+      <div className="flex items-center gap-2">
+        {Icon && <Icon size={16} style={{ color: tone === 'amber' ? 'var(--v2-warn, #F59E0B)' : MUTED }} strokeWidth={1.75} />}
+        <h3 className="text-[13px] font-semibold" style={{ color: 'var(--color-text-primary)' }}>{title}</h3>
       </div>
-      {sub && <p className="text-[14px] mt-1.5" style={{ color: SECOND }}>{sub}</p>}
-      <div className="mt-4 flex flex-col gap-2.5">{children}</div>
+      {sub && <p className="text-[12.5px] mt-1" style={{ color: SECOND }}>{sub}</p>}
+      <div className="mt-3 flex flex-col gap-1.5">{children}</div>
     </RdCard>
   );
 }
 
 export function RailAction({ icon: Icon, label, onClick, href }: { icon: LucideIcon; label: string; onClick?: () => void; href?: string }) {
-  const cls = 'h-14 px-4 rounded-xl flex items-center gap-3.5 text-[15.5px] font-semibold text-white transition-colors hover:bg-white/[0.04]';
-  const st: React.CSSProperties = { border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)', background: 'rgba(255,255,255,0.015)' };
+  const cls = 'v2-railbtn';
   return href
-    ? <a href={href} className={cls} style={st}><Icon size={20} />{label}</a>
-    : <button type="button" onClick={onClick} className={cls} style={st}><Icon size={20} />{label}</button>;
+    ? <a href={href} className={cls}><Icon size={15} />{label}</a>
+    : <button type="button" onClick={onClick} className={cls}><Icon size={15} />{label}</button>;
 }
 
 export function RailRow({ tone, label, count, onClick }: { tone: Tone; label: string; count: number | string; onClick?: () => void }) {
   const inner = (
     <>
-      <span className="w-2.5 h-2.5 rounded-full" style={{ background: TONE[tone].dot }} />
+      <span className="w-1.5 h-1.5 rounded-full flex-none" style={{ background: TONE[tone].dot }} />
       <span className="flex-1 text-left">{label}</span>
-      <b className="tabular-nums">{count}</b>
-      {onClick && <ChevronRight size={16} style={{ color: SECOND }} />}
+      <b className="tabular-nums font-semibold">{count}</b>
+      {onClick && <ChevronRight size={14} style={{ color: MUTED }} />}
     </>
   );
-  const cls = 'h-14 px-4 rounded-xl flex items-center gap-3 text-[15.5px] text-white';
-  const st: React.CSSProperties = { border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.07)', background: 'rgba(255,255,255,0.015)' };
   // A row with nothing to open is a row, not a disabled button.
   return onClick
-    ? <button type="button" onClick={onClick} className={`${cls} transition-colors hover:bg-white/[0.04]`} style={st}>{inner}</button>
-    : <div className={cls} style={st}>{inner}</div>;
+    ? <button type="button" onClick={onClick} className="v2-railrow">{inner}</button>
+    : <div className="v2-railrow">{inner}</div>;
 }
 
 export function TipCard({ children, title = 'Tip' }: { children: React.ReactNode; title?: string }) {
   return (
-    <RdCard className="p-5">
-      <div className="flex items-center gap-2.5">
-        <Lightbulb size={20} style={{ color: '#FBBF24' }} />
-        <h4 className="text-[16px] font-semibold text-white">{title}</h4>
+    <RdCard className="p-4">
+      <div className="flex items-center gap-2">
+        <Lightbulb size={15} style={{ color: MUTED }} />
+        <h4 className="text-[13px] font-semibold" style={{ color: 'var(--color-text-primary)' }}>{title}</h4>
       </div>
-      <div className="text-[14px] mt-2 leading-relaxed" style={{ color: SECOND }}>{children}</div>
+      <div className="text-[12.5px] mt-1.5 leading-relaxed" style={{ color: SECOND }}>{children}</div>
     </RdCard>
   );
 }
@@ -560,10 +538,10 @@ export function Initials({ name, photo, size = 44, tone }: { name: string; photo
   const [broken, setBroken] = useState(false);
   const init = name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase() || '?';
   if (photo && !broken) return <img src={photo} alt="" onError={() => setBroken(true)} className="rounded-full object-cover flex-none" style={{ width: size, height: size }} />;
-  const bg = tone === 'amber' ? '#F59E0B' : tone === 'violet' ? '#7C3AED' : AVATAR_TONES[(name.charCodeAt(0) || 0) % AVATAR_TONES.length];
+  void tone; void AVATAR_TONES;
   return (
-    <span className="rounded-full grid place-items-center font-bold flex-none" style={{ width: size, height: size, fontSize: Math.round(size * 0.36),
-      background: bg === '#F59E0B' ? 'var(--amber-solid, #F59E0B)' : bg, color: bg === '#F59E0B' ? 'var(--on-amber, #1A1205)' : '#fff' }}>{init}</span>
+    <span className="rounded-full grid place-items-center font-semibold flex-none" style={{ width: size, height: size, fontSize: Math.max(10, Math.round(size * 0.34)),
+      background: 'var(--raised-solid, #1E1B30)', color: 'var(--color-text-secondary)' }}>{init}</span>
   );
 }
 
@@ -589,17 +567,15 @@ export function PageTabs<K extends string>({ tabs, value, onChange, label }: {
   tabs: { key: K; label: string; count?: number; icon?: LucideIcon }[]; value: K; onChange: (k: K) => void; label: string;
 }) {
   return (
-    <div className="flex items-center gap-1 p-1 rounded-xl flex-wrap" role="tablist" aria-label={label} data-page-tabs
-      style={{ background: 'rgba(255,255,255,0.025)', border: CARD_LINE, width: 'fit-content', maxWidth: '100%' }}>
+    <div className="v2-seg" role="tablist" aria-label={label} data-page-tabs>
       {tabs.map((t) => {
         const on = t.key === value;
         const Icon = t.icon;
         return (
           <button key={t.key} type="button" role="tab" aria-selected={on} onClick={() => onChange(t.key)} data-tab={t.key}
-            className="h-9 px-3.5 rounded-lg text-[14px] font-semibold inline-flex items-center gap-2 whitespace-nowrap transition-colors"
-            style={on ? { background: 'rgba(124,58,237,0.25)', color: 'var(--rd-tab-on, #EDE9FE)', boxShadow: 'inset 0 0 0 1px rgba(139,92,246,0.55)' } : { color: SECOND }}>
-            {Icon && <Icon size={15} />}{t.label}
-            {t.count ? <span className="text-[11.5px] tabular-nums px-1.5 rounded-full" style={{ background: TONE.amber.bg, color: TONE.amber.fg }}>{t.count}</span> : null}
+            data-on={on || undefined}>
+            {Icon && <Icon size={14} />}{t.label}
+            {t.count ? <em>{t.count}</em> : null}
           </button>
         );
       })}
@@ -613,14 +589,14 @@ export function RdField({ label, hint, group, children }: { label: string; hint?
   // the whole row, and a tap on the hint presses that button.
   if (group) return (
     <div role="group" aria-label={label} className="block">
-      <span className="block text-[13px] font-medium mb-1.5" style={{ color: SECOND }}>{label}</span>
+      <span className="block text-[12.5px] font-medium mb-1.5" style={{ color: SECOND }}>{label}</span>
       {children}
       {hint && <span className="block text-[12px] mt-1" style={{ color: MUTED }}>{hint}</span>}
     </div>
   );
   return (
     <label className="block">
-      <span className="block text-[13px] font-medium mb-1.5" style={{ color: SECOND }}>{label}</span>
+      <span className="block text-[12.5px] font-medium mb-1.5" style={{ color: SECOND }}>{label}</span>
       {children}
       {hint && <span className="block text-[12px] mt-1" style={{ color: MUTED }}>{hint}</span>}
     </label>

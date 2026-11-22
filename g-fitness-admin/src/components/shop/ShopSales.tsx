@@ -93,7 +93,7 @@ export default function ShopSales({ refresh, onReceipt }: { refresh: number; onR
                         <span className="text-white font-semibold tabular-nums">{formatCurrency(r.revenue)}</span>
                       </div>
                       <div className="h-1.5 rounded-full mt-1.5" style={{ background: 'rgba(255,255,255,0.06)' }}>
-                        <div className="h-full rounded-full" style={{ width: `${Math.max(3, (r.revenue / max) * 100)}%`, background: 'linear-gradient(90deg,#6D28D9,#8B5CF6)' }} />
+                        <div className="h-full rounded-full" style={{ width: `${Math.max(3, (r.revenue / max) * 100)}%`, background: 'var(--color-primary)' }} />
                       </div>
                     </div>
                   </div>

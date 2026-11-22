@@ -189,7 +189,7 @@ async (page) => {
   await page.getByPlaceholder('Search by name, email, or QR code...').click();
   await page.waitForTimeout(300);
   const listUp = await page.locator('[data-member-list]').count();
-  await page.getByText('Payment Method').first().click();
+  await page.getByText('How they paid').first().click(); // the label, renamed in Design V2 (was "Payment Method")
   await page.waitForTimeout(300);
   out.push('the member list opens on the search and closes on a click elsewhere: '
     + (listUp === 1 && (await page.locator('[data-member-list]').count()) === 0 ? 'yes' : `MISSING open=${listUp}`));

@@ -29,7 +29,6 @@ interface ExerciseRow {
 }
 const GROUPS = ['chest', 'back', 'legs', 'shoulders', 'arms', 'core', 'full_body', 'cardio'];
 const EQUIPMENT = ['barbell', 'dumbbell', 'machine', 'cable', 'bodyweight', 'other'];
-const SHADES = ['#2a2050,#14323a', '#3a2a0c,#2a2050', '#14323a,#1b1a2a', '#3a1d33,#1b1a2a', '#2a2050,#3a1d33'];
 const word = (s: string) => s.replace('_', ' ').replace(/^./, (c) => c.toUpperCase());
 const emptyForm = { name: '', muscle_group: 'full_body', equipment: 'other', is_timed: false };
 type Tab = 'all' | 'own' | 'hidden';
@@ -145,13 +144,12 @@ export default function Exercises() {
   const steps = pick ? (m?.steps?.length ? m.steps : pick.steps ?? []) : [];
   const cues = pick ? (m?.cues?.length ? m.cues : pick.cues ?? []) : [];
   const used = pick ? usage?.get(pick.id) : undefined;
-  const shade = (id: string) => SHADES[[...id].reduce((n, c) => n + c.charCodeAt(0), 0) % SHADES.length];
 
   const thumb = (r: ExerciseRow, h: number, big = false) => {
     const mm = media.get(r.id);
     return (
       <div className="a-thumb" style={{ height: h, borderRadius: 12, position: 'relative', overflow: 'hidden', display: 'grid', placeItems: 'center',
-        background: mm?.photoUrl ? '#0f0f19' : `linear-gradient(135deg,${shade(r.id)})`, color: '#ffffff99' }}>
+        background: mm?.photoUrl ? '#0f0f19' : 'var(--raised-solid, #1E1B30)', color: 'var(--color-text-muted)' }}>
         {mm?.photoUrl ? <img src={mm.photoUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
           : !shown(r) ? <EyeOff size={big ? 40 : 28} /> : r.is_timed ? <Timer size={big ? 40 : 28} /> : <Dumbbell size={big ? 40 : 28} />}
         {mm?.videoUrl && <span style={{ position: 'absolute', bottom: 6, right: 6, fontSize: 10, fontWeight: 700, background: '#000a', borderRadius: 6, padding: '2px 6px', color: '#fff', display: 'flex', gap: 3, alignItems: 'center' }}><Play size={9} />{big ? 'your video' : 'video'}</span>}

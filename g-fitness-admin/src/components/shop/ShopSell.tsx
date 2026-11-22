@@ -27,7 +27,7 @@ export function ProductArt({ p }: { p: Pick<Product, 'name' | 'photoUrl'> }) {
   if (p.photoUrl) return <img src={p.photoUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />;
   return (
     <span className="absolute inset-0 grid place-items-center text-[26px] font-bold"
-      style={{ background: 'radial-gradient(120% 120% at 0% 0%, rgba(124,58,237,0.42), transparent 60%), radial-gradient(100% 100% at 100% 100%, rgba(245,158,11,0.22), transparent 60%), #17122A', color: 'rgba(237,233,254,0.85)' }}>
+      style={{ background: 'var(--raised-solid, #1E1B30)', color: 'var(--color-text-muted)' }}>
       {initialsOf(p.name)}
     </span>
   );

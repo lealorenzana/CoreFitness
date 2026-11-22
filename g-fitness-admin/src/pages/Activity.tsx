@@ -382,7 +382,7 @@ export default function Activity() {
                 size is known before the first fetch lands. */}
             <div ref={measureList} className="flex-1 min-h-0 overflow-y-auto px-4" style={{ scrollbarWidth: 'thin' }}>
             {/* A thin line while a later page loads — the rows stay where they are. */}
-            {loading && loadedOnce && <div className="sticky top-0 z-20 h-0.5 -mx-4 overflow-hidden" data-activity-loading><div className="h-full w-1/3 activity-progress" style={{ background: 'linear-gradient(90deg, transparent, #8B5CF6, transparent)' }} /></div>}
+            {loading && loadedOnce && <div className="sticky top-0 z-20 h-0.5 -mx-4 overflow-hidden" data-activity-loading><div className="h-full w-1/3 activity-progress" style={{ background: 'linear-gradient(90deg, transparent, var(--color-primary), transparent)' }} /></div>}
             {loading && !loadedOnce ? (
               <div className="space-y-2 py-3" data-activity-skeleton>
                 {Array.from({ length: Math.min(pageSize, 10) }).map((_, i) => (

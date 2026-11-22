@@ -372,7 +372,7 @@ export default function Notifications() {
   /** The member's phone, live: the alert on the lock screen, and the message in their inbox. */
   const phone = (
     <div className="rounded-[28px] p-3 mx-auto w-full max-w-[290px]" data-phone-preview
-      style={{ background: 'linear-gradient(180deg, #1B1633, #0F0C1E)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)', boxShadow: '0 30px 60px -30px rgba(0,0,0,0.9)' }}>
+      style={{ background: 'var(--surface-solid, #161622)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.12)', boxShadow: '0 24px 48px -24px rgba(0,0,0,0.6)' }}>
       <p className="text-center text-[22px] font-semibold text-white mt-2 tabular-nums">9:41</p>
       <p className="text-center text-[11.5px]" style={{ color: MUTED }}>On their lock screen</p>
       <div className="rounded-2xl p-2.5 mt-3 flex items-start gap-2.5" style={{ background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(8px)' }}>
@@ -500,7 +500,7 @@ export default function Notifications() {
                     {/* The number that says whether it landed. */}
                     <span className="flex items-center gap-2 w-[150px]">
                       <span className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
-                        <span className="block h-full rounded-full" style={{ width: `${pct}%`, background: 'linear-gradient(90deg,#6D28D9,#8B5CF6)' }} />
+                        <span className="block h-full rounded-full" style={{ width: `${pct}%`, background: 'var(--color-primary)' }} />
                       </span>
                       <span className="text-[12.5px] tabular-nums w-10 text-right" style={{ color: notif.readCount > 0 ? '#C4B5FD' : MUTED }}>{pct}%</span>
                     </span>

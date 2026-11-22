@@ -143,7 +143,19 @@ export default function Achievements() {
     return () => { alive = false; clearTimeout(id); };
   }, [draft.rule_kind, draft.audience, draft.metric, draft.threshold, draft.metric2, draft.threshold2, chosen, chosen2]);
 
-  const startNew = () => { setEditing(null); setQual(null); setDraft(blank(audience, forAudience.length)); };
+  // The maker is always open, so "New achievement" used to change nothing you could see (owner, 2026-11-22:
+  // "the button is not working"). It now clears the maker, brings it into view, puts the cursor in Name and
+  // flashes the box, so the press is answered.
+  const startNew = () => {
+    setEditing(null); setQual(null); setDraft(blank(audience, forAudience.length));
+    const box = document.querySelector<HTMLElement>('[data-badge-maker]');
+    if (box) {
+      box.scrollTo({ top: 0, behavior: 'smooth' });
+      box.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      box.removeAttribute('data-flash'); void box.offsetWidth; box.setAttribute('data-flash', '');
+      window.setTimeout(() => document.getElementById('b-name')?.focus({ preventScroll: true }), 220);
+    }
+  };
   const open = (a: AchievementRow) => { setEditing(a); setQual(null); setDraft(fromRow(a)); };
   const applyIdea = (i: typeof IDEAS[number]) => {
     setQual(null);

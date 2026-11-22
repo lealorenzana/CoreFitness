@@ -90,7 +90,7 @@ export default function StepModal({
               style={{ border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.12)', color: 'var(--color-text-secondary)' }}
               onClick={!tabs && step > 0 ? onBack : onClose} disabled={busy}>{!tabs && step > 0 ? 'Back' : 'Cancel'}</button>
             <button type="button" className="flex-1 h-11 rounded-xl text-sm font-semibold text-white transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-              style={{ background: 'linear-gradient(135deg,#8B5CF6,#6D28D9)', boxShadow: canNext && !busy ? '0 10px 30px -12px rgba(124,58,237,0.8)' : 'none' }}
+              style={{ background: 'var(--v2-act, #F59E0B)', color: 'var(--v2-on-act, #1a1206)' }}
               onClick={onNext} disabled={!canNext || busy} data-step-next>
               {busy ? 'Working…' : tabs || last ? finishLabel : 'Next'}
             </button>
