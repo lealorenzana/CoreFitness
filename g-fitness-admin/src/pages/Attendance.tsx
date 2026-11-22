@@ -26,6 +26,7 @@ import { performCheckIn, performCoachCheckIn, resolveCheckInCode } from '../serv
 import { membershipIsUsable } from '../lib/api/memberships';
 import type { AttendanceRow } from '../types/db';
 import { Av, HowPill, AttHead } from './attendance/parts';
+import { CountUp, Skel, Spark, EmptyBlock } from '../components/ui/rd';
 import { useAttCounts, peso, clock } from './attendance/attData';
 import './attendance/att.css';
 import OfflineScans from './attendance/OfflineScans';
@@ -39,11 +40,11 @@ const wayOf = (r: AttendanceRow): Exclude<Way, 'all'> => (r.source === 'kiosk' ?
 const WAY_LABEL: Record<Way, string> = { all: 'All', kiosk: 'Kiosk', desk: 'Desk scan', typed: 'Typed' };
 
 /** One row of today's log — the card and the floating window draw the same row. */
-function LogRow({ row: r, name, photo, plan, by, onUndo, height }: {
-  row: AttendanceRow; name: string; photo?: string | null; plan?: string; by: string; onUndo: () => void; height?: number;
+function LogRow({ row: r, name, photo, plan, by, onUndo, height, fresh, leaving }: {
+  row: AttendanceRow; name: string; photo?: string | null; plan?: string; by: string; onUndo: () => void; height?: number; fresh?: boolean; leaving?: boolean;
 }) {
   return (
-    <tr data-log-row style={{ height }}>
+    <tr data-log-row style={{ height }} data-fresh={fresh || undefined} data-leaving={leaving || undefined}>
       <td style={{ width: 90 }}><b>{clock(r.check_in_time)}</b></td>
       <td>
         <div className="a-who">
@@ -213,6 +214,20 @@ export default function Attendance() {
     return out;
   }, [today, hours]);
   const nowHour = Number(new Date().toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: 'Asia/Manila' }));
+  /** The same weekday last week, hour by hour over the whole day: the dashed line under today's. */
+  const lastWeekPerHour = useMemo(() => {
+    const out: number[] = [];
+    for (let h = hours.open; h < hours.close; h++) out.push(0);
+    const day = addDays(todayStr, -7);
+    for (const a of rows) {
+      if (localDateKey(a.check_in_time) !== day) continue;
+      const h = Number(new Date(a.check_in_time).toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: 'Asia/Manila' }));
+      if (h >= hours.open && h < hours.close) out[h - hours.open] += 1;
+    }
+    return out;
+  }, [rows, todayStr, hours]);
+  /** Rows on their way out after Undo: they fade while the log reloads, instead of vanishing. */
+  const [leaving, setLeaving] = useState<Set<string>>(new Set());
 
   const byWay = useMemo(() => {
     const c = { kiosk: 0, desk: 0, typed: 0 };
@@ -249,7 +264,7 @@ export default function Attendance() {
       showToast('No connection, and this computer could not save the check-in. Write it down and record it later.', 'error');
       return;
     }
-    showToast(`No connection — ${name}'s check-in is saved on this computer and is recorded when it is back.`, 'success');
+    showToast(`No connection. ${name}'s check-in is saved on this computer and is recorded when it is back.`, 'success');
     setQuery('');
   };
 
@@ -364,7 +379,7 @@ Let ${member.profile.first_name} in anyway?`)) return;
     if (memberHits.length + coachHits.length === 1) {
       return memberHits.length ? void doCheckIn(memberHits[0], 'manual') : void doCoachCheckIn(coachHits[0], 'manual');
     }
-    showToast(memberHits.length + coachHits.length === 0 ? 'Nobody matches that.' : 'More than one match — pick from the list.', 'error');
+    showToast(memberHits.length + coachHits.length === 0 ? 'Nobody matches that.' : 'More than one match. Pick one from the list.', 'error');
   };
 
   /** Undo a check-in (0035): the wrong person scanned. Only today's — what RLS allows. */
@@ -372,6 +387,7 @@ Let ${member.profile.first_name} in anyway?`)) return;
     if (!toUndo) return;
     try {
       await deleteCheckIn(toUndo.id);
+      setLeaving((s) => new Set(s).add(toUndo.id));
       if (why) await recordReason({ action: 'checkin.removed', subjectType: 'attendance', subjectId: null, memberId: toUndo.member_id,
         summary: `Removed ${nameOf(toUndo.member_id)}'s check-in`, reason: why });
       showToast(`Check-in removed for ${nameOf(toUndo.member_id)}`, 'success');
@@ -399,14 +415,31 @@ Let ${member.profile.first_name} in anyway?`)) return;
 
   /** Exports what the log shows, built from the real row shape. */
   const exportLog = () => {
-    if (logRecords.length === 0) return showToast('Nothing to export — nobody has checked in today', 'error');
+    if (logRecords.length === 0) return showToast('Nothing to export yet. Nobody has checked in today.', 'error');
     exportToCSV(logRecords.map((r) => ({
       Date: localDateKey(r.check_in_time), Time: clock(r.check_in_time), Member: nameOf(r.member_id), 'Check-in Code': formatCheckInCode(r.member_id),
       How: WAY_LABEL[wayOf(r)], Membership: whoOf[r.member_id]?.plan ?? '', Activity: r.activity ?? '', 'Tagged by': r.activity_by ?? '', By: byOf(r),
     })), `attendance_${todayStr}`, false);
   };
 
-  if (loading) return <div className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Loading attendance…</div>;
+  // Grey shapes where the desk will be, instead of a line of text.
+  if (loading) return (
+    <div className="att" data-attendance-loading aria-busy="true">
+      <AttHead counts={{ today: null, walkIns: counts.walkIns }} sub={<Skel w={240} h={12} />} />
+      <div className="a-v2">
+        <div className="a-v2-main">
+          <div className="a-card" style={{ flex: 'none', display: 'grid', gap: 12 }}><Skel w={140} h={14} /><Skel w="100%" h={44} /><Skel w="60%" h={28} /></div>
+          <div className="a-card" style={{ flex: 1, display: 'grid', alignContent: 'start', gap: 14 }}>
+            <Skel w={160} h={14} />{[0, 1, 2, 3, 4].map((i) => <Skel key={i} w="100%" h={22} />)}
+          </div>
+        </div>
+        <div className="a-v2-side">
+          <div className="a-card" style={{ flex: 'none', display: 'grid', gap: 12 }}><Skel w={110} h={12} /><Skel w={64} h={40} /><Skel w="100%" h={40} /></div>
+          <div className="a-card" style={{ flex: 1, display: 'grid', alignContent: 'start', gap: 14 }}><Skel w={100} h={14} /><Skel w="100%" h={40} /><Skel w="100%" h={40} /></div>
+        </div>
+      </div>
+    </div>
+  );
 
   const longDate = new Date().toLocaleDateString('en-PH', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Manila' });
   const closesAt = hours.closing ? new Date(`2000-01-01T${hours.closing}`).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' }).toLowerCase() : null;
@@ -418,7 +451,11 @@ Let ${member.profile.first_name} in anyway?`)) return;
   const liveWalkIns = walkIns?.filter((v) => !v.voided) ?? [];
   const walkCash = liveWalkIns.filter((v) => v.method === 'cash').reduce((a, v) => a + v.amount, 0);
   const packVisits = liveWalkIns.filter((v) => v.kind === 'pack_visit').length;
-  const maxHour = Math.max(1, ...perHour);
+  // Running totals by the hour: today up to now, last week's whole day as the dashed line.
+  const running = (v: number[]) => v.reduce<number[]>((acc, n) => [...acc, (acc.at(-1) ?? 0) + n], []);
+  const todayLine = running(perHour).slice(0, Math.max(0, Math.min(perHour.length, nowHour - hours.open + 1)));
+  const lastWeekLine = running(lastWeekPerHour);
+  const lastWeekAll = lastWeekLine.at(-1) ?? 0;
   const weekShare = activeMembers ? Math.min(100, Math.round((weekUnique / activeMembers) * 100)) : null;
   const scanned = byWay.kiosk + byWay.desk;
   // The check-in just taken here, or else the newest one today — so the desk always sees the latest, with Undo.
@@ -453,7 +490,7 @@ Let ${member.profile.first_name} in anyway?`)) return;
             {/* What the box found — members, and coaches when the owner has coach check-in on. A fixed box that scrolls itself. */}
             <div className="a-scroll" data-quick-list style={{ marginTop: 10, borderRadius: 14, background: 'var(--a-well, #0f0f19)', border: '1px solid var(--a-line)', padding: '4px 12px', height: 96 }}>
               {!q && shown ? (
-              <div className="a-toast" style={{ margin: '-4px -12px', height: 'calc(100% + 8px)', borderRadius: 13, border: 0 }} data-last-checkin>
+              <div key={shown.id} className="a-toast" style={{ margin: '-4px -12px', height: 'calc(100% + 8px)', borderRadius: 13, border: 0 }} data-last-checkin>
                 <span className="ok"><Check size={16} /></span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <b style={{ fontSize: 13 }}>{shown.name} is in</b>
@@ -473,7 +510,7 @@ Let ${member.profile.first_name} in anyway?`)) return;
                 <p className="a-sub h-full grid place-items-center" style={{ fontSize: 12 }}>No members found</p>
               ) : (
                 <button type="button" className="a-sub h-full w-full grid place-items-center" style={{ fontSize: 12 }} onClick={() => setListOpen(true)} data-found-note>
-                  {memberHits.length + coachHits.length} found{listOpen ? ' — pick one in the list' : ' — show the list'}
+                  {memberHits.length + coachHits.length} found{listOpen ? ', pick one in the list' : '. Show the list'}
                 </button>
               )}
             </div>
@@ -481,7 +518,7 @@ Let ${member.profile.first_name} in anyway?`)) return;
               <div ref={floatList} className="att a-float-list" role="listbox" aria-label="People found" data-quick-list-float
                 style={{ position: 'fixed', top: anchor.top, left: anchor.left, width: anchor.width, maxHeight: anchor.maxH }}>
                 <div className="a-float-list__head">
-                  <span>{memberHits.length + coachHits.length} found{memberHits.length > 20 ? ' · the first 20 — type more to narrow it' : ''}</span>
+                  <span>{memberHits.length + coachHits.length} found{memberHits.length > 20 ? ' · the first 20, type more to narrow it' : ''}</span>
                   <button type="button" className="a-btn ghost sm" onClick={() => setListOpen(false)}>Close</button>
                 </div>
                 <div className="a-float-list__body">
@@ -559,26 +596,31 @@ Let ${member.profile.first_name} in anyway?`)) return;
                 <button type="button" className="a-btn sm" onClick={() => setFullOpen(true)} data-open-full-log data-tip="Every check-in today in one window"><Maximize2 size={14} />View all</button>
               </div>
             </div>
-            <div ref={fitRef} className="a-scroll" style={{ flex: 1 }} data-rd-table>
-              <table className="a-table">
+            <div ref={fitRef} className="a-scroll" style={{ flex: 1 }} data-rd-table data-empty={today.length === 0 || undefined}>
+              {today.length > 0 && <table className="a-table">
                 <thead><tr><th>Time</th><th>Member</th><th>How</th><th>Activity</th><th>By</th><th /></tr></thead>
                 <tbody>
                   {logRecords.slice((page - 1) * perPage, page * perPage).map((r) => (
                     <LogRow key={r.id} row={r} name={nameOf(r.member_id)} photo={memberById[r.member_id]?.profile.photo_url} plan={whoOf[r.member_id]?.plan}
-                      by={byOf(r)} onUndo={() => setToUndo(r)} height={logRecords.length > perPage ? fitRowHeight : undefined} />
+                      by={byOf(r)} onUndo={() => setToUndo(r)} height={logRecords.length > perPage ? fitRowHeight : undefined}
+                      fresh={last?.id === r.id} leaving={leaving.has(r.id)} />
                   ))}
                 </tbody>
-              </table>
-              {logRecords.length === 0 && (
+              </table>}
+              {today.length === 0 ? (
+                <EmptyBlock icon={ScanLine} title="Nobody has checked in yet today"
+                  body={<>Scan a QR or type a name above. Kiosk scans land here too.{lastWeek > 0 ? ` By this time last ${lastWeekday}, ${lastWeek} had checked in.` : ''}</>}
+                  action={<Link to="/attendance-history" className="a-link" style={{ color: 'var(--a-p300)' }}>See other days →</Link>} />
+              ) : logRecords.length === 0 && (
                 <div className="a-sub text-center" style={{ padding: '22px 0', fontSize: 12.5 }}>
-                  {today.length === 0 ? 'Nobody has checked in today yet. When members check in, they’ll appear here.' : 'No check-ins match these filters.'}
-                  {today.length > 0 && <> <button type="button" className="a-link" style={{ color: 'var(--a-p300)' }} onClick={() => { setWay('all'); setLogSearch(''); setLogPlan('all'); }}>Clear filters</button></>}
+                  No check-ins match these filters.{' '}
+                  <button type="button" className="a-link" style={{ color: 'var(--a-p300)' }} onClick={() => { setWay('all'); setLogSearch(''); setLogPlan('all'); }}>Clear filters</button>
                 </div>
               )}
             </div>
             {logRecords.length > 0 && (
               <div className="a-sub" style={{ paddingTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} data-rd-footer>
-                <span>Showing {(page - 1) * perPage + 1}–{Math.min(logRecords.length, page * perPage)} of {logRecords.length} check-ins today</span>
+                <span>Showing {(page - 1) * perPage + 1} to {Math.min(logRecords.length, page * perPage)} of {logRecords.length} check-ins today</span>
                 <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                   {pages > 1 && <>
                     <button type="button" className="a-chip" style={{ padding: '3px 8px' }} disabled={page <= 1} onClick={() => setLogPage(page - 1)} aria-label="Previous page"><ChevronLeft size={13} /></button>
@@ -598,22 +640,27 @@ Let ${member.profile.first_name} in anyway?`)) return;
             <div className="a-card">
               <div className="a-lbl">Checked in today</div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                <div className="a-num">{today.length}</div>
-                <span className="a-sub"><span className={diff >= 0 ? 'a-up' : 'a-dn'}>{diff >= 0 ? '▲' : '▼'} {Math.abs(diff)}</span> vs last {lastWeekday}</span>
+                <div className="a-num"><CountUp value={today.length} /></div>
+                <span className="a-sub" data-vs-last-week>{diff === 0
+                  ? `same as last ${lastWeekday} by now`
+                  : <><span className={diff > 0 ? 'a-up' : 'a-dn'}>{diff > 0 ? '▲' : '▼'} {Math.abs(diff)}</span> vs last {lastWeekday} by now</>}</span>
               </div>
-              <div className="a-spark" data-tip={`Check-ins by hour, ${hours.open}:00–${hours.close}:00`}>
-                {perHour.map((n, i) => <i key={i} className={hours.open + i === nowHour ? 'now' : ''} style={{ height: `${Math.max(6, (n / maxHour) * 100)}%`, opacity: hours.open + i > nowHour ? 0.35 : 1 }} />)}
-              </div>
+              {/* Today's running total by the hour over last week's same day (dashed); before two hours have passed there is no line to draw. */}
+              {today.length + lastWeekAll > 0 && todayLine.length > 1 && (
+                <div className="a-trend" data-today-trend data-tip={`Today so far, with last ${lastWeekday} dashed (${lastWeekAll} all day), ${hours.open}:00 to ${hours.close}:00`}>
+                  <Spark values={todayLine} compare={lastWeekLine} label={`Check-ins so far today by the hour, against ${lastWeekAll} all of last ${lastWeekday}`} />
+                </div>
+              )}
             </div>
             <div className="a-card">
               <div className="a-lbl">How they came in</div>
-              <div className="a-num">{scanned} <span style={{ fontSize: 15, color: 'var(--a-text2)', fontWeight: 600 }}>scanned</span></div>
+              <div className="a-num"><CountUp value={scanned} /> <span style={{ fontSize: 15, color: 'var(--a-text2)', fontWeight: 600 }}>scanned</span></div>
               <div className="a-stack">
                 {today.length > 0 && <><i style={{ flex: byWay.kiosk, background: 'var(--hx-1, #9578fb)' }} /><i style={{ flex: byWay.desk, background: 'var(--hx-2, #6447c7)' }} /><i style={{ flex: byWay.typed, background: 'var(--hx-3, #3b3560)' }} /></>}
               </div>
               <div className="a-legend">
                 {(['kiosk', 'desk', 'typed'] as const).map((k) => (
-                  <button key={k} type="button" onClick={() => { setWay(way === k ? 'all' : k); setLogPage(1); }} style={way === k ? { color: '#fff' } : undefined} data-tip="Show only these in the log">
+                  <button key={k} type="button" onClick={() => { setWay(way === k ? 'all' : k); setLogPage(1); }} style={way === k ? { color: 'var(--a-ink)', fontWeight: 600 } : undefined} data-tip="Show only these in the log">
                     <span className={`a-dot ${k === 'kiosk' ? 'v' : k === 'desk' ? 'd' : 'm'}`} />{WAY_LABEL[k]} {byWay[k]}
                   </button>
                 ))}
@@ -621,14 +668,14 @@ Let ${member.profile.first_name} in anyway?`)) return;
             </div>
             <button type="button" className="a-card press text-left" onClick={() => navigate('/attendance/walk-ins')} data-tip="Open Walk-ins">
               <div className="a-lbl">Walk-ins today</div>
-              <div className="a-num">{walkIns ? liveWalkIns.length : '—'}</div>
+              <div className="a-num">{walkIns ? <CountUp value={liveWalkIns.length} /> : '—'}</div>
               <div className="a-sub inline-flex items-center gap-1.5" style={{ marginTop: 6 }}>
-                <Banknote size={13} />{walkIns ? `${peso(walkCash)} in the drawer · ${packVisits} pack visit${packVisits === 1 ? '' : 's'}` : 'Walk-ins are not set up'}
+                <Banknote size={13} />{walkIns ? `${peso(walkCash)} in the drawer${packVisits ? ` · ${packVisits} pack visit${packVisits === 1 ? '' : 's'}` : ''}` : 'Walk-ins are not set up'}
               </div>
             </button>
             <button type="button" className="a-card press text-left" onClick={() => navigate('/attendance-history')} data-tip="Open History">
               <div className="a-lbl">Members this week</div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}><div className="a-num">{weekUnique}</div><span className="a-sub">of {activeMembers} active</span></div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}><div className="a-num"><CountUp value={weekUnique} /></div><span className="a-sub">of {activeMembers} active</span></div>
               {weekShare !== null && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}><div className="a-bar"><i style={{ width: `${weekShare}%` }} /></div><span className="a-sub">{weekShare}%</span></div>
               )}
@@ -643,7 +690,7 @@ Let ${member.profile.first_name} in anyway?`)) return;
                 {/* What the kiosk did today — never a "Running" it cannot know. */}
                 <div className="a-screen"><span className="a-qrm"><QrCode size={24} /></span></div>
                 <div><div className="flex items-center justify-between gap-2"><b>Kiosk</b>
-                  <span className={`a-status ${kioskRows.length ? '' : 'off'}`} style={{ position: 'static' }} data-kiosk-status>{kioskRows.length ? `${kioskRows.length} today · last ${clock(lastKiosk!)}` : 'No scans yet'}</span></div><div className="a-sub">Members scan their own QR on a tablet by the door{door?.coachCheckin ? ' — coaches too' : ''}.</div></div>
+                  <span className={`a-status ${kioskRows.length ? '' : 'off'}`} style={{ position: 'static' }} data-kiosk-status>{kioskRows.length ? `${kioskRows.length} today · last ${clock(lastKiosk!)}` : 'No scans yet'}</span></div><div className="a-sub">Members scan their own QR on a tablet by the door{door?.coachCheckin ? '. Coaches scan theirs too' : ''}.</div></div>
                 <div className="flex items-center gap-2" style={{ marginTop: 'auto', flexWrap: 'wrap' }}>
                   <button type="button" className="a-btn amber" onClick={() => navigate('/kiosk')}><Tablet size={16} />Open kiosk</button>
                   <PageGuide id="kiosk" label="How it works" />
@@ -661,7 +708,7 @@ Let ${member.profile.first_name} in anyway?`)) return;
                 <span className="a-ic"><UserCheck size={15} /></span>
                 <div className="t">
                   <b>{coachesIn.length} of {coaches.length} coaches in</b>
-                  <small>{coachesIn.length ? coachesIn.map((c) => `${c.name} ${clock(c.checkedInAt!)}`).join(' · ') : 'Nobody yet today — they scan their own QR'}</small>
+                  <small>{coachesIn.length ? coachesIn.map((c) => `${c.name} ${clock(c.checkedInAt!)}`).join(' · ') : 'Nobody yet today. They scan their own QR.'}</small>
                 </div>
                 <div style={{ display: 'flex' }}>
                   {coachesIn.slice(0, 3).map((c, i) => <span key={c.id} style={{ marginLeft: i ? -8 : 0, borderRadius: 999, border: '2px solid var(--a-surface)' }}><Av name={c.name} photo={c.photo} small /></span>)}
@@ -698,7 +745,7 @@ Let ${member.profile.first_name} in anyway?`)) return;
             <tbody>
               {logRecords.map((r) => (
                 <LogRow key={r.id} row={r} name={nameOf(r.member_id)} photo={memberById[r.member_id]?.profile.photo_url} plan={whoOf[r.member_id]?.plan}
-                  by={byOf(r)} onUndo={() => setToUndo(r)} />
+                  by={byOf(r)} onUndo={() => setToUndo(r)} fresh={last?.id === r.id} leaving={leaving.has(r.id)} />
               ))}
             </tbody>
           </table>
@@ -741,7 +788,7 @@ Let ${member.profile.first_name} in anyway?`)) return;
         title="Undo Check-in"
         message={toUndo
           ? `Remove ${nameOf(toUndo.member_id)}'s ${clock(toUndo.check_in_time)} check-in? ` +
-            `Use this when the wrong member was scanned — the visit stops counting toward their training days and toward today's totals. They can simply check in again.`
+            `Use this when the wrong member was scanned. The visit stops counting toward their training days and toward today's totals. They can simply check in again.`
           : ''}
         confirmText="Undo it"
         type="danger"

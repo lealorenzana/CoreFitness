@@ -291,53 +291,53 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="bg-dark-lighter border border-dark-border rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden"
+              className="w-full max-w-lg overflow-hidden rounded-xl"
+              style={{ background: 'var(--surface-solid, #161622)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)', boxShadow: '0 24px 64px -24px rgba(0,0,0,0.45)' }}
+              data-qr-scanner
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="p-6 border-b border-dark-border flex items-center justify-between">
+              <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)' }}>
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'var(--color-primary)' }}>
-                    <QrCode size={24} className="text-white" />
-                  </div>
+                  <QrCode size={18} style={{ color: 'var(--color-text-secondary)' }} />
                   <div>
-                    <h2 className="text-xl font-bold text-white">Scan QR Code</h2>
-                    <p className="text-gray-400 text-sm">Position QR code within frame</p>
+                    <h2 className="text-[15px] font-semibold" style={{ color: 'var(--color-text-primary)' }}>Scan a QR code</h2>
+                    <p className="text-[12.5px]" style={{ color: 'var(--color-text-secondary)' }}>Hold the code up to the camera</p>
                   </div>
                 </div>
                 <button aria-label="Close"
                   onClick={handleClose}
                   className="text-gray-400 hover:text-white transition-colors"
                 >
-                  <X size={24} />
+                  <X size={18} />
                 </button>
               </div>
 
               {/* Content */}
-              <div className="p-6 space-y-4">
+              <div className="p-5 space-y-4">
                 {!isScanning ? (
                   // Start Screen
                   <div className="space-y-4">
-                    <div className="bg-dark rounded-2xl p-8 text-center border-2 border-dashed border-dark-border">
-                      <Camera size={64} className="text-primary-start mx-auto mb-4" />
-                      <h3 className="text-white font-semibold text-lg mb-2">Ready to Scan</h3>
-                      <p className="text-gray-400 text-sm mb-6">
-                        Click the button below to activate your camera and scan member QR codes
+                    <div className="rounded-lg p-6 text-center" style={{ border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)' }}>
+                      <Camera size={28} strokeWidth={1.75} className="mx-auto mb-3" style={{ color: 'var(--color-text-muted)' }} />
+                      <h3 className="font-semibold text-[14px] mb-1" style={{ color: 'var(--color-text-primary)' }}>Ready to scan</h3>
+                      <p className="text-[12.5px] mb-5" style={{ color: 'var(--color-text-secondary)' }}>
+                        Turn the camera on, then hold up a member's or a coach's QR. It checks them in by itself.
                       </p>
                       <Button
                         onClick={() => setIsScanning(true)}
                         variant="primary"
-                        className="w-full shadow-lg shadow-primary-start/30"
+                        className="w-full"
                       >
-                        <Camera size={20} className="mr-2" />
-                        Start Camera
+                        <Camera size={16} className="mr-2" />
+                        Turn the camera on
                       </Button>
                     </div>
 
                     {/* Manual Entry Option */}
-                    <div className="bg-dark-border/30 rounded-xl p-4">
-                      <p className="text-gray-400 text-sm mb-3">
-                        <strong className="text-white">Or enter manually:</strong>
+                    <div>
+                      <p className="text-[12.5px] mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+                        <strong style={{ color: 'var(--color-text-primary)' }}>Or type it in</strong>
                       </p>
                       <div className="flex gap-2">
                         <input
@@ -346,7 +346,8 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
                           onChange={(e) => setManualInput(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && handleManualSubmit()}
                           placeholder="Paste QR payload or member ID"
-                          className="flex-1 bg-dark border border-dark-border rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-primary-start transition-colors"
+                          className="flex-1 rounded-lg px-3 py-2.5 text-sm bg-transparent outline-none transition-colors"
+                          style={{ border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.14)', color: 'var(--color-text-primary)' }}
                         />
                         <Button
                           onClick={handleManualSubmit}
@@ -366,7 +367,8 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
                       <select
                         value={cameraId}
                         onChange={(e) => setCameraId(e.target.value)}
-                        className="w-full bg-dark border border-dark-border rounded-xl px-4 py-2.5 text-white text-sm focus:border-primary-start transition-colors"
+                        className="w-full rounded-lg px-3 py-2.5 text-sm bg-transparent"
+                        style={{ border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.14)', color: 'var(--color-text-primary)' }}
                       >
                         {cameras.map((c, i) => (
                           <option key={c.id} value={c.id}>
@@ -390,7 +392,7 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
                           unlike the old fixed square this cannot misrepresent
                           where the scanner is actually looking. */}
                       <div className="absolute inset-0 pointer-events-none">
-                        <div className="absolute inset-0 border-4 border-primary-start/50 rounded-2xl animate-pulse"></div>
+                        <div className="absolute rounded-xl" style={{ inset: '12%', border: '2px solid color-mix(in srgb, var(--color-primary) 70%, transparent)' }}></div>
                       </div>
                     </div>
 
@@ -408,12 +410,12 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
 
                     {/* Instructions */}
                     {!error && (
-                      <div className="rounded-xl p-4"
-                        style={{ background: 'var(--color-primary-light)', border: '1px solid var(--color-primary)' }}>
-                        <p className="text-sm font-semibold mb-2" style={{ color: 'var(--color-primary)' }}>Scanning tips</p>
+                      <div className="rounded-lg p-4"
+                        style={{ border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)' }}>
+                        <p className="text-sm font-semibold mb-2" style={{ color: 'var(--color-text-primary)' }}>Scanning tips</p>
                         <ul className="text-xs space-y-1 ml-4 list-disc" style={{ color: 'var(--color-text-secondary)' }}>
-                          <li>Turn the phone brightness up — a dim screen is the usual cause</li>
-                          <li>Hold it 6–12 inches away and steady</li>
+                          <li>Turn the phone brightness up. A dim screen is the usual cause.</li>
+                          <li>Hold it 6 to 12 inches away and steady</li>
                           <li>Tilt slightly to kill the reflection off the glass</li>
                           <li>It detects automatically; there is no button to press</li>
                         </ul>
@@ -422,9 +424,9 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
 
                     {/* Manual Entry Fallback */}
                     {!hasCamera && (
-                      <div className="bg-dark-border/30 rounded-xl p-4">
-                        <p className="text-gray-400 text-sm mb-3">
-                          <strong className="text-white">Enter manually instead:</strong>
+                      <div>
+                        <p className="text-[12.5px] mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+                          <strong style={{ color: 'var(--color-text-primary)' }}>Type it in instead</strong>
                         </p>
                         <div className="flex gap-2">
                           <input
@@ -433,7 +435,8 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
                             onChange={(e) => setManualInput(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleManualSubmit()}
                             placeholder="Paste QR payload or member ID"
-                            className="flex-1 bg-dark border border-dark-border rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-primary-start transition-colors"
+                            className="flex-1 rounded-lg px-3 py-2.5 text-sm bg-transparent outline-none transition-colors"
+                          style={{ border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.14)', color: 'var(--color-text-primary)' }}
                           />
                           <Button
                             onClick={handleManualSubmit}
@@ -456,7 +459,7 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
                       variant="ghost"
                       className="w-full"
                     >
-                      Stop Camera
+                      Turn the camera off
                     </Button>
                   </div>
                 )}

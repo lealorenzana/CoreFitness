@@ -536,3 +536,48 @@
   border-left: 1px solid var(--a-border); }
 .att .a-grid:has(> .a-card + .a-card + .a-card):not(:has(> .a-card:not(:has(> .a-lbl:first-child)))):not(:has(> :not(.a-card))) > .a-card:first-child .a-num {
   font-size: 32px; letter-spacing: -0.03em; }
+
+/* ── Attendance › Today, more life (2026-11-23): nothing cut off in the rail, a real trend line, an empty log
+   that says what to do, rows that arrive and leave smoothly. ── */
+.att [data-at-the-door] .a-door .a-sub,
+.att [data-at-the-door] .a-row .t small { white-space: normal; overflow: visible; text-overflow: clip; text-wrap: pretty; }
+.att [data-at-the-door] .a-row { align-items: flex-start; }
+.att [data-at-the-door] .a-row .a-ic { margin-top: 1px; }
+.att [data-at-the-door] .a-door[data-door-screen="tv"] { align-items: flex-start; }
+.att [data-stats-strip] > .a-card:first-child > .a-trend { height: 40px; align-self: end; }
+.att [data-stats-strip] > .a-card:first-child > .a-trend .v2-spark { height: 40px; }
+.att [data-stats-strip] > .a-card:first-child > .a-trend-note { align-self: end; text-align: right; padding-bottom: 4px; }
+.att [data-today-log] [data-rd-table][data-empty] { display: grid; place-items: center; }
+@media (prefers-reduced-motion: no-preference) {
+  .att [data-last-checkin] { animation: v2-row-in 220ms var(--v2-ease, ease-out) both; }
+  .att tr[data-fresh] > td { animation: att-fresh 1600ms ease-out both; }
+  .att tr[data-leaving] { animation: att-leave 240ms ease-in forwards; }
+}
+.att tr[data-leaving] { pointer-events: none; }
+@keyframes att-fresh { from { background: color-mix(in srgb, var(--color-primary) 16%, transparent); } to { background: transparent; } }
+@keyframes att-leave { to { opacity: 0; transform: translateX(-12px); } }
+/* History: the check-ins card carries the range day by day as a line. */
+.att [data-history-figures] .a-trend { height: 26px; margin-top: 8px; }
+.att [data-history-figures] .a-trend .v2-spark { height: 26px; }
+/* Walk-ins: a new walk-in slides in like a check-in does. */
+@media (prefers-reduced-motion: no-preference) {
+  .att [data-walkin-list] > .a-row { animation: v2-row-in 220ms var(--v2-ease, ease-out) both; }
+}
+/* Nothing to draw yet: last week's figure sits under the number, on one line. */
+.att [data-stats-strip] > .a-card:first-child > .a-trend-note { grid-column: 1 / -1; text-align: left; padding: 4px 0 0; }
+/* Lobby TV: its name and button on one line, what it shows under both at full width. */
+.att [data-at-the-door] .a-door[data-door-screen="tv"] { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; row-gap: 2px; align-items: center; }
+.att [data-at-the-door] .a-door[data-door-screen="tv"] > div:nth-child(2) { display: contents; }
+.att [data-at-the-door] .a-door[data-door-screen="tv"] b { grid-column: 1; grid-row: 1; }
+.att [data-at-the-door] .a-door[data-door-screen="tv"] > button { grid-column: 2; grid-row: 1; }
+.att [data-at-the-door] .a-door[data-door-screen="tv"] .a-sub { grid-column: 1 / -1; grid-row: 2; }
+/* The kiosk's two buttons share the row and may shrink; their words never spill past the card. */
+.att [data-at-the-door] .a-door > div:last-child > * { min-width: 0; padding-left: 10px; padding-right: 10px; }
+/* Tighter door rows so the whole rail fits at 1280 by 800 without its box scrolling. */
+.att [data-at-the-door] .a-door, :root[data-mode="light"] .att [data-at-the-door] .a-door { padding-top: 8px; padding-bottom: 8px; }
+.att [data-at-the-door] > .a-ct { height: 40px; }
+/* Light mode gave the door box its own padding again; rows run edge to edge in both modes. */
+:root[data-mode="light"] .att [data-at-the-door] { padding: 0; }
+/* A short screen (1280 by 800): Lobby TV keeps its name and button, its one line of description waits for more height. */
+@media (max-height: 820px) { .att [data-at-the-door] .a-door[data-door-screen="tv"] .a-sub { display: none; } .att [data-at-the-door] .a-door { row-gap: 6px; } }
+.att .a-card[data-at-the-door], :root[data-mode="light"] .att .a-card[data-at-the-door] { padding: 0; }

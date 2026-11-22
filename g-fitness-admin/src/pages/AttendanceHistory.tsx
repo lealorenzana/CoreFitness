@@ -12,6 +12,7 @@ import { listMemberships, membershipIsUsable } from '../lib/api/memberships';
 import { getGymSettings } from '../lib/api/settings';
 import type { AttendanceRow } from '../types/db';
 import { Av, HowPill, AttHead } from './attendance/parts';
+import { CountUp, Skel, Spark } from '../components/ui/rd';
 import { useAttCounts, clock } from './attendance/attData';
 import './attendance/att.css';
 
@@ -177,13 +178,25 @@ export default function AttendanceHistory() {
   const visible = filtered.slice((current - 1) * perPage, current * perPage);
   const rangeLabel = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
 
-  if (loading) return <div className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Loading attendance…</div>;
+  // Grey shapes where the range, the figures and the log will be, instead of a line of text.
+  if (loading) return (
+    <div className="att" data-history-loading aria-busy="true">
+      <AttHead counts={counts} sub={<Skel w={260} h={12} />} />
+      <div className="a-card flex-none" style={{ padding: '12px 14px' }}><Skel w="55%" h={24} /></div>
+      <div className="a-grid flex-none a-figstrip" style={{ gridTemplateColumns: 'repeat(4,minmax(0,1fr))' }}>
+        {[0, 1, 2, 3].map((i) => <div key={i} className="a-card" style={{ display: 'grid', gap: 10 }}><Skel w={90} h={12} /><Skel w={70} h={30} /><Skel w="70%" h={12} /></div>)}
+      </div>
+      <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0,1.05fr) minmax(0,.95fr) minmax(0,1.9fr)', flex: 1 }}>
+        {[0, 1, 2].map((i) => <div key={i} className="a-card" style={{ display: 'grid', alignContent: 'start', gap: 14 }}><Skel w={120} h={14} />{[0, 1, 2, 3].map((j) => <Skel key={j} w="100%" h={22} />)}</div>)}
+      </div>
+    </div>
+  );
   if (failed) {
     return (
       <div className="att"><div className="a-card" style={{ padding: 28, alignItems: 'center', textAlign: 'center' }}>
         <AlertTriangle size={36} style={{ color: 'var(--a-a300)' }} />
         <b style={{ marginTop: 10, fontSize: 15 }}>Couldn't load attendance</b>
-        <p className="a-sub" style={{ marginTop: 4 }}>A connection problem, not an empty log — no check-in has been lost. Reload to try again.</p>
+        <p className="a-sub" style={{ marginTop: 4 }}>A connection problem, not an empty log. No check-in has been lost. Reload to try again.</p>
       </div></div>
     );
   }
@@ -199,6 +212,7 @@ export default function AttendanceHistory() {
   const avg = total / Math.max(1, stats.days);
   const hourLabel = (h: number) => `${h % 12 || 12} ${h < 12 ? 'am' : 'pm'}`;
   const actTop = stats.acts.slice(0, 3);
+  const dayLine = Array.from({ length: stats.days }, (_, i) => stats.byDay[shift(from, i)] ?? 0);
   // The calendar: Monday-first weeks of the month, each day lit by its count against the range's busiest day.
   const [cy, cm] = calMonth.split('-').map(Number);
   const firstOfMonth = `${calMonth}-01`;
@@ -213,7 +227,7 @@ export default function AttendanceHistory() {
   return (
     <div className="att" data-attendance-history>
       <AttHead counts={counts}
-        sub={firstDay ? `Any day, any range — back to your first record, ${rangeLabel(firstDay)}` : 'Review check-ins across any date range.'}
+        sub={firstDay ? `Any day, any range, back to your first record on ${rangeLabel(firstDay)}` : 'Review check-ins across any date range.'}
         actions={<button type="button" className="a-btn amber" onClick={exportRows} data-tip="Export the check-ins shown below as CSV"><Download size={16} />Export {filtered.length}</button>} />
 
       {/* ── The range ── */}
@@ -234,13 +248,15 @@ export default function AttendanceHistory() {
       <div className="a-grid flex-none a-figstrip" style={{ gridTemplateColumns: 'repeat(4,minmax(0,1fr))' }} data-history-figures>
         <div className="a-card">
           <div className="a-lbl">Check-ins</div>
-          <div className="a-num">{total.toLocaleString('en-PH')}</div>
-          <div className="a-sub">{change === null ? (prevTotal === 0 ? 'none in the days before' : `${rangeLabel(from)} – ${rangeLabel(to)}`)
+          <div className="a-num"><CountUp value={total} /></div>
+          <div className="a-sub">{change === null ? (prevTotal === 0 ? 'none in the days before' : `${rangeLabel(from)} to ${rangeLabel(to)}`)
             : <><span className={change >= 0 ? 'a-up' : 'a-dn'}>{change >= 0 ? '▲' : '▼'} {Math.abs(change)}%</span> vs {prevTotal!.toLocaleString('en-PH')} before</>}</div>
+          {/* Check-ins day by day across the range (the calendar's numbers, as a line). */}
+          {total > 0 && <div className="a-trend" data-history-trend><Spark values={dayLine} label={`Check-ins each day, ${rangeLabel(from)} to ${rangeLabel(to)}`} /></div>}
         </div>
         <div className="a-card">
           <div className="a-lbl">Different members</div>
-          <div className="a-num">{stats.unique}</div>
+          <div className="a-num"><CountUp value={stats.unique} /></div>
           <div className="a-sub">{activeCount ? `${Math.min(100, Math.round((stats.unique / activeCount) * 100))}% of active members came` : 'no active members yet'}</div>
         </div>
         <div className="a-card">
@@ -384,7 +400,7 @@ export default function AttendanceHistory() {
           </div>
           {filtered.length > 0 && (
             <div className="a-sub" style={{ paddingTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} data-rd-footer>
-              <span>{(current - 1) * perPage + 1}–{Math.min(filtered.length, current * perPage)} of {filtered.length.toLocaleString('en-PH')}</span>
+              <span>{(current - 1) * perPage + 1} to {Math.min(filtered.length, current * perPage)} of {filtered.length.toLocaleString('en-PH')}</span>
               {pages > 1 && (
                 <span style={{ display: 'flex', gap: 4 }}>
                   {[...new Set([1, current - 1, current, current + 1, pages])].filter((n) => n >= 1 && n <= pages).sort((a, b) => a - b).map((n, i, arr) => (
@@ -402,7 +418,7 @@ export default function AttendanceHistory() {
 
       {/* Everyone who came in the range, by visits — beside the page, never pushing it down. */}
       <DetailSheet open={showAllTop} onClose={() => setShowAllTop(false)} title="Most regular"
-        subtitle={`${stats.topList.length} member${stats.topList.length === 1 ? '' : 's'} came · ${rangeLabel(from)} – ${rangeLabel(to)}`}>
+        subtitle={`${stats.topList.length} member${stats.topList.length === 1 ? '' : 's'} came · ${rangeLabel(from)} to ${rangeLabel(to)}`}>
         <div className="att" style={{ height: 'auto', overflow: 'visible' }} data-regulars-sheet>
           {stats.topList.map(([id, n], i) => {
             const p = people.get(id);

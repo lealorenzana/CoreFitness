@@ -445,3 +445,9 @@ button.v2-railrow:hover, .v2-railbtn:hover { background: rgb(var(--hair-rgb, 255
   .v2-countup-n, .v2-spark, .v2-minibars span, .dv2-day .bar, .dv2-day .cls, .v2-skel { animation: none; }
   .cf-tabs-line { transition: none; }
 }
+
+/* A floating window (View all, past walk-ins) fades its scrim and rises from 0.97, never from nothing (M1). */
+@media (prefers-reduced-motion: no-preference) {
+  .v2-scrim { animation: v2-fade 160ms ease-out both; }
+  .v2-window { animation: v2-pop 200ms var(--v2-ease, ease-out) both; }
+}

@@ -154,7 +154,7 @@ async (page) => {
   has('the coaches who are in', /1 of 3 coaches in/.test(t) && /Paolo/.test(t));
   has('the log says Kiosk / Desk scan / Typed', /Kiosk/.test(t) && /Desk scan/.test(t) && /Typed/.test(t) && (await page.locator('[data-log-row]').count()) === 3);
   has("the log says whose tag it is (their pick / desk)", (await page.locator('[data-tag-by="member"]').count()) === 1 && (await page.locator('[data-tag-by="desk"]').count()) === 1);
-  has('the four cards: today vs last week with its hours, how they came in, walk-ins with the drawer, the week', /Checked in today/.test(t) && /vs last/.test(t) && (await page.locator('.a-spark i').count()) >= 10 && /How they came in/.test(t) && /Walk-ins today/.test(t) && /₱150 in the drawer/.test(t) && /Members this week/.test(t) && /open until 9:00/.test(t));
+  has('the four cards: today vs last week with its hours, how they came in, walk-ins with the drawer, the week', /Checked in today/.test(t) && /vs last|same as last/.test(t) && (await page.locator('[data-vs-last-week]').count()) === 1 && /How they came in/.test(t) && /Walk-ins today/.test(t) && /₱150 in the drawer/.test(t) && /Members this week/.test(t) && /open until 9:00/.test(t));
   const box = page.getByLabel('Check-in code or name');
   // The 2026-10-18 report: one character matched nearly every member (it searched
   // inside each full id) and the list grew the page past the screen.

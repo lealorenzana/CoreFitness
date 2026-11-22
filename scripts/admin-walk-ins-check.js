@@ -147,7 +147,7 @@ async (page) => {
   c = CALLS.filter(([f]) => f === 'record_guest_visit').pop();
   out.push('…and spends a visit from it: ' + (c && c[1].p_guest === 'g1' && c[1].p_kind === 'pack_visit' ? 'yes' : 'MISSING'));
   t = await text();
-  out.push('the desk is told to suggest a membership: ' + (/suggest a membership/.test(t) ? 'yes' : 'MISSING'));
+  out.push('the desk is told to suggest a membership: ' + (/suggest a membership/i.test(t) ? 'yes' : 'MISSING'));
   out.push("today's list with the cash: " + (/Today's walk-ins/.test(t) && /₱150 cash in the drawer/.test(t) ? 'yes' : 'MISSING'));
   await page.locator('[data-walkin-list]').getByRole('button', { name: /^Void$/ }).first().click();
   // Voiding takes money off the day, so it asks why first (0219).

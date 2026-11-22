@@ -16,10 +16,10 @@ export default function FloatingWindow({ open, onClose, title, icon: Icon, count
   useEscapeToClose(open, onClose);
   if (!open) return null;
   return createPortal(
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6" onClick={onClose}
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 v2-scrim" onClick={onClose}
       style={{ background: 'rgba(5,4,10,0.72)', backdropFilter: 'blur(6px)' }}>
       <div role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()} {...rest}
-        className="w-full flex flex-col rounded-2xl overflow-hidden"
+        className="w-full flex flex-col rounded-2xl overflow-hidden v2-window"
         style={{ maxWidth: 1240, maxHeight: 'min(88vh, 980px)', background: 'var(--color-surface)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)',
           boxShadow: '0 24px 64px -24px rgba(0,0,0,0.45)' }}>
         <div className="flex items-center justify-between gap-3 flex-wrap px-5 py-3.5" style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.07)' }}>
