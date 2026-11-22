@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Activity, Bug, Building2, DatabaseBackup, GitBranch, History, Mail, ShieldCheck, Users, Wallet } from 'lucide-react';
 import Tiles from '../components/Tiles';
 import DemoGyms from '../components/DemoGyms';
+import MaintenanceSwitch from '../components/MaintenanceSwitch';
 import { LAST, probeMigrations, type MigrationState } from '../lib/migrations';
 import {
   demoSummary, explain, getOverview, lastBackup,
@@ -235,6 +236,9 @@ export default function Platform() {
 
       {/* Fifty demo gyms for a load test (0238): built and removed here, in steps, with progress. */}
       <DemoGyms />
+
+      {/* Maintenance mode (0263): cover every gym's apps with a message during an update or an outage. */}
+      <MaintenanceSwitch />
 
       <div className="ptabs" role="tablist" aria-label="Platform">
         <button type="button" role="tab" aria-selected={tab === 'health'} className={tab === 'health' ? 'on' : ''} onClick={() => setTab('health')}><Bug size={14} /> Health</button>

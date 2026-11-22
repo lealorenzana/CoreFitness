@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import MaintenanceGate from './components/MaintenanceGate';
 import ChooseGym from './pages/ChooseGym';
 import MyApplication from './pages/MyApplication';
 import Setup from './pages/Setup';
@@ -59,6 +60,8 @@ function App() {
         {/* Every dropdown opens a designed panel, not the browser's plain list (2026-11-07). */}
         <SelectEnhancer />
         <Toaster />
+        {/* Maintenance mode (0263): the platform's message over everything while it is on. */}
+        <MaintenanceGate />
         {/* Click a photo to see it big; frame a photo before it uploads (guides G1). */}
         <PhotoViewerHost />
         <PhotoCropperHost />

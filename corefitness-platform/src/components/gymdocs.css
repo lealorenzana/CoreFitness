@@ -63,3 +63,18 @@
 /* Save and Publish stay in reach while you scroll the sections; the document switch stays at the top. */
 .gde-foot { position: sticky; bottom: -1px; z-index: 2; background: var(--surface); margin-bottom: -16px; padding-bottom: 14px; }
 .gde-bar { position: sticky; top: -1px; z-index: 2; background: var(--surface); }
+
+/* Maintenance mode (0263) on the Platform page. */
+.mx { margin: 0 !important; padding: 14px 18px !important; flex: none !important; min-height: 0 !important; }
+.mx.on { border-color: rgb(245 158 11 / .45) !important; background: rgb(245 158 11 / .06) !important; }
+.mx-head { display: flex; align-items: center; gap: 12px; }
+.mx-icon { color: var(--text-2); display: grid; }
+.mx.on .mx-icon { color: var(--warn); }
+.mx-title { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.mx-title b { font-size: 14px; color: var(--text); }
+.mx-title em, .mx-sub { font-style: normal; font-size: 12.5px; color: var(--text-3); margin: 0; }
+.mx-body { display: grid; gap: 8px; margin-top: 10px; }
+.mx-body textarea { width: 100%; resize: vertical; }
+.mx-row { display: flex; align-items: center; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.mx-count { margin-right: auto; font-size: 12px; color: var(--text-3); }
+.mx-warn { margin: 0; margin-right: auto; font-size: 12.5px; color: var(--warn); }

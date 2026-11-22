@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import MaintenanceGate from './components/MaintenanceGate';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { supabase } from './lib/supabaseClient';
 import { syncUserCache } from './utils/auth';
@@ -253,6 +254,8 @@ function App() {
     <BrowserRouter>
       {/* Tap a photo to see it big; frame a photo before it uploads (guides G1). */}
       <PhotoViewerHost />
+      {/* Maintenance mode (0263): the platform's message over everything while it is on. */}
+      <MaintenanceGate />
       {/* Every dropdown opens a designed sheet, not the phone's plain list (2026-11-07). */}
       <SelectEnhancer />
       <PhotoCropperHost />
