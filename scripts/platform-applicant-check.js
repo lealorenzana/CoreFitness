@@ -195,7 +195,7 @@ async (page) => {
   await iron.locator('[data-docs-chip]').click();
   await page.locator('[data-review-documents]').waitFor({ timeout: 8000 });
   out.push('the six documents, each to open: ' + ((await page.locator('[data-review-documents] [data-doc]').count()) === 6
-    && (await page.locator('[data-review-documents]').getByRole('button', { name: 'Open' }).count()) === 6 ? 'yes' : 'MISSING'));
+    && (await page.locator('[data-review-documents]').getByRole('button', { name: 'View', exact: true }).count()) === 6 ? 'yes' : 'MISSING'));
   const idRow = page.locator('[data-review-documents] [data-doc="owner_id"]');
   await idRow.getByRole('button', { name: 'Send back' }).click();
   out.push('sending back needs a reason: ' + (await idRow.getByRole('button', { name: 'Send back' }).isDisabled() ? 'yes' : 'NO'));

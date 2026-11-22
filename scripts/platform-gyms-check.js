@@ -79,7 +79,9 @@ async (page) => {
   let t = await text();
 
   out.push('bento tiles: ' + ((await page.locator('.tile').count()) === 5 && /14 Gyms/.test(t) && /Need you/.test(t) ? '5, with figures' : 'MISSING'));
-  out.push('page 1 of the grid: ' + ((await cards()) === 9 && /1–9 of 14 gyms/.test(t) ? '9 cards, "1–9 of 14"' : 'MISSING ' + (await cards())));
+  // Cards a page = what fits the screen (useFitCards), so read the count and check the pager agrees.
+  const per = await cards();
+  out.push('page 1 of the grid: ' + (per >= 3 && per < 14 && new RegExp(`1–${per} of 14 gyms`).test(t) ? `${per} cards, "1–${per} of 14"` : 'MISSING ' + per));
   const cols = await page.evaluate(() => getComputedStyle(document.querySelector('.gym-grid')).gridTemplateColumns.split(' ').length);
   out.push('a grid, not a stack: ' + (cols >= 3 ? `${cols} columns` : 'MISSING ' + cols));
   await page.screenshot({ path: 'shots/platform-gyms-grid.png' });
@@ -89,7 +91,8 @@ async (page) => {
   out.push('tile labels whole: ' + (cut === 0 ? 'yes' : cut + ' CUT'));
   await page.getByRole('button', { name: '2', exact: true }).click();
   await page.waitForTimeout(300);
-  out.push('page 2: ' + ((await cards()) === 5 && /10–14 of 14 gyms/.test(await text()) ? '5 cards' : 'MISSING'));
+  const per2 = Math.min(per, 14 - per);
+  out.push('page 2: ' + ((await cards()) === per2 && new RegExp(`${per + 1}–${per + per2} of 14 gyms`).test(await text()) ? `${per2} cards` : 'MISSING ' + (await cards())));
 
   await page.getByRole('button', { name: /^Read-only/ }).click();
   await page.waitForTimeout(300);
