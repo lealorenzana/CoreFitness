@@ -215,6 +215,8 @@ async (page) => {
 
   // ---- Usage: AI --------------------------------------------------------------------------------------
   await page.goto('http://localhost:5175/usage', { waitUntil: 'domcontentloaded' });
+  // Since 2026-11-22 the AI table is the Usage box's second view, one tab over from Every feature.
+  await page.getByRole('tab', { name: 'AI' }).click();
   await page.getByText(/AI, last 30 days/).waitFor({ timeout: 15000 });
   await page.waitForTimeout(400);
   t = await text();

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { detail } from '../components/DetailLayer';
 import { Link } from 'react-router-dom';
-import { Activity, Building2, DollarSign, Download, Grid3x3, Sparkles, TrendingDown } from 'lucide-react';
+import { Activity, Bot, Building2, DollarSign, Download, Grid3x3, MessageSquareWarning, Sparkles, TrendingDown } from 'lucide-react';
 import { listGyms, type PlatformGym } from '../lib/platform';
 import { aiUsage, gymUsage, isMissingFunction, usd, USAGE_FEATURES, type GymAiUse, type GymUse } from '../lib/insight';
 import { downloadCsv } from '../lib/csv';
@@ -11,6 +11,7 @@ import InfoDot from '../components/InfoDot';
 import AiUsage from '../components/AiUsage';
 import Pagination from '../components/Pagination';
 import { usePaged } from '../lib/usePaged';
+import './usage.css';
 
 /**
  * What each gym uses (0140): every gym against every feature, counted over the
@@ -28,6 +29,8 @@ export default function Usage() {
   const [use, setUse] = useState<GymUse[] | null>(null);
   const [gyms, setGyms] = useState<PlatformGym[]>([]);
   const [sort, setSort] = useState<string>('total');
+  /** The big box shows the heatmap or the AI table; one at a time, each with the whole width. */
+  const [view, setView] = useState<'features' | 'ai'>('features');
   const [error, setError] = useState<string | null>(null);
   /** Null until loaded, or when 0147 is not pasted — the tile then says which. */
   const [ai, setAi] = useState<GymAiUse[] | null>(null);
@@ -74,72 +77,104 @@ export default function Usage() {
         { icon: TrendingDown, value: use ? String(quiet.length) : '…', label: 'Open gyms doing nothing', act: quiet.length > 0, tip: quiet.map((g) => g.name).join('\n') || 'None' },
         { icon: DollarSign, value: ai ? usd(spend) : aiMissing || aiFailed ? '—' : '…', label: `AI coach spend (${days} days)`, tip: spendTip },
       ]} />
-      <div className="toolbar">
-        <div className="filters">
-          {[7, 30, 90].map((d) => <button key={d} type="button" className={days === d ? 'on' : ''} onClick={() => setDays(d)}>{d} days</button>)}
-        </div>
-        <select aria-label="Sort" value={sort} onChange={(e) => setSort(e.target.value)} style={{ width: 200 }}>
-          <option value="total">Busiest first</option>
-          <option value="breadth">Most features used</option>
-          {USAGE_FEATURES.map((f) => <option key={f.key} value={f.key}>Most {f.label.toLowerCase()}</option>)}
-        </select>
-        <span className="spacer" />
-        <button className="btn ghost" disabled={!use?.length} onClick={() => downloadCsv(`core-fitness-usage-${days}d`, rows, [
-          ['Gym', (g) => g.name], ...USAGE_FEATURES.map((f) => [f.label, (g: PlatformGym) => n(g.id, f.key)] as [string, (g: PlatformGym) => number]),
-          ['Total', (g) => total(g.id)],
-        ])}><Download size={15} /> Export CSV</button>
-      </div>
       {error && <p className="err">{error}</p>}
 
-      <AiUsage days={days} />
+      {/* One box with two views and its own controls; the gyms and features worth a word beside it (2026-11-22). */}
+      <div className="ux" data-va-keep>
+        <section className="card ux-main">
+          <header className="ux-head">
+            <div className="ux-seg" role="tablist" aria-label="Show">
+              <button type="button" role="tab" aria-selected={view === 'features'} className={view === 'features' ? 'on' : ''} onClick={() => setView('features')}>
+                <Grid3x3 size={14} /> Every feature</button>
+              <button type="button" role="tab" aria-selected={view === 'ai'} className={view === 'ai' ? 'on' : ''} onClick={() => setView('ai')}>
+                <Bot size={14} /> AI</button>
+            </div>
+            <div className="ux-seg" role="group" aria-label="Days">
+              {[7, 30, 90].map((d) => <button key={d} type="button" className={days === d ? 'on' : ''} onClick={() => setDays(d)}>{d} days</button>)}
+            </div>
+            {view === 'features' && (
+              <select aria-label="Sort" value={sort} onChange={(e) => setSort(e.target.value)}>
+                <option value="total">Busiest first</option>
+                <option value="breadth">Most features used</option>
+                {USAGE_FEATURES.map((f) => <option key={f.key} value={f.key}>Most {f.label.toLowerCase()}</option>)}
+              </select>
+            )}
+            <span className="spacer" />
+            {view === 'features' && (
+              <button className="btn ghost" disabled={!use?.length} onClick={() => downloadCsv(`core-fitness-usage-${days}d`, rows, [
+                ['Gym', (g) => g.name], ...USAGE_FEATURES.map((f) => [f.label, (g: PlatformGym) => n(g.id, f.key)] as [string, (g: PlatformGym) => number]),
+                ['Total', (g) => total(g.id)],
+              ])}><Download size={15} /> Export CSV</button>
+            )}
+          </header>
 
-      <section className="card use-card">
-        <h2 className="section-title"><Grid3x3 size={14} /> Every gym, every feature, last {days} days
-          <InfoDot tip="Each cell is a count. The deeper the violet, the closer that gym is to the busiest gym for that feature. Hover a cell for the number in words." /></h2>
-        <div className="use-wrap">
-          <table className="use-table">
-            <thead>
-              <tr>
-                <th className="use-gym">Gym</th>
-                {USAGE_FEATURES.map((f) => <th key={f.key} data-tip={f.tip}><button type="button" className={sort === f.key ? 'on' : ''} onClick={() => setSort(f.key)}>{f.label}</button></th>)}
-                <th data-tip="How many of the features this gym used at all"><button type="button" className={sort === 'breadth' ? 'on' : ''} onClick={() => setSort('breadth')}>Breadth</button></th>
-              </tr>
-            </thead>
-            <tbody>
-              {usagePage.rows.map((g) => (
-                <tr key={g.id}>
-                  <td className="use-gym"><Link to={`/gyms/${g.id}`}><GymMark name={g.name} logoUrl={g.logo_url} accent={g.accent} size={26} /><span>{g.name}</span></Link></td>
-                  {USAGE_FEATURES.map((f) => {
-                    const v = n(g.id, f.key);
-                    const a = v ? 0.12 + (v / most(f.key)) * 0.72 : 0;
-                    return (
-                      <td key={f.key} className={v ? '' : 'zero'} style={{ cursor: 'pointer', ...(v ? { background: `rgba(124, 58, 237, ${a.toFixed(2)})` } : {}) }}
-                        data-detail={detail({ title: `${g.name}, ${f.label}`, value: `${v.toLocaleString('en-PH')} in ${days} days`, rows: [
-                          ['The busiest gym at this', most(f.key).toLocaleString('en-PH')], ['A day, on average', (v / days).toFixed(1)],
-                          ...(f.key === 'coach' && ai ? [['Estimated cost at list price', usd(spendOf(g.id))] as [string, string]] : []),
-                        ], note: v ? undefined : 'Not used in this window, worth a word with the owner.' })}
-                        data-tip={f.key === 'coach'
-                          ? `${g.name}: ${v.toLocaleString('en-PH')} coach messages in ${days} days`
-                            + (ai ? `, about ${usd(spendOf(g.id))} at list price (an estimate)` : '')
-                          : `${g.name}: ${v.toLocaleString('en-PH')} ${f.label.toLowerCase()} in ${days} days`}>
-                        {v ? v.toLocaleString('en-PH') : '·'}
-                      </td>
-                    );
-                  })}
-                  <td className="use-breadth" data-tip={`${breadth(g.id)} of ${USAGE_FEATURES.length} features used`}>
-                    <span className="meter"><span style={{ width: `${(breadth(g.id) / USAGE_FEATURES.length) * 100}%` }} /></span>
-                    <b>{breadth(g.id)}</b>
-                  </td>
-                </tr>
+          {view === 'ai' ? <div className="ux-ai"><AiUsage days={days} /></div> : (
+            <>
+              <p className="ux-sub">Each cell is a count for the last {days} days. The deeper the violet, the closer that gym is to the busiest gym for that feature.
+                <InfoDot tip="Hover a cell for the number in words; click it for the busiest gym and a daily average." /></p>
+              <div className="use-wrap ux-wrap">
+                <table className="use-table ux-table">
+                  <colgroup><col className="ux-col-gym" />{USAGE_FEATURES.map((f) => <col key={f.key} />)}<col className="ux-col-breadth" /></colgroup>
+                  <thead>
+                    <tr>
+                      <th className="use-gym">Gym</th>
+                      {USAGE_FEATURES.map((f) => <th key={f.key} data-tip={f.tip}><button type="button" className={sort === f.key ? 'on' : ''} onClick={() => setSort(f.key)}>{f.label}</button></th>)}
+                      <th data-tip="How many of the features this gym used at all"><button type="button" className={sort === 'breadth' ? 'on' : ''} onClick={() => setSort('breadth')}>Breadth</button></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {usagePage.rows.map((g) => (
+                      <tr key={g.id}>
+                        <td className="use-gym"><Link to={`/gyms/${g.id}`}><GymMark name={g.name} logoUrl={g.logo_url} accent={g.accent} size={24} /><span>{g.name}</span></Link></td>
+                        {USAGE_FEATURES.map((f) => {
+                          const v = n(g.id, f.key);
+                          const a = v ? 0.12 + (v / most(f.key)) * 0.72 : 0;
+                          return (
+                            <td key={f.key} className={v ? 'ux-v' : 'zero'}
+                              data-detail={detail({ title: `${g.name}, ${f.label}`, value: `${v.toLocaleString('en-PH')} in ${days} days`, rows: [
+                                ['The busiest gym at this', most(f.key).toLocaleString('en-PH')], ['A day, on average', (v / days).toFixed(1)],
+                                ...(f.key === 'coach' && ai ? [['Estimated cost at list price', usd(spendOf(g.id))] as [string, string]] : []),
+                              ], note: v ? undefined : 'Not used in this window, worth a word with the owner.' })}
+                              data-tip={f.key === 'coach'
+                                ? `${g.name}: ${v.toLocaleString('en-PH')} coach messages in ${days} days`
+                                  + (ai ? `, about ${usd(spendOf(g.id))} at list price (an estimate)` : '')
+                                : `${g.name}: ${v.toLocaleString('en-PH')} ${f.label.toLowerCase()} in ${days} days`}>
+                              {v ? <span style={{ background: `rgba(124, 58, 237, ${a.toFixed(2)})` }}>{v.toLocaleString('en-PH')}</span> : '·'}
+                            </td>
+                          );
+                        })}
+                        <td className="use-breadth" data-tip={`${breadth(g.id)} of ${USAGE_FEATURES.length} features used`}>
+                          <b>{breadth(g.id)}</b><small>/{USAGE_FEATURES.length}</small>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <Pagination page={usagePage.page} perPage={usagePage.perPage} total={usagePage.total} noun={usagePage.total === 1 ? 'gym' : 'gyms'} onPage={usagePage.setPage} />
+            </>
+          )}
+        </section>
+
+        <aside className="card ux-side">
+          <h2 className="section-title"><MessageSquareWarning size={14} /> Worth a word</h2>
+          <div className="ux-block">
+            <span className="ux-label">Open gyms doing nothing <b>{use ? quiet.length : '…'}</b></span>
+            {use && quiet.length === 0 && <p className="ux-none">Every open gym did something in these {days} days.</p>}
+            <ul className="ux-list">
+              {quiet.map((g) => (
+                <li key={g.id}><Link to={`/gyms/${g.id}`}><GymMark name={g.name} logoUrl={g.logo_url} accent={g.accent} size={22} /><span>{g.name}</span></Link></li>
               ))}
-            </tbody>
-          </table>
-        </div>
-        <Pagination page={usagePage.page} perPage={usagePage.perPage} total={usagePage.total} noun={usagePage.total === 1 ? 'gym' : 'gyms'} onPage={usagePage.setPage} />
-        {unused.length > 0 && use && use.length > 0 && (
-          <p className="meta use-foot">Nobody used {unused.map((f) => f.label.toLowerCase()).join(', ')} in these {days} days, worth an announcement.</p>
-        )}
-      </section>
+            </ul>
+          </div>
+          <div className="ux-block">
+            <span className="ux-label">Features nobody used <b>{use ? unused.length : '…'}</b></span>
+            {use && unused.length === 0 && <p className="ux-none">Every feature was used somewhere.</p>}
+            {unused.length > 0 && <p className="ux-chips">{unused.map((f) => <span key={f.key}>{f.label}</span>)}</p>}
+            {unused.length > 0 && use && use.length > 0 && <p className="ux-none">Worth an announcement to every gym.</p>}
+          </div>
+        </aside>
+      </div>
     </>
   );
 }
