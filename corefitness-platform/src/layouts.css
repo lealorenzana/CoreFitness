@@ -43,3 +43,24 @@
 }
 .content .page > .ppl-find { min-height: 0 !important; flex: none !important; overflow: visible !important; }
 .ppl > * { margin: 0 !important; }
+
+/* ---- Growth (2026-11-22): the six figures in one strip; the four boxes on the 16px grid; reasons as amber words ---- */
+.content .page[data-page="growth"] > .kpis { display: grid !important; grid-template-columns: repeat(6, minmax(0, 1fr)) !important; gap: 0 !important;
+  border: 1px solid var(--hairline); border-radius: 12px; background: var(--surface); overflow: hidden; flex: none !important; min-height: 0 !important; }
+.page[data-page="growth"] > .kpis > .kpi { border: 0 !important; border-radius: 0 !important; background: none !important; box-shadow: none !important;
+  transform: none !important; padding: 14px 18px !important; gap: 4px !important; min-height: 0 !important; }
+.page[data-page="growth"] > .kpis > .kpi + .kpi { border-left: 1px solid var(--hairline) !important; }
+.page[data-page="growth"] > .kpis > .kpi:hover { background: var(--surface-high) !important; }
+.page[data-page="growth"] > .kpis .kpi-label { font-size: 12.5px !important; text-transform: none !important; letter-spacing: 0 !important; }
+.page[data-page="growth"] > .kpis .kpi-value { font-size: 24px !important; line-height: 1.1; }
+.page[data-page="growth"] > .kpis .kpi-foot { font-size: 12px; color: var(--text-2); }
+.page[data-page="growth"] .growth-grid { gap: 16px !important; }
+.page[data-page="growth"] .growth-grid section.card { margin: 0 !important; padding: 16px 18px !important; }
+.page[data-page="growth"] .risk-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--hairline); }
+.page[data-page="growth"] .risk-row:first-of-type { border-top: 0; }
+.page[data-page="growth"] .risk-row .todo { flex: 1; min-width: 0; padding: 0 !important; border: 0 !important; background: none !important; }
+.page[data-page="growth"] .risk-row .chips { display: flex; flex-direction: column; gap: 2px; margin-top: 3px; }
+.page[data-page="growth"] .risk-row .chip.warn { padding: 0 !important; border: 0 !important; background: none !important; color: var(--warn) !important;
+  font-size: 12.5px; font-weight: 500; height: auto !important; }
+.page[data-page="growth"] .risk-row .pill { font-variant-numeric: tabular-nums; }
+@media (max-width: 1400px) { .content .page[data-page="growth"] > .kpis { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; } }

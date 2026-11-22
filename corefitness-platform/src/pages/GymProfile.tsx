@@ -194,14 +194,20 @@ export default function GymProfile() {
 
       </>}
 
-      {tab === 'manage' && <>
-      <ManageGym gym={gym} onChanged={load} />
-      <GymDetail gym={gym} onChanged={() => void load()} />
-      </>}
+      {tab === 'manage' && <div className="gx-tab2 manage-tab">
+        <ManageGym gym={gym} onChanged={load} />
+        <GymDetail gym={gym} onChanged={() => void load()} />
+      </div>}
 
-      {tab === 'money' && <div className="grid-2">
+      {tab === 'money' && <div className="gx-tab2 money-tab">
         <section className="card" data-card="billing">
         <h2 className="section-title"><Clock size={14} /> Billing</h2>
+        <div className="gx-figs four gx-bill-figs">
+          <div><b>{gym.paid_until ? day(gym.paid_until) : 'None'}</b><span>covered until</span></div>
+          <div><b className={gym.days_left !== null && gym.days_left < 0 ? 'warn' : undefined}>{gym.days_left === null ? '—' : gym.days_left < 0 ? `${-gym.days_left} late` : gym.days_left.toLocaleString('en-PH')}</b><span>{gym.days_left !== null && gym.days_left < 0 ? 'days' : 'days left'}</span></div>
+          <div><b>{peso(gym.paid_total)}</b><span>paid in all</span></div>
+          <div><b>{payments.length}</b><span>payment{payments.length === 1 ? '' : 's'}</span></div>
+        </div>
         <p className="meta">
           {gym.paid_until && Number(gym.paid_total) === 0 && gym.plan === 'trial'
             ? <>Free trial until {day(gym.paid_until)}. The next day the app stops for the gym, its staff and its members (no grace days) until it pays for a plan. Change the date to shorten or lengthen the trial.</>
@@ -242,21 +248,25 @@ export default function GymProfile() {
         )}
       </section>
 
-        <section className="card">
+        <section className="card gx-pay">
           <h2 className="section-title"><Receipt size={14} /> Payments to Core Fitness</h2>
-          {payments.length === 0 && <p className="empty">None recorded.</p>}
-          {payments.slice(0, 8).map((p) => (
-            <div key={p.id} className="log" style={{ display: 'flex', gap: 10 }}>
-              <span style={{ flex: 1 }}>{day(p.paid_on)}<span className="muted"> · covers to {day(p.covers_until)}{p.method ? ` · ${p.method}` : ''}</span></span>
-              <span style={{ fontWeight: 700, color: 'var(--text)' }}>{peso(p.amount)}</span>
+          {payments.length === 0 ? <p className="empty">None recorded.</p> : (
+            <div className="gx-table" role="table" aria-label="Payments to Core Fitness">
+              <div className="gx-tr gx-th" role="row"><span role="columnheader">Paid on</span><span role="columnheader">Covers until</span><span role="columnheader">Method</span><span role="columnheader">Amount</span></div>
+              {payments.map((p) => (
+                <div key={p.id} className="gx-tr" role="row">
+                  <span role="cell">{day(p.paid_on)}</span><span role="cell">{day(p.covers_until)}</span>
+                  <span role="cell">{p.method || '—'}</span><b role="cell">{peso(p.amount)}</b>
+                </div>
+              ))}
             </div>
-          ))}
-          {payments.length > 8 && <p className="meta"><Link to="/money">All {payments.length} on Money</Link></p>}
+          )}
+          {payments.length > 0 && <p className="gx-table-foot">Every payment, from every gym, is on <Link to="/money">Money</Link>.</p>}
         </section>
 
       </div>}
 
-      {tab === 'people' && <div className="grid-2">
+      {tab === 'people' && <div className="gx-tab2 people-tab">
         <section className="card">
           <h2 className="section-title row" style={{ gap: 8 }}><UserCog size={14} /> <span className="grow">Who runs it</span>
             <button type="button" className="btn ghost sm" onClick={() => setWriting(true)} data-write-owner><Send size={13} /> Write to the owner</button>
@@ -311,15 +321,18 @@ export default function GymProfile() {
       </div>}
 
       {tab === 'history' && <>
-        <section className="card">
+        <section className="card gx-history">
           <h2 className="section-title"><Activity size={14} /> Timeline</h2>
+          <p className="gx-sub">What happened to this gym's account on Core Fitness, newest first.</p>
           {events.length === 0 && <p className="empty">Nothing yet.</p>}
-          {events.slice(0, 10).map((e) => (
-            <div key={e.id} className="log" style={{ display: 'flex', gap: 10 }}>
-              <span style={{ flex: 1, color: 'var(--text)' }}>{e.summary}</span>
-              <span className="muted" style={{ whiteSpace: 'nowrap', fontSize: 11.5 }}>{day(e.created_at)}</span>
-            </div>
-          ))}
+          <ol className="gx-timeline">
+            {events.map((e) => (
+              <li key={e.id}>
+                <time dateTime={e.created_at}>{day(e.created_at)}</time>
+                <span>{e.summary}</span>
+              </li>
+            ))}
+          </ol>
         </section>
       </>}
     </>

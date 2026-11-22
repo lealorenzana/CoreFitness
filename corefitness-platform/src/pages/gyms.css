@@ -159,3 +159,55 @@
 .modal .ask { background: none !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; }
 .modal .ask select, .modal .ask .dp-btn { height: 42px !important; min-height: 42px; box-sizing: border-box; }
 .modal .ask > .row { padding-top: 16px; border-top: 1px solid var(--hairline); }
+
+/* ---- the other tabs (2026-11-22): two columns that fill the page, ruled rows, nothing floating ---- */
+.gx-tab2 { display: grid; gap: 16px; min-height: 0; align-items: stretch; }
+.gx-tab2.manage-tab { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+.gx-tab2.money-tab { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.gx-tab2.people-tab { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+.gx-tab2 > .card { margin: 0 !important; min-height: 0; overflow: auto; padding: 16px 18px !important; display: flex; flex-direction: column; }
+.page[data-page="gyms"] .card .empty { display: block; text-align: left; margin: 4px 0 0; padding: 0; color: var(--text-3); font-size: 13px; min-height: 0; flex: none; }
+.gx-sub { margin: -4px 0 12px; font-size: 12.5px; color: var(--text-3); }
+
+/* Manage: a settings list, each row a label and its help on the left, the control on the right. */
+.page[data-page="gyms"] .manage .manage-grid { display: grid !important; grid-template-columns: minmax(0, 1fr) !important; gap: 0 !important; }
+.page[data-page="gyms"] .manage .manage-box { display: grid !important; grid-template-columns: minmax(0, 1fr) auto; column-gap: 20px; row-gap: 4px; align-items: center;
+  padding: 14px 0 !important; margin: 0 !important; background: none !important; border: 0 !important; border-top: 1px solid var(--hairline) !important; border-radius: 0 !important; }
+.page[data-page="gyms"] .manage .manage-box > :first-child { grid-column: 1; grid-row: 1; font-size: 13.5px; font-weight: 600; color: var(--text); text-transform: none; letter-spacing: 0; }
+.page[data-page="gyms"] .manage .manage-box > :last-child { grid-column: 1; grid-row: 2; font-size: 12.5px; line-height: 1.5; }
+.page[data-page="gyms"] .manage .manage-box > :not(:first-child):not(:last-child) { grid-column: 2; grid-row: 1 / span 2; justify-self: end; }
+.page[data-page="gyms"] .manage .manage-box > input { grid-column: 1 / -1 !important; grid-row: 3 !important; justify-self: stretch !important; }
+.page[data-page="gyms"] .manage .manage-box select { width: 210px; height: 34px; }
+.page[data-page="gyms"] .manage .manage-box .btn { height: 34px; }
+
+/* The gym's own figures (GymDetail): a ruled grid, not floating numbers. */
+.page[data-page="gyms"] .detail .stats { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 !important; margin-top: 14px;
+  border-top: 1px solid var(--hairline); }
+.page[data-page="gyms"] .detail .stats .stat { display: flex !important; flex-direction: column; gap: 2px; padding: 12px 12px 12px 0 !important; margin: 0 !important;
+  background: none !important; border: 0 !important; border-bottom: 1px solid var(--hairline) !important; border-radius: 0 !important; min-width: 0; }
+.page[data-page="gyms"] .detail .stats .stat strong { font-size: 18px; font-weight: 650; color: var(--text); font-variant-numeric: tabular-nums; }
+.page[data-page="gyms"] .detail .stats .stat span { font-size: 12px; color: var(--text-3); }
+.page[data-page="gyms"] .detail > .row .name { font-size: 15px; font-weight: 650; }
+
+/* Billing: four figures, the words, the buttons; payments as a table with headings. */
+.gx-bill-figs { margin: 0 0 14px; }
+.gx-bill-figs b.warn { color: var(--warn); }
+.gx-table { display: grid; font-size: 13px; }
+.gx-tr { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.1fr) minmax(0, 1fr) 90px; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--hairline); align-items: baseline; }
+.gx-tr > :last-child { text-align: right; font-variant-numeric: tabular-nums; }
+.gx-tr b { font-weight: 650; color: var(--text); }
+.gx-th { padding-top: 0; font-size: 12px; color: var(--text-3); }
+.gx-table-foot { margin: auto 0 0; padding-top: 12px; font-size: 12.5px; color: var(--text-3); }
+
+/* People: contacts as ruled rows. */
+.page[data-page="gyms"] .people-tab .log { padding: 12px 0; border-top: 1px solid var(--hairline); }
+.page[data-page="gyms"] .people-tab .owner-msg { padding: 12px 0; border-top: 1px solid var(--hairline); }
+
+/* History: dates in a left column on one line; the summary beside them. */
+.gx-history { overflow: auto; }
+.gx-timeline { list-style: none; margin: 0; padding: 0; }
+.gx-timeline li { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 16px; padding: 11px 0; border-top: 1px solid var(--hairline); font-size: 13.5px; position: relative; }
+.gx-timeline time { color: var(--text-3); font-variant-numeric: tabular-nums; }
+.gx-timeline span { color: var(--text); }
+
+@media (max-width: 1100px) { .gx-tab2.manage-tab, .gx-tab2.money-tab, .gx-tab2.people-tab { grid-template-columns: minmax(0, 1fr); } }
