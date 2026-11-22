@@ -419,3 +419,89 @@ input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:foc
 .status-side .card { border-radius: var(--r-l); }
 .side-label { letter-spacing: 0; text-transform: none; font-size: 13px; font-weight: 600; }
 @media (max-width: 560px) { .app-tabs { border-radius: 0; } .app-tab { flex: 1 1 auto; padding: 0 8px; } }
+
+/* ---- My application, second pass (2026-11-22): one top bar, a quiet title, a track from real data,
+   the action first, one side panel. No eyebrow, no tinted callouts, no stacked cards. ---- */
+.status-back-row { min-height: 40px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.status-back { margin: 0; display: inline-flex; align-items: center; font-weight: 500; }
+.status-who { font-size: 13px; color: var(--text-3); text-align: right; overflow-wrap: anywhere; }
+.status-who .link-btn { color: var(--text); text-decoration-color: var(--line-strong); }
+.status-who .link-btn:hover { text-decoration-color: currentColor; }
+.status-hero { padding-top: 36px; }
+.status-title { margin: 0; font-size: clamp(30px, 3.8vw, 44px); font-weight: 680; letter-spacing: -0.03em; line-height: 1.08; }
+.status-lede { margin-top: 12px; gap: 12px; font-size: 14px; }
+.status-pill { padding: 3px 10px; font-size: 12.5px; font-weight: 600; }
+
+.status-track { grid-template-columns: repeat(var(--n, 4), minmax(0, 1fr)); gap: 8px; margin-top: 32px; }
+.status-track li { padding: 12px 8px 0 0; border-top: 2px solid var(--line-strong); display: grid;
+  grid-template-columns: auto minmax(0, 1fr); column-gap: 8px; row-gap: 2px; align-items: baseline; }
+.status-track li::before { content: none; }
+.status-track li.done { border-top-color: var(--violet-text); }
+.status-track li.now { border-top-color: var(--amber); }
+.status-track .st-n { grid-row: span 2; font-size: 12.5px; font-weight: 650; color: var(--text-3); font-variant-numeric: tabular-nums; min-width: 12px; }
+.status-track li.done .st-n { color: var(--violet-text); }
+.status-track li.now .st-n { color: var(--amber-text); }
+.status-track b { font-size: 14px; font-weight: 600; }
+.status-track .st-sub { font-size: 13px; color: var(--text-3); }
+.status-track li.now .st-sub { color: var(--text-2); }
+
+.status-grid { grid-template-columns: minmax(0, 1fr) 280px; gap: 48px; margin-top: 44px; }
+.app-tabs { margin-bottom: 24px; }
+.app-panel { gap: 20px; }
+.app-panel > .pay-plan:first-child, .app-panel > .pay-plan:first-child .status-h { margin-top: 0; }
+.status-h { font-size: 20px; font-weight: 650; letter-spacing: -0.02em; }
+.status-aside { margin: 0; font-size: 14px; color: var(--text-2); }
+
+/* The next step: words and one button, on the page, not in a tinted box. */
+.next-card { padding: 0 0 22px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: none; }
+.next-card.is-good { background: none; border-color: var(--line); }
+.next-label { font-size: 13px; font-weight: 600; }
+.next-title { font-size: 22px; font-weight: 650; }
+.next-text { max-width: 60ch; }
+.status-callout { background: none; border: 0; border-left: 2px solid var(--line-strong); border-radius: 0; padding: 2px 0 2px 16px; }
+.status-callout.is-good { border-left-color: var(--violet-text); }
+
+/* Paying: the amount is the number on the page. */
+.pay-sum { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 14px; margin-top: 14px; }
+.pay-sum__amt { font-size: clamp(34px, 4vw, 44px); font-weight: 700; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; color: var(--text); }
+.pay-sum__for { font-size: 15px; color: var(--text-2); }
+.pay-plan .status-sub { margin-top: 10px; max-width: 62ch; }
+.pay-plan > .cta-row { margin-top: 18px; }
+.pay-plan .paid-form { margin-top: 24px; padding: 20px; border: 1px solid var(--line); border-radius: var(--r-l, 16px); background: var(--surface); }
+.pay-plan .paid-form > strong { font-size: 15px; font-weight: 650; }
+.send-to { background: var(--surface-high); border-color: var(--line); }
+.send-to__amt { color: var(--text); }
+.send-to__copy:hover { border-color: var(--line-strong); }
+
+/* One side panel: sections split by a line, no card per fact. */
+.status-side { gap: 0; padding-left: 28px; border-left: 1px solid var(--line); }
+.side-sec { padding: 20px 0; border-bottom: 1px solid var(--line); }
+.side-sec:first-child { padding-top: 4px; }
+.side-sec:last-child { border-bottom: 0; }
+.side-sec p { margin: 6px 0 0; font-size: 14px; color: var(--text-2); }
+.side-sec a { color: var(--text); text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
+.side-sec a:hover { text-decoration-color: currentColor; }
+.side-sec .link-btn { margin-top: 10px; font-size: 14px; color: var(--violet-text); }
+.side-sec .cta { margin-top: 12px; height: 44px; font-size: 14px; }
+.side-label { font-size: 12.5px; font-weight: 600; color: var(--text-3); }
+.side-big { font-size: 22px; font-weight: 650; letter-spacing: -0.02em; margin-top: 6px; }
+.side-note { font-size: 13px !important; color: var(--text-3) !important; margin-top: 12px !important; }
+
+@media (max-width: 860px) {
+  .status-grid { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+  .status-side { padding-left: 0; border-left: 0; border-top: 1px solid var(--line); padding-top: 8px; }
+  .side-sec:first-child { padding-top: 16px; }
+}
+@media (max-width: 560px) {
+  .status-back-row { flex-wrap: wrap; row-gap: 4px; }
+  .status-who { text-align: left; }
+  .status-hero { padding-top: 24px; }
+  .status-track { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 18px; }
+}
+/* A way to pay inside a message: flat, the name once, the QR on a plain frame. */
+.pay-card { background: var(--surface-high); border-color: var(--line); }
+.pay-kind { text-transform: none; letter-spacing: 0; font-weight: 600; font-size: 12.5px; color: var(--text-3); }
+.pay-qr { border: 1px solid var(--line); }
+.pay-number { background: var(--surface); border-color: var(--line); }
+.pay-number code { font-family: inherit; font-size: 16px; font-weight: 650; letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+.bubble.mine { background: var(--surface-high); border-color: var(--line-strong); }

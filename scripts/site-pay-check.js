@@ -86,7 +86,7 @@ async (page) => {
   let t = await pay.innerText();
   out.push('a paid plan shows Pay for your plan, waiting for the documents: ' + (/₱1,499 for a month/.test(t) && (await page.locator('[data-pay-state="waiting"]').count()) === 1
     && (await page.locator('[data-pay-online]').count()) === 0 ? 'yes' : 'MISSING ' + t));
-  out.push('the page says a paid plan pays before being let in: ' + (/you pay here once your six documents are verified/.test(await page.locator('main').innerText()) ? 'yes' : 'MISSING'));
+  out.push('the page says a paid plan pays before being let in: ' + (/You pay here once all six documents are verified/.test(await page.locator('main').innerText()) ? 'yes' : 'MISSING'));
 
   // 0228: change the plan from the Plan card, until a payment is sent.
   await page.locator('[data-change-plan]').click();

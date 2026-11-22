@@ -137,9 +137,12 @@ export default function PayPlan({ applicationId, onChanged }: { applicationId: s
         </p>
       ) : (
         <>
+          <div className="pay-sum">
+            <span className="pay-sum__amt">{peso(amount)}</span>
+            <span className="pay-sum__for">{st.plan_name}, {term}</span>
+          </div>
           <p className="status-sub" data-pay-state="open">
-            All six documents are verified. Pay {peso(amount)} for {st.plan_name} ({term}); we let you in once it arrives,
-            and your plan starts that day.
+            All six documents are verified. We let you in once the payment arrives, and your plan starts that day.
           </p>
           {st.last?.status === 'refused' && (
             <p className="note bad" data-pay-refused>We could not find your payment (ref {st.last.reference}): {st.last.reason} Send it again below.</p>
@@ -149,7 +152,7 @@ export default function PayPlan({ applicationId, onChanged }: { applicationId: s
               <button type="button" className="cta" disabled={busy} onClick={() => void payOnline()} data-pay-online>
                 {busy ? 'Opening…' : `Pay ${peso(amount)} online`}
               </button>
-              <span className="note">GCash, Maya, card or online banking, through PayMongo.</span>
+              <span className="note">GCash, Maya, card or online banking, through PayMongo</span>
             </div>
           )}
           {methods.length > 0 ? (

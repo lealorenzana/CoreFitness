@@ -40,7 +40,7 @@ function PayCard({ m }: { m: Pay }) {
   return (
     <div className={`pay-card kind-${m.kind}`}>
       <div className="pay-head">
-        <span className="pay-kind">{KIND[m.kind] ?? 'Payment'}</span>
+        {!m.label.toLowerCase().includes((KIND[m.kind] ?? 'Payment').toLowerCase()) && <span className="pay-kind">{KIND[m.kind] ?? 'Payment'}</span>}
         <strong>{m.label}</strong>
       </div>
       {m.qr_image && (
@@ -172,7 +172,6 @@ export default function StatusPage({ token, accountId, onSignOut, onDeleted }: {
   const yearly = s.plan?.price_yearly != null ? Number(s.plan.price_yearly) : null;
   const sentMethods = s.messages.flatMap((m) => (m.pay ? [m.pay] : []));
   const methodsToName = s.pay?.length ? s.pay : sentMethods;
-  const step = s.status === 'approved' ? 3 : 2;
   const pill = s.status === 'approved' ? 'Let in' : s.status === 'rejected' ? 'Not this time' : s.status === 'withdrawn' ? 'Called off' : 'Being read';
   const docs = s.documents ?? [];
   const verifiedCount = 6 - (s.missing?.length ?? 6);
@@ -193,28 +192,47 @@ export default function StatusPage({ token, accountId, onSignOut, onDeleted }: {
     : checking ? { title: 'We are checking your documents', text: 'Nothing to do for now. We tell you here and by email. Ask us anything in Messages.', go: { label: 'Open Messages', tab: 'messages' } }
     : payState?.due && !payState.paid ? { title: payState.last?.status === 'pending' ? 'We are checking your payment' : 'Pay for your plan', text: payState.last?.status === 'pending' ? 'We match it to the transfer and tell you here.' : 'All six documents are verified. Pay below, online or by GCash, Maya or bank.' }
     : { good: true, title: 'Ready for us', text: 'Everything is in. We let you in shortly. You will hear from us here and by email.' };
+  /** Paying is the next step: the payment itself opens Overview, with nothing above it saying the same thing. */
+  const payIsNext = !!accountId && s.status === 'pending' && !!payState?.due && payState.ready && !payState.paid && payState.last?.status !== 'pending';
+
+  /** The track follows the real process: documents (counted), payment (a paid plan only), then setting up. */
+  const approved = s.status === 'approved';
+  const docsKnown = !!s.documents;
+  const docsDone = approved || verifiedCount === 6;
+  const payDone = approved || !!payState?.paid;
+  type Step = { label: string; sub: string; state: 'done' | 'now' | '' };
+  const steps: Step[] = [
+    { label: 'Applied', sub: day(s.created_at), state: 'done' },
+    { label: 'Documents', sub: docsKnown || approved ? (docsDone ? 'all six verified' : `${verifiedCount} of 6 verified`) : 'six to send', state: docsDone ? 'done' : 'now' },
+    ...(price ? [{ label: 'Payment', sub: payDone ? 'paid' : payState?.last?.status === 'pending' ? 'being checked' : `${peso(price)} a month`, state: payDone ? 'done' : docsDone ? 'now' : '' } as Step] : []),
+    { label: 'Set up', sub: approved ? 'your turn' : 'once we let you in', state: approved ? 'now' : '' },
+  ];
+  const closed = s.status === 'rejected' || s.status === 'withdrawn';
 
   return (
     <div className="status-page">
       <div className="status-back-row">
         <a className="status-back" href="#top">← Core Fitness</a>
-        {onSignOut && <button type="button" className="link-btn" onClick={onSignOut}>Sign out</button>}
+        {accountId ? (
+          <span className="status-who">Signed in as {s.email}{onSignOut && <> · <button type="button" className="link-btn" onClick={onSignOut}>Sign out</button></>}</span>
+        ) : <span className="status-who">Keep this link. It opens your application.</span>}
       </div>
       <div className="status-hero">
-        <span className="eyebrow">{accountId ? `Your application · signed in as ${s.email}` : 'Your application · keep this link'}</span>
         <h1 className="status-title">{s.gym_name}</h1>
         <p className="status-lede">
           <span className={`status-pill is-${s.status}`}>{pill}</span>
-          Applied {day(s.created_at)} by {s.owner_name}
+          <span>{s.plan ? `${s.plan.name} · ` : ''}applied {day(s.created_at)} by {s.owner_name}</span>
         </p>
-        <ol className="status-track" aria-label="Where your application is">
-          <li className="done"><b>Applied</b><span>{day(s.created_at)}</span></li>
-          <li className={s.status === 'pending' ? 'now' : 'done'}>
-            <b>{s.status === 'rejected' ? 'Not this time' : 'We read it'}</b>
-            <span>{s.decided_at ? day(s.decided_at) : 'usually a day or two'}</span>
-          </li>
-          <li className={step === 3 ? 'now' : ''}><b>{price ? 'Pay, then set up' : 'Set up'}</b><span>{s.status === 'approved' ? 'your turn' : price ? 'once documents are verified' : 'after we let you in'}</span></li>
-        </ol>
+        {!closed && (
+          <ol className="status-track" aria-label="Where your application is" style={{ ['--n' as string]: steps.length }}>
+            {steps.map((st, i) => (
+              <li key={st.label} className={st.state}>
+                <span className="st-n" aria-hidden>{st.state === 'done' ? '✓' : i + 1}</span>
+                <b>{st.label}</b><span className="st-sub">{st.sub}</span>
+              </li>
+            ))}
+          </ol>
+        )}
       </div>
 
       <div className="status-grid">
@@ -230,7 +248,8 @@ export default function StatusPage({ token, accountId, onSignOut, onDeleted }: {
 
           {tab === 'overview' && (
             <div className="app-panel" role="tabpanel" data-panel="overview">
-              {next && (
+              {payIsNext && s.id && <PayPlan key={`${s.plan?.key}-${s.billing}`} applicationId={s.id} onChanged={load} />}
+              {next && !payIsNext && (
                 <div className={`next-card${next.good ? ' is-good' : ''}`} data-next-step>
                   <span className="next-label">{next.good ? 'Where it stands' : 'Your next step'}</span>
                   <strong className="next-title">{next.title}</strong>
@@ -238,14 +257,9 @@ export default function StatusPage({ token, accountId, onSignOut, onDeleted }: {
                   {next.go && <button type="button" className="cta" onClick={() => next.go!.tab ? setTab(next.go!.tab) : next.go!.href && window.location.assign(next.go!.href)}>{next.go.label}</button>}
                 </div>
               )}
-              {s.status === 'pending' && (
-                <div className="status-callout">
-                  <p>We read every application ourselves and usually answer within a day or two. Ask anything in Messages: pricing, setup,
-                    moving your members over. We answer there{s.email ? `, and by ${s.email}` : ''} or your phone if you asked us to.</p>
-                  <p className="note">{price
-                    ? `On ${s.plan?.name ?? 'a paid plan'}, you pay here once your six documents are verified, online or by GCash, Maya or bank, and we let you in once it arrives.`
-                    : 'The free trial needs no payment: we let you in once your six documents are verified.'}</p>
-                </div>
+              {accountId && s.id && s.status === 'pending' && !payIsNext && <PayPlan key={`${s.plan?.key}-${s.billing}`} applicationId={s.id} onChanged={load} />}
+              {s.status === 'pending' && !price && (
+                <p className="status-aside">The free trial needs no payment. We let you in once your six documents are verified.</p>
               )}
               {s.status === 'withdrawn' && (
                 <div className="status-callout"><p>You called this application off. You can still write to us in Messages, or apply again whenever you like.</p></div>
@@ -271,7 +285,6 @@ export default function StatusPage({ token, accountId, onSignOut, onDeleted }: {
                   <div className="pay-grid">{s.pay.map((m) => <PayCard key={m.label + (m.account_number ?? '')} m={m} />)}</div>
                 </>
               )}
-              {accountId && s.id && s.status === 'pending' && <PayPlan key={`${s.plan?.key}-${s.billing}`} applicationId={s.id} onChanged={load} />}
               {!accountId && s.status === 'pending' && (
                 <div className="status-callout">
                   <p>Before we can let {s.gym_name} in, we check six business documents: your permit, DTI or SEC registration, BIR 2303,
@@ -375,7 +388,7 @@ export default function StatusPage({ token, accountId, onSignOut, onDeleted }: {
         </div>
 
         <aside className="status-side">
-          <div className="card">
+          <div className="side-sec">
             <span className="side-label">Plan</span>
             {s.plan ? (
               <>
@@ -391,7 +404,7 @@ export default function StatusPage({ token, accountId, onSignOut, onDeleted }: {
                 locked={!!payState && (payState.paid || payState.last?.status === 'pending')} onChanged={load} />
             )}
           </div>
-          {!accountId && <div className="card">
+          {!accountId && <div className="side-sec">
             <span className="side-label">This page</span>
             <p>Only someone with this link can open it. Bookmark it or keep it somewhere safe.</p>
             <button className="cta ghost" type="button" style={{ width: '100%' }}
@@ -400,10 +413,11 @@ export default function StatusPage({ token, accountId, onSignOut, onDeleted }: {
             </button>
           </div>}
           {s.contact && (s.contact.phone || s.contact.email) && (
-            <div className="card">
-              <span className="side-label">Reach us directly</span>
+            <div className="side-sec">
+              <span className="side-label">Reach us</span>
               {s.contact.phone && <p><a href={`tel:${s.contact.phone.replace(/\s+/g, '')}`}>{s.contact.phone}</a></p>}
               {s.contact.email && <p><a href={`mailto:${s.contact.email}`}>{s.contact.email}</a></p>}
+              <p className="side-note">We read every application ourselves and answer in Messages, usually within a day or two.</p>
             </div>
           )}
         </aside>
