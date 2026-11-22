@@ -81,29 +81,29 @@ const CHAPTERS: { key: Chapter; title: string; icon: typeof Check }[] = [
 ];
 
 const STEPS: { key: Step; chapter: Chapter; title: string; blurb: string; icon: typeof Check; optional?: boolean }[] = [
-  { key: 'gym', chapter: 'identity', title: 'Name your gym', blurb: 'What your members, your receipts and your sign will say — and where you are.', icon: Building2 },
+  { key: 'gym', chapter: 'identity', title: 'Name your gym', blurb: 'What your members, your receipts and your sign will say, and where you are.', icon: Building2 },
   { key: 'hours', chapter: 'identity', title: 'When you are open', blurb: 'Your hours, and the days you close.', icon: Clock, optional: true },
   { key: 'look', chapter: 'identity', title: 'Your colours', blurb: 'Two colours, and watch your app and this dashboard change on the right.', icon: Palette },
-  { key: 'words', chapter: 'identity', title: 'Your words', blurb: 'What you call your coaches, your members and your classes — and a line for your members’ home screen.', icon: Type, optional: true },
-  { key: 'style', chapter: 'run', title: 'How your gym works', blurb: 'Open floor, classes, appointments or coaching packages — tick yours, and the booking and coaching settings follow.', icon: Workflow, optional: true },
-  { key: 'runs', chapter: 'run', title: 'What you run', blurb: 'A few questions. Each answer switches that part of the app on or off — nothing is deleted.', icon: LayoutGrid, optional: true },
-  { key: 'bookings', chapter: 'run', title: 'Who approves bookings', blurb: 'Instant, your coaches, your desk — or not in the app at all.', icon: CalendarDays, optional: true },
-  { key: 'coaching', chapter: 'run', title: 'How coaching works', blurb: 'How members get a coach, for how long, who is paid — and your house rules for coaching.', icon: Dumbbell, optional: true },
+  { key: 'words', chapter: 'identity', title: 'Your words', blurb: 'What you call your coaches, your members and your classes, and a line for your members’ home screen.', icon: Type, optional: true },
+  { key: 'style', chapter: 'run', title: 'How your gym works', blurb: 'Open floor, classes, appointments or coaching packages. Tick yours, and the booking and coaching settings follow.', icon: Workflow, optional: true },
+  { key: 'runs', chapter: 'run', title: 'What you run', blurb: 'A few questions. Each answer switches that part of the app on or off. Nothing is deleted.', icon: LayoutGrid, optional: true },
+  { key: 'bookings', chapter: 'run', title: 'Who approves bookings', blurb: 'Instant, your coaches, your desk, or not in the app at all.', icon: CalendarDays, optional: true },
+  { key: 'coaching', chapter: 'run', title: 'How coaching works', blurb: 'How members get a coach, for how long, who is paid, and your house rules for coaching.', icon: Dumbbell, optional: true },
   { key: 'checkin', chapter: 'run', title: 'Checking in', blurb: 'Whether your coaches check in too, and whether members pick what they are doing.', icon: ScanLine, optional: true },
   { key: 'coach', chapter: 'run', title: 'The AI assistant', blurb: 'How much your members may talk to it.', icon: Sparkles, optional: true },
   { key: 'plans', chapter: 'money', title: 'Your plans', blurb: 'These came from a working gym. Make them yours before anyone pays.', icon: Tags, optional: true },
   { key: 'walkins', chapter: 'money', title: 'Day passes and walk-ins', blurb: 'Whether guests can pay for a day, and the packs you sell.', icon: Banknote, optional: true },
   { key: 'refunds', chapter: 'money', title: 'Refunds', blurb: 'What a member gets back when they cancel, and the fee you keep.', icon: Banknote, optional: true },
-  { key: 'payments', chapter: 'money', title: 'How members pay you', blurb: 'Cash at the desk, GCash, Maya or bank details — and paying in the app.', icon: Wallet, optional: true },
+  { key: 'payments', chapter: 'money', title: 'How members pay you', blurb: 'Cash at the desk, GCash, Maya or bank details, and paying in the app.', icon: Wallet, optional: true },
   { key: 'waiver', chapter: 'safety', title: 'Your waiver', blurb: 'What members sign before they book, and the health questions with it.', icon: FileSignature, optional: true },
-  { key: 'rules', chapter: 'safety', title: 'House rules', blurb: 'Your gym’s own rules — shown to members in your Terms.', icon: ScrollText, optional: true },
+  { key: 'rules', chapter: 'safety', title: 'House rules', blurb: 'Your gym’s own rules: shown to members in your Terms.', icon: ScrollText, optional: true },
   { key: 'team', chapter: 'team', title: 'Your team', blurb: 'Add your coaches and your front desk. Each gets a login slip.', icon: UserPlus, optional: true },
-  { key: 'equipment', chapter: 'team', title: 'Your floor', blurb: 'What you have, so members know where each machine is — and can say when one breaks.', icon: Dumbbell, optional: true },
+  { key: 'equipment', chapter: 'team', title: 'Your floor', blurb: 'What you have, so members know where each machine is, and can say when one breaks.', icon: Dumbbell, optional: true },
   { key: 'rewards', chapter: 'team', title: 'Points and rewards', blurb: 'What members earn for showing up, and what they can spend it on.', icon: Gift, optional: true },
   { key: 'door', chapter: 'open', title: 'How members join', blurb: 'Who can ask to join you, and how they find you.', icon: DoorOpen },
   { key: 'members', chapter: 'open', title: 'Your members', blurb: 'Your join link to hand out, and the members you already have.', icon: Users, optional: true },
   { key: 'password', chapter: 'open', title: 'Your password', blurb: 'Replace the temporary one you were given.', icon: KeyRound },
-  { key: 'ready', chapter: 'open', title: 'Open your gym', blurb: 'Your gym, built. Open it — anything you skipped is in the menu.', icon: Rocket },
+  { key: 'ready', chapter: 'open', title: 'Open your gym', blurb: 'Your gym, built. Open it. Anything you skipped is in the menu.', icon: Rocket },
 ];
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -269,7 +269,7 @@ export default function Setup() {
       const days = row.days.trim() === '' ? null : Number(row.days);
       if (!Number.isFinite(price) || price < 0) throw new Error(`${row.name || 'A plan'}: that price is not a number.`);
       if (days !== null && (!Number.isInteger(days) || days < 1)) {
-        throw new Error(`${row.name || 'A plan'}: days is a whole number — or empty for a plan that never ends.`);
+        throw new Error(`${row.name || 'A plan'}: days is a whole number: or empty for a plan that never ends.`);
       }
       return { price, days };
     };
@@ -293,7 +293,7 @@ export default function Setup() {
       if (!next) continue;
       if (!next.name.trim()) throw new Error('A plan needs a name.');
       if (plan.price_unset && plan.tier !== 'free' && next.price.trim() === '') {
-        throw new Error(`${next.name.trim() || plan.name}: set a price — members do not see it until you do.`);
+        throw new Error(`${next.name.trim() || plan.name}: set a price: members do not see it until you do.`);
       }
       const { price, days } = parse(next);
       if (!plan.price_unset && next.name.trim() === plan.name && price === plan.price && days === (plan.duration_days ?? null)) continue;
@@ -552,7 +552,7 @@ export default function Setup() {
                     <div className="ob-logo" style={{ width: 72, height: 72, borderRadius: 20, fontSize: 22 }}>{logoUrl ? <img src={logoUrl} alt="" /> : monogram}</div>
                     <div className="flex-1 min-w-[220px]">
                       <p className="font-extrabold" style={{ color: 'var(--ob-ink)' }}>Your logo</p>
-                      <p className="ob-hint" style={{ marginTop: 2 }}>Square works best. With none, members see your initials in your colour — never another gym&rsquo;s mark.</p>
+                      <p className="ob-hint" style={{ marginTop: 2 }}>Square works best. With none, members see your initials in your colour, never another gym&rsquo;s mark.</p>
                     </div>
                     <label className="ob-btn ghost cursor-pointer">
                       {uploading ? 'Uploading…' : logoUrl ? 'Choose another' : 'Choose a picture'}
@@ -602,11 +602,11 @@ export default function Setup() {
                 {step === 'look' && (
                   <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
                     <div>
-                      <p className="ob-field"><span>Your main colour — where you are, and what you have</span></p>
+                      <p className="ob-field"><span>Your main colour: where you are, and what you have</span></p>
                       <ColourRolePicker idPrefix="setup-accent" value={gym.accent} fallback="violet" onChange={(v) => { tick(); setGym({ ...gym, accent: v || 'violet' }); }} />
-                      <p className="ob-field" style={{ marginTop: 20 }}><span>Your action colour — the buttons that do the next thing</span></p>
+                      <p className="ob-field" style={{ marginTop: 20 }}><span>Your action colour: the buttons that do the next thing</span></p>
                       <ColourRolePicker idPrefix="setup-action" value={action} fallback="amber" unsetLabel="Standard amber, the colour every gym started with" onChange={(v) => { tick(); setAction(v); }} />
-                      <p className="ob-hint">Your own brand colour works too — each is adjusted to stay readable in light and in dark.</p>
+                      <p className="ob-hint">Your own brand colour works too: each is adjusted to stay readable in light and in dark.</p>
                     </div>
                     <div className="ob-hosted"><ThemePreview accent={gym.accent} action={action}
                       onPick={(accent, act) => { tick(); setGym((g) => ({ ...g, accent })); setAction(act); }} /></div>
@@ -623,7 +623,7 @@ export default function Setup() {
                   </div>
                   {vocab && (
                     <div>
-                      <p className="ob-field"><span>What you call your people — leave a box empty for the standard word</span></p>
+                      <p className="ob-field"><span>What you call your people: leave a box empty for the standard word</span></p>
                       <div className="grid gap-4 sm:grid-cols-3">
                         {([['trainers', 'Your coaches', 'coaches'], ['members', 'Your members', 'members'], ['classes', 'Your classes', 'classes']] as const).map(([key, title, fallback]) => (
                           <label key={key} className="ob-field"><span>{title}</span>
@@ -675,7 +675,7 @@ export default function Setup() {
                 {step === 'members' && <MembersStep slug={savedSlug} joinCode={joinCode} />}
 
                 {step === 'plans' && (<>
-                  {plans.length === 0 && adding.length === 0 && <p className="ob-hint">No plans yet — add your first one below.</p>}
+                  {plans.length === 0 && adding.length === 0 && <p className="ob-hint">No plans yet: add your first one below.</p>}
                   {[...plans.map((plan) => ({ kind: 'old' as const, plan })), ...adding.map((row, i) => ({ kind: 'new' as const, row, i }))].map((x) => {
                     const v = x.kind === 'old' ? edited[x.plan.id] : x.row;
                     const set = (patch: Partial<PlanDraft>) => (x.kind === 'old'
@@ -701,14 +701,14 @@ export default function Setup() {
                     );
                   })}
                   <button type="button" className="ob-btn ghost" onClick={() => { tick(); setAdding([...adding, { name: '', price: '', days: '30' }]); }}><Tags size={15} />Add a plan</button>
-                  <p className="ob-hint">A ₱0 plan is free; empty days means it never expires. Your free plan stays — it is where a member goes when a paid plan ends.</p>
+                  <p className="ob-hint">A ₱0 plan is free; empty days means it never expires. Your free plan stays: it is where a member goes when a paid plan ends.</p>
                 </>)}
 
                 {step === 'door' && (<>
                   <label className="ob-field max-w-xl"><span>Your members&rsquo; link</span>
                     <div className="flex items-center gap-2"><span className="text-sm font-bold" style={{ color: 'var(--ob-muted)' }}>/join/</span>
                       <input className="ob-in" maxLength={40} value={slug} placeholder="your-gym" onChange={(e) => setSlug(e.target.value.toLowerCase())} /></div></label>
-                  <p className="ob-hint" style={{ marginTop: -10 }}>Small letters, numbers and dashes. Get it right now — changing it later stops every link you handed out.</p>
+                  <p className="ob-hint" style={{ marginTop: -10 }}>Small letters, numbers and dashes. Get it right now: changing it later stops every link you handed out.</p>
                   <div className="grid gap-3">
                     {([
                       ['open', Globe, 'Anyone can find you', 'Listed in the app’s gym list and on the map. Anyone can ask to join.'],
@@ -746,7 +746,7 @@ export default function Setup() {
                         <div key={ch.key} className={`ob-choice ${complete ? 'on' : ''}`} style={{ cursor: 'default' }}>
                           <span className="ob-chap-icon" style={complete ? { color: '#fff', background: 'var(--ob-fill-2)', border: 0 } : undefined}>{complete ? <Check size={16} /> : <CI size={16} />}</span>
                           <span className="min-w-0"><span className="block font-extrabold" style={{ color: 'var(--ob-ink)' }}>{ch.title}</span>
-                            <span className="block text-[12.5px]" style={{ color: 'var(--ob-sub)' }}>{complete ? 'Done' : `${ch.done} of ${ch.list.length} — finish any time`}</span></span>
+                            <span className="block text-[12.5px]" style={{ color: 'var(--ob-sub)' }}>{complete ? 'Done' : `${ch.done} of ${ch.list.length} · finish any time`}</span></span>
                         </div>
                       );
                     })}
@@ -755,7 +755,7 @@ export default function Setup() {
                     <div style={{ fontSize: 44, fontWeight: 900, lineHeight: 1, color: 'var(--ob-ink)' }}>{pct}<span style={{ fontSize: 20 }}>%</span></div>
                     <div className="flex-1 min-w-[220px]">
                       <p className="font-extrabold" style={{ color: 'var(--ob-ink)' }}>{pct >= 100 ? 'Fully built.' : 'Built enough to open.'}</p>
-                      <p className="ob-hint" style={{ marginTop: 2 }}>Everything you skipped works on the standard rules until you change it — each one is in the menu.</p>
+                      <p className="ob-hint" style={{ marginTop: 2 }}>Everything you skipped works on the standard rules until you change it. Each one is in the menu.</p>
                     </div>
                     <button type="button" className="ob-btn open" disabled={saving} onClick={() => void next()} data-open-gym><Rocket size={18} />{saving ? 'Opening…' : 'Open my gym'}</button>
                   </div>

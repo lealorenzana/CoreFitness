@@ -50,7 +50,7 @@ export default function StudioPreview({ name, shortName, logoUrl, accent, action
           <div key={'p' + flash} className={flash ? 'ob-flash' : ''} data-preview-phone
             style={{ width: 252, height: 516, borderRadius: 40, padding: 9, transition: 'box-shadow .5s, background .5s',
               // In light the handset is silver (no near-black block on a light page); in dark, the black one.
-              background: dark ? '#050508' : 'linear-gradient(160deg, #E4E4EC, #C9C9D5)',
+              background: dark ? '#050508' : '#D6D6DF',
               boxShadow: dark ? `0 30px 70px -30px ${p.base}` : `0 0 0 1px rgba(22,22,38,0.18), 0 30px 60px -32px ${p.base}` }}>
             <div style={{ height: '100%', borderRadius: 32, overflow: 'hidden', background: c.bg, display: 'flex', flexDirection: 'column', transition: tr, position: 'relative', isolation: 'isolate' }}>
               {/* The members' glass background (2026-11-07): the gym's two colours drifting behind the cards. */}
@@ -140,7 +140,7 @@ export default function StudioPreview({ name, shortName, logoUrl, accent, action
           </div>
         )}
       </div>
-      <p className="ob-pv-cap">Sample screen — your colours, name and words, live. {view === 'phone' ? `Your ${members || 'members'} pick light or dark.` : 'This dashboard wears them too.'}</p>
+      <p className="ob-pv-cap">Sample screen: your colours, name and words, live. {view === 'phone' ? `Your ${members || 'members'} pick light or dark.` : 'This dashboard wears them too.'}</p>
     </aside>
   );
 }

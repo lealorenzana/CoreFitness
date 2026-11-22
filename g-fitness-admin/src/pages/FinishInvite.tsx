@@ -56,7 +56,7 @@ export default function FinishInvite() {
     if (!f.first.trim() || !f.last.trim()) { setError('Please enter your first and last name.'); return; }
     if (mustChange && f.password.length < 8) { setError('Choose a password of at least 8 characters.'); return; }
     if (mustChange && f.password !== f.confirm) { setError('The two passwords do not match.'); return; }
-    if (login && !login.hasEmail && !username.trim()) { setError('Keep a username — with no email, it is how you sign in.'); return; }
+    if (login && !login.hasEmail && !username.trim()) { setError('Keep a username: with no email, it is how you sign in.'); return; }
     if (login && username.trim() && usernameShape(username)) { setError(`Username: ${usernameShape(username)}`); return; }
     setBusy(true);
     setError(null);
@@ -83,15 +83,15 @@ export default function FinishInvite() {
     }
   };
 
-  const input = 'w-full h-12 rounded-xl px-4 text-[15px] text-white outline-none';
-  const inputSt = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)' };
-  const label = 'block text-[13px] font-semibold mb-1.5';
+  const input = 'w-full h-11 rounded-lg px-3.5 text-[14.5px] text-white outline-none';
+  const inputSt = { background: 'transparent', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.18)' };
+  const label = 'block text-[13px] font-medium mb-1.5';
   const muted = { color: 'var(--color-text-secondary)' };
 
   const shell = (body: React.ReactNode) => (
     <div className="min-h-screen grid place-items-center p-6" style={{ background: 'var(--color-bg)' }}>
-      <div className="w-full max-w-[460px] rounded-2xl p-7" data-finish-invite
-        style={{ background: 'var(--color-surface)', border: '1px solid rgba(139,92,246,0.3)', boxShadow: '0 40px 120px -40px rgba(124,58,237,0.55)' }}>
+      <div className="w-full max-w-[460px] rounded-xl p-7" data-finish-invite
+        style={{ background: 'var(--surface-solid, var(--color-surface))', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.12)' }}>
         {body}
       </div>
     </div>
@@ -102,7 +102,7 @@ export default function FinishInvite() {
     return shell(<>
       <h1 className="text-xl font-semibold text-white">This invitation is for another email</h1>
       <p className="mt-2 text-sm" style={muted}>Sign out, then sign in with the email address the gym sent the login to.</p>
-      <button type="button" onClick={() => void signOut()} className="mt-5 w-full h-12 rounded-xl font-semibold text-white" style={{ background: '#7C3AED' }}>Sign out</button>
+      <button type="button" onClick={() => void signOut()} className="v2-btn mt-5 w-full h-11 rounded-lg font-semibold" style={{ background: 'var(--v2-act, #F59E0B)', color: 'var(--v2-on-act, #1a1206)' }}>Sign out</button>
     </>);
   }
   if (mine.state !== 'waiting') {
@@ -114,14 +114,14 @@ export default function FinishInvite() {
             : mine.state === 'accepted' ? `You have already joined ${mine.gym_name}.` : `${mine.gym_name} is not active at the moment.`}
       </p>
       <button type="button" onClick={() => void (mine.state === 'accepted' ? window.location.assign('/admin/dashboard') : signOut())}
-        className="mt-5 w-full h-12 rounded-xl font-semibold text-white" style={{ background: '#7C3AED' }}>{mine.state === 'accepted' ? 'Continue' : 'Sign out'}</button>
+        className="v2-btn mt-5 w-full h-11 rounded-lg font-semibold" style={{ background: 'var(--v2-act, #F59E0B)', color: 'var(--v2-on-act, #1a1206)' }}>{mine.state === 'accepted' ? 'Continue' : 'Sign out'}</button>
     </>);
   }
   if (mine.role !== 'staff') {
     return shell(<>
       <h1 className="text-xl font-semibold text-white">This login is for the phone app</h1>
       <p className="mt-2 text-sm" style={muted}>{mine.gym_name} invited you as {mine.role === 'trainer' ? 'a coach' : 'a member'}. Sign in to the Core Fitness app on your phone with the same login and password.</p>
-      <a href={`https://corefitness-gym.vercel.app/login${mine.role === 'trainer' ? '?as=trainer' : ''}`} className="mt-5 w-full h-12 rounded-xl font-semibold text-white grid place-items-center" style={{ background: '#7C3AED' }}>Open the app</a>
+      <a href={`https://corefitness-gym.vercel.app/login${mine.role === 'trainer' ? '?as=trainer' : ''}`} className="v2-btn mt-5 w-full h-11 rounded-lg font-semibold grid place-items-center" style={{ background: 'var(--v2-act, #F59E0B)', color: 'var(--v2-on-act, #1a1206)' }}>Open the app</a>
       <button type="button" onClick={() => void signOut()} className="mt-2 w-full h-10 text-sm" style={muted}>Sign out</button>
     </>);
   }
@@ -131,7 +131,7 @@ export default function FinishInvite() {
       <div className="flex items-center gap-3">
         {mine.logo_url
           ? <img src={mine.logo_url} alt="" className="h-12 w-12 rounded-xl object-cover" />
-          : <span className="h-12 w-12 rounded-xl grid place-items-center text-lg font-bold text-white" style={{ background: '#7C3AED' }}>{mine.gym_name.slice(0, 1)}</span>}
+          : <span className="h-12 w-12 rounded-xl grid place-items-center text-lg font-bold text-white" style={{ background: 'var(--raised-solid, var(--color-surface-raised))', color: 'var(--color-text-secondary)' }}>{mine.gym_name.slice(0, 1)}</span>}
         <div>
           <h1 className="text-[20px] font-semibold text-white leading-tight">Welcome to {mine.gym_name}</h1>
           <p className="text-[13px] flex items-center gap-1.5" style={muted}><Monitor size={13} /> Front desk · the gym’s dashboard</p>
@@ -147,12 +147,12 @@ export default function FinishInvite() {
         <input className={input} style={inputSt} type="tel" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} placeholder="0917 123 4567" autoComplete="tel" /></label>
 
       {mustChange && (
-        <div className="mt-5 rounded-xl p-4" style={{ background: 'rgba(124,58,237,0.07)', border: '1px solid rgba(139,92,246,0.3)' }}>
+        <div className="mt-6 pt-5" style={{ borderTop: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)' }}>
           <p className="text-[13px] font-semibold text-white flex items-center gap-2"><KeyRound size={14} /> Your password</p>
           <p className="text-[12.5px] mt-0.5" style={muted}>The one-time password worked once. Choose your own{realEmail(mine.email) ? ` for ${realEmail(mine.email)}` : ''}.</p>
           <div className="relative mt-3">
             <input className={input} style={{ ...inputSt, paddingRight: 46 }} type={shown ? 'text' : 'password'} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} placeholder="New password (8 or more)" autoComplete="new-password" aria-label="New password" />
-            <button type="button" onClick={() => setShown((s) => !s)} aria-label={shown ? 'Hide password' : 'Show password'} className="absolute right-0 top-0 h-12 w-12 grid place-items-center" style={muted}>{shown ? <EyeOff size={17} /> : <Eye size={17} />}</button>
+            <button type="button" onClick={() => setShown((s) => !s)} aria-label={shown ? 'Hide password' : 'Show password'} className="absolute right-0 top-0 h-11 w-11 grid place-items-center" style={muted}>{shown ? <EyeOff size={17} /> : <Eye size={17} />}</button>
           </div>
           <input className={`${input} mt-2`} style={inputSt} type={shown ? 'text' : 'password'} value={f.confirm} onChange={(e) => setF({ ...f, confirm: e.target.value })} placeholder="Type it again" autoComplete="new-password" aria-label="Confirm password" />
         </div>
@@ -165,8 +165,8 @@ export default function FinishInvite() {
         </div>
       )}
 
-      {error && <p className="mt-3 text-[13px]" style={{ color: '#FBBF24' }} role="alert">{error}</p>}
-      <button type="submit" disabled={busy} className="mt-5 w-full h-12 rounded-xl font-semibold text-white disabled:opacity-60" style={{ background: 'linear-gradient(135deg,#7C3AED,#6D28D9)' }}>
+      {error && <p className="mt-3 text-[13px]" style={{ color: 'var(--color-secondary)' }} role="alert">{error}</p>}
+      <button type="submit" disabled={busy} className="v2-btn mt-6 w-full h-11 rounded-lg font-semibold disabled:opacity-60" style={{ background: 'var(--v2-act, #F59E0B)', color: 'var(--v2-on-act, #1a1206)' }}>
         {busy ? 'Joining…' : `Join ${mine.gym_name}`}
       </button>
       <button type="button" onClick={() => void signOut()} className="mt-2 w-full h-10 text-[13px] inline-flex items-center justify-center gap-1.5" style={muted}><LogOut size={13} /> Not you? Sign out</button>

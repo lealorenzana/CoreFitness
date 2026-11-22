@@ -28,7 +28,7 @@ export function TeamStep() {
 
   const send = async () => {
     if (!f.first.trim()) { showToast('Their first name, please.', 'error'); return; }
-    if (!f.email.trim() && !f.username.trim()) { showToast(usernamesOn ? 'Give an email or a username — they sign in with it.' : 'Their email, please — they sign in with it.', 'error'); return; }
+    if (!f.email.trim() && !f.username.trim()) { showToast(usernamesOn ? 'Give an email or a username: they sign in with it.' : 'Their email, please: they sign in with it.', 'error'); return; }
     const shape = usernameShape(f.username);
     if (shape) { showToast(`Username: ${shape}`, 'error'); return; }
     setBusy(true);
@@ -71,7 +71,7 @@ export function TeamStep() {
         <button type="button" className="ob-btn go" disabled={busy} onClick={() => void send()} data-team-send>
           <Send size={16} />{busy ? 'Sending…' : role === 'trainer' ? 'Add this coach' : 'Add this desk account'}
         </button>
-        <p className="ob-hint" style={{ margin: 0 }}>They get a login slip to print or hand over — the email goes too, when there is one.</p>
+        <p className="ob-hint" style={{ margin: 0 }}>They get a login slip to print or hand over: the email goes too, when there is one.</p>
       </div>
       {added.length > 0 && (
         <div className="flex flex-wrap gap-2" data-team-added>
@@ -147,7 +147,7 @@ export function EquipmentStep() {
               {i.name}{i.quantity > 1 && <b style={{ color: 'var(--ob-sub)' }}>×{i.quantity}</b>}
             </span>
           ))}
-          {items?.length === 0 && <span className="ob-hint" style={{ margin: 0 }}>Nothing yet — members see where each machine is, and report what is broken.</span>}
+          {items?.length === 0 && <span className="ob-hint" style={{ margin: 0 }}>Nothing yet: members see where each machine is, and report what is broken.</span>}
         </div>
       </div>
     </div>
@@ -181,7 +181,7 @@ export function RewardsStep({ pointsName }: { pointsName: string }) {
               {r.name}<span style={{ color: 'var(--ob-fill-2)' }}>{r.cost_points.toLocaleString('en-PH')}</span>
             </span>
           ))}
-          {rewards?.length === 0 && <span className="ob-hint" style={{ margin: 0 }}>None yet — a free shake or a guest pass is a good first one.</span>}
+          {rewards?.length === 0 && <span className="ob-hint" style={{ margin: 0 }}>None yet: a free shake or a guest pass is a good first one.</span>}
         </div>
         <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_140px_auto] items-end">
           <label className="ob-field"><span>Reward</span><input className="ob-in" value={f.name} placeholder="Free protein shake" onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
@@ -219,7 +219,7 @@ export function MembersStep({ slug, joinCode }: { slug: string; joinCode: string
         </> : <p className="ob-hint">Your join link appears once you choose it in the next chapter.</p>}
       </div>
       <div>
-        <label className="ob-field"><span>Bring in the members you already have — one per line: email, first name, last name, mobile</span>
+        <label className="ob-field"><span>Bring in the members you already have: one per line: email, first name, last name, mobile</span>
           <textarea className="ob-in" style={{ height: 150, padding: 12, resize: 'vertical' }} value={paste} onChange={(e) => { setPaste(e.target.value); setResult(null); }}
             placeholder={'maria.santos@gmail.com, Maria, Santos, 09171234567\njuan.delacruz@gmail.com, Juan, Dela Cruz'} /></label>
         <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -230,7 +230,7 @@ export function MembersStep({ slug, joinCode }: { slug: string; joinCode: string
         </div>
         {result && (
           <p className="ob-hint" data-members-result style={{ color: 'var(--ob-ink)' }}>
-            {result.invited.length} invited — each gets their own login by email.{result.failed.length ? ` ${result.failed.length} could not be: ${result.failed.slice(0, 2).map((x) => `${x.email} (${x.reason})`).join('; ')}.` : ''}
+            {result.invited.length} invited: each gets their own login by email.{result.failed.length ? ` ${result.failed.length} could not be: ${result.failed.slice(0, 2).map((x) => `${x.email} (${x.reason})`).join('; ')}.` : ''}
             {' '}The rest of the list, and login slips for anyone without email, are on Invitations.
           </p>
         )}

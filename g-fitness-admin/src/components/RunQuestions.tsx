@@ -15,9 +15,9 @@ const QUESTIONS: { key: string; ask: string; what: string }[] = [
   { key: 'points', ask: 'Points and rewards?', what: 'Members earn points for coming in and training, and spend them on rewards at your desk.' },
   // Teams and the gym goal (squads) are left out of onboarding (owner, 2026-11-14): off by default, still on What you run.
   { key: 'seasons', ask: 'A monthly season?', what: 'A monthly board of points with tiers and prizes.' },
-  { key: 'events', ask: 'Gym events?', what: 'One-off events members sign up for — a fun run, a seminar, an open day.' },
+  { key: 'events', ask: 'Gym events?', what: 'One-off events members sign up for: a fun run, a seminar, an open day.' },
   { key: 'gym_chat', ask: 'A group chat for your gym?', what: 'One chat for your members, coaches, front desk and you. You can remove a message, stop someone posting, or make it announcements-only.' },
-  { key: 'reels', ask: 'Reels?', what: 'Short videos for your members — paste a YouTube, TikTok, Facebook or Instagram link, or upload your own.' },
+  { key: 'reels', ask: 'Reels?', what: 'Short videos for your members: paste a YouTube, TikTok, Facebook or Instagram link, or upload your own.' },
   { key: 'online_pay', ask: 'Online payments?', what: 'Members pay in the app through your own PayMongo account. No: cash and transfers at the desk.' },
   { key: 'lobby_tv', ask: 'A lobby TV?', what: 'Today’s sessions and announcements on a screen in your gym.' },
 ];
@@ -50,20 +50,17 @@ export default function RunQuestions({ modules, onSet }: {
   };
 
   const row = (key: string, ask: string, what: string, on: boolean, locked: string | null) => (
-    <div key={key} className="rounded-xl border p-3 flex items-center gap-3" data-run-question={key}
-      style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}>
+    <div key={key} className="py-3 flex items-center gap-4" data-run-question={key}
+      style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)' }}>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>{ask}</p>
-        <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{locked ?? what}</p>
+        <p className="text-[14px] font-medium" style={{ color: 'var(--color-text-primary)' }}>{ask}</p>
+        <p className="text-[12.5px] mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>{locked ?? what}</p>
       </div>
       <div className="flex gap-1.5 flex-none" role="radiogroup" aria-label={ask}>
         {([['Yes', true], ['No', false]] as const).map(([label, yes]) => (
           <button key={label} type="button" role="radio" aria-checked={on === yes} disabled={busy === key || !!locked}
             onClick={() => { if (on !== yes) void answer(key, yes); }} data-answer={label.toLowerCase()}
-            className="h-8 px-3.5 rounded-lg text-[13px] font-semibold border"
-            style={on === yes
-              ? { background: 'var(--color-primary)', borderColor: 'var(--color-primary)', color: '#fff' }
-              : { borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
+            className="v2-chip min-w-[48px] justify-center">
             {label}
           </button>
         ))}
@@ -72,7 +69,7 @@ export default function RunQuestions({ modules, onSet }: {
   );
 
   return (
-    <div className="space-y-2" data-run-questions>
+    <div data-run-questions>
       {shown.map(({ q, m }) => row(q.key, q.ask, q.what, m.enabled,
         m.state === 'parent_off' ? 'Switch its section on first in Show every switch below.' : null))}
       {moments && row('moments', 'Celebrations and sounds?', 'A full-screen moment with a chime when a member checks in, finishes a workout or earns a badge. No: a small card instead, and quiet.',
