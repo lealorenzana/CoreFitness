@@ -7,6 +7,8 @@ export interface AskField {
   label: string;
   /** A short list makes a <select>; leaving it out makes an <input>. */
   options?: string[];
+  /** What each option reads as, when its value is a key (a plan key shows its name and price). */
+  optionLabels?: Record<string, string>;
   /** A date: drawn by DatePicker under this rule (lib/dateRules.ts), never a raw date input. */
   dateMode?: DateMode;
   placeholder?: string;
@@ -65,7 +67,7 @@ export default function Ask({ title, blurb, fields, confirmLabel, onConfirm, onC
             {field.options ? (
               <select id={`ask-${field.key}`} value={values[field.key]}
                 onChange={(e) => setValues({ ...values, [field.key]: e.target.value })}>
-                {field.options.map((o) => <option key={o} value={o}>{o}</option>)}
+                {field.options.map((o) => <option key={o} value={o}>{field.optionLabels?.[o] ?? o}</option>)}
               </select>
             ) : field.dateMode ? (
               <DatePicker id={`ask-${field.key}`} mode={field.dateMode} value={values[field.key]}

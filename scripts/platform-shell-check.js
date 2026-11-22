@@ -175,7 +175,9 @@ async (page) => {
   out.push('at-risk tag on the row: ' + (/At risk: No check-ins in 14 days/.test(t) && /Watch: Free trial ends in 5 days/.test(t) ? 'shown' : 'MISSING'));
   // One warning line per card since 2026-11-08 (cards a page = what fits): the rest are "+N more", all in the line's title.
   const flagTips = await page.locator('[data-gym-flag]').evaluateAll((els) => els.map((e) => e.getAttribute('title') ?? ''));
-  out.push('gyms with chips: ' + (/142 members/.test(t) && flagTips.some((x) => /9 days late/.test(x)) && /\+1 more/.test(t) && /Overdue, read-only/.test(t) ? 'shown' : 'MISSING'));
+  out.push('gyms with chips: ' + (/142\s+members/.test(t) && flagTips.some((x) => /9 days late/.test(x)) && /\+1 more/.test(t)
+    // Cards say a locked gym's state in one word (2026-11-22); the whole phrase is the word's tooltip.
+    && (await page.locator('.gx-status[title="Overdue, read-only"]').count()) === 1 ? 'shown' : 'MISSING'));
   await page.screenshot({ path: 'shots/platform-gyms.png' });
 
   await page.getByRole('button', { name: 'G Fitness, open' }).click();
@@ -184,7 +186,7 @@ async (page) => {
   t = await text();
   // Since 2026-11-02 a gym's page is in tabs: Overview, Manage, Billing and payments, People and notes, History.
   out.push('26 weeks of use: ' + ((await page.locator('.bar').count()) === 26 ? 'charted' : 'MISSING ' + (await page.locator('.bar').count())));
-  out.push('features used, and not: ' + (/Coaching room posts/.test(t) && /Not used yet: Shop sales/.test(t) ? 'shown' : 'MISSING'));
+  out.push('features used, and not: ' + (/Coaching room posts/.test(t) && /Not used yet\s*Shop sales/.test(t) ? 'shown' : 'MISSING'));
   const overviewHasUse = /What it uses/i.test(t);
   await page.locator('[data-gym-tab="money"]').click();
   await page.waitForTimeout(300);

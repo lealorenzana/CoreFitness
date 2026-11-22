@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Activity, AlertTriangle, Building2, CalendarClock, ChevronRight, Download, ExternalLink, KeyRound, Plus, Search,
-  Sparkles, Users, Wallet,
+  Sparkles, Users,
 } from 'lucide-react';
 import { downloadCsv } from '../lib/csv';
 import {
@@ -12,6 +12,8 @@ import {
 import InviteOwner from '../components/InviteOwner';
 import Ask from '../components/Ask';
 import GymMark from '../components/GymMark';
+import GymStatus from '../components/GymStatus';
+import './gyms.css';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
 import { useFitCards } from '../lib/useFitCards';
@@ -162,7 +164,8 @@ export default function Gyms() {
 
       <div className="toolbar">
         <div className="filters" role="group" aria-label="Show">
-          {([['all', 'All'], ['live', 'Live'], ['setup', 'Setting up'], ['locked', 'Read-only'], ['risk', 'At risk'], ['due', 'Due soon'], ['archived', 'Archived']] as [Filter, string][])
+          {/* Live and Setting up are the strip's own figures above (they filter); the chips hold only what the strip does not. */}
+          {([['all', 'All'], ['locked', 'Read-only'], ['risk', 'At risk'], ['due', 'Due soon'], ['archived', 'Archived']] as [Filter, string][])
             // Archived appears once a gym has been archived — an empty chip there only crowds the bar.
             .filter(([f]) => f !== 'archived' || filter === 'archived' || (gyms ? count(f) : 0) > 0).map(([f, label]) => (
             <button key={f} type="button" className={filter === f ? 'on' : ''} aria-pressed={filter === f} onClick={() => pick(f)}>
@@ -171,7 +174,7 @@ export default function Gyms() {
           ))}
         </div>
         <span className="spacer" />
-        <label className="search" style={{ width: 210, margin: 0 }} aria-label="Find a gym">
+        <label className="search" style={{ width: 200, margin: 0 }} aria-label="Find a gym">
           <Search size={15} />
           <input value={search} placeholder="Find a gym" onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
         </label>
@@ -270,7 +273,8 @@ export default function Gyms() {
               // The plans that exist; a retired plan is still listed when this
               // gym is the one on it, or the picker could not show its own value.
               { key: 'plan', label: 'Plan', initial: dialog.gym.plan,
-                options: plans.filter((p) => p.is_active || p.key === dialog.gym.plan).map((p) => p.key) },
+                options: plans.filter((p) => p.is_active || p.key === dialog.gym.plan).map((p) => p.key),
+                optionLabels: Object.fromEntries(plans.map((p) => [p.key, `${p.name}${p.price_monthly !== null ? `, ${peso(p.price_monthly)} a month` : ''}`])) },
               { key: 'paid', label: 'Paid until', dateMode: 'future', initial: dialog.gym.paid_until ?? '' },
             ]}
             confirmLabel="Save"
@@ -321,17 +325,6 @@ interface CardProps {
   onPlan: () => void; onSuspend: () => void; onInvite: () => void; onReactivate: () => void; onArchive: () => void;
 }
 
-function StatusPill({ gym }: { gym: PlatformGym }) {
-  return gym.lock_reason ? (
-    <span className="pill warn"><span className="dot" />{gym.lock_reason === 'suspended' ? 'Suspended'
-      : gym.lock_reason === 'archived' ? 'Archived'
-      : gym.lock_reason === 'cancelled' ? 'Left Core Fitness'
-      : gym.lock_reason === 'trial_ended' ? 'Trial ended, paused' : 'Overdue, read-only'}</span>
-  ) : (
-    <span className="pill ok"><span className="dot" />{setupState(gym) ? 'Setting up' : 'Live'}</span>
-  );
-}
-
 function Flags({ gym, risk }: { gym: PlatformGym; risk?: Risk }) {
   // One line, the most pressing first (2026-11-08): a row of chips made a flagged card taller than its row-mates,
   // so the cards a page could not be counted. Every warning is still in the line's tooltip and on the gym's page.
@@ -364,35 +357,26 @@ function GymCard({ gym, risk, busy, onOpen, onPlan, onSuspend, onInvite, onReact
     <div className={`gym-card${warn ? ' warn' : ''}`} role="button" tabIndex={0} aria-label={`${gym.name}, open`}
       onClick={onOpen}
       onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onOpen(); } }}>
-      <div className="gym-head">
-        <GymMark name={gym.name} logoUrl={gym.logo_url} accent={gym.accent} size={46} />
-        <span className="gym-title">
-          <span className="name">{gym.name}</span>
-          <span className="slug">/join/{gym.slug}</span>
+      <div className="gx-head">
+        <GymMark name={gym.name} logoUrl={gym.logo_url} accent={gym.accent} size={40} />
+        <span className="gx-title">
+          <span className="gx-name">{gym.name}</span>
+          <span className="gx-slug">/join/{gym.slug}</span>
         </span>
-        <StatusPill gym={gym} />
+        <GymStatus gym={gym} short />
       </div>
 
-      <div className="gym-stats">
-        <div className="gym-stat"><b>{gym.members.toLocaleString('en-PH')}</b><span>member{gym.members === 1 ? '' : 's'}</span></div>
-        <div className="gym-stat"><b>{gym.staff}</b><span>on the desk</span></div>
-        <div className="gym-stat"><b>{Number(gym.paid_total) > 0 ? peso(gym.paid_total) : '—'}</b><span>paid in all</span></div>
+      <div className="gx-figs">
+        <div><b>{gym.members.toLocaleString('en-PH')}{gym.max_members !== null && <small> / {gym.max_members}</small>}</b><span>member{gym.members === 1 ? '' : 's'}</span></div>
+        <div><b>{gym.staff}</b><span>on the desk</span></div>
+        <div><b>{Number(gym.paid_total) > 0 ? peso(gym.paid_total) : '₱0'}</b><span>paid in all</span></div>
       </div>
 
-      <div>
-        <div className="gym-line"><Wallet size={14} />{gym.plan_name ?? gym.plan}
-          <span className={`end${gym.days_left !== null && gym.days_left < 0 ? ' warn' : ''}`}>
-            {gym.paid_until ? `to ${day(gym.paid_until)}` : 'no paid-until date'}</span>
-        </div>
-        <div className="gym-line" style={{ marginTop: 6 }}><Activity size={14} />{since(gym.last_activity)}
-          {gym.max_members !== null && <span className="end">{gym.members} of {gym.max_members}</span>}
-        </div>
-        {gym.max_members !== null && (
-          <div className="meter" title={`${gym.members} of ${gym.max_members} members on this plan`}>
-            <span style={{ width: `${Math.min(100, (gym.members / Math.max(1, gym.max_members)) * 100)}%` }} />
-          </div>
-        )}
-      </div>
+      <dl className="gx-facts">
+        <div><dt>Plan</dt><dd>{gym.plan_name ?? gym.plan}
+          <span className={`gx-end${gym.days_left !== null && gym.days_left < 0 ? ' warn' : ''}`}>{gym.paid_until ? `to ${day(gym.paid_until)}` : 'no paid-until date'}</span></dd></div>
+        <div><dt>Activity</dt><dd>{since(gym.last_activity)}</dd></div>
+      </dl>
 
       <Flags gym={gym} risk={risk} />
 
@@ -412,27 +396,33 @@ function GymCard({ gym, risk, busy, onOpen, onPlan, onSuspend, onInvite, onReact
 function QuickView({ gym, risk, busy, onFull, onPlan, onSuspend, onInvite, onReactivate, onArchive }: CardProps & { onFull: () => void }) {
   const joined = day(gym.created_at);
   return (
-    <>
-      <div className="qv-head">
-        <GymMark name={gym.name} logoUrl={gym.logo_url} accent={gym.accent} size={60} />
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <h2>{gym.name}</h2>
-          <span className="meta" style={{ marginTop: 2 }}>/join/{gym.slug} · on Core Fitness since {joined}</span>
+    <div className="gx-qv">
+      <header className="gx-qv-head">
+        <GymMark name={gym.name} logoUrl={gym.logo_url} accent={gym.accent} size={52} />
+        <div className="gx-title">
+          <h2 className="gx-name">{gym.name}</h2>
+          <span className="gx-slug">/join/{gym.slug} · on Core Fitness since {joined}</span>
         </div>
-        <StatusPill gym={gym} />
-      </div>
+        <GymStatus gym={gym} />
+      </header>
 
-      <div className="qv-kpis">
-        <div className="gym-stat"><b>{gym.members.toLocaleString('en-PH')}</b><span>{gym.max_members !== null ? `of ${gym.max_members} members` : 'members'}</span></div>
-        <div className="gym-stat"><b>{gym.staff}</b><span>on the desk</span></div>
-        <div className="gym-stat"><b>{gym.owners}</b><span>owner{gym.owners === 1 ? '' : 's'}</span></div>
-        <div className="gym-stat"><b>{Number(gym.paid_total) > 0 ? peso(gym.paid_total) : '—'}</b><span>paid in all</span></div>
+      <div className="gx-figs four">
+        <div><b>{gym.members.toLocaleString('en-PH')}</b><span>{gym.max_members !== null ? `of ${gym.max_members} members` : 'members'}</span></div>
+        <div><b>{gym.staff}</b><span>on the desk</span></div>
+        <div><b>{gym.owners}</b><span>owner{gym.owners === 1 ? '' : 's'}</span></div>
+        <div><b>{Number(gym.paid_total) > 0 ? peso(gym.paid_total) : '₱0'}</b><span>paid in all</span></div>
       </div>
+      {gym.max_members !== null && (
+        <div className="gx-cap" title={`${gym.members} of ${gym.max_members} members on this plan`}>
+          <div className="meter"><span style={{ width: `${Math.min(100, (gym.members / Math.max(1, gym.max_members)) * 100)}%` }} /></div>
+          <span>{Math.round((gym.members / Math.max(1, gym.max_members)) * 100)}% of the plan's members</span>
+        </div>
+      )}
 
-      <dl className="qv-rows">
+      <dl className="gx-facts roomy">
         <div><dt>Plan</dt><dd>{gym.plan_name ?? gym.plan}{gym.price_monthly !== null ? ` · ${peso(gym.price_monthly)} a month` : ''}</dd></div>
-        <div><dt>Paid until</dt><dd style={dueSoon(gym) ? { color: 'var(--warn)' } : undefined}>{gym.paid_until
-          ? `${day(gym.paid_until)}${gym.days_left !== null ? (gym.days_left < 0 ? `, ${-gym.days_left} days late` : `, ${gym.days_left} days left`) : ''}`
+        <div><dt>Paid until</dt><dd className={dueSoon(gym) ? 'warn' : undefined}>{gym.paid_until
+          ? `${day(gym.paid_until)}${gym.days_left !== null ? (gym.days_left < 0 ? `, ${-gym.days_left} days late` : `, ${gym.days_left.toLocaleString('en-PH')} days left`) : ''}`
           : 'No paid-until date'}</dd></div>
         <div><dt>Activity</dt><dd>{since(gym.last_activity)}</dd></div>
         <div><dt>Set up</dt><dd>{gym.owners === 0 ? 'Nobody can sign in yet, invite the owner'
@@ -440,13 +430,13 @@ function QuickView({ gym, risk, busy, onFull, onPlan, onSuspend, onInvite, onRea
       </dl>
 
       {risk && (
-        <div className="qv-flags">
-          <span className="section-title" style={{ marginBottom: 8 }}><AlertTriangle size={13} /> {risk.level === 'high' ? 'At risk of leaving' : 'Worth watching'}</span>
-          <div className="gym-flags">{risk.reasons.map((r) => <span key={r} className="chip warn">{r}</span>)}</div>
+        <div className="gx-watch">
+          <span className="gx-watch-h"><AlertTriangle size={14} /> {risk.level === 'high' ? 'At risk of leaving' : 'Worth watching'}</span>
+          <ul>{risk.reasons.map((r) => <li key={r}>{r}</li>)}</ul>
         </div>
       )}
 
-      <div className="qv-actions">
+      <footer className="qv-actions gx-qv-foot">
         <button className="btn" onClick={onFull}><ExternalLink size={14} /> Open its full page</button>
         {gym.owners === 0 && <button className="btn ghost" disabled={busy} onClick={onInvite}>Invite the owner</button>}
         <span className="grow-gap" />
@@ -455,7 +445,7 @@ function QuickView({ gym, risk, busy, onFull, onPlan, onSuspend, onInvite, onRea
           ? <button className="btn ghost" disabled={busy} onClick={onSuspend}>Suspend</button>
           : <button className="btn ghost" disabled={busy} onClick={onReactivate}>{gym.status === 'archived' ? 'Restore' : 'Reactivate'}</button>}
         {gym.status !== 'archived' && <button className="btn ghost" disabled={busy} onClick={onArchive}>Archive</button>}
-      </div>
-    </>
+      </footer>
+    </div>
   );
 }

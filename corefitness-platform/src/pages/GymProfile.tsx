@@ -7,6 +7,8 @@ import MessageOwner from '../components/MessageOwner';
 import { detail } from '../components/DetailLayer';
 import { supabase } from '../lib/supabaseClient';
 import GymMark from '../components/GymMark';
+import GymStatus from '../components/GymStatus';
+import './gyms.css';
 import GymDetail from '../components/GymDetail';
 import ExportGym from '../components/ExportGym';
 import ManageGym from '../components/ManageGym';
@@ -96,7 +98,7 @@ export default function GymProfile() {
   const unused = features.filter((f) => f.ever === 0);
   const kpis = [
     { icon: Users, label: 'Members', value: gym.members.toLocaleString('en-PH'), foot: gym.max_members ? `of ${gym.max_members} on the plan` : 'no plan limit' },
-    { icon: Activity, label: 'Check-ins, 4 weeks', value: last4.toLocaleString('en-PH'), foot: trend === null ? 'no earlier weeks to compare' : `${trend >= 0 ? '+' : ''}${trend}% vs the 4 before` },
+    { icon: Activity, label: 'Check-ins, 4 weeks', value: last4.toLocaleString('en-PH'), foot: trend === null ? 'no earlier weeks to compare' : `${trend >= 0 ? '+' : ''}${trend}% vs the 4 before`, down: trend !== null && trend < 0 },
     { icon: UserCog, label: 'On the desk', value: String(gym.staff), foot: `${gym.owners} owner${gym.owners === 1 ? '' : 's'}` },
     { icon: Wallet, label: 'Paid in all', value: peso(gym.paid_total), foot: gym.paid_until ? `paid to ${day(gym.paid_until)}` : 'no paid-until date' },
   ];
@@ -107,20 +109,22 @@ export default function GymProfile() {
   ];
   return (
     <>
-      <Back />
-      <section className="card gym-head">
-        <GymMark name={gym.name} logoUrl={gym.logo_url} accent={gym.accent} size={52} />
-        <span className="grow" style={{ minWidth: 0 }}>
-          <span className="name" style={{ fontSize: 19 }}>{gym.name}</span>
-          <span className="meta" style={{ marginTop: 2 }}>/join/{gym.slug} · on Core Fitness since {day(gym.created_at)} · {gym.plan_name ?? gym.plan}</span>
-        </span>
-        {gym.lock_reason
-          ? <span className="pill warn"><span className="dot" />{gym.lock_reason === 'suspended' ? 'Suspended' : gym.lock_reason === 'trial_ended' ? 'Trial ended, paused' : 'Overdue, read-only'}</span>
-          : <span className="pill ok"><span className="dot" />{gym.owners === 0 || !gym.onboarded ? 'Setting up' : 'Live'}</span>}
-        <SupportDoor gymId={gym.id} />
+      <header className="gx-page-head">
+        <Link to="/gyms" className="gx-back"><ArrowLeft size={14} /> All gyms</Link>
+        <div className="gx-page-id">
+          <GymMark name={gym.name} logoUrl={gym.logo_url} accent={gym.accent} size={48} />
+          <div className="gx-title">
+            <h1 className="gx-name">{gym.name}</h1>
+            <span className="gx-slug">/join/{gym.slug} · on Core Fitness since {day(gym.created_at)} · {gym.plan_name ?? gym.plan}</span>
+          </div>
+          <GymStatus gym={gym} />
+          <span className="gx-page-actions">
+            <SupportDoor gymId={gym.id} />
+            <ExportGym gymId={gym.id} gymName={gym.name} />
+          </span>
+        </div>
         {writing && <MessageOwner open onClose={() => setWriting(false)} gymId={gym.id} gymName={gym.name} onSent={() => void loadMessages()} />}
-        <ExportGym gymId={gym.id} gymName={gym.name} />
-      </section>
+      </header>
 
       <div className="ptabs" role="tablist" aria-label="This gym">
         {TABS.map(([k, label, Icon]) => (
@@ -133,23 +137,19 @@ export default function GymProfile() {
       {error && <p className="err">{error}</p>}
 
       {tab === 'overview' && <>
-      <div className="kpis" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
-        {kpis.map((k) => {
-          const Icon = k.icon;
-          return (
-            <div key={k.label} className="kpi">
-              <span className="kpi-icon"><Icon size={18} /></span>
-              <span className="kpi-label">{k.label}</span>
-              <span className="kpi-value">{k.value}</span>
-              <span className="kpi-foot">{k.foot}</span>
-            </div>
-          );
-        })}
+      <div className="gx-strip">
+        {kpis.map((k) => (
+          <div key={k.label} className="gx-strip-cell">
+            <span className="gx-strip-label">{k.label}</span>
+            <b>{k.value}</b>
+            <span className={`gx-strip-foot${k.down ? ' down' : ''}`}>{k.foot}</span>
+          </div>
+        ))}
       </div>
 
       {live && (
-        <div className="grid-2">
-          <section className="card">
+        <div className="gx-overview">
+          <section className="card gx-chart">
             <h2 className="section-title"><BarChart3 size={14} /> Check-ins per week, 26 weeks</h2>
             {weeks.every((w) => w.checkins === 0) ? <p className="empty">No check-ins in the last half year.</p> : (
               <div className="bars" style={{ gap: 4 }}>
@@ -160,31 +160,33 @@ export default function GymProfile() {
                       ['Taken at its desk', peso(Number(w.payments))],
                       ['Vs the week before', i ? `${w.checkins - weeks[i - 1].checkins >= 0 ? '+' : ''}${w.checkins - weeks[i - 1].checkins}` : '—'],
                     ] })}>
-                    <span className="bar-fill" style={{ height: `${Math.max(2, (w.checkins / top) * 160)}px`, maxWidth: 22 }} />
+                    <span className="bar-fill" style={{ height: `${Math.max(1, (w.checkins / top) * 100)}%` }} />
                     <span className="bar-label">{i % 4 === 0 ? new Date(`${w.week_start}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }) : ''}</span>
                   </div>
                 ))}
               </div>
             )}
-            <p className="meta" style={{ marginTop: 10 }}>
+            <p className="gx-chart-foot">
               {weeks.reduce((n, w) => n + w.new_members, 0)} new members and {weeks.reduce((n, w) => n + w.workouts, 0)} logged workouts in these weeks ·
               {' '}{peso(weeks.reduce((n, w) => n + Number(w.payments), 0))} taken at its desk
             </p>
           </section>
 
-          <section className="card">
+          <section className="card gx-uses">
             <h2 className="section-title"><Sparkles size={14} /> What it uses</h2>
-            {used.length === 0 && <p className="empty">Nothing used yet.</p>}
+            {used.length === 0 ? <p className="empty">Nothing used yet.</p> : (
+              <div className="gx-use gx-use-head" aria-hidden="true"><span>Part of the app</span><span>30 days</span><span>All time</span></div>
+            )}
             {used.map((f) => (
-              <div key={f.feature} className="log" style={{ display: 'flex', gap: 10, cursor: 'pointer' }}
+              <div key={f.feature} className="gx-use"
                 data-detail={detail({ title: f.label, value: `${f.ever.toLocaleString('en-PH')} all time`, rows: [['Last 30 days', f.last_30.toLocaleString('en-PH')], ['Share of all time', f.ever ? `${Math.round((f.last_30 / f.ever) * 100)}% in the last 30 days` : '—']] })}>
-                <span style={{ flex: 1, color: 'var(--text)' }}>{f.label}</span>
-                <span className="muted" style={{ fontSize: 12 }}>{f.last_30.toLocaleString('en-PH')} in 30 days</span>
-                <span style={{ fontSize: 12, fontWeight: 700, width: 60, textAlign: 'right' }}>{f.ever.toLocaleString('en-PH')}</span>
+                <span>{f.label}</span>
+                <span>{f.last_30.toLocaleString('en-PH')}</span>
+                <b>{f.ever.toLocaleString('en-PH')}</b>
               </div>
             ))}
             {unused.length > 0 && (
-              <p className="meta" style={{ marginTop: 10 }}>Not used yet: {unused.map((f) => f.label).join(', ')}, worth a word with the owner.</p>
+              <p className="gx-unused"><b>Not used yet</b>{unused.map((f) => f.label).join(', ')}. Worth a word with the owner.</p>
             )}
           </section>
         </div>

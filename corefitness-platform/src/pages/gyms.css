@@ -1,0 +1,161 @@
+/*
+ * Gyms and one gym's page (redesign 2026-11-22). One grid: 16px between boxes, 16px inside cards, every figure row
+ * split by hairlines that line up with the card's padding. Status is a dot and a word, never a pill box; a card's
+ * warning is a line of amber words, never a thick coloured edge (that pushed its contents 2px off its neighbours').
+ * Loaded after the shell's stylesheets, so these rules win without rewriting the shared ones; scoped to the Gyms page.
+ */
+.page[data-page="gyms"] { --gx-pad: 16px; --gx-r: 12px; }
+
+/* ---- status: a dot and a word ---- */
+.gx-status { display: inline-flex; align-items: center; gap: 7px; flex: none; font-size: 12.5px; font-weight: 600; color: var(--text-2); white-space: nowrap; }
+.gx-status i { width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); }
+.gx-status.ok i { background: #34d399; box-shadow: 0 0 0 3px rgb(52 211 153 / .14); }
+.gx-status.warn { color: var(--warn); }
+.gx-status.warn i { background: var(--warn); box-shadow: 0 0 0 3px rgb(245 158 11 / .14); }
+
+/* ---- the summary strip: five figures in one box, split by hairlines ---- */
+.page[data-page="gyms"] > .tiles { display: grid !important; grid-template-columns: repeat(5, minmax(0, 1fr)) !important; gap: 0 !important;
+  border: 1px solid var(--hairline); border-radius: var(--gx-r); background: var(--surface); overflow: hidden; flex: none !important; min-height: 0 !important; }
+.page[data-page="gyms"] > .tiles > .tile { border: 0 !important; border-radius: 0 !important; background: none !important; padding: 14px 18px !important;
+  min-height: 0 !important; transform: none !important; position: relative; }
+.page[data-page="gyms"] > .tiles > .tile + .tile { border-left: 1px solid var(--hairline) !important; }
+.page[data-page="gyms"] > .tiles > .tile:hover { background: var(--surface-high) !important; }
+.page[data-page="gyms"] > .tiles > .tile.on::before { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--accent); }
+.page[data-page="gyms"] > .tiles .tile-value { font-size: 24px !important; line-height: 1.1; }
+.page[data-page="gyms"] > .tiles .tile-label { margin-top: 2px; }
+.page[data-page="gyms"] > .tiles .tile.act .tile-value { color: var(--warn) !important; }
+.page[data-page="gyms"] > .tiles .tile-chev { opacity: .5; }
+
+/* ---- the toolbar: filters left, the rest right, one 36px line ---- */
+.page[data-page="gyms"] > .toolbar { gap: 8px; margin: 0 !important; flex: none !important; min-height: 0 !important; overflow: visible !important; }
+.page[data-page="gyms"] > .toolbar :is(.btn, select, .search) { height: 36px !important; }
+
+/* ---- the card ---- */
+.page[data-page="gyms"] .gym-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important; gap: 16px !important; margin: 0 !important; }
+.page[data-page="gyms"] .gym-grid > .gym-card { padding: var(--gx-pad) !important; gap: 14px !important; border-radius: var(--gx-r) !important;
+  border: 1px solid var(--hairline) !important; border-left-width: 1px !important; background: var(--surface) !important; transform: none !important; }
+.page[data-page="gyms"] .gym-grid > .gym-card:hover { border-color: var(--line-strong, rgb(255 255 255 / .18)) !important; background: var(--surface-high) !important; }
+.gx-head, .gx-qv-head, .gx-page-id { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.gx-title { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.gx-name { margin: 0; font-size: 15px; font-weight: 650; letter-spacing: -0.015em; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gx-slug { font-size: 12px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Figures: a row of columns split by hairlines; the first sits on the card's left edge. */
+.gx-figs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 12px 0; border-top: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline); }
+.gx-figs.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.gx-figs > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 0 12px; }
+.gx-figs > div:first-child { padding-left: 0; }
+.gx-figs > div + div { border-left: 1px solid var(--hairline); }
+.gx-figs b { font-size: 18px; font-weight: 650; letter-spacing: -0.02em; line-height: 1.15; color: var(--text); font-variant-numeric: tabular-nums;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gx-figs span { font-size: 12px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Facts: a label column and a value column, the same width on every card. */
+.gx-facts { margin: 0; display: grid; gap: 6px; }
+.gx-facts > div { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 12px; align-items: baseline; font-size: 12.5px; }
+.gx-facts dt { color: var(--text-3); }
+.gx-facts dd { margin: 0; display: flex; gap: 8px; min-width: 0; color: var(--text); white-space: nowrap; }
+.gx-facts dd.warn, .gx-end.warn { color: var(--warn); }
+.gx-end { margin-left: auto; color: var(--text-2); font-variant-numeric: tabular-nums; }
+
+/* The warning line is always there (empty when there is nothing), so every card is one height. */
+.page[data-page="gyms"] .gym-card .gym-flag { min-height: 18px; margin: 0; font-size: 12.5px; gap: 7px; font-weight: 600; }
+.page[data-page="gyms"] .gym-card .gym-foot { margin-top: auto; padding-top: 12px !important; border-top: 1px solid var(--hairline); gap: 6px; }
+.page[data-page="gyms"] .gym-card .gym-foot .btn { height: 30px !important; padding: 0 12px; font-size: 12.5px; }
+.page[data-page="gyms"] .gym-card .gym-foot .open { color: var(--text-2); font-size: 12.5px; }
+.page[data-page="gyms"] .gym-card:hover .gym-foot .open { color: var(--text); }
+
+/* ---- the quick view ---- */
+.gx-qv { display: grid; gap: 18px; }
+.gx-qv-head { padding-right: 36px; }
+.gx-qv-head .gx-name { font-size: 20px; font-weight: 700; }
+.gx-qv-head .gx-slug { font-size: 12.5px; }
+.gx-qv .gx-figs { padding: 14px 0; }
+.gx-qv .gx-figs b { font-size: 22px; }
+.gx-cap { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; margin-top: -6px; font-size: 12px; color: var(--text-3); }
+.gx-cap .meter { height: 6px; margin: 0; }
+.gx-facts.roomy { gap: 0; }
+.gx-facts.roomy > div { grid-template-columns: 120px minmax(0, 1fr); padding: 10px 0; font-size: 13.5px; }
+.gx-facts.roomy > div + div { border-top: 1px solid var(--hairline); }
+.gx-facts.roomy dd { white-space: normal; }
+.gx-watch { display: grid; gap: 8px; padding: 12px 14px; border-radius: 10px; border: 1px solid rgb(245 158 11 / .3); background: rgb(245 158 11 / .06); }
+.gx-watch-h { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 650; color: var(--warn); }
+.gx-watch ul { margin: 0; padding-left: 22px; display: grid; gap: 4px; font-size: 13px; color: var(--text); }
+.gx-qv-foot { margin: 0 !important; padding-top: 16px; border-top: 1px solid var(--hairline); align-items: center; }
+
+/* ---- a dialog's form: every field the full width, one height ---- */
+.modal .ask .fields { grid-template-columns: minmax(0, 1fr) !important; gap: 14px !important; }
+.modal .ask .fields > div { grid-column: 1 / -1 !important; }
+.modal .ask :is(select, input) { width: 100% !important; height: 42px; }
+.modal .ask > .name { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 6px; }
+.modal .ask > .meta { line-height: 1.55; margin-bottom: 18px; max-width: 60ch; }
+
+/* ---- one gym's page ---- */
+.content .page[data-page="gyms"] > :is(.gx-page-head, .gx-strip, .ptabs) { flex: none !important; min-height: 0 !important; overflow: visible !important; }
+.gx-page-head { display: grid; gap: 12px; }
+.gx-back { display: inline-flex; align-items: center; gap: 6px; width: fit-content; font-size: 13px; font-weight: 550; color: var(--text-3); text-decoration: none; }
+.gx-back:hover { color: var(--text); }
+.gx-page-id .gx-name { font-size: 24px; font-weight: 700; letter-spacing: -0.025em; }
+.gx-page-id .gx-slug { font-size: 13px; }
+.gx-page-actions { display: inline-flex; gap: 8px; margin-left: 8px; }
+.gx-page-actions .btn { height: 36px; }
+
+/* Tabs underline, on one hairline that runs the page's width. */
+.page[data-page="gyms"] > .ptabs { display: flex !important; width: 100%; gap: 4px !important; padding: 0 !important; background: none !important;
+  border: 0 !important; border-bottom: 1px solid var(--hairline) !important; border-radius: 0 !important; }
+.page[data-page="gyms"] > .ptabs button { position: relative; height: 40px; padding: 0 12px !important; border-radius: 0 !important; background: none !important;
+  box-shadow: none !important; color: var(--text-2) !important; font-weight: 550; }
+.page[data-page="gyms"] > .ptabs button:hover { color: var(--text) !important; }
+.page[data-page="gyms"] > .ptabs button.on { color: var(--text) !important; }
+.page[data-page="gyms"] > .ptabs button.on::after { content: ''; position: absolute; left: 8px; right: 8px; bottom: -1px; height: 2px; border-radius: 2px; background: var(--accent); }
+
+.gx-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--hairline); border-radius: var(--gx-r, 12px); background: var(--surface); }
+.gx-strip-cell { display: flex; flex-direction: column; gap: 4px; padding: 14px 18px; min-width: 0; }
+.gx-strip-cell + .gx-strip-cell { border-left: 1px solid var(--hairline); }
+.gx-strip-label { font-size: 12.5px; color: var(--text-3); }
+.gx-strip-cell b { font-size: 26px; font-weight: 650; letter-spacing: -0.025em; line-height: 1.1; color: var(--text); font-variant-numeric: tabular-nums; }
+.gx-strip-foot { font-size: 12.5px; color: var(--text-2); }
+.gx-strip-foot.down { color: var(--warn); }
+
+/* Overview: the chart takes two thirds and fills its box; the bars grow with it. */
+.gx-overview { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px; min-height: 0; }
+.gx-overview > .card { display: flex; flex-direction: column; min-height: 0; margin: 0 !important; padding: var(--gx-pad, 16px) 18px !important; }
+.gx-chart .bars { flex: 1 1 0%; height: auto !important; min-height: 150px; gap: 6px !important; align-items: stretch !important; padding-top: 8px; }
+.gx-chart .bars .bar { display: flex; flex-direction: column; justify-content: flex-end; flex: 1 1 0; min-width: 0; height: 100%; }
+.gx-chart .bars .bar-fill { width: 100%; max-width: 26px; margin: 0 auto; }
+.gx-chart-foot { margin: 12px 0 0; padding-top: 12px; border-top: 1px solid var(--hairline); font-size: 12.5px; color: var(--text-2); }
+.gx-uses { overflow: auto; }
+.gx-use { display: grid; grid-template-columns: minmax(0, 1fr) 70px 70px; gap: 12px; align-items: baseline; padding: 10px 0; font-size: 13.5px; cursor: pointer; }
+.gx-use + .gx-use { border-top: 1px solid var(--hairline); }
+.gx-use > :not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+.gx-use > span:nth-child(2) { color: var(--text-2); }
+.gx-use b { font-weight: 650; color: var(--text); }
+.gx-use-head { padding-top: 0; font-size: 12px; color: var(--text-3); cursor: default; border-bottom: 1px solid var(--hairline); }
+.gx-use-head + .gx-use { border-top: 0; }
+.gx-unused { margin: auto 0 0; padding-top: 14px; font-size: 12.5px; line-height: 1.55; color: var(--text-2); }
+.gx-unused b { display: block; margin-bottom: 2px; font-size: 12px; font-weight: 600; color: var(--text-3); }
+
+@media (max-width: 1300px) {
+  .page[data-page="gyms"] > .tiles { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+  .page[data-page="gyms"] > .tiles > .tile { padding: 12px 14px !important; }
+}
+@media (max-width: 1100px) {
+  .gx-overview { grid-template-columns: minmax(0, 1fr); }
+  .gx-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gx-strip-cell:nth-child(3) { border-left: 0; }
+  .gx-strip-cell:nth-child(n+3) { border-top: 1px solid var(--hairline); }
+  .gx-page-id { flex-wrap: wrap; }
+}
+@media (max-width: 760px) {
+  .page[data-page="gyms"] > .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .gx-figs.four { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 12px; }
+}
+
+/* Second pass: figures never cut off; the plan dialog is one surface. */
+.page[data-page="gyms"] .gym-card .gx-figs > div { padding: 0 10px; }
+.page[data-page="gyms"] .gym-card .gx-figs > div:first-child { padding-left: 0; }
+.page[data-page="gyms"] .gym-card .gx-figs b { font-size: 17px; }
+.gx-figs b small { font-size: 12.5px; font-weight: 500; color: var(--text-3); letter-spacing: 0; }
+.modal .ask { background: none !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; }
+.modal .ask select, .modal .ask .dp-btn { height: 42px !important; min-height: 42px; box-sizing: border-box; }
+.modal .ask > .row { padding-top: 16px; border-top: 1px solid var(--hairline); }
