@@ -1,0 +1,100 @@
+/*
+ * Applications (redesign 2026-11-22): an inbox. The figures in one strip; then the queue (one line an application,
+ * with how long it has waited, its documents and payment, and a dot when something needs a look), the open
+ * application in full, and where applicants come from. The how-it-works steps fold away; they are reference, not work.
+ * Below 1500px the side panel moves under the queue so the open application keeps its width.
+ */
+.page[data-page="applications"] > .tiles { display: grid !important; grid-template-columns: repeat(5, minmax(0, 1fr)) !important; gap: 0 !important;
+  border: 1px solid var(--hairline); border-radius: 12px; background: var(--surface); overflow: hidden; flex: none !important; min-height: 0 !important; margin: 0 !important; }
+.page[data-page="applications"] > .tiles > .tile { border: 0 !important; border-radius: 0 !important; background: none !important; padding: 14px 18px !important;
+  min-height: 0 !important; transform: none !important; position: relative; }
+.page[data-page="applications"] > .tiles > .tile + .tile { border-left: 1px solid var(--hairline) !important; }
+.page[data-page="applications"] > .tiles > .tile:hover { background: var(--surface-high) !important; }
+.page[data-page="applications"] > .tiles > .tile.on::before { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--accent); }
+.page[data-page="applications"] > .tiles .tile-value { font-size: 24px !important; }
+.page[data-page="applications"] > .tiles .tile.act .tile-value { color: var(--warn) !important; }
+
+.content .page[data-page="applications"] > .ap { flex: 1 1 auto !important; min-height: 0 !important; overflow: hidden !important;
+  display: grid; grid-template-columns: 330px minmax(0, 1fr) 300px; grid-template-areas: 'queue read side'; gap: 16px; }
+.ap > .card { margin: 0 !important; min-height: 0; overflow: hidden; display: flex; flex-direction: column; padding: 16px 18px !important; }
+.ap-queue { grid-area: queue; padding: 16px 0 0 !important; }
+.ap-read { grid-area: read; overflow-y: auto !important; }
+.ap-side { grid-area: side; overflow-y: auto !important; }
+.ap-none { margin: 4px 0 0; padding: 0 18px; font-size: 13px; color: var(--text-3); }
+.ap-read .ap-none { padding: 0; }
+
+/* The queue */
+.ap-qhead { padding: 0 18px 12px; border-bottom: 1px solid var(--hairline); flex: none; }
+.ap-qhead .section-title { margin: 0 0 10px; }
+.page[data-page="applications"] .ap-filters { display: flex !important; flex-wrap: wrap; gap: 4px !important; margin: 0 !important; }
+.page[data-page="applications"] .ap-filters button { height: 28px !important; padding: 0 9px !important; font-size: 12px !important; border-radius: 8px !important; }
+.ap-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1 1 0%; min-height: 0; }
+.ap-row { width: 100%; display: flex; align-items: center; gap: 10px; padding: 11px 18px; border: 0; border-bottom: 1px solid var(--hairline); background: none;
+  text-align: left; font: inherit; color: inherit; cursor: pointer; position: relative; }
+.ap-row:hover { background: var(--surface-high); }
+.ap-row.on { background: var(--surface-high); }
+.ap-row.on::before { content: ''; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent); }
+.ap-row-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ap-row-text b { font-size: 13.5px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ap-row-text span { font-size: 12px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ap-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--warn); }
+
+/* The open application */
+.page[data-page="applications"] .ap-read .app-card { margin: 0 !important; padding: 0 !important; border: 0 !important; background: none !important;
+  box-shadow: none !important; display: flex; flex-direction: column; gap: 18px; }
+.page[data-page="applications"] .app-top { display: flex; align-items: center; gap: 14px; padding: 0 0 16px; border-bottom: 1px solid var(--hairline); }
+.page[data-page="applications"] .app-title { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.page[data-page="applications"] .app-title .name { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.page[data-page="applications"] .app-sub { font-size: 13px; color: var(--text-2); }
+.ap-wait { font-size: 12.5px; font-weight: 600; color: var(--warn); letter-spacing: 0; }
+.page[data-page="applications"] .app-top .actions { display: flex; gap: 8px; align-items: center; flex: none; }
+.ap-state { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; color: var(--text-2); }
+.ap-state i { width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); }
+.ap-state.ok i { background: #34d399; }
+
+/* The four things to check: one ruled grid, two by two. */
+.page[data-page="applications"] .app-boxes { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 0 !important;
+  border: 1px solid var(--hairline); border-radius: 12px; overflow: hidden; margin: 0 !important; }
+.page[data-page="applications"] .app-box { display: flex !important; flex-direction: column; gap: 5px; padding: 14px 16px !important; margin: 0 !important;
+  border: 0 !important; border-radius: 0 !important; background: none !important; min-width: 0; }
+.page[data-page="applications"] .app-box:nth-child(2n) { border-left: 1px solid var(--hairline) !important; }
+.page[data-page="applications"] .app-box:nth-child(n+3) { border-top: 1px solid var(--hairline) !important; }
+.page[data-page="applications"] .app-box .app-lbl { font-size: 12px !important; font-weight: 600; letter-spacing: 0 !important; text-transform: none !important; color: var(--text-3); }
+.page[data-page="applications"] .app-box > b { font-size: 14.5px; font-weight: 650; color: var(--text); }
+.page[data-page="applications"] .app-box .app-line { font-size: 13px; }
+
+.page[data-page="applications"] .app-notes { display: grid; gap: 6px; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--hairline); background: var(--surface-high); margin: 0; }
+.ap-quote { color: var(--text) !important; font-style: italic; }
+
+.page[data-page="applications"] .app-foot { display: grid; gap: 10px; padding: 16px 0 0; border-top: 1px solid var(--hairline); margin: 0; }
+.ap-foot-lbl { font-size: 12px; font-weight: 600; color: var(--text-3); }
+.page[data-page="applications"] .app-foot .reach { display: flex; flex-wrap: wrap; gap: 6px; }
+.page[data-page="applications"] .app-tags { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12.5px; color: var(--text-2); }
+.page[data-page="applications"] .app-tags span { display: inline-flex; align-items: center; gap: 6px; }
+
+/* The side */
+.ap-side .section-title { margin: 0 0 10px; }
+.ap-figs { margin: 0 0 4px !important; }
+.ap-how { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--hairline); }
+.ap-how summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-2); list-style-position: inside; }
+.ap-how summary:hover { color: var(--text); }
+.ap-how .steps { margin-top: 10px; }
+.ap-side > .card, .ap-side section.card { margin: 14px 0 0 !important; padding: 12px 0 0 !important; border: 0 !important; border-top: 1px solid var(--hairline) !important;
+  border-radius: 0 !important; background: none !important; box-shadow: none !important; }
+
+@media (max-width: 1499px) {
+  .content .page[data-page="applications"] > .ap { grid-template-columns: 300px minmax(0, 1fr); grid-template-rows: minmax(0, 1.3fr) minmax(0, 1fr);
+    grid-template-areas: 'queue read' 'side read'; }
+}
+@media (max-width: 1279px) {
+  .content .page[data-page="applications"] > .ap { overflow: visible !important; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto;
+    grid-template-areas: 'queue' 'read' 'side'; }
+  .ap-queue { max-height: 360px; }
+}
+
+/* Second pass: the queue's header and rows share one edge; a breakdown's count sits on its label's line. */
+.ap > .card.ap-queue { padding: 16px 0 0 !important; }
+@media (min-width: 1500px) { .content .page[data-page="applications"] > .ap { grid-template-columns: 350px minmax(0, 1fr) 300px; } }
+.ap-side .source-list > div > .row { display: flex !important; flex-wrap: nowrap !important; align-items: baseline; justify-content: space-between; gap: 8px; }
+.ap-side .source-list > div > .row > .grow { flex: 1 1 auto !important; min-width: 0; }
+.ap-side .source-list > div { padding: 6px 0; }

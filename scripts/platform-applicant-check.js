@@ -171,12 +171,22 @@ async (page) => {
   await page.locator('[data-docs-chip]').first().waitFor({ timeout: 15000 });
   const iron = page.locator('.app-card').filter({ hasText: 'Iron Den' });
   const bulwark = page.locator('.app-card').filter({ hasText: 'Bulwark Gym' });
-  out.push('each application says where its documents stand: ' + (/Documents 5\/6 verified/.test(await iron.innerText()) && /1 to check/.test(await iron.innerText())
-    && /Documents 6\/6 verified/.test(await bulwark.innerText()) ? 'yes' : 'MISSING'));
-  out.push('Let them in is shut until all six are verified: ' + ((await iron.getByRole('button', { name: 'Let them in' }).isDisabled()) ? 'yes' : 'NO'));
+  // Since 2026-11-22 Applications is an inbox: one application open at a time, chosen from the queue.
+  const pickApp = async (name) => { await page.locator('[data-app-row]', { hasText: name }).click(); await page.waitForTimeout(250); };
+  out.push('the queue lists every waiting application: ' + ((await page.locator('[data-app-row]', { hasText: 'Iron Den' }).count()) === 1
+    && (await page.locator('[data-app-row]', { hasText: 'Bulwark Gym' }).count()) === 1 ? 'yes' : 'MISSING'));
+  await pickApp('Iron Den');
+  const ironText = await iron.innerText();
+  const ironPayChips = await iron.locator('[data-pay-chip]').count();
+  const ironShut = await iron.getByRole('button', { name: 'Let them in' }).isDisabled();
+  await pickApp('Bulwark Gym');
+  const bulwarkText = await bulwark.innerText();
+  out.push('each application says where its documents stand: ' + (/Documents 5\/6 verified/.test(ironText) && /1 to check/.test(ironText)
+    && /Documents 6\/6 verified/.test(bulwarkText) ? 'yes' : 'MISSING'));
+  out.push('Let them in is shut until all six are verified: ' + (ironShut ? 'yes' : 'NO'));
   // 0224: a paid plan pays before approval.
   out.push('…and, on a paid plan, until it is paid: ' + ((await bulwark.getByRole('button', { name: 'Let them in' }).isDisabled())
-    && /GCash payment to check · ref GC-777001/.test(await bulwark.innerText()) && (await iron.locator('[data-pay-chip]').count()) === 0 ? 'yes' : 'NO'));
+    && /GCash payment to check · ref GC-777001/.test(await bulwark.innerText()) && ironPayChips === 0 ? 'yes' : 'NO'));
   await bulwark.locator('[data-pay-check]').click();
   const payDialog = page.locator('[data-pay-dialog]');
   await payDialog.waitFor({ timeout: 8000 });
@@ -190,7 +200,9 @@ async (page) => {
   out.push('…and paid, Let them in opens: ' + (!(await bulwark.getByRole('button', { name: 'Let them in' }).isDisabled())
     && /Paid ₱999 for Standard/.test(await bulwark.innerText()) ? 'yes' : 'NO'));
   CALLS.splice(0, CALLS.length, ...CALLS.filter((c) => c[0] !== 'email'));
-  out.push('whether there is an account to sign in with: ' + (/Has an account/.test(await iron.innerText()) && /No account/.test(await bulwark.innerText()) ? 'yes' : 'MISSING'));
+  const bulwarkAccount = await bulwark.innerText();
+  await pickApp('Iron Den');
+  out.push('whether there is an account to sign in with: ' + (/Has an account/.test(await iron.innerText()) && /No account/.test(bulwarkAccount) ? 'yes' : 'MISSING'));
 
   await iron.locator('[data-docs-chip]').click();
   await page.locator('[data-review-documents]').waitFor({ timeout: 8000 });
@@ -223,6 +235,7 @@ async (page) => {
   await page.waitForTimeout(300);
 
   // 0228: on a paid plan, Send a way to pay also offers Pay online (PayMongo) — a message the site turns into a button.
+  await pickApp('Bulwark Gym');
   const bulwarkRow = page.locator('.app-card').filter({ hasText: 'Bulwark Gym' });
   await bulwarkRow.getByRole('button', { name: /Messages/ }).click();
   await page.getByRole('button', { name: 'How to pay' }).click();
@@ -235,6 +248,7 @@ async (page) => {
   out.push('…sent as the Pay for your plan message: ' + (pm && pm[1].p_id === 'a2' && /Pay for your plan/.test(pm[1].p_body) && /PayMongo/.test(pm[1].p_body) ? 'yes' : 'MISSING ' + JSON.stringify(pm)));
   await page.keyboard.press('Escape');
   await page.waitForTimeout(300);
+  await pickApp('Iron Den');
   await page.locator('.app-card').filter({ hasText: 'Iron Den' }).getByRole('button', { name: /Messages/ }).click();
   await page.getByRole('button', { name: 'How to pay' }).click();
   out.push('…and not to one with nothing to pay: ' + ((await page.locator('[data-pay-online-option]').count()) === 0 ? 'yes' : 'STILL SHOWN'));

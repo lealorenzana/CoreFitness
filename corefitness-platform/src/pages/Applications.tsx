@@ -13,10 +13,9 @@ import Ask from '../components/Ask';
 import GymMark from '../components/GymMark';
 import Modal from '../components/Modal';
 import Tiles from '../components/Tiles';
-import Pagination from '../components/Pagination';
 import GymSuggestions from '../components/GymSuggestions';
 import MapData from '../components/MapData';
-import { usePaged } from '../lib/usePaged';
+import './applications.css';
 
 const when = (iso: string) =>
   new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -58,8 +57,9 @@ export default function Applications() {
   const waiting = of('pending');
   const oldest = waiting.reduce<Application | null>((o, a) => (!o || a.created_at < o.created_at ? a : o), null);
   const shownAll = of(show).sort((a, b) => (show === 'pending' ? a.created_at.localeCompare(b.created_at) : b.created_at.localeCompare(a.created_at)));
-  const paged = usePaged(shownAll);
-  const shown = paged.rows;
+  /** The application open on the right; the first in the list until one is chosen, or when the chosen one leaves the list. */
+  const [picked, setPicked] = useState<string | null>(null);
+  const open = shownAll.find((a) => a.id === picked) ?? shownAll[0] ?? null;
   const pick = (s: Show) => setShow(show === s ? 'all' : s);
 
   return (
@@ -76,119 +76,155 @@ export default function Applications() {
       {error && <p className="err">{error}</p>}
       {mailNote && <p className="meta" data-mail-note>{mailNote}</p>}
 
-      <div className="split">
-        <section className="card split-main">
-          <div className="ov-head">
+      {/* 2026-11-22: an inbox. The queue on the left, the chosen application in full beside it, where applicants
+          come from on the right. Each box scrolls its own list, so the shell's View all stays out. */}
+      <div className="ap" data-va-keep>
+        <section className="card ap-queue">
+          <header className="ap-qhead">
             <h2 className="section-title"><ClipboardList size={14} /> {show === 'pending' ? 'Waiting for an answer' : show === 'approved' ? 'Let in' : show === 'rejected' ? 'Turned down' : show === 'withdrawn' ? 'Called off' : 'Every application'}</h2>
-            <div className="filters" style={{ marginLeft: 'auto' }}>
+            <div className="filters ap-filters" role="group" aria-label="Show">
               {([['pending', 'Waiting'], ['approved', 'Let in'], ['rejected', 'Turned down'], ['withdrawn', 'Called off'], ['all', 'All']] as [Show, string][]).map(([s, label]) => (
-                <button key={s} type="button" className={show === s ? 'on' : ''} onClick={() => setShow(s)}>{label}<b>{apps ? of(s).length : ''}</b></button>
+                <button key={s} type="button" className={show === s ? 'on' : ''} aria-pressed={show === s} onClick={() => setShow(s)}>{label}<b>{apps ? of(s).length : ''}</b></button>
               ))}
             </div>
-          </div>
-          {apps === null ? <p className="empty">Loading…</p> : shown.length === 0 ? (
-            <p className="empty"><Inbox size={22} className="empty-icon" />{show === 'pending' ? 'No gym is waiting for an answer.' : 'None here.'}</p>
+          </header>
+          {apps === null ? <p className="empty">Loading…</p> : shownAll.length === 0 ? (
+            <p className="ap-none">{show === 'pending' ? 'No gym is waiting for an answer.' : 'None here.'}</p>
           ) : (
-            <div className="ov-scroll">
-              {shown.map((app) => (
-                <article key={app.id} className="app-card" data-app-card>
-                  {/* 2026-11-02: one card per application — who and what at the top with the decision,
-                      the four things to check in labelled boxes, and every way to reach them in one bar. */}
-                  <header className="app-top">
-                    <GymMark name={app.gym_name} logoUrl={null} accent="violet" size={44} />
-                    <span className="app-title">
-                      <span className="name">{app.gym_name}
-                        {app.status === 'pending' && daysSince(app.created_at) >= 3 && <span className="pill warn" style={{ marginLeft: 8 }}>{daysSince(app.created_at)} days waiting</span>}
+            <ul className="ap-list">
+              {shownAll.map((a) => {
+                const d = docs.get(a.id); const p = pays.get(a.id);
+                return (
+                  <li key={a.id}>
+                    <button type="button" className={`ap-row${open?.id === a.id ? ' on' : ''}`} aria-current={open?.id === a.id} data-app-row onClick={() => setPicked(a.id)}>
+                      <GymMark name={a.gym_name} logoUrl={null} accent="violet" size={32} />
+                      <span className="ap-row-text">
+                        <b>{a.gym_name}</b>
+                        <span>
+                          {a.status === 'pending' ? `${daysSince(a.created_at)}d waiting` : when(a.created_at)}
+                          {d && ` · docs ${6 - d.missing.length}/6`}
+                          {p && ` · ${p.status === 'paid' ? 'paid' : p.status === 'pending' ? 'payment to check' : 'not paid'}`}
+                        </span>
                       </span>
-                      <span className="app-sub">
-                        Applied {when(app.created_at)}
-                        {app.address && <> · {app.address}</>}
-                        {app.member_estimate != null && <> · <span data-tip="Their own estimate of how many members the gym has">about {app.member_estimate} members</span></>}
-                      </span>
-                    </span>
-                    {app.status === 'pending' ? (
-                      <span className="actions">
-                        <button className="btn ghost" onClick={() => setDialog({ kind: 'down', app })}>Turn down</button>
-                        {/* Approve waits for the documents (0187) — the database refuses it too. */}
-                        <button className="btn" disabled={!!docs.get(app.id)?.missing.length || (pays.has(app.id) && pays.get(app.id)!.status !== 'paid')}
-                          data-tip={docs.get(app.id)?.missing.length ? 'Verify all six documents first'
-                            : pays.has(app.id) && pays.get(app.id)!.status !== 'paid' ? `Waits for their payment for ${pays.get(app.id)!.plan_name}` : undefined}
-                          onClick={() => setDialog({ kind: 'in', app })}>Let them in</button>
-                      </span>
-                    ) : (
-                      <span className="actions">
-                        <span className={`pill${app.status === 'approved' ? ' ok' : ''}`}>{app.status === 'approved' ? 'Let in' : app.status === 'withdrawn' ? 'Called off' : 'Turned down'}</span>
-                        {(app.status === 'rejected' || app.status === 'withdrawn') && accounts.has(app.id) && (
-                          <button className="btn ghost" onClick={() => setDialog({ kind: 'delete', app })}>Delete their account</button>
-                        )}
-                      </span>
-                    )}
-                  </header>
-
-                  <div className="app-boxes">
-                    <div className="app-box">
-                      <span className="app-lbl"><Users size={12} /> Owner</span>
-                      <b>{app.owner_name}</b>
-                      <span className="app-line"><Mail size={12} /> {app.email}</span>
-                      {app.phone && <span className="app-line"><Phone size={12} /> {app.phone}</span>}
-                    </div>
-                    <div className="app-box">
-                      <span className="app-lbl"><Layers size={12} /> Plan</span>
-                      <b>{app.plan_name ? `Wants ${app.plan_name}${app.billing === 'yearly' ? ', yearly' : ''}` : 'No plan chosen'}</b>
-                      {pays.has(app.id) ? <PayChip p={pays.get(app.id)!} onCheck={() => setDialog({ kind: 'pay', app })} />
-                        : <span className="app-line muted">Nothing to pay before approval</span>}
-                    </div>
-                    <div className="app-box">
-                      <span className="app-lbl"><FileCheck2 size={12} /> Documents</span>
-                      {docs.has(app.id) ? (
-                        <>
-                          <b>{docs.get(app.id)!.missing.length === 0 ? 'All six verified' : `${docs.get(app.id)!.missing.length} still to verify`}</b>
-                          <span className="app-meter" aria-hidden="true"><i style={{ width: `${((6 - docs.get(app.id)!.missing.length) / 6) * 100}%` }} /></span>
-                          <button type="button" className={`app-link${docs.get(app.id)!.missing.length === 0 ? ' ok' : ''}`} data-docs-chip onClick={() => setDialog({ kind: 'docs', app })}
-                            data-tip={docs.get(app.id)!.missing.length ? `Still needed: ${docs.get(app.id)!.missing.join('; ')}` : 'All six verified and in date'}>
-                            Documents {6 - docs.get(app.id)!.missing.length}/6 verified
-                            {docs.get(app.id)!.waiting > 0 && <b className="unread">{docs.get(app.id)!.waiting} to check</b>}
-                          </button>
-                        </>
-                      ) : <span className="app-line muted">Loading…</span>}
-                    </div>
-                    <div className="app-box">
-                      <span className="app-lbl"><ShieldCheck size={12} /> Sign-in and terms</span>
-                      <b>{accounts.has(app.id) ? 'Has an account' : 'No account, status link only'}</b>
-                      {/* 0154: which version of the gym documents they agreed to. Before 0154 the field is absent — say nothing. */}
-                      {app.terms_version !== undefined && (app.terms_version
-                        ? <span className="app-line" data-tip={app.terms_accepted_at ? `Agreed ${when(app.terms_accepted_at)}` : undefined}>Agreed to gym terms (version of {app.terms_version})</span>
-                        : <span className="app-line warn" data-tip="Applied before the gym documents were in effect, or the agreement did not reach us"><FileQuestion size={12} /> No agreement to the gym terms recorded</span>)}
-                    </div>
-                  </div>
-
-                  {/* 0111: the two things worth knowing before you create a gym. Neither blocks anything. */}
-                  {(app.already_a_gym || (!!app.duplicates && app.duplicates > 0) || app.message || (app.status === 'rejected' && app.reason)) && (
-                    <div className="app-notes">
-                      {app.already_a_gym && <span className="app-line warn">This email already owns a gym here. Letting them in again makes a second one.</span>}
-                      {!!app.duplicates && app.duplicates > 0 && <span className="app-line warn">Applied {app.duplicates + 1} times in total, from this email or this gym name.</span>}
-                      {app.message && <span className="app-line">&ldquo;{app.message}&rdquo;</span>}
-                      {app.status === 'rejected' && app.reason && <span className="app-line">Turned down: {app.reason}</span>}
-                    </div>
-                  )}
-
-                  <footer className="app-foot">
-                    <Reach app={app} onTalk={() => setDialog({ kind: 'talk', app })} />
-                    <span className="app-tags">
-                      {app.contact_pref && <span><MessageCircle size={12} /> Prefers {CONTACT[app.contact_pref]}</span>}
-                      {app.heard_from && <span><Sparkles size={12} /> Heard from {app.heard_from}</span>}
-                    </span>
-                  </footer>
-                </article>
-              ))}
-              <Pagination page={paged.page} perPage={paged.perPage} total={paged.total} noun={paged.total === 1 ? 'application' : 'applications'} onPage={paged.setPage} />
-            </div>
+                      {(!!a.unread || (d?.waiting ?? 0) > 0 || p?.status === 'pending') && <i className="ap-dot" aria-label="Something to look at" />}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </section>
 
-        <aside className="split-side">
-          <section className="card">
-            <h2 className="section-title"><Sparkles size={14} /> Letting a gym in</h2>
+        <section className="card ap-read">
+          {!open ? <p className="ap-none">Choose an application on the left.</p> : (() => { const app = open; return (
+            <article key={app.id} className="app-card" data-app-card>
+              <header className="app-top">
+                <GymMark name={app.gym_name} logoUrl={null} accent="violet" size={48} />
+                <span className="app-title">
+                  <span className="name">{app.gym_name}
+                    {app.status === 'pending' && daysSince(app.created_at) >= 3 && <span className="ap-wait">{daysSince(app.created_at)} days waiting</span>}
+                  </span>
+                  <span className="app-sub">
+                    Applied {when(app.created_at)}
+                    {app.address && <> · {app.address}</>}
+                    {app.member_estimate != null && <> · <span data-tip="Their own estimate of how many members the gym has">about {app.member_estimate} members</span></>}
+                  </span>
+                </span>
+                {app.status === 'pending' ? (
+                  <span className="actions">
+                    <button className="btn ghost" onClick={() => setDialog({ kind: 'down', app })}>Turn down</button>
+                    {/* Approve waits for the documents (0187) — the database refuses it too. */}
+                    <button className="btn" disabled={!!docs.get(app.id)?.missing.length || (pays.has(app.id) && pays.get(app.id)!.status !== 'paid')}
+                      data-tip={docs.get(app.id)?.missing.length ? 'Verify all six documents first'
+                        : pays.has(app.id) && pays.get(app.id)!.status !== 'paid' ? `Waits for their payment for ${pays.get(app.id)!.plan_name}` : undefined}
+                      onClick={() => setDialog({ kind: 'in', app })}>Let them in</button>
+                  </span>
+                ) : (
+                  <span className="actions">
+                    <span className={`ap-state${app.status === 'approved' ? ' ok' : ''}`}><i />{app.status === 'approved' ? 'Let in' : app.status === 'withdrawn' ? 'Called off' : 'Turned down'}</span>
+                    {(app.status === 'rejected' || app.status === 'withdrawn') && accounts.has(app.id) && (
+                      <button className="btn ghost" onClick={() => setDialog({ kind: 'delete', app })}>Delete their account</button>
+                    )}
+                  </span>
+                )}
+              </header>
+
+              <div className="app-boxes">
+                <div className="app-box">
+                  <span className="app-lbl"><Users size={12} /> Owner</span>
+                  <b>{app.owner_name}</b>
+                  <span className="app-line"><Mail size={12} /> {app.email}</span>
+                  {app.phone && <span className="app-line"><Phone size={12} /> {app.phone}</span>}
+                </div>
+                <div className="app-box">
+                  <span className="app-lbl"><Layers size={12} /> Plan</span>
+                  <b>{app.plan_name ? `Wants ${app.plan_name}${app.billing === 'yearly' ? ', yearly' : ''}` : 'No plan chosen'}</b>
+                  {pays.has(app.id) ? <PayChip p={pays.get(app.id)!} onCheck={() => setDialog({ kind: 'pay', app })} />
+                    : <span className="app-line muted">Nothing to pay before approval</span>}
+                </div>
+                <div className="app-box">
+                  <span className="app-lbl"><FileCheck2 size={12} /> Documents</span>
+                  {docs.has(app.id) ? (
+                    <>
+                      <b>{docs.get(app.id)!.missing.length === 0 ? 'All six verified' : `${docs.get(app.id)!.missing.length} still to verify`}</b>
+                      <span className="app-meter" aria-hidden="true"><i style={{ width: `${((6 - docs.get(app.id)!.missing.length) / 6) * 100}%` }} /></span>
+                      <button type="button" className={`app-link${docs.get(app.id)!.missing.length === 0 ? ' ok' : ''}`} data-docs-chip onClick={() => setDialog({ kind: 'docs', app })}
+                        data-tip={docs.get(app.id)!.missing.length ? `Still needed: ${docs.get(app.id)!.missing.join('; ')}` : 'All six verified and in date'}>
+                        Documents {6 - docs.get(app.id)!.missing.length}/6 verified
+                        {docs.get(app.id)!.waiting > 0 && <b className="unread">{docs.get(app.id)!.waiting} to check</b>}
+                      </button>
+                    </>
+                  ) : <span className="app-line muted">Loading…</span>}
+                </div>
+                <div className="app-box">
+                  <span className="app-lbl"><ShieldCheck size={12} /> Sign-in and terms</span>
+                  <b>{accounts.has(app.id) ? 'Has an account' : 'No account, status link only'}</b>
+                  {/* 0154: which version of the gym documents they agreed to. Before 0154 the field is absent — say nothing. */}
+                  {app.terms_version !== undefined && (app.terms_version
+                    ? <span className="app-line" data-tip={app.terms_accepted_at ? `Agreed ${when(app.terms_accepted_at)}` : undefined}>Agreed to gym terms (version of {app.terms_version})</span>
+                    : <span className="app-line warn" data-tip="Applied before the gym documents were in effect, or the agreement did not reach us"><FileQuestion size={12} /> No agreement to the gym terms recorded</span>)}
+                </div>
+              </div>
+
+              {/* 0111: the two things worth knowing before you create a gym. Neither blocks anything. */}
+              {(app.already_a_gym || (!!app.duplicates && app.duplicates > 0) || app.message || (app.status === 'rejected' && app.reason)) && (
+                <div className="app-notes">
+                  {app.already_a_gym && <span className="app-line warn">This email already owns a gym here. Letting them in again makes a second one.</span>}
+                  {!!app.duplicates && app.duplicates > 0 && <span className="app-line warn">Applied {app.duplicates + 1} times in total, from this email or this gym name.</span>}
+                  {app.message && <span className="app-line ap-quote">&ldquo;{app.message}&rdquo;</span>}
+                  {app.status === 'rejected' && app.reason && <span className="app-line">Turned down: {app.reason}</span>}
+                </div>
+              )}
+
+              <footer className="app-foot">
+                <span className="ap-foot-lbl">Reach them</span>
+                <Reach app={app} onTalk={() => setDialog({ kind: 'talk', app })} />
+                <span className="app-tags">
+                  {app.contact_pref && <span><MessageCircle size={12} /> Prefers {CONTACT[app.contact_pref]}</span>}
+                  {app.heard_from && <span><Sparkles size={12} /> Heard from {app.heard_from}</span>}
+                </span>
+              </footer>
+            </article>
+          ); })()}
+        </section>
+
+        <aside className="card ap-side">
+          <h2 className="section-title"><Inbox size={14} /> Where they come from</h2>
+          {all.length === 0 ? (
+            <p className="meta" style={{ marginTop: 0 }}>Nobody has applied yet. Applications arrive from the Register your gym form on the website.</p>
+          ) : (
+            <>
+              <div className="mini-figs ap-figs">
+                <span><b>{all.length}</b>applied, ever</span>
+                <span><b>{all.length ? `${Math.round((of('approved').length / all.length) * 100)}%` : '—'}</b>let in</span>
+              </div>
+              <Breakdown title="How they heard of us" icon={Sparkles} rows={tally(all, (a) => a.heard_from)} total={all.length} />
+              <Breakdown title="Where the gym is" icon={MapPin} rows={tally(all, (a) => place(a.address))} total={all.length} />
+              <Breakdown title="Plan they asked for" icon={Layers} rows={tally(all, (a) => a.plan_name)} total={all.length} />
+            </>
+          )}
+          <details className="ap-how">
+            <summary>How letting a gym in works</summary>
             <ol className="steps">
               <li><Link2 size={15} /><span><b>You pick its link</b>The address its members type: …/join/its-name.</span></li>
               <li><FileCheck2 size={15} /><span><b>You verify their documents</b>Permit, DTI/SEC, BIR 2303, barangay clearance, the owner's ID and a photo of the gym's front, Let them in opens once all six are verified.</span></li>
@@ -198,23 +234,7 @@ export default function Applications() {
               <li><Clock size={15} /><span><b>Or their free trial runs</b>It pays nothing first and ends on its own date; reminders go before it does.</span></li>
               <li><Copy size={15} /><span><b>Later payments, from anywhere</b>GCash, Maya or bank, to the details on Settings → How gyms pay. They send the reference and a screenshot from Your plan; you check it and verify it on Money.</span></li>
             </ol>
-          </section>
-          <section className="card side-fill">
-            <h2 className="section-title"><Inbox size={14} /> Where they come from</h2>
-            {all.length === 0 ? (
-              <p className="meta" style={{ marginTop: 0 }}>Nobody has applied yet. Applications arrive from the Register your gym form on the website.</p>
-            ) : (
-              <>
-                <Breakdown title="How they heard of us" icon={Sparkles} rows={tally(all, (a) => a.heard_from)} total={all.length} />
-                <Breakdown title="Where the gym is" icon={MapPin} rows={tally(all, (a) => place(a.address))} total={all.length} />
-                <Breakdown title="Plan they asked for" icon={Layers} rows={tally(all, (a) => a.plan_name)} total={all.length} />
-              </>
-            )}
-            <div className="mini-figs">
-              <span><b>{all.length}</b>applied, ever</span>
-              <span><b>{all.length ? `${Math.round((of('approved').length / all.length) * 100)}%` : '—'}</b>let in</span>
-            </div>
-          </section>
+          </details>
           <GymSuggestions />
           <MapData />
         </aside>
