@@ -202,4 +202,5 @@ presentation-facing — **not specs**. Docs: [VERIFYING](docs/VERIFYING.md) ·
 - Pick verification depth by risk: build plus one screen check for small UI fixes; full checks for payments, migrations, logins, or permissions.
 - Do not modify or tamper with the G Fitness account; it is the gym owner's real account used in daily operations.
 - Make admin features configurable so each gym adapts the system to its own setup, not forcing gyms to fit fixed defaults.
+- When redesigning, never remove existing features unless the user explicitly asks to remove that specific feature.
 <!-- end claude-reflect -->
