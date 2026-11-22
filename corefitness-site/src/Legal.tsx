@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Icon from './Icon';
-import { buildDocs, DOC_ORDER, inEffect, VERSION, type DocKey } from './legalText';
+import { buildDocs, DOC_ORDER, fillDocs, inEffect, VERSION, type DocKey } from './legalText';
+import { usePublishedDocs } from './usePublishedDocs';
 import { usePlatformFacts } from './usePlatformFacts';
 
 const MEMBER_APP = 'https://corefitness-gym.vercel.app';
@@ -29,11 +30,14 @@ const splitTitle = (t: string) => {
  */
 export default function Legal({ doc, section }: { doc: DocKey; section: string | null }) {
   const facts = usePlatformFacts();
-  const live = inEffect(facts);
+  /** 0262: a version written in the platform's Settings and in effect; otherwise this site's own text. */
+  const stored = usePublishedDocs();
+  const live = stored ? true : inEffect(facts);
+  const version = stored?.version ?? VERSION;
   const [active, setActive] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
 
-  const docs = useMemo(() => buildDocs(facts), [facts]);
+  const docs = useMemo(() => (stored ? fillDocs(stored.docs, facts) : buildDocs(facts)), [facts, stored]);
   const d = docs[doc];
   const anchor = (id: string) => `${doc}-${id}`;
 
@@ -92,7 +96,7 @@ export default function Legal({ doc, section }: { doc: DocKey; section: string |
           </div>
           <h1 className="lg-title">{d.title}</h1>
           <div className="lg-meta">
-            <span className="pill"><Icon name="clock" /> Version of {prettyDate(VERSION)}</span>
+            <span className="pill"><Icon name="clock" /> Version of {prettyDate(version)}</span>
             <span className="pill"><Icon name="shield" /> Written to {d.law}</span>
             {!live && <span className="pill lg-draft"><Icon name="alert" /> Draft, not yet in effect</span>}
           </div>

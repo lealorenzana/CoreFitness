@@ -7,6 +7,7 @@ import {
 import InfoDot from '../components/InfoDot';
 import PaymentMethods from '../components/PaymentMethods';
 import GymDocuments from '../components/GymDocuments';
+import GymDocsEditor from '../components/GymDocsEditor';
 
 const long = (d: Date) => d.toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
 
@@ -195,7 +196,7 @@ export default function Settings() {
       </section>
       )}
 
-      {part === 'docs' && <GymDocuments />}
+      {part === 'docs' && <div className="gd-stack" data-va-keep><GymDocsEditor /><GymDocuments /></div>}
       </div>
     </div>
   );

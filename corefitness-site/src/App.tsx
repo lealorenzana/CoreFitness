@@ -11,6 +11,7 @@ import { Catalogue, Manifesto, Phone3D, Scrub } from './Showcase';
 import PlacePicker from './PlacePicker';
 import Legal, { parseLegalHash } from './Legal';
 import { inEffect, VERSION } from './legalText';
+import { usePublishedDocs } from './usePublishedDocs';
 import { usePlatformFacts } from './usePlatformFacts';
 import { useSiteTexts } from './siteTexts';
 import { useMotionEngine } from './motion';
@@ -568,7 +569,11 @@ function ApplySection({ tiers, chosen, siteAccount, title, closed }: {
   /** Agreement to the gym documents (0154) — asked only once they are in effect. */
   const [agreed, setAgreed] = useState(false);
   /** In effect only when the platform has published this very text (0156). */
-  const IN_EFFECT = inEffect(usePlatformFacts());
+  const facts = usePlatformFacts();
+  /** 0262: a version written in the platform's Settings, in effect; it is what an applicant agrees to. */
+  const stored = usePublishedDocs();
+  const IN_EFFECT = stored ? true : inEffect(facts);
+  const DOC_VERSION = stored?.version ?? VERSION;
 
   // A tier card's "Choose" fills the plan; so does there being only one.
   useEffect(() => {
@@ -630,7 +635,7 @@ function ApplySection({ tiers, chosen, siteAccount, title, closed }: {
     // The agreement is recorded against the private status token (0154). Before 0154 is pasted this call
     // fails; the application still went in, and the platform simply sees no acceptance — never a false one.
     if (IN_EFFECT && newToken) {
-      try { await supabase.rpc('accept_gym_terms', { p_token: newToken, p_version: VERSION }); } catch { /* see above */ }
+      try { await supabase.rpc('accept_gym_terms', { p_token: newToken, p_version: DOC_VERSION }); } catch { /* see above */ }
     }
     // The account (0187): made after the application, carrying its token, so the
     // database ties the two together — only when the email matches as well.
@@ -865,7 +870,7 @@ function ApplySection({ tiers, chosen, siteAccount, title, closed }: {
               <span>
                 For my gym, I have read and agree to the <a href="#legal/terms" target="_blank" rel="noopener">Terms of Service for gyms</a>,
                 the <a href="#legal/dpa" target="_blank" rel="noopener">Data Processing Agreement</a> and
-                the <a href="#legal/privacy" target="_blank" rel="noopener">Privacy Policy</a> (version of {VERSION}).
+                the <a href="#legal/privacy" target="_blank" rel="noopener">Privacy Policy</a> (version of {DOC_VERSION}).
               </span>
             </label>
           ) : (

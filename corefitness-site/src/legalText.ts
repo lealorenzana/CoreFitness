@@ -68,18 +68,35 @@ export interface LegalDoc {
 const list = (n: number[]) =>
   n.length === 1 ? `${n[0]}` : `${n.slice(0, -1).join(', ')} and ${n[n.length - 1]}`;
 
-const contactLine = (f: Facts) => {
+export const contactLine = (f: Facts) => {
   const ways = [f.email, f.phone].filter(Boolean).join(' or ');
   return ways
     ? `Write to ${f.businessName} at ${ways}${f.address ? `, or by post to ${f.address}` : ''}.`
     : `Write to ${f.businessName} through the support page in your gym app, or reply on your application's status link.`;
 };
+export const gracePhrase = (f: Facts) => (f.graceDays === null ? 'the grace period shown in your gym app' : `${f.graceDays} days`);
+export const reminderPhrase = (f: Facts) => (f.reminderDays && f.reminderDays.length
+  ? `${list([...f.reminderDays].sort((a, b) => b - a))} days before`
+  : 'before');
+
+/**
+ * 0262: a version edited in the platform's Settings is stored with four placeholders for what Settings decides —
+ * {business}, {contact}, {grace}, {reminders} — and filled here with the same words buildDocs uses.
+ */
+export interface StoredDoc { short: string; title: string; lede: string; law: string; sections: { id: string; title: string; body: string[] }[] }
+export function fillDocs(stored: Record<string, StoredDoc>, f: Facts): Record<DocKey, LegalDoc> {
+  const fill = (s: string) => s.split('{contact}').join(contactLine(f)).split('{grace}').join(gracePhrase(f))
+    .split('{reminders}').join(reminderPhrase(f)).split('{business}').join(f.businessName);
+  return Object.fromEntries(DOC_ORDER.map((key) => {
+    const d = stored[key];
+    return [key, { key, short: fill(d?.short ?? key), title: fill(d?.title ?? key), lede: fill(d?.lede ?? ''), law: d?.law ?? 'Philippine law',
+      sections: (d?.sections ?? []).map((s) => ({ id: s.id, title: fill(s.title), body: s.body.map(fill) })) }];
+  })) as Record<DocKey, LegalDoc>;
+}
 
 export function buildDocs(f: Facts): Record<DocKey, LegalDoc> {
-  const grace = f.graceDays === null ? 'the grace period shown in your gym app' : `${f.graceDays} days`;
-  const reminders = f.reminderDays && f.reminderDays.length
-    ? `${list([...f.reminderDays].sort((a, b) => b - a))} days before`
-    : 'before';
+  const grace = gracePhrase(f);
+  const reminders = reminderPhrase(f);
 
   return {
     terms: {
