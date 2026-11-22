@@ -194,3 +194,4 @@
   .ox-cell:nth-child(-n + 2) { border-top: 0; }
   .ox-cell:nth-child(even) { border-left: 1px solid var(--hairline); }
 }
+

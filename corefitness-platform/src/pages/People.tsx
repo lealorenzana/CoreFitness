@@ -4,7 +4,6 @@ import {
   emailSuspension, explain, liftSuspension, searchPeople, suspendPerson, suspendedPeople,
   type PersonRow, type SuspendedRow,
 } from '../lib/platform';
-import Tiles from '../components/Tiles';
 import Modal from '../components/Modal';
 import Ask from '../components/Ask';
 
@@ -47,21 +46,20 @@ export default function People() {
 
   return (
     <>
-      <Tiles items={[
-        { icon: Ban, value: suspended ? String(suspended.length) : '…', label: 'Suspended now', act: !!suspended?.length },
-        { icon: Users, value: rows ? String(rows.length) : '—', label: rows ? 'Found' : 'Type a name or email' },
-      ]} />
+      {/* The page is a search (2026-11-22): the box to type in leads, wide, with what it found beside it; the
+          suspended list is the rail. A "—" figure that only said "type something" is gone. */}
+      <label className="ppl-find">
+        <Search size={18} />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find anyone by name or email, at least 2 letters" aria-label="Find a person" autoFocus />
+        <span className="meta">{rows ? `${rows.length} found` : 'Members, coaches, desks, owners and applicants, every gym'}</span>
+      </label>
       {error && <p className="err">{error}</p>}
       {note && <p className="meta" data-mail-note>{note}</p>}
 
-      <div className="grid-2" style={{ gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr)' }}>
+      <div className="ppl">
         <section className="card" data-people-search>
-          <div className="card-head">
-            <h2 className="section-title"><Search size={14} /> Find a person</h2>
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Name or email, at least 2 letters" aria-label="Find a person"
-              style={{ width: '100%' }} />
-          </div>
-          {rows === null ? <p className="empty">Search every gym's members, coaches, desks, owners and applicants.</p>
+          <h2 className="section-title"><Users size={14} /> {rows ? `Found, ${rows.length}` : 'Results'}</h2>
+          {rows === null ? <p className="empty">Type in the box above. Every gym is searched at once.</p>
             : rows.length === 0 ? <p className="empty">Nobody matches.</p> : rows.map((p) => (
               <div key={p.id} className="fb-row" data-person={p.email}>
                 <span className="grow">
@@ -85,7 +83,7 @@ export default function People() {
         </section>
 
         <section className="card" data-people-suspended>
-          <h2 className="section-title"><Ban size={14} /> Suspended</h2>
+          <h2 className="section-title"><Ban size={14} /> Suspended{suspended ? `, ${suspended.length}` : ''}</h2>
           {suspended === null ? <p className="empty">Loading…</p> : suspended.length === 0 ? <p className="empty">Nobody is suspended.</p>
             : suspended.map((s) => (
               <div key={s.id} className="fb-row" data-suspended={s.email}>

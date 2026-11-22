@@ -1,0 +1,45 @@
+/* Page layouts, one per page that needed its own (2026-11-22: "redesign every page's layout").
+   Loaded last, after plan.css. Each page's figures row sets its columns; boxes under it land on those lines. */
+
+/* ---- People: a search page (2026-11-22) ---- */
+.ppl-find { display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 18px; border-radius: var(--radius);
+  background: var(--surface); border: 1px solid var(--line-strong); color: var(--text-3); flex: none; }
+.ppl-find:focus-within { border-color: rgb(124 58 237 / .7); }
+.ppl-find input { flex: 1; min-width: 0; height: 100%; border: 0 !important; background: transparent !important; box-shadow: none !important;
+  padding: 0 !important; font-size: 16px; color: var(--text); outline: none; }
+.ppl-find .meta { margin: 0; white-space: nowrap; }
+.ppl-find { height: 56px !important; box-sizing: border-box; margin: 0 !important; }
+.ppl-find input, .ppl-find input:focus, .ppl-find input:focus-visible { outline: none !important; border: 0 !important; box-shadow: none !important; }
+.ppl { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: var(--gap, 16px); flex: 1 1 0; min-height: 0; }
+.ppl > .card { min-height: 0; overflow-y: auto; }
+@media (max-width: 1100px) { .ppl { grid-template-columns: minmax(0, 1fr); } .ppl-find .meta { display: none; } }
+
+/* ---- Plans: each card lists every area it opens ---- */
+.plan-feats { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; min-height: 0; overflow-y: auto; }
+.plan-feats li { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-2); }
+.plan-feats li svg { flex: none; }
+.plan-feats li.on svg { color: var(--accent-text); }
+.plan-feats li.off { color: var(--text-3); }
+.plan-feats li.off span { text-decoration: line-through; text-decoration-color: rgb(255 255 255 / .2); }
+
+/* ---- Activity: the filters on one line ---- */
+@media (min-width: 1280px) {
+  .act-filters { flex-wrap: nowrap !important; }
+  .act-filters .search { width: auto !important; flex: 1 1 200px; min-width: 160px; }
+  .act-filters select { max-width: 170px; }
+}
+
+/* ---- Support: an inbox, the list narrow and the reading pane wide (1 of the 4 figure columns to 3) ---- */
+@media (min-width: 1101px) {
+  .page.page.page:has([data-support-list]) > .grid-2.grid-2 { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+  .page.page.page:has([data-support-list]) > .grid-2.grid-2 > :first-child { grid-column: span 1; }
+  .page.page.page:has([data-support-list]) > .grid-2.grid-2 > :last-child { grid-column: span 3; }
+}
+
+/* ---- Capacity: the chart row and the lists row share the height evenly, so the limits read at full size ---- */
+@media (min-width: 1301px) {
+  .cap { grid-template-rows: auto minmax(0, 1.4fr) minmax(0, .8fr) !important; }
+  .cap > .cap-3 { overflow-y: auto; }
+}
+.content .page > .ppl-find { min-height: 0 !important; flex: none !important; overflow: visible !important; }
+.ppl > * { margin: 0 !important; }

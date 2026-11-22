@@ -323,9 +323,14 @@ export default function Plans() {
               <button type="button" className="app-link" onClick={() => setTab('unlocks')}>Change</button>
             </div>
             <span className="app-meter" aria-hidden="true"><i style={{ width: `${features.length ? (unlocked / features.length) * 100 : 0}%` }} /></span>
-            {unlocked < features.length && (
-              <p className="plan-locked"><Lock size={12} /> Not included: {features.filter((f) => !on(plan.key, f.key)).map((f) => f.label).join(', ')}</p>
-            )}
+            {/* Every area, in or out (2026-11-22): the box lists what the plan opens instead of standing empty. */}
+            <ul className="plan-feats">
+              {features.map((f) => (
+                <li key={f.key} className={on(plan.key, f.key) ? 'on' : 'off'}>
+                  {on(plan.key, f.key) ? <Check size={13} /> : <Lock size={12} />}<span>{f.label}</span>
+                </li>
+              ))}
+            </ul>
           </div>
           <div className="plan-foot">
             <button className="btn ghost" onClick={() => setEditing(plan)}>Edit the plan</button>

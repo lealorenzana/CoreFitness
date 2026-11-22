@@ -19,7 +19,12 @@ export default function Feedback() {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    try { setData(await feedback()); setError(null); } catch (e) { setError(explain(e, '0188')); }
+    try {
+      // A missing list reads as empty, never a crashed screen.
+      const d = await feedback();
+      setData({ ...d, ratings: d?.ratings ?? [], ideas: d?.ideas ?? [], testimonials: d?.testimonials ?? [], average: d?.average ?? null });
+      setError(null);
+    } catch (e) { setError(explain(e, '0188')); }
   }, []);
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
   const run = async (fn: () => Promise<unknown>) => {

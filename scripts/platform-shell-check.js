@@ -380,7 +380,7 @@ async (page) => {
   out.push('Settings shows one section, chosen on the left: ' + (firstPart && /Save billing rules/.test(await text()) && !/Save receipt details/.test(await text()) ? 'yes' : 'MISSING'));
   await page.setViewportSize({ width: 1600, height: 700 });
   // Overview's boxes scroll themselves (data-va-keep, 2026-11-22): View all is tried on the pages that still use it.
-  for (const p of ['/growth', '/money', '/platform', '/capacity']) {
+  for (const p of ['/growth', '/money', '/platform', '/capacity', '/website', '/applications', '/plans', '/usage']) {
     await page.goto('http://localhost:5175' + p, { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(2500);
     if (await page.locator('[data-va]').count()) break;
