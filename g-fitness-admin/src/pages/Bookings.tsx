@@ -24,6 +24,7 @@ import BookingAttentionPanel from '../components/ui/BookingAttentionPanel';
 import { getBookingRules, markAttendance, runBookingSweeps, type BookingRules } from '../lib/api/bookingRules';
 import RepeatDialog from '../components/bookings/RepeatDialog';
 import type { BookingStatus } from '../types/db';
+import SkelRows from '../components/ui/SkelRows';
 
 /**
  * One approval queue for both booking kinds.
@@ -453,7 +454,7 @@ export default function Bookings({ scope, embedded = false }: { scope?: 'pt' | '
               )}
             </div>
           )}
-          {loading ? <p className="a-sub" style={{ padding: 20 }}>Loading bookings…</p> : (
+          {loading ? <SkelRows label="Loading bookings…" /> : (
             <div ref={fitRef} className="a-scroll" style={{ flex: 1 }} data-rd-table>
               {visible.length === 0 ? (
                 <p className="a-sub text-center" style={{ padding: 30 }}>{rows.length === 0 ? 'No bookings yet — members book from the phone app, or book one for them here.' : view === 'waiting' ? 'Nothing is waiting for a decision.' : 'Nothing matches — try another day or clear the search.'}</p>

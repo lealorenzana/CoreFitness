@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { showToast } from '../../utils/toast';
 import { connectGymPayMongo, disconnectGymPayMongo, gymOnlinePayments, gymPaymentAccount, type GymAccount, type GymOnlinePayment } from '../../lib/api/paymongo';
 import { localDateKey, todayKey } from '../../utils/dates';
+import SkelRows from '../ui/SkelRows';
 
 const peso = (n: string | number) => '₱' + Number(n).toLocaleString('en-PH', { maximumFractionDigits: 2 });
 const when = (iso: string) => new Date(iso).toLocaleString('en-PH', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
@@ -88,7 +89,7 @@ export default function PayTab() {
   return (
     <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) 380px', flex: 1 }}>
       <div className="a-card a-scroll" data-gym-paymongo>
-        {acc === undefined ? <p className="a-sub">Loading…</p> : (
+        {acc === undefined ? <SkelRows label="Loading…" /> : (
           <>
             <div className="a-ct">
               <h3><CreditCard size={16} />Members pay you in the app</h3>

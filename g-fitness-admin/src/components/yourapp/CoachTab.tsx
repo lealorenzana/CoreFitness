@@ -8,6 +8,7 @@ import { aiAllowance, buyTopUp, type AiAllowance } from '../../lib/api/aiTopups'
 import { payOptions, type PayOption } from '../../lib/api/subscription';
 import { payOnline, paymongoReady, waitForPayment } from '../../lib/api/paymongo';
 import { getGymContext } from '../../lib/gymContext';
+import SkelRows from '../ui/SkelRows';
 
 const peso = (n: string | number) => '₱' + Number(n).toLocaleString('en-PH', { maximumFractionDigits: 2 });
 const day = (iso: string) => new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -77,7 +78,7 @@ export default function CoachTab({ enabled, sold, onToggle }: { enabled: boolean
               aria-pressed={enabled} aria-label={enabled ? 'Switch off the AI assistant' : 'Switch on the AI assistant'} />
           )}
         </div>
-        {res === null ? <p className="a-sub">Loading…</p>
+        {res === null ? <SkelRows label="Loading…" />
           : !res.ok ? <p className="a-sub">{res.missing ? 'This needs migration 0147.' : `The coach's usage could not be loaded: ${res.error}`}</p>
           : u && (
           <>

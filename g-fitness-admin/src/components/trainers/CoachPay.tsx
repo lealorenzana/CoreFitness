@@ -8,6 +8,7 @@ import {
   behindOnDues, coachDues, coachEarnings, DUES_METHODS, getHouseRules, recordDues, settleCut, undoDues, unsettleCut,
   type DuesMethod, type DuesMonth, type EarningsMonth, type HouseRules,
 } from '../../lib/api/coachingRules';
+import SkelRows from '../ui/SkelRows';
 
 const peso = (n: number) => `₱${n.toLocaleString('en-PH', { maximumFractionDigits: 2 })}`;
 const monthLabel = (m: string) => new Date(`${m}T00:00:00`).toLocaleDateString('en-PH', { month: 'long', year: 'numeric' });
@@ -61,7 +62,7 @@ export default function CoachPay() {
     finally { setBusy(null); }
   };
 
-  if (rules === undefined) return <div className="a-card"><p className="a-sub">Loading coach pay…</p></div>;
+  if (rules === undefined) return <div className="a-card"><SkelRows label="Loading coach pay…" /></div>;
   if (rules === null) {
     return <div className="a-card" data-coach-pay-missing><p className="a-sub">Coach pay is not available yet — the database update for it has not been added.</p></div>;
   }

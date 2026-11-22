@@ -57,6 +57,7 @@ import { realEmail } from '../lib/api/logins';
 import PlacePicker from '../components/ui/PlacePicker';
 import SwitchesList from '../components/members/SwitchesList';
 import { gymSwitchList } from '../lib/api/gymSwitches';
+import SkelRows from '../components/ui/SkelRows';
 
 /** A member row joined with their current membership, for the roster table. */
 interface MemberRow {
@@ -787,7 +788,7 @@ export default function Members() {
               })}
             </tbody>
           </table>
-          {loading ? <p className="a-sub text-center" style={{ padding: 30 }}>Loading members…</p>
+          {loading ? <SkelRows label="Loading members…" />
             : filtered.length === 0 && (
               <div className="a-sub text-center" style={{ padding: 30 }}>
                 <b className="block text-white" style={{ fontSize: 14 }}>{members.length === 0 ? (showArchived ? 'No archived members' : 'No members yet') : 'No members match these filters'}</b>
@@ -1219,7 +1220,7 @@ function PendingRegistrationsList({
   const shown = q ? pendingList.filter((r) => `${r.first_name} ${r.last_name} ${r.email}`.toLowerCase().includes(q)) : pendingList;
 
   if (loading) {
-    return <div className="p-10 text-center text-[14.5px]" style={{ color: 'var(--color-text-muted)' }}>Loading…</div>;
+    return <SkelRows label="Loading…" />;
   }
 
   if (pendingList.length === 0) {

@@ -8,6 +8,7 @@ import { uploadMedia } from '../../lib/api/media';
 import { rampFor } from '../../lib/gymTheme';
 import { TV_PANELS, loadTv, loadTvDesign, saveTvDesign, withDefaults, type TvData, type TvDesign, type TvPanel, type TvTheme } from '../../lib/api/tv';
 import { cropPhoto } from '../ui/PhotoCropper';
+import SkelRows from '../ui/SkelRows';
 
 const THEMES: { key: TvTheme; label: string }[] = [
   { key: 'dark', label: 'Dark' }, { key: 'brand', label: 'Your colour' }, { key: 'light', label: 'Light' },
@@ -59,7 +60,7 @@ export default function TvTab() {
   };
   const togglePanel = (k: TvPanel) => setD((x) => ({ ...x, panels: x.panels.includes(k) ? x.panels.filter((p) => p !== k) : TV_PANELS.map((p) => p.key).filter((p) => p === k || x.panels.includes(p)) }));
 
-  if (gate === undefined && !data) return <p className="a-sub">Loading…</p>;
+  if (gate === undefined && !data) return <SkelRows label="Loading…" />;
   if (gate === undefined) {
     return <div className="a-card"><p className="a-sub">Designing the lobby TV needs migration 0209, which is not pasted yet. The TV itself still runs at /tv as before.</p></div>;
   }

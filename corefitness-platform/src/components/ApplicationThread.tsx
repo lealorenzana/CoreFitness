@@ -4,6 +4,7 @@ import {
   applicationThread, CHANGED, emailApplicant, explain, paymentMethods, replyApplication, sendApplicationPayment, statusLink,
   type Application, type ApplicationMessage, type PaymentMethod,
 } from '../lib/platform';
+import SkelRows from './ui/SkelRows';
 
 const stamp = (iso: string) => new Date(iso).toLocaleString('en-PH', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 
@@ -93,7 +94,7 @@ export default function ApplicationThread({ app, payDue = false }: {
         </div>
       )}
       <div className="thread">
-        {msgs === null ? <p className="empty">Loading…</p> : msgs.length === 0 ? (
+        {msgs === null ? <SkelRows label="Loading…" /> : msgs.length === 0 ? (
           <p className="empty">No messages yet. Write first, they see it on their status link.</p>
         ) : msgs.map((m) => (
           <div key={m.id} className={`bubble${m.from_platform ? ' mine' : ''}`}>
@@ -123,7 +124,7 @@ export default function ApplicationThread({ app, payDue = false }: {
               </button>
             </div>
           )}
-          {methods === null ? <p className="meta">Loading…</p> : methods.length === 0 ? (
+          {methods === null ? <SkelRows label="Loading…" /> : methods.length === 0 ? (
             <p className="meta">No ways to pay are switched on. Add GCash, Maya or a bank in Settings → How gyms pay you.</p>
           ) : (
             <div className="pay-opts" role="radiogroup" aria-label="Payment method">

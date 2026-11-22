@@ -5,6 +5,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Copy, Download, Mail, Smartphone, X } from 'lucide-react';
 import Button from './ui/Button';
 import { getGymApp, type GymApp } from '../lib/api/gymApp';
+import SkelRows from './ui/SkelRows';
 
 export const MEMBER_APP = 'https://corefitness-gym.vercel.app';
 /**
@@ -70,7 +71,7 @@ export default function InviteMembersPanel({ onClose }: { onClose: () => void })
           <button type="button" onClick={onClose} aria-label="Close" style={{ color: 'var(--color-text-muted)' }}><X size={18} /></button>
         </div>
 
-        {app === undefined && <p className="mt-4 text-sm" style={{ color: 'var(--color-text-muted)' }}>Loading…</p>}
+        {app === undefined && <SkelRows label="Loading…" />}
         {app === null && <p className="mt-4 text-sm" style={{ color: 'var(--color-text-muted)' }}>Your gym's join details could not be read.</p>}
 
         {app && app.join_policy === 'closed' && (

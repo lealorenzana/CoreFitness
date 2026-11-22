@@ -5,6 +5,7 @@ import { Eyebrow, NocButton } from '../components/ui/noc';
 import { toast } from '../components/ui/Toast';
 import { UsernameInput } from '../components/account/LoginPieces';
 import { myLogin, setMyUsername, usernameShape, type MyLogin } from '../lib/api/logins';
+import SkelRows from '../components/ui/SkelRows';
 
 /**
  * Settings → Username (0236): add, change or remove the name you can sign in
@@ -42,7 +43,7 @@ export default function ChangeUsername() {
   return (
     <Page>
       <PageTitle back fallback={backTo} title="Username" subtitle="A name you can sign in with" />
-      {login === undefined ? <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Loading…</p>
+      {login === undefined ? <SkelRows label="Loading…" />
         : login === null ? <p style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Usernames are not available at your gym yet.</p> : (<>
           <section>
             <Eyebrow>Now</Eyebrow>

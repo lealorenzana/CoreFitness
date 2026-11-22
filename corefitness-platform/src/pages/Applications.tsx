@@ -16,6 +16,7 @@ import Tiles from '../components/Tiles';
 import GymSuggestions from '../components/GymSuggestions';
 import MapData from '../components/MapData';
 import './applications.css';
+import SkelRows from '../components/ui/SkelRows';
 
 const when = (iso: string) =>
   new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -88,7 +89,7 @@ export default function Applications() {
               ))}
             </div>
           </header>
-          {apps === null ? <p className="empty">Loading…</p> : shownAll.length === 0 ? (
+          {apps === null ? <SkelRows label="Loading…" /> : shownAll.length === 0 ? (
             <p className="ap-none">{show === 'pending' ? 'No gym is waiting for an answer.' : 'None here.'}</p>
           ) : (
             <ul className="ap-list">

@@ -10,6 +10,7 @@ import InfoDot from '../components/InfoDot';
 import Modal from '../components/Modal';
 import EventDetail from '../components/EventDetail';
 import DatePicker from '../components/DatePicker';
+import SkelRows from '../components/ui/SkelRows';
 
 const PER_PAGE = 25;
 const stamp = (iso: string) => new Date(iso).toLocaleString('en-PH', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
@@ -104,7 +105,7 @@ export default function Activity() {
 
       <section className="card act-card">
         <h2 className="section-title"><History size={14} /> {filtered ? 'Matching events' : 'Every event, newest first'} <InfoDot tip="Written by the database itself when the platform acts, never by this screen, so it cannot be edited or skipped." /></h2>
-        {rows === null ? <p className="empty">Loading…</p> : rows.length === 0 ? (
+        {rows === null ? <SkelRows label="Loading…" /> : rows.length === 0 ? (
           <p className="empty"><History size={22} className="empty-icon" />{filtered ? 'Nothing matches.' : 'Nothing has happened yet.'}</p>
         ) : (
           <div className="act-list">

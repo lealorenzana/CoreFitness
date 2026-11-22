@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabaseClient';
 import { getGymContext } from '../lib/gymContext';
 import { DeletionPending } from './DeleteAccount';
 import Suspended from './Suspended';
+import SkelRows from './ui/SkelRows';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -110,12 +111,7 @@ export default function ProtectedRoute({ children, adminOnly = false }: Protecte
   if (status === 'deleting' && eraseAfter) return <DeletionPending eraseAfter={eraseAfter} onKept={() => setTick((n) => n + 1)} />;
   if (status === 'checking') {
     return (
-      <div
-        className="min-h-screen flex items-center justify-center"
-        style={{ background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }}
-      >
-        Loading…
-      </div>
+      <SkelRows label="Loading…" />
     );
   }
 

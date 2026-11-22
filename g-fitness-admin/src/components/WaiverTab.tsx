@@ -6,6 +6,7 @@ import {
   publishWaiver, saveWaiverDraft, setWaiverRequired,
   type WaiverSignature, type WaiverVersion,
 } from '../lib/api/waiver';
+import SkelRows from './ui/SkelRows';
 
 const MUTED = 'var(--color-text-muted)';
 const stamp = (iso: string) =>
@@ -54,7 +55,7 @@ export default function WaiverTab() {
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
   if (versions === undefined) {
-    return <p className="text-xs" style={{ color: MUTED }}>Loading…</p>;
+    return <SkelRows label="Loading…" />;
   }
   if (versions === null) {
     return (

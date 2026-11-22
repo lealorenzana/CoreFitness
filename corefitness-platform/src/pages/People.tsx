@@ -6,6 +6,7 @@ import {
 } from '../lib/platform';
 import Modal from '../components/Modal';
 import Ask from '../components/Ask';
+import SkelRows from '../components/ui/SkelRows';
 
 const when = (iso: string) => new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
 const ROLE: Record<string, string> = { admin: 'Owner', staff: 'Front desk', trainer: 'Coach', member: 'Member' };
@@ -84,7 +85,7 @@ export default function People() {
 
         <section className="card" data-people-suspended>
           <h2 className="section-title"><Ban size={14} /> Suspended{suspended ? `, ${suspended.length}` : ''}</h2>
-          {suspended === null ? <p className="empty">Loading…</p> : suspended.length === 0 ? <p className="empty">Nobody is suspended.</p>
+          {suspended === null ? <SkelRows label="Loading…" /> : suspended.length === 0 ? <p className="empty">Nobody is suspended.</p>
             : suspended.map((s) => (
               <div key={s.id} className="fb-row" data-suspended={s.email}>
                 <span className="grow">

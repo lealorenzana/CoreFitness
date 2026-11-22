@@ -7,6 +7,7 @@ import { showToast } from '../utils/toast';
 import { formatUsd, getAiUsage, setAiLimits, type AiUsageResult } from '../lib/api/aiCoach';
 import { getGymContext } from '../lib/gymContext';
 import { Link } from 'react-router-dom';
+import SkelRows from './ui/SkelRows';
 
 /**
  * The AI coach on Your app (0147): its two limits, and this Manila month's
@@ -81,7 +82,7 @@ export default function AiCoachCard({ switchedOff }: { switchedOff?: boolean }) 
       <h2 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>AI assistant</h2>
 
       {res === null ? (
-        <p className="mt-1 text-sm" style={muted}>Loading…</p>
+        <SkelRows label="Loading…" />
       ) : !res.ok ? (
         <p className="mt-1 text-sm" style={muted}>
           {res.missing ? 'This needs migration 0147.' : `The coach's usage could not be loaded: ${res.error}`}

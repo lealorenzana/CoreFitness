@@ -14,6 +14,7 @@ import type { Tone } from '../components/ui/rdTokens';
 import { localDateKey, todayKey, addDays, daysBetween } from '../utils/dates';
 import { showToast } from '../utils/toast';
 import type { NotificationRow } from '../types/db';
+import SkelRows from '../components/ui/SkelRows';
 
 /**
  * Notifications — the owner's and desk's own inbox. The bell only ever showed
@@ -239,7 +240,7 @@ export default function Inbox() {
               )}
 
               {failed ? <p className="ib2-empty">Your messages could not be loaded. Reload the page to try again.</p>
-                : rows === null ? <p className="ib2-empty">Loading…</p>
+                : rows === null ? <SkelRows label="Loading…" />
                 : shown.length === 0 ? (
                   <div className="ib2-empty" data-inbox-empty>
                     <b>{q || kind ? 'No message matches' : view === 'unread' ? 'You are all caught up' : view === 'archived' ? 'Nothing archived' : 'No messages yet'}</b>

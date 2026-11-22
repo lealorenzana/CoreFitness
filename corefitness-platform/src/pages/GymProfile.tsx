@@ -19,6 +19,7 @@ import {
   setGymBilling, setNotePinned,
   type GymContact, type GymFeature, type GymNote, type GymPayment, type GymWeek, type PlatformEvent, type PlatformGym,
 } from '../lib/platform';
+import SkelRows from '../components/ui/SkelRows';
 
 const peso = (v: string | number | null | undefined) => `₱${Number(v ?? 0).toLocaleString('en-PH', { maximumFractionDigits: 0 })}`;
 /** A Manila calendar date n days from today, as YYYY-MM-DD (UTC+8, never the UTC date). */
@@ -87,7 +88,7 @@ export default function GymProfile() {
     try { await fn(); await loadNotes(); } catch (e) { setError(e instanceof Error ? e.message : 'That did not work'); }
   };
 
-  if (gym === undefined) return <p className="empty">Loading the gym…</p>;
+  if (gym === undefined) return <SkelRows label="Loading the gym…" />;
   if (gym === null) return <><Back /><p className="err">{error ?? 'That gym is not on the service.'}</p></>;
 
   const top = Math.max(1, ...weeks.map((w) => w.checkins));

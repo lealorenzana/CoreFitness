@@ -12,6 +12,7 @@ import type { Tone } from '../ui/rdTokens';
 import { assertWrote } from '../../lib/api/mutate';
 import { showToast } from '../../utils/toast';
 import { supabase } from '../../lib/supabaseClient';
+import SkelRows from '../ui/SkelRows';
 
 /**
  * Trainer certificates, for the person who hires them (migration 0054).
@@ -653,7 +654,7 @@ export default function CredentialReview({ trainerId, compact = false, onChanged
   const cards = (
     <>
       {loading ? (
-        <p className="text-[14.5px]" style={{ color: TEXT_MUTED }}>Loading credentials…</p>
+        <SkelRows label="Loading credentials…" />
       ) : failed ? (
         <RdCard><EmptyBlock icon={AlertTriangle} title="Couldn't load credentials"
           body="A connection problem, not an empty list: nothing has been reviewed or missed. Reload to try again." /></RdCard>

@@ -9,6 +9,7 @@ import {
 } from '../../lib/api/trainerCredentials';
 import { errorMessage } from '../../utils/errorMessage';
 import { todayKey } from '../../utils/dates';
+import SkelRows from './SkelRows';
 
 /** Whole days from a to b, both YYYY-MM-DD on the local calendar. */
 const daysBetween = (a: string, b: string) => {
@@ -217,7 +218,7 @@ export default function CredentialsSection({ trainerId }: { trainerId: string })
       <input ref={fileRef} type="file" accept={ACCEPT} onChange={onFile} className="hidden" />
 
       {loading ? (
-        <p style={{ fontSize: 12.5, marginTop: 10, color: 'var(--color-text-muted)' }}>Loading…</p>
+        <SkelRows label="Loading…" />
       ) : items.length === 0 ? (
         <p style={{ fontSize: 12.5, marginTop: 10, color: 'var(--color-text-muted)' }}>Nothing uploaded yet.</p>
       ) : (

@@ -11,6 +11,7 @@ import {
   type GymPaymentMethod, type PayKind,
 } from '../lib/api/gymPayments';
 import { shrinkImage } from '../lib/image';
+import SkelRows from './ui/SkelRows';
 
 type Draft = Omit<GymPaymentMethod, 'id'> & { id?: string | null };
 const blank = (sort: number): Draft => ({
@@ -80,7 +81,7 @@ export default function OnlinePaymentsTab() {
   const input = 'w-full rounded-lg border px-3 py-2 text-sm';
   const inputStyle = { borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-primary)' };
 
-  if (methods === undefined || module === undefined) return <p className="text-sm" style={muted}>Loading…</p>;
+  if (methods === undefined || module === undefined) return <SkelRows label="Loading…" />;
   if (methods === null) return <p className="text-sm" style={muted}>Online payments need migration 0167, which is not in the database yet.</p>;
 
   const on = !!module?.enabled;

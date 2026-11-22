@@ -5,6 +5,7 @@ import './attendance/att.css';
 import { showToast } from '../utils/toast';
 import { supabase } from '../lib/supabaseClient';
 import { allGymRooms, memberRoomsSummary, moderateRoomItem, roomStream, type GymRoom, type StreamPost } from '../lib/api/rooms';
+import SkelRows from '../components/ui/SkelRows';
 
 const KIND: Record<GymRoom['kind'], string> = { class: 'Class', pt: '1-on-1', group: 'Coaching group' };
 const ICON = { class: Flame, pt: HeartHandshake, group: UsersRound };
@@ -92,7 +93,7 @@ export default function Rooms() {
       .sort((a, b) => (b.lastPostAt ?? '').localeCompare(a.lastPostAt ?? '') || a.name.localeCompare(b.name));
   }, [rooms, q, kind, coach, showClosed, memberHit]);
 
-  if (rooms === null) return <div className="att"><p className="a-sub">Loading rooms…</p></div>;
+  if (rooms === null) return <div className="att"><SkelRows label="Loading rooms…" /></div>;
   if (rooms === undefined) return <div className="att"><div className="a-card"><p className="a-sub">Rooms are not switched on yet: migration 0128 is not live on this database.</p></div></div>;
   const count = (k: Kind) => rooms.filter((r) => (showClosed || !r.archived) && (k === 'all' || r.kind === k)).length;
 
@@ -149,7 +150,7 @@ export default function Rooms() {
               <div className="a-sub">{KIND[open.kind]} room · {open.trainerName} · {open.memberCount} member{open.memberCount === 1 ? '' : 's'} · read-only for you</div></div>
               <span className="a-pill"><Users size={12} />{open.memberCount}</span></div>
             <div className="a-scroll grow" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {posts === null ? <p className="a-sub">Loading…</p> : posts.length === 0 ? <p className="a-sub">Nothing posted in this room yet.</p> : posts.map((p) => (
+              {posts === null ? <SkelRows label="Loading…" /> : posts.length === 0 ? <p className="a-sub">Nothing posted in this room yet.</p> : posts.map((p) => (
                 <div key={p.id} className="a-post" data-post>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <Av name={p.authorName} small /><b>{p.authorName}</b><span className="a-sub">{stamp(p.createdAt)}</span>

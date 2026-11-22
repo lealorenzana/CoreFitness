@@ -28,6 +28,7 @@ import {
 import { listAllAvailability } from '../lib/api/trainerAvailability';
 import type { ProfileStatus } from '../types/db';
 import { goalsFor } from '../lib/coachGoals';
+import SkelRows from '../components/ui/SkelRows';
 
 interface TrainerDisplay {
   id: string;
@@ -523,7 +524,7 @@ export default function Trainers() {
               })}
             </tbody>
           </table>
-          {loading ? <p className="a-sub text-center" style={{ padding: 30 }}>Loading trainers…</p>
+          {loading ? <SkelRows label="Loading trainers…" />
             : visible.length === 0 && (
               <div className="a-sub text-center" style={{ padding: 30 }}>
                 <b className="block text-white" style={{ fontSize: 14 }}>{search ? 'No trainer matches' : showArchived ? 'No archived trainers' : chip !== 'all' ? 'Nobody here' : 'No trainers yet'}</b>

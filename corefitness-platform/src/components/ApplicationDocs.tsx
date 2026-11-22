@@ -5,6 +5,7 @@ import {
   applicationDocuments, documentKinds, documentUrl, emailApplicant, explain, requestDocumentAgain, reviewDocument,
   type Application, type AppDocument, type DocKind,
 } from '../lib/platform';
+import SkelRows from './ui/SkelRows';
 
 const day = (v: string) => { const [y, m, d] = v.slice(0, 10).split('-').map(Number); return new Date(y!, (m ?? 1) - 1, d).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' }); };
 const when = (iso: string) => new Date(iso).toLocaleString('en-PH', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
@@ -68,7 +69,7 @@ export default function ApplicationDocs({ app, onChanged }: { app: Application; 
     finally { setBusy(false); }
   };
 
-  if (docs === null) return <p className="empty">Loading…</p>;
+  if (docs === null) return <SkelRows label="Loading…" />;
   const current = (k: string) => docs.find((d) => d.kind === k && d.status !== 'replaced' && d.status !== 'draft') ?? null;
   const verified = kinds.filter((k) => current(k.kind)?.status === 'verified').length;
   // What the viewer steps through: every document sent, in the kinds' order.

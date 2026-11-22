@@ -11,6 +11,7 @@ import { supportScreenshot, ticketExtras,
   CHANGED, explain, listTickets, replyTicket, requestTicketAccess, resolveTicket, setTicketStatus, ticketAccess, ticketThread,
   type PlatformTicket, type TicketAccess, type TicketMessage,
 } from '../lib/platform';
+import SkelRows from '../components/ui/SkelRows';
 
 const when = (iso: string) => new Date(iso).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 type Filter = 'waiting' | 'all' | 'closed';
@@ -68,7 +69,7 @@ export default function Support() {
     void (async () => { await show(shown[0]); })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shown, open]);
-  if (tickets === null) return <p className="empty">Loading support…</p>;
+  if (tickets === null) return <SkelRows label="Loading support…" />;
 
   return (
     <>

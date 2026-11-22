@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Button from './ui/Button';
 import { showToast } from '../utils/toast';
 import { listHouseRules, publishHouseRules, type HouseRulesVersion } from '../lib/api/houseRules';
+import SkelRows from './ui/SkelRows';
 
 const MUTED = 'var(--color-text-muted)';
 const stamp = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -29,7 +30,7 @@ export default function HouseRulesTab() {
   }, []);
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
-  if (versions === undefined) return <p className="text-xs" style={{ color: MUTED }}>Loading…</p>;
+  if (versions === undefined) return <SkelRows label="Loading…" />;
   if (versions === null) {
     return <p className="text-xs" style={{ color: MUTED }}>House rules need migration 0157_house_rules.sql, which is not pasted yet.</p>;
   }

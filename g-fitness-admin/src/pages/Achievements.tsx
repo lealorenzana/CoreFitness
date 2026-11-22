@@ -13,6 +13,7 @@ import {
   achievementRarity, achievementQualifiers, earnedSince, ruleSummary, type Rarity,
   type AchievementRow, type AchievementMetric, type AchievementAudience, type AchievementTier, type AchievementRuleKind,
 } from '../lib/api/achievements';
+import SkelRows from '../components/ui/SkelRows';
 
 /**
  * Achievements (0038/0093/0206, redrawn 2026-10-20 to the approved mock-up): the
@@ -271,7 +272,7 @@ export default function Achievements() {
             </div>
           </div>
           <div className="a-scroll grow">
-            {state === 'loading' ? <p className="a-sub">Loading…</p> : visible.length === 0 ? <p className="a-sub" style={{ padding: '10px 0' }}>{q ? 'Nothing matches that.' : 'None of this kind yet: make one on the right.'}</p> : groups.map((g) => {
+            {state === 'loading' ? <SkelRows label="Loading…" /> : visible.length === 0 ? <p className="a-sub" style={{ padding: '10px 0' }}>{q ? 'Nothing matches that.' : 'None of this kind yet: make one on the right.'}</p> : groups.map((g) => {
               const items = visible.filter((r) => r.category === g);
               return (
                 <div key={g}>

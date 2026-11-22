@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Building2, Clock, Hash, UserRound } from 'lucide-react';
 import { searchEvents, type LoggedEvent } from '../lib/insight';
+import SkelRows from './ui/SkelRows';
 
 const stamp = (iso: string) => new Date(iso).toLocaleString('en-PH', {
   weekday: 'short', day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit',
@@ -90,7 +91,7 @@ export default function EventDetail({ event }: { event: LoggedEvent }) {
       {event.gym_id && (
         <>
           <h3 className="section-title" style={{ marginTop: 18 }}>Also at {event.gym_name ?? 'this gym'}</h3>
-          {around === null ? <p className="empty">Loading…</p> : around.length === 0 ? <p className="meta">Nothing else logged.</p> : (
+          {around === null ? <SkelRows label="Loading…" /> : around.length === 0 ? <p className="meta">Nothing else logged.</p> : (
             <div className="act-list">
               {around.map((x) => (
                 <div key={x.id} className="row" style={{ gap: 10, padding: '6px 0', fontSize: 13 }}>

@@ -9,6 +9,7 @@ import PaymentMethods from '../components/PaymentMethods';
 import GymDocuments from '../components/GymDocuments';
 import GymDocsEditor from '../components/GymDocsEditor';
 import MailStatus from '../components/MailStatus';
+import SkelRows from '../components/ui/SkelRows';
 
 const long = (d: Date) => d.toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
 
@@ -85,7 +86,7 @@ export default function Settings() {
       {part === 'business' && (
       <form className="card set-6" onSubmit={(e) => { e.preventDefault(); void save('business'); }}>
         <h2 className="section-title"><Building size={14} /> Business and receipts <InfoDot tip="Printed on every receipt a gym gets for paying Core Fitness, never typed into a screen." /></h2>
-        {b === undefined ? <p className="empty">Loading…</p> : b === null ? <p className="empty">Paste migration 0138 to set these.</p> : (
+        {b === undefined ? <SkelRows label="Loading…" /> : b === null ? <p className="empty">Paste migration 0138 to set these.</p> : (
           <>
             <div className="fields" style={{ marginTop: 0 }}>
               <div><label htmlFor="s-name">Business name</label><input id="s-name" required value={b.business_name} onChange={(e) => setB({ ...b, business_name: e.target.value })} /></div>
@@ -151,7 +152,7 @@ export default function Settings() {
       <section className="card set-6">
         <h2 className="section-title"><ShieldCheck size={14} /> Who can run the platform <InfoDot tip="Anyone here can let a gym in, suspend one and change what the service sells. The last one cannot be removed." /></h2>
         <div className="set-admins">
-          {admins === null ? <p className="empty">Loading…</p> : admins.map((a) => (
+          {admins === null ? <SkelRows label="Loading…" /> : admins.map((a) => (
             <div key={a.user_id} className="set-admin">
               <span className="avatar">{((a.first_name ?? a.email ?? '?')[0] + (a.last_name?.[0] ?? '')).toUpperCase()}</span>
               <span className="grow" style={{ flexBasis: 120 }}>

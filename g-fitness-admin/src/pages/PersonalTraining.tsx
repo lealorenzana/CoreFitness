@@ -17,6 +17,7 @@ import { listTrainers } from '../lib/api/trainers';
 import { useGymModules, moduleOn } from '../hooks/useGymModules';
 import { useTour } from '../components/tour/Tour';
 import { tourFor } from '../lib/tours';
+import SkelRows from '../components/ui/SkelRows';
 
 type Tab = 'decide' | 'sessions' | 'packages';
 type Mode = 'instant' | 'coach' | 'desk' | 'coach_desk' | 'off';
@@ -167,7 +168,7 @@ export default function PersonalTraining() {
       {tab === 'packages' && <Coaching embedded />}
       {tab === 'decide' && (
         <div className="a-card" style={{ flex: 1, padding: 0 }} data-to-decide>
-          {data === undefined ? <p className="a-sub" style={{ padding: 18 }}>Loading…</p>
+          {data === undefined ? <SkelRows label="Loading…" />
             : data === null ? <p className="a-sub" style={{ padding: 18, color: 'var(--a-a300)' }}>What waits could not be loaded. Refresh to try again.</p>
             : data.sessions.length + data.payments.length + data.asked.length === 0 ? <p className="a-sub text-center" style={{ padding: 26 }} data-decide-empty>Nothing waits for you: requests and payments show here as they come in.</p>
             : (

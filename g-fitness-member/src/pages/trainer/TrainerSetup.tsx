@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import SkelRows from '../../components/ui/SkelRows';
 import { useNavigate } from 'react-router-dom';
 import { CalendarClock, Check, MessageCircle, QrCode, UserRound, Inbox } from 'lucide-react';
 import { Page, PageTitle } from '../../components/ui/page';
@@ -55,7 +56,7 @@ export default function TrainerSetup() {
     navigate('/trainer/home', { replace: true });
   };
 
-  if (s === undefined) return <Page><p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>{t('Loading…')}</p></Page>;
+  if (s === undefined) return <Page><SkelRows label={t('Loading…')} /></Page>;
   if (s === null) { navigate('/trainer/home', { replace: true }); return null; }
 
   const steps: { icon: typeof Check; title: string; body: string; done: boolean | null; go?: [string, string] }[] = [

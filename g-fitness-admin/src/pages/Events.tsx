@@ -23,6 +23,7 @@ import {
 } from '../lib/api/events';
 import { listMembers } from '../lib/api/members';
 import { recordReason } from '../lib/api/reasons';
+import SkelRows from '../components/ui/SkelRows';
 
 /**
  * Gym events — real rows in `events` (migration 0014).
@@ -335,7 +336,7 @@ export default function Events() {
             </div>
           )}
           <RdTable boxRef={fit.ref} head={[...(selecting ? [''] : []), 'Event', 'When', 'Signed up', 'Status', { label: '', align: 'right' }]}
-            empty={loading ? <p className="text-[13px] p-6" style={{ color: MUTED }}>Loading events…</p> : visible.length === 0 ? (
+            empty={loading ? <SkelRows label="Loading events…" /> : visible.length === 0 ? (
               <EmptyBlock icon={Calendar} compact
                 title={events.length === 0 ? 'No events yet' : 'No event matches that'}
                 body={events.length === 0 ? 'Create one and it appears for every member in the phone app.' : 'Try a different search.'}
@@ -560,7 +561,7 @@ export default function Events() {
         subtitle={attendeesFor ? `${attendees?.length ?? '…'} of ${attendeesFor.capacity} places` : undefined}>
         <div className="flex flex-col gap-2 max-h-[55vh] overflow-y-auto" data-attendees>
           {attendees === null ? (
-            <p className="text-[13px] py-6 text-center" style={{ color: MUTED }}>Loading…</p>
+            <SkelRows label="Loading…" />
           ) : attendees.length === 0 ? (
             <p className="text-[13px] py-6 text-center" style={{ color: MUTED }}>Nobody has signed up yet.</p>
           ) : attendees.map((a) => (

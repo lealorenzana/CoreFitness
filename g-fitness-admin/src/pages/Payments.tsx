@@ -23,6 +23,7 @@ import {
 } from '../lib/api/renewalRequests';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import CashCloseout from '../components/ui/CashCloseout';
+import SkelRows from '../components/ui/SkelRows';
 
 interface Payment {
   id: string; memberName: string; memberId: string; membershipId: string | null;
@@ -337,7 +338,7 @@ export default function Payments() {
   const pendingCount = payments.filter((p) => p.status === 'pending').length;
 
   if (loading) {
-    return <div className="text-sm" style={{ color: MUTED }}>Loading payments…</div>;
+    return <SkelRows label="Loading payments…" />;
   }
 
   const openGroup = memberGroups.find((g) => g.memberId === expandedMember) ?? null;

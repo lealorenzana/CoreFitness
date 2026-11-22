@@ -4,6 +4,7 @@ import { showToast } from '../../utils/toast';
 import {
   goalTemplateReached, goalTemplateUsage, listGoalTemplates, updateGoalTemplate, type GoalTemplate,
 } from '../../lib/api/engagementRules';
+import SkelRows from '../ui/SkelRows';
 
 /** Goals count over a rolling window (period_days), so "the last N days" is what the app checks. */
 const windowWord = (days: number) => `in the last ${days} days`;
@@ -67,7 +68,7 @@ export default function GoalListTab({ onChanged }: { onChanged?: () => void }) {
     }
   };
 
-  if (items === undefined) return <p className="a-sub">Loading…</p>;
+  if (items === undefined) return <SkelRows label="Loading…" />;
   if (items === null) return <div className="a-card"><p className="a-sub">The goal list could not be loaded — a connection problem, not an empty list.</p></div>;
   const t = items.find((x) => x.key === pick) ?? null;
   const target = Number(draft.target) || 0;

@@ -29,6 +29,7 @@ import PremiumThemes from '../components/yourapp/PremiumThemes';
 import SavedThemes from '../components/yourapp/SavedThemes';
 import { cropPhoto } from '../components/ui/PhotoCropper';
 import FeatureShow from '../components/yourapp/FeatureShow';
+import SkelRows from '../components/ui/SkelRows';
 
 const MEMBER_APP = 'https://corefitness-gym.vercel.app';
 
@@ -170,7 +171,7 @@ export default function GymApp() {
     catch (e) { showToast(e instanceof Error ? e.message : 'That could not be saved', 'error'); await load(); }
   };
 
-  if (!ready) return <div className="att"><p className="a-sub">Loading…</p></div>;
+  if (!ready) return <div className="att"><SkelRows label="Loading…" /></div>;
   if (!app) {
     return (
       <div className="att"><div className="a-card">

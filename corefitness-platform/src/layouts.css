@@ -44,3 +44,12 @@
 .content .page > .ppl-find { min-height: 0 !important; flex: none !important; overflow: visible !important; }
 .ppl > * { margin: 0 !important; }
 
+
+/* SkelRows (components/ui/SkelRows.tsx): grey shapes where a box is loading, never the word "Loading…". */
+.cf-skel-rows { display: grid; gap: 10px; padding: 8px 0; width: 100%; }
+.cf-skel { display: block; height: 14px; border-radius: 6px;
+  background: linear-gradient(90deg, rgb(255 255 255 / 0.05) 0%, rgb(255 255 255 / 0.12) 50%, rgb(255 255 255 / 0.05) 100%);
+  background-size: 200% 100%; animation: cf-skel-shimmer 1.3s linear infinite; }
+.cf-skel:first-child { height: 18px; }
+@keyframes cf-skel-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+@media (prefers-reduced-motion: reduce) { .cf-skel { animation: none; } }

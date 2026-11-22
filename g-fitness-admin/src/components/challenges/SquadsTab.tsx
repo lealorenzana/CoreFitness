@@ -3,6 +3,7 @@ import { UsersRound, Info, Lightbulb, Flame } from 'lucide-react';
 import { Av } from '../../pages/attendance/parts';
 import { supabase } from '../../lib/supabaseClient';
 import { todayKey, addDays } from '../../utils/dates';
+import SkelRows from '../ui/SkelRows';
 
 interface Row { id: string; name: string; code: string; target: number; maker: string | null; people: { id: string; name: string; photo: string | null }[]; days: number | null; streak: number }
 
@@ -53,7 +54,7 @@ export default function SquadsTab() {
       <div className="a-card">
         <div className="a-ct"><h3><UsersRound size={16} />Squads this week</h3><small>members make these in the app · you see them, they run them</small></div>
         <div className="a-scroll grow">
-          {rows === undefined ? <p className="a-sub">Loading…</p> : rows === null ? <p className="a-sub">Squads need migration 0124.</p> : rows.length === 0 ? (
+          {rows === undefined ? <SkelRows label="Loading…" /> : rows === null ? <p className="a-sub">Squads need migration 0124.</p> : rows.length === 0 ? (
             <p className="a-sub" style={{ padding: '10px 0' }}>No squads yet. Members start one under Squads in the app and invite friends with its code.</p>
           ) : (
             <table className="a-table">

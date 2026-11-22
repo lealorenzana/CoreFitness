@@ -7,6 +7,7 @@ import { todayKey as manilaToday, addDays } from '../../utils/dates';
 import DatePicker from '../ui/DatePicker';
 import { useGymFirstDay } from '../../hooks/useGymFirstDay';
 import { salesBetween, shopReport, type ReportRow, type Sale } from '../../lib/api/shop';
+import SkelRows from '../ui/SkelRows';
 
 const MUTED = 'var(--color-text-muted)';
 const LINE = '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.06)';
@@ -79,7 +80,7 @@ export default function ShopSales({ refresh, onReceipt }: { refresh: number; onR
             <p className="text-[15px] font-semibold text-white">Best sellers</p>
           </div>
           <div className="rd-fit-scroll p-4">
-            {report === null ? <p className="text-[13px]" style={{ color: MUTED }}>Loading…</p> : top.length === 0 ? (
+            {report === null ? <SkelRows label="Loading…" /> : top.length === 0 ? (
               <EmptyBlock compact icon={Trophy} title="No sales in these dates" />
             ) : (
               <div className="space-y-3.5">
@@ -109,7 +110,7 @@ export default function ShopSales({ refresh, onReceipt }: { refresh: number; onR
             <p className="text-[15px] font-semibold text-white">Every sale</p>
           </div>
           <div className="rd-fit-scroll px-4">
-            {sales === null ? <p className="text-[13px] py-4" style={{ color: MUTED }}>Loading…</p> : sales.length === 0 ? (
+            {sales === null ? <SkelRows label="Loading…" /> : sales.length === 0 ? (
               <EmptyBlock compact icon={Receipt} title="No sales in these dates" />
             ) : paged.visible.map((s) => (
               <div key={s.id} className="flex items-center gap-3 py-2.5 text-[13px]" style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.045)', opacity: s.voidedAt ? 0.55 : 1 }}>

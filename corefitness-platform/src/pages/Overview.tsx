@@ -13,6 +13,7 @@ import CheckinsBreakdown from '../components/CheckinsBreakdown';
 import EventDetail from '../components/EventDetail';
 import DemoNotice from '../components/DemoNotice';
 import './overview.css';
+import SkelRows from '../components/ui/SkelRows';
 
 /**
  * The platform owner's morning (2026-11-22 rebuild; the owner: "the best statistics showing and all that a super
@@ -103,7 +104,7 @@ export default function Overview() {
     return () => { alive = false; };
   }, []);
 
-  if (o === undefined) return <p className="empty">Loading the service…</p>;
+  if (o === undefined) return <SkelRows label="Loading the service…" />;
   if (!o) return <p className="err">{error ?? 'The overview could not load.'}</p>;
 
   // ---- series ----

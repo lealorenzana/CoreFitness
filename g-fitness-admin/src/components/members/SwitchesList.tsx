@@ -7,6 +7,7 @@ import { RdButton } from '../ui/rd';
 const SUB: React.CSSProperties = { fontSize: 13, color: 'var(--color-text-secondary)' };
 const LBL: React.CSSProperties = { fontSize: 12, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 6 };
 import { gymSwitchList, type GymSwitch } from '../../lib/api/gymSwitches';
+import SkelRows from '../ui/SkelRows';
 
 const day = (iso: string) => new Date(iso).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
 
@@ -27,7 +28,7 @@ export default function SwitchesList({ onOpenSignups, onOpenRequests, onOpenMemb
   const [rows, setRows] = useState<GymSwitch[] | null | undefined>(undefined);
   useEffect(() => { void gymSwitchList().then(setRows); }, []);
 
-  if (rows === undefined) return <p style={{ ...SUB, padding: 20 }}>Loading…</p>;
+  if (rows === undefined) return <SkelRows label="Loading…" />;
   if (rows === null) return <p style={{ ...SUB, padding: 20 }}>The switches list could not be read right now. Notifications still tell you of each one.</p>;
   if (rows.length === 0) {
     return (

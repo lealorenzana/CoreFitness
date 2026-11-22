@@ -21,6 +21,7 @@ import {
 } from '../../lib/api/trainers';
 import LoginSection from '../LoginSection';
 import { realEmail } from '../../lib/api/logins';
+import SkelRows from './SkelRows';
 
 /**
  * One trainer's whole record.
@@ -585,7 +586,7 @@ function EvaluationsTab({ trainerId }: { trainerId: string }) {
   }, [trainerId]);
 
   if (rows === null) {
-    return <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Loading evaluations…</p>;
+    return <SkelRows label="Loading evaluations…" />;
   }
 
   /**

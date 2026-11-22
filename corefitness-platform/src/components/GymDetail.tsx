@@ -4,6 +4,7 @@ import {
   type GymDetail as Detail, type GymPerson, type PlatformGym,
 } from '../lib/platform';
 import EmailIt from './EmailIt';
+import SkelRows from './ui/SkelRows';
 
 const day = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
@@ -132,7 +133,7 @@ export default function GymDetail({ gym, onChanged, onClose }: {
       <div style={{ marginTop: 14 }}>
         <div className="name" style={{ fontSize: 13 }}>Who runs it</div>
         <div className="meta">Owners and front desk only, a gym's members are its own business.</div>
-        {people === null && <p className="empty">Loading…</p>}
+        {people === null && <SkelRows label="Loading…" />}
         {people?.length === 0 && (
           <p className="empty">Nobody can sign into this gym yet. Invite its owner from the gym's row.</p>
         )}

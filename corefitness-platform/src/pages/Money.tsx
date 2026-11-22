@@ -16,6 +16,7 @@ import {
   billingSettings, explain, listDue, listGyms, listPayments, listRevenue, paymentReceipt, recordPayment,
   type BillingSettings, type GymDue, type GymPayment, type PlatformGym, type Receipt, type RevenueMonth,
 } from '../lib/platform';
+import SkelRows from '../components/ui/SkelRows';
 
 const peso = (n: string | number) =>
   '₱' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
@@ -153,7 +154,7 @@ export default function Money() {
           A gym goes read-only {grace} day{grace === 1 ? '' : 's'} after its date, and its owners are reminded before. This is where you see it coming.
         </div>
         <div style={{ marginTop: 10 }}>
-          {due === null && <p className="empty">Loading…</p>}
+          {due === null && <SkelRows label="Loading…" />}
           {due?.length === 0 && (
             <p className="empty">
               No gym is due. Gyms with no paid-until date at all are not listed here, set one by
@@ -206,7 +207,7 @@ export default function Money() {
           </select>
         </div>
         <div style={{ marginTop: 10 }}>
-          {payments === null && <p className="empty">Loading…</p>}
+          {payments === null && <SkelRows label="Loading…" />}
           {payments?.length === 0 && <p className="empty">No payment has been recorded yet.</p>}
           {paidPage.rows.map((p) => (
             <div className="log" key={p.id} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>

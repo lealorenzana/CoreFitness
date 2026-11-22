@@ -8,6 +8,7 @@ import {
   type FeatureDef, type PlanFeatureCell,
 } from '../lib/api/planFeatures';
 import type { MembershipPlanRow } from '../types/db';
+import SkelRows from './ui/SkelRows';
 
 /**
  * What each plan unlocks in the member app (migration 0049).
@@ -131,7 +132,7 @@ export default function PlanFeatureMatrix({ plans, onPlanChanged }: Props) {
   };
 
   if (loading) {
-    return <div className="a-card" style={{ flex: 1 }}><p className="a-sub">Loading plan access…</p></div>;
+    return <div className="a-card" style={{ flex: 1 }}><SkelRows label="Loading plan access…" /></div>;
   }
 
   if (failed) {

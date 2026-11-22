@@ -15,6 +15,7 @@ import {
 } from '../lib/api/coaching';
 import { Av, Pager } from './attendance/parts';
 import './attendance/att.css';
+import SkelRows from '../components/ui/SkelRows';
 
 type Filter = 'all' | 'active' | 'waiting' | 'ending' | 'ended';
 const OPEN = ['invited', 'requested', 'awaiting_payment', 'payment_sent'];
@@ -130,7 +131,7 @@ export default function Coaching({ embedded = false }: { embedded?: boolean } = 
   const memberHits = memberQ.trim().length >= 1 ? members.filter((m) => m.name.toLowerCase().includes(memberQ.trim().toLowerCase())).slice(0, 5) : [];
   const short = (n: string) => n.split(' ')[0];
 
-  if (settings === undefined) return <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Loading…</p>;
+  if (settings === undefined) return <SkelRows label="Loading…" />;
   if (settings === null) {
     return (
       <div className="att">

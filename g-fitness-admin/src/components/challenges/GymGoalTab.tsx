@@ -11,6 +11,7 @@ import { pushToMany } from '../../lib/api/notify';
 import { todayKey, addDays, daysBetween, localDateKey } from '../../utils/dates';
 import PointsOffNote from '../PointsOffNote';
 import { usePointsOn } from '../../hooks/usePointsOn';
+import SkelRows from '../ui/SkelRows';
 
 const UNIT: Record<string, string> = { training_days: 'training days', workouts_logged: 'workouts', checkins: 'check-ins' };
 const fmt = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
@@ -107,7 +108,7 @@ export default function GymGoalTab({ onChanged }: { onChanged?: () => void }) {
     }
   };
 
-  if (goals === undefined) return <p className="a-sub">Loading…</p>;
+  if (goals === undefined) return <SkelRows label="Loading…" />;
   if (goals === null) return <div className="a-card"><p className="a-sub">The gym goal needs migration 0124.</p></div>;
 
   const cp = current ? progress[current.id] ?? { progress: 0, contributors: 0 } : null;

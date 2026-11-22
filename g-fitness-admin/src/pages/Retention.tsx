@@ -14,6 +14,7 @@ import {
   retentionRadar, sendRetentionMessage, winbackSweep, winbackRules, winbackResults, saveWinbackRule, logRetentionCall, lastContacts,
   type AtRisk, type Contact, type WinbackKey, type WinbackResult, type WinbackRule,
 } from '../lib/api/retention';
+import SkelRows from '../components/ui/SkelRows';
 
 const WHEN: Record<WinbackKey, [string, string]> = {
   no_visit_14: ['No visit in 14 days', 'To a member whose last visit was 14–30 days ago. Once a month at most.'],
@@ -227,7 +228,7 @@ export default function Retention() {
                 <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a member…" aria-label="Find a member" /></label>
             </div>
             <div ref={fitRef} className="a-scroll grow" data-rd-table>
-              {radar === null ? <p className="a-sub" style={{ padding: '10px 0' }}>Loading…</p> : listed.length === 0 ? <p className="a-sub" style={{ padding: '10px 0' }}>{radar?.length ? 'Nobody matches.' : 'Nobody is slipping right now.'}</p> : (
+              {radar === null ? <SkelRows label="Loading…" /> : listed.length === 0 ? <p className="a-sub" style={{ padding: '10px 0' }}>{radar?.length ? 'Nobody matches.' : 'Nobody is slipping right now.'}</p> : (
                 <table className="a-table">
                   <thead><tr><th>Member</th><th>Why we think so</th><th>Risk</th><th>Last contact</th><th /></tr></thead>
                   <tbody>
@@ -293,7 +294,7 @@ export default function Retention() {
 
       {view === 'msgs' && (
         <div className="a-grid" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', flex: 1, alignContent: 'start' }} data-winback-rules>
-          {rules === null && <p className="a-sub">Loading…</p>}
+          {rules === null && <SkelRows label="Loading…" />}
           {rules?.length === 0 && <p className="a-sub">Win-back messages are not switched on yet — paste migration 0130.</p>}
           {rules?.map((r) => {
             const e = editing[r.key];

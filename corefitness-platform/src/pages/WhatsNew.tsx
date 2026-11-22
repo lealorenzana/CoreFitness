@@ -4,6 +4,7 @@ import InfoDot from '../components/InfoDot';
 import Tiles from '../components/Tiles';
 import './talk.css';
 import { deleteRelease, explain, listReleases, saveRelease, type Release, type ReleaseApp } from '../lib/platform';
+import SkelRows from '../components/ui/SkelRows';
 
 const APPS: { key: ReleaseApp; label: string; who: string }[] = [
   { key: 'admin', label: 'Admin app', who: 'gym owners and front desks, on their dashboard' },
@@ -43,7 +44,7 @@ export default function WhatsNew() {
   };
   const latest = (app: ReleaseApp) => items?.find((r) => r.app === app);
 
-  if (items === null) return <p className="empty">Loading…</p>;
+  if (items === null) return <SkelRows label="Loading…" />;
   const forApp = APPS.find((a) => a.key === form.app)!;
   return (
     <>

@@ -21,6 +21,7 @@ import { usePaged } from '../hooks/usePaged';
 import { showToast } from '../utils/toast';
 import { todayKey } from '../utils/dates';
 import { supabase } from '../lib/supabaseClient';
+import SkelRows from '../components/ui/SkelRows';
 
 /**
  * CORE Points — the reward catalogue and the approval queue (migration 0051).
@@ -494,7 +495,7 @@ export default function Rewards() {
   const spentThisMonth = [...stats.values()].reduce((s, x) => s + x.this_month, 0);
 
   if (loading) {
-    return <div className="text-sm" style={{ color: MUTED }}>Loading rewards…</div>;
+    return <SkelRows label="Loading rewards…" />;
   }
 
   if (failed) {

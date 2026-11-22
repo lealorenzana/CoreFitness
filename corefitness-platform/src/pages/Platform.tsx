@@ -13,6 +13,7 @@ import {
   type Backup, type CrashReport, type DemoSummary, type Overview, type PlatformAdmin,
   type PlatformEvent, type SentEmail, type SupportGrant,
 } from '../lib/platform';
+import SkelRows from '../components/ui/SkelRows';
 
 const stamp = (iso: string) =>
   new Date(iso).toLocaleString('en-PH', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
@@ -271,7 +272,7 @@ export default function Platform() {
           </button>
         </div>
         <div className="ov-scroll" style={{ marginTop: 10 }}>
-          {crashes === null && <p className="empty">Loading…</p>}
+          {crashes === null && <SkelRows label="Loading…" />}
           {crashes?.length === 0 && (
             <p className="empty">
               {showResolved ? 'Nothing has crashed in the last 14 days.' : 'Nothing is outstanding.'}
@@ -347,7 +348,7 @@ export default function Platform() {
         <div className="section-title" style={{ marginBottom: 4 }}><History size={14} /> What the platform did <InfoDot tip="The latest events. Activity has the whole log, with search and filters." /></div>
         <div className="meta">Every gym let in, suspended, reactivated, renamed, paid or re-planned.</div>
         <div className="ov-scroll" style={{ marginTop: 10 }}>
-          {events === null && <p className="empty">Loading…</p>}
+          {events === null && <SkelRows label="Loading…" />}
           {events?.length === 0 && <p className="empty">Nothing yet.</p>}
           {events?.map((e) => (
             <div className="log" key={e.id}>

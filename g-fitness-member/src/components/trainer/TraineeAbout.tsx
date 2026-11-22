@@ -19,6 +19,7 @@ import { levelLabel } from '../../lib/api/achievements';
 import { errorMessage } from '../../utils/errorMessage';
 import { moduleOn } from '../../lib/gymApp';
 import { useGymApp } from '../../hooks/useGymApp';
+import SkelRows from '../ui/SkelRows';
 
 /**
  * One block of a member's own data in the trainer's view.
@@ -248,7 +249,7 @@ export default function TraineeAbout({ member, onChat, initialTab = 'progress' }
           {/* Their latest personal records (0123), when they share their workouts. */}
           <TraineeRecords memberId={member.id} />
           {detailLoading ? (
-          <p style={{ fontSize: 12.5, padding: '12px 0', color: 'var(--color-text-muted)' }}>Loading their details…</p>
+          <SkelRows label="Loading their details…" />
         ) : (
           <>
             <SharedBlock
@@ -326,7 +327,7 @@ export default function TraineeAbout({ member, onChat, initialTab = 'progress' }
           {/* The gym program they follow, and assigning one (0122). */}
           <TraineeProgram memberId={member.id} firstName={member.name.split(' ')[0]} />
           {detailLoading ? (
-          <p style={{ fontSize: 12.5, padding: '12px 0', color: 'var(--color-text-muted)' }}>Loading their details…</p>
+          <SkelRows label="Loading their details…" />
         ) : (
           <>
             {/* Their training plan (0030/0089) — not behind a sharing switch. */}
@@ -490,7 +491,7 @@ export default function TraineeAbout({ member, onChat, initialTab = 'progress' }
       {sheetTab === 'safety' && (
         <div data-tab-safety className="about-stack">
           {detailLoading ? (
-          <p style={{ fontSize: 12.5, padding: '12px 0', color: 'var(--color-text-muted)' }}>Loading their details…</p>
+          <SkelRows label="Loading their details…" />
         ) : (
           <>
             <SharedBlock icon={Lifebuoy} label="Emergency contact" shared

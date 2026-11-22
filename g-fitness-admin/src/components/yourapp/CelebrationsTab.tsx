@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Check, PartyPopper, Smartphone, Volume2 } from 'lucide-react';
 import { getCelebrations, setCelebrations, type Celebrations } from '../../lib/api/celebrations';
 import { showToast } from '../../utils/toast';
+import SkelRows from '../ui/SkelRows';
 
 /**
  * Your app → Celebrations (0216). The member app gives a moment to checking
@@ -39,7 +40,7 @@ export default function CelebrationsTab() {
     <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) 380px', flex: 1 }} data-celebrations-tab>
       <div className="a-card a-scroll">
         <div className="a-ct"><h3><PartyPopper size={16} />Celebrations</h3><small>how loudly the app tells members what they did</small></div>
-        {c === undefined ? <p className="a-sub">Loading…</p>
+        {c === undefined ? <SkelRows label="Loading…" />
           : c === null ? <p className="a-sub">These switches arrive with the next database update (0216). Until then members get every moment, with sound.</p>
           : rows.map(([k, label, note, Icon]) => (
             <div key={k} className="a-setting" data-celebration-switch={k}>

@@ -14,6 +14,7 @@ import { showToast } from '../utils/toast';
 import { supabase } from '../lib/supabaseClient';
 import { todayKey, addDays, daysBetween, localDateKey } from '../utils/dates';
 import PointsOffNote from '../components/PointsOffNote';
+import SkelRows from '../components/ui/SkelRows';
 
 /**
  * Challenges & goals (0052/0124/0055, redrawn 2026-10-20 to the approved
@@ -210,7 +211,7 @@ export default function Challenges() {
               <small>tap one to see who joined and who finished</small>
             </div>
             <div className="a-scroll grow">
-              {items === undefined ? <p className="a-sub">Loading…</p> : items === null ? <p className="a-sub">Challenges could not be loaded — a connection problem, not an empty list.</p>
+              {items === undefined ? <SkelRows label="Loading…" /> : items === null ? <p className="a-sub">Challenges could not be loaded — a connection problem, not an empty list.</p>
                 : shown.length === 0 ? <p className="a-sub" style={{ padding: '10px 0' }}>{show === 'running' ? 'Nothing running right now — start one on the right.' : show === 'upcoming' ? 'Nothing scheduled.' : 'Nothing has finished yet.'}</p> : (
                 <table className="a-table">
                   <thead><tr><th>Challenge</th><th>Dates</th><th>Joined</th><th>Finished</th><th>Points</th><th /></tr></thead>

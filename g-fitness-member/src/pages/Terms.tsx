@@ -6,6 +6,7 @@ import { prettyVersion, TERMS_VERSION } from '../lib/legalVersions';
 import HouseRulesBlock from '../components/legal/HouseRulesBlock';
 import { getBookingRules, type BookingRules } from '../lib/api/bookingRules';
 import { cancelGlance, cancelTermsLine, noshowTermsLine, repeatTermsLine } from '../lib/bookingTermsWords';
+import SkelRows from '../components/ui/SkelRows';
 
 /**
  * The terms the gym actually operates by.
@@ -74,7 +75,7 @@ function RefundTiers({ state }: { state: RefundTermsState }) {
       {state.kind === 'failed' && (
         <p className="legal-table-cap">Your gym’s minimum percentages could not be loaded just now. The desk can show you them, and the rule below holds whatever they are.</p>
       )}
-      {state.kind === 'loading' && <p className="legal-table-cap">Loading your gym’s minimums…</p>}
+      {state.kind === 'loading' && <SkelRows label="Loading your gym’s minimums…" />}
       <div className="legal-tr legal-th" role="row">
         <span role="columnheader">When you cancel</span><span role="columnheader">What you get back</span>
       </div>

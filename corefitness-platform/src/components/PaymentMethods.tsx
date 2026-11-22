@@ -3,6 +3,7 @@ import { Plus, QrCode, Trash2, Wallet } from 'lucide-react';
 import InfoDot from './InfoDot';
 import { explain, paymentMethods, removePaymentMethod, savePaymentMethod, type PaymentMethod } from '../lib/platform';
 import { shrinkImage } from '../lib/image';
+import SkelRows from './ui/SkelRows';
 
 const KINDS: { key: PaymentMethod['kind']; label: string }[] = [
   { key: 'gcash', label: 'GCash' }, { key: 'maya', label: 'Maya' }, { key: 'bank', label: 'Bank transfer' }, { key: 'other', label: 'Other' },
@@ -47,7 +48,7 @@ export default function PaymentMethods() {
     <section className="card set-6">
       <h2 className="section-title"><Wallet size={14} /> How gyms pay you
         <InfoDot tip="Shown to every gym's owner on Your plan, and to an applicant once you let them in. They send the money, then the reference and a screenshot; you verify it on Money." /></h2>
-      {rows === null ? <p className="empty">Loading…</p> : (
+      {rows === null ? <SkelRows label="Loading…" /> : (
         <>
           {rows.length === 0 && !edit && (
             <p className="meta" style={{ marginTop: 0 }}>

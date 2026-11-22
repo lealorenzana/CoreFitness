@@ -42,6 +42,7 @@ import PlacePicker from '../components/ui/PlacePicker';
 import GymStyles from '../components/GymStyles';
 import TimeSlotsSettings from '../components/TimeSlotsSettings';
 import BookingRulesSettings from '../components/BookingRulesSettings';
+import SkelRows from '../components/ui/SkelRows';
 
 /**
  * Admin settings — every tab here writes to the database.
@@ -399,7 +400,8 @@ export default function Settings() {
         <div className="min-w-0"><h1>Settings</h1><p>How your gym works: every rule members meet comes from here</p></div>
         <label className="a-input sm" style={{ marginLeft: 'auto', width: 320 }}>
           <Search size={14} />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search settings: “refund”, “hours”, “waiver”…" aria-label="Search settings"
+          {/* type=search + autocomplete off: Chrome took this box for the username beside Security's password fields. */}
+          <input type="search" name="cf-settings-search" autoComplete="off" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search settings: “refund”, “hours”, “waiver”…" aria-label="Search settings"
             onKeyDown={(e) => { if (e.key === 'Enter') { const first = SECTIONS.find((s) => s.id && matches(s)); if (first?.id) { setActiveTab(first.id); setSearch(''); } } }} />
         </label>
       </div>
@@ -424,7 +426,7 @@ export default function Settings() {
         </div>
 
         <div className="a-card a-scroll" key={activeTab}>
-          {loading ? <p className="a-sub">Loading…</p> : (
+          {loading ? <SkelRows label="Loading…" /> : (
             <>
               {activeTab === 'gym' && (
                 <>
@@ -591,9 +593,11 @@ export default function Settings() {
                 <>
                   {head('Security', 'Changes your real sign-in password')}
                   <div className="a-grid" style={{ gap: 10, maxWidth: 420 }}>
+                    {/* The account's own username for password managers, so they never fill one into another box. */}
+                    <input type="text" name="username" autoComplete="username" value={me?.email ?? ''} readOnly hidden />
                     {([['current', 'Current password'], ['next', 'New password'], ['confirm', 'Confirm new password']] as const).map(([k, label]) => (
                       <div key={k} className="a-fld"><label htmlFor={'pw-' + k}>{label}</label>
-                        <input id={'pw-' + k} className={`a-in ${k === 'confirm' && pw.confirm && pw.confirm !== pw.next ? 'warn' : ''}`} type={showPw ? 'text' : 'password'}
+                        <input id={'pw-' + k} autoComplete={k === 'current' ? 'current-password' : 'new-password'} className={`a-in ${k === 'confirm' && pw.confirm && pw.confirm !== pw.next ? 'warn' : ''}`} type={showPw ? 'text' : 'password'}
                           value={pw[k]} onChange={(e) => setPw({ ...pw, [k]: e.target.value })} /></div>
                     ))}
                   </div>
@@ -778,7 +782,7 @@ export function RefundPolicyTab() {
   }
 
   if (rules === null || fee === null) {
-    return <p className="text-sm" style={{ color: TEXT_MUTED }}>Loading refund policy…</p>;
+    return <SkelRows label="Loading refund policy…" />;
   }
 
   return (

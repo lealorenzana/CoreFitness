@@ -13,6 +13,7 @@ import { isStandInEmail, suggestUsername, usernameShape, USERNAME_HINT } from '.
 import LoginSlip from '../components/LoginSlip';
 import { RdHeader, RdCard, StatTile, RdButton, Pill, RdTable, Tr, Td, TableFooter, EmptyBlock } from '../components/ui/rd';
 import type { Tone } from '../components/ui/rdTokens';
+import SkelRows from '../components/ui/SkelRows';
 
 const when = (iso: string) =>
   new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -367,7 +368,7 @@ export default function Invitations() {
           </button>
         </div>
         <RdTable boxRef={fit.ref} head={['Email', 'Invited date', 'Expires', 'Role', ...(showDone ? ['State'] : []), { label: 'Actions', align: 'right' }]}
-          empty={rows === null ? <p className="py-10 text-center text-[14.5px]" style={muted}>Loading…</p>
+          empty={rows === null ? <SkelRows label="Loading…" />
             : rows.length === 0 ? <EmptyBlock icon={Mail} title={showDone ? 'Nobody has been invited yet.' : 'Nobody is waiting.'}
                 body="Invite one person or a whole list above: each gets their own login by email." /> : undefined}>
           {paged.visible.map((r) => {

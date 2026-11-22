@@ -14,8 +14,8 @@ import { todayKey } from '../utils/dates';
 import { getGymContext } from '../lib/gymContext';
 import { getGymSettings, type GymSettingsRow } from '../lib/api/settings';
 import { listProducts, moveStock, recordSale, saveProduct, salesOn, voidSale, type Product, type Sale } from '../lib/api/shop';
+import SkelRows from '../components/ui/SkelRows';
 
-const MUTED = 'var(--color-text-muted)';
 type Tab = 'sell' | 'products' | 'sales';
 
 /**
@@ -56,7 +56,7 @@ export default function Shop() {
     finally { setBusy(false); }
   };
 
-  if (products === null) return <div className="text-sm" style={{ color: MUTED }}>Loading the shop…</div>;
+  if (products === null) return <SkelRows label="Loading the shop…" />;
   if (products === undefined) {
     return (
       <RdCard className="p-5 flex items-start gap-3">

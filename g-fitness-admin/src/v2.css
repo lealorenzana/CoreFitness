@@ -451,3 +451,34 @@ button.v2-railrow:hover, .v2-railbtn:hover { background: rgb(var(--hair-rgb, 255
   .v2-scrim { animation: v2-fade 160ms ease-out both; }
   .v2-window { animation: v2-pop 200ms var(--v2-ease, ease-out) both; }
 }
+
+/* ══ Dark mode = "Claude dark" (owner, 2026-11-23): warm greys, not too dark, not too light ══════════════════
+   The default dark ground for every gym. A gym's premium theme (lib/gymLook.ts, appended later at equal
+   specificity) still wins; the gym's accent colours are untouched. Text is warm off-white, never pure white. */
+:root:not([data-mode="light"]) {
+  --color-bg: #121211;
+  --surface-solid: #191918;
+  --raised-solid: #222120;
+  --color-surface-high: #2A2927;
+  --color-border: #252422;
+  --color-text-primary: #F5F4EE;
+  --color-text-secondary: #C2C0B6;
+  --color-text-muted: #9C9A92;
+  --hair-rgb: 222 220 209;
+  --v2-sidebar: #0E0E0D;
+}
+:root:not([data-mode="light"]) .att {
+  --a-surface-solid: var(--surface-solid); --a-raised-solid: var(--raised-solid); --a-high: var(--color-surface-high);
+  --a-border: rgb(222 220 209 / 0.10); --a-line: rgb(222 220 209 / 0.16);
+  --a-text2: #C2C0B6; --a-muted: #9C9A92; --a-ink: #F5F4EE; --a-well: #10100F; --a-bar-dim: #3E3D39;
+}
+:root:not([data-mode="light"]) body { color: var(--color-text-primary); }
+:root:not([data-mode="light"]) .rail { background: var(--v2-sidebar); }
+
+/* SkelRows (components/ui/SkelRows.tsx): grey shapes wherever a box is loading, never the word "Loading…". */
+.cf-skel-rows { display: grid; gap: 10px; padding: 8px 0; width: 100%; }
+.cf-skel { display: block; height: 14px; border-radius: 6px;
+  background: linear-gradient(90deg, rgb(var(--hair-rgb, 255 255 255) / 0.06) 0%, rgb(var(--hair-rgb, 255 255 255) / 0.13) 50%, rgb(var(--hair-rgb, 255 255 255) / 0.06) 100%);
+  background-size: 200% 100%; animation: v2-shimmer 1.3s linear infinite; }
+.cf-skel:first-child { height: 18px; }
+@media (prefers-reduced-motion: reduce) { .cf-skel { animation: none; } }

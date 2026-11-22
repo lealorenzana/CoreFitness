@@ -8,6 +8,7 @@ import {
   endAnnouncement, explain, listAnnouncements, listPlatformPlans, saveAnnouncement,
   type PlatformAnnouncement, type PlatformPlan,
 } from '../lib/platform';
+import SkelRows from '../components/ui/SkelRows';
 
 const day = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' }) : 'no end date');
 
@@ -41,7 +42,7 @@ export default function Announcements() {
     finally { setBusy(false); }
   };
 
-  if (items === null) return <p className="empty">Loading…</p>;
+  if (items === null) return <SkelRows label="Loading…" />;
   const whoLabel = form.plan ? `Gyms on ${plans.find((p) => p.key === form.plan)?.name ?? form.plan}` : 'Every gym';
   return (
     <>

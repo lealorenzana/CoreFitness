@@ -3,6 +3,7 @@ import { CheckCircle2, Lightbulb, MessageSquareQuote, Star } from 'lucide-react'
 import { explain, feedback, setIdea, setTestimonial, type FeedbackData, type IdeaRow } from '../lib/platform';
 import Tiles from '../components/Tiles';
 import './talk.css';
+import SkelRows from '../components/ui/SkelRows';
 
 const when = (iso: string) => new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
 const IDEA: Record<IdeaRow['status'], string> = { open: 'New', planned: 'Planned', done: 'Done', not_now: 'Not now' };
@@ -33,7 +34,7 @@ export default function Feedback() {
     try { await fn(); await load(); } catch (e) { setError(e instanceof Error ? e.message : 'That did not work'); } finally { setBusy(false); }
   };
 
-  if (!data) return error ? <p className="err">{error}</p> : <p className="empty">Loading…</p>;
+  if (!data) return error ? <p className="err">{error}</p> : <SkelRows label="Loading…" />;
   const current = data.ratings.filter((r) => r.current);
   const openIdeas = data.ideas.filter((i) => i.status === 'open');
   const waitingQuotes = data.testimonials.filter((t) => t.status === 'pending');

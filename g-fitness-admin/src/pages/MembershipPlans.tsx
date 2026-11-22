@@ -22,6 +22,7 @@ import { listMembers } from '../lib/api/members';
 import { listPayments } from '../lib/api/payments';
 import { notifyUser } from '../lib/api/notify';
 import type { MembershipPlanRow, PlanTier, PaymentRow } from '../types/db';
+import SkelRows from '../components/ui/SkelRows';
 
 /** The lengths the mock-up offers, in days; null = never ends (0024). Any other stored length shows as its own chip. */
 const LENGTHS: [number | null, string][] = [[1, '1 day'], [7, '1 week'], [30, '1 month'], [90, '3 months'], [180, '6 months'], [365, '1 year'], [null, 'Never ends']];
@@ -271,7 +272,7 @@ export default function MembershipPlans() {
     set({ lines }); setDragAt(null);
   };
 
-  if (loading) return <div className="att"><p className="a-sub">Loading plans…</p></div>;
+  if (loading) return <div className="att"><SkelRows label="Loading plans…" /></div>;
 
   const kindTone = (t: PlanTier) => KIND[t][1];
   const customLength = draft && !LENGTHS.some(([d]) => d === draft.days);

@@ -3,6 +3,7 @@ import { ArrowUpRight } from '@phosphor-icons/react';
 import { embedUrl } from '../../lib/videoEmbed';
 import { listExerciseMedia, type ExerciseMedia } from '../../lib/api/exerciseMedia';
 import { listExercises } from '../../lib/api/workoutSets';
+import SkelRows from '../ui/SkelRows';
 
 /**
  * How to do one exercise, as this member's gym teaches it (0121).
@@ -103,7 +104,7 @@ export function ExerciseGuideFor({ exerciseId, name }: { exerciseId: string; nam
     return () => { alive = false; };
   }, [exerciseId]);
 
-  if (state === undefined) return <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Loading…</p>;
+  if (state === undefined) return <SkelRows label="Loading…" />;
   if (state === null) return <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>The guide could not be loaded just now.</p>;
   return <ExerciseGuide name={name} libraryCues={state.cues} librarySteps={state.steps} media={state.media} />;
 }

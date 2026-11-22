@@ -13,6 +13,7 @@ import {
   type GymFeature, type GymReceipt, type GymReceiptRow, type GymSubscription,
 } from '../lib/api/subscription';
 import { bytesWords, gymStorage, type GymStorage } from '../lib/api/reels';
+import SkelRows from '../components/ui/SkelRows';
 
 const peso = (n: string | number) => '₱' + Number(n).toLocaleString('en-PH', { maximumFractionDigits: 2 });
 const day = (d: string) => new Date(d + 'T00:00:00+08:00').toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -87,7 +88,7 @@ export default function Subscription() {
     catch (e) { showToast(e instanceof Error ? e.message : 'Could not open the receipt', 'error'); }
   };
 
-  if (!loaded) return <div className="att"><p className="a-sub">Loading…</p></div>;
+  if (!loaded) return <div className="att"><SkelRows label="Loading…" /></div>;
   if (sub === undefined) return <div className="att"><div className="a-card"><p className="a-sub">Your plan page needs migration 0138, which is not live on this database.</p></div></div>;
   if (sub === null) return <div className="att"><div className="a-card"><p className="a-sub">Only the gym's owner sees its Core Fitness plan.</p></div></div>;
 

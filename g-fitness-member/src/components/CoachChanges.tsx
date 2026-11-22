@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import SkelRows from './ui/SkelRows';
 import GlassSheet from './ui/GlassSheet';
 import { Eyebrow } from './ui/noc';
 import ProposalCard from './ProposalCard';
@@ -61,7 +62,7 @@ export default function CoachChanges({
       {error ? (
         <p role="alert" style={{ fontSize: 13, color: 'var(--color-secondary)' }}>{error}</p>
       ) : rows === null ? (
-        <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{t('Loading…')}</p>
+        <SkelRows label={t('Loading…')} />
       ) : rows.length === 0 ? (
         <p style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--color-text-muted)' }}>
           {t('Nothing from the assistant yet. Ask it to build you a routine or plan your week, and its suggestion shows up here.')}

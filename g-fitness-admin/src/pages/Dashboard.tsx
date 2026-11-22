@@ -29,6 +29,7 @@ import {
 } from '../services/todayService';
 import { useTour } from '../components/tour/Tour';
 import { tourFor } from '../lib/tours';
+import SkelRows from '../components/ui/SkelRows';
 
 // The gym's own colour, never a fixed violet (Design V2).
 const VIOLET     = 'var(--color-primary)';
@@ -528,7 +529,7 @@ export default function Dashboard() {
             </div>
             <div className="flex-1 min-h-0 flex flex-col" data-today-classes={classesOn ? '' : undefined} data-today-sessions={classesOn ? undefined : ''}>
               {today === null ? (
-                <p className="dv2-note">Loading…</p>
+                <SkelRows label="Loading…" />
               ) : today.perHour === null ? (
                 <Failed what="today's check-ins" />
               ) : (classesOn ? classes : sessionsToday) === null ? (
@@ -632,7 +633,7 @@ export default function Dashboard() {
                 <button className="dv2-heat text-left" onClick={() => setPanel('heatmap')} data-tip="Check-ins by day and time over the last 30 days. Open for the numbers">
                   <div className="flex-1 min-h-0 w-full">
                     {heatmapState === 'loading' ? (
-                      <p className="text-[12px]" style={{ color: TEXT_MUTED }}>Loading…</p>
+                      <SkelRows label="Loading…" />
                     ) : heatmapState === 'failed' ? (
                       <Failed what="check-ins" />
                     ) : heatmap.length === 0 ? (
@@ -657,7 +658,7 @@ export default function Dashboard() {
               </header>
               <div className="dv2-scroll" data-members-to-watch>
                 {watch === 'loading' ? (
-                  <p className="dv2-note">Loading…</p>
+                  <SkelRows label="Loading…" />
                 ) : watch === null ? (
                   <Failed what="who might leave" />
                 ) : watch === undefined ? (
@@ -684,7 +685,7 @@ export default function Dashboard() {
           </header>
           <div className="dv2-scroll" data-needs-you>
             {needs === null ? (
-              <p className="dv2-note">Loading…</p>
+              <SkelRows label="Loading…" />
             ) : tasks.length === 0 ? (
               <div className="dv2-empty"><b>Nothing is waiting for you</b><span>New bookings, sign-ups and payments will show here.</span></div>
             ) : tasks.map((t) => t.node)}

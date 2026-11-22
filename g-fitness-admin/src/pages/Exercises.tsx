@@ -7,6 +7,7 @@ import { showToast } from '../utils/toast';
 import { recordReason, REASON_FIELD } from '../lib/api/reasons';
 import { supabase } from '../lib/supabaseClient';
 import { listExerciseMedia, photoUsage, saveExerciseMedia, type ExerciseMedia } from '../lib/api/exerciseMedia';
+import SkelRows from '../components/ui/SkelRows';
 
 /**
  * The exercise catalogue (0050/0121/0126, redrawn 2026-10-20 to the approved
@@ -131,7 +132,7 @@ export default function Exercises() {
     showToast(`${row.name} deleted`, 'success');
   };
 
-  if (state === 'loading') return <div className="att"><p className="a-sub">Loading exercises…</p></div>;
+  if (state === 'loading') return <div className="att"><SkelRows label="Loading exercises…" /></div>;
   if (state === 'failed') return <div className="att"><div className="a-card"><p className="a-sub">The exercise catalogue could not be loaded: a connection problem, not an empty catalogue. Reload to try again.</p></div></div>;
 
   const own = rows.filter(isOwn);

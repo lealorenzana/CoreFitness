@@ -12,6 +12,7 @@ import {
   type Reel,
 } from '../lib/api/reels';
 import { INSTAGRAM_CROP, reelLinkSource, reelEmbedUrl, reelOutsideWhy, REEL_SOURCE_WORDS, REEL_LINK_HINT } from '../lib/reelEmbed';
+import SkelRows from '../components/ui/SkelRows';
 
 /**
  * Reels (0245) — short videos the gym puts up for its members: a pasted link
@@ -206,7 +207,7 @@ export default function Reels() {
 
       <div className="a-card" style={{ flex: 1 }} data-reel-grid>
         <div className="a-scroll grow">
-          {loading && rows.length === 0 ? <p className="a-sub" data-reels-loading>Loading the reels…</p>
+          {loading && rows.length === 0 ? <SkelRows label="Loading the reels…" data-reels-loading />
           : failed ? (
             <div data-reels-failed style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start', padding: '10px 0' }}>
               <b>The reels did not load.</b>

@@ -16,6 +16,7 @@ import {
 import { replayTour } from '../components/tour/Tour';
 import { TOURS } from '../lib/tours';
 import { GuideList, type Lang as GuideLang } from '../components/guides/GuidePlayer';
+import SkelRows from '../components/ui/SkelRows';
 
 const when = (iso: string) => new Date(iso).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 const day = (iso: string) => new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -258,7 +259,7 @@ function Questions({ tickets, extras, owner, gymId, composing, setComposing, rel
     if (t) await show(t); else setComposing(false);
   }, shot ? 'Sent: with your screenshot' : 'Sent to Core Fitness');
 
-  if (tickets === null) return <p className="a-sub">Loading…</p>;
+  if (tickets === null) return <SkelRows label="Loading…" />;
   if (tickets === undefined) return <div className="a-card"><p className="a-sub">Questions are not switched on yet: paste migration 0137.</p></div>;
   const shown = tickets.filter((t) => !q.trim() || t.subject.toLowerCase().includes(q.trim().toLowerCase()));
   const writing = composing || !open;

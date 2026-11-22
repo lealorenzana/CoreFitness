@@ -14,6 +14,7 @@ import { markFeedback } from '../../lib/api/trainerFeedback';
 import { useGymApp } from '../../hooks/useGymApp';
 import { moduleOn, word } from '../../lib/gymApp';
 import { errorMessage } from '../../utils/errorMessage';
+import SkelRows from '../ui/SkelRows';
 
 const POLL_MS = 6000;
 
@@ -190,7 +191,7 @@ export default function TimelineTab({ room, mode, with: withPerson, docked = fal
     });
   }, [conv, chatOn, onMute]);
 
-  if (items === undefined) return <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Loading…</p>;
+  if (items === undefined) return <SkelRows label="Loading…" />;
   if (items === null) {
     return <p style={{ fontSize: 13, color: 'var(--color-secondary)' }}>This room's timeline could not be loaded. Pull to refresh, or try again later.</p>;
   }

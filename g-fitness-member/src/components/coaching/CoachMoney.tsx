@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Bank, HandCoins } from '@phosphor-icons/react';
 import { LineRow, Panel, SectionHead, StatusPill } from '../ui/noc';
 import { myDues, myEarnings, type DuesMonth, type EarningsMonth, type HouseRules } from '../../lib/api/coachingRules';
+import SkelRows from '../ui/SkelRows';
 
 const peso = (n: number) => '₱' + n.toLocaleString('en-PH', { maximumFractionDigits: 2 });
 const monthName = (m: string) => new Date(`${m}T00:00:00`).toLocaleDateString('en-PH', { month: 'long', year: 'numeric' });
@@ -31,7 +32,7 @@ export default function CoachMoney({ rules }: { rules: HouseRules }) {
   }, [rules.cutOn, rules.duesOn]);
 
   if (failed) return <p style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Your pay could not be loaded. Pull to refresh or try again later.</p>;
-  if (!earn || !dues) return <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Loading your pay…</p>;
+  if (!earn || !dues) return <SkelRows label="Loading your pay…" />;
 
   const now = earn[0];
   const duesNow = dues[0];

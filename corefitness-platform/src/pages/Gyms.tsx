@@ -17,6 +17,7 @@ import './gyms.css';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
 import { useFitCards } from '../lib/useFitCards';
+import SkelRows from '../components/ui/SkelRows';
 
 const day = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
@@ -197,7 +198,7 @@ export default function Gyms() {
       </div>
 
       {error && <p className="err">{error}</p>}
-      {gyms === null && <p className="empty">Loading the gyms…</p>}
+      {gyms === null && <SkelRows label="Loading the gyms…" />}
       {gyms?.length === 0 && <p className="empty">No gyms yet. Let one in from Applications, or add one here.</p>}
       {gyms && gyms.length > 0 && shown.length === 0 && (
         <p className="empty">No gym matches{q ? ` “${search.trim()}”` : ''} in this view.</p>

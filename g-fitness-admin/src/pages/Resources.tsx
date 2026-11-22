@@ -11,6 +11,7 @@ import {
   type WorkoutResourceRow,
 } from '../lib/api/workoutResources';
 import type { ClassLevel } from '../types/db';
+import SkelRows from '../components/ui/SkelRows';
 
 /**
  * Resources — the free-workout library (0019/0061/0090, redrawn 2026-10-20 to
@@ -159,7 +160,7 @@ export default function Resources() {
 
       <div className="a-card" style={{ flex: 1 }} data-resource-grid>
         <div className="a-scroll grow">
-          {loading ? <p className="a-sub">Loading…</p> : rows.length > 0 && visible.length === 0 ? (
+          {loading ? <SkelRows label="Loading…" /> : rows.length > 0 && visible.length === 0 ? (
             <p className="a-sub" style={{ padding: '10px 0' }}>Nothing matches{search ? ` “${search}”` : ''}: {rows.length} resources in the library.</p>
           ) : (
             <div className="a-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 12 }}>

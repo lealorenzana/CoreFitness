@@ -38,6 +38,7 @@ import {
 import type { ClassLevel } from '../types/db';
 import { Av } from './attendance/parts';
 import './attendance/att.css';
+import SkelRows from '../components/ui/SkelRows';
 
 /**
  * Schedule — rebuilt to the owner's approved mock-up (2026-10-20,
@@ -413,7 +414,7 @@ export default function Schedule() {
         </div>
       )}
 
-      {loading ? <p className="a-sub" style={{ padding: 20 }}>Loading the schedule…</p> : view === 'week' ? (
+      {loading ? <SkelRows label="Loading the schedule…" /> : view === 'week' ? (
         <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0,1fr) 320px', flex: 1 }}>
           <div className="a-card" style={{ padding: 12 }}>
             <div className="a-ct" style={{ marginBottom: 8 }}>

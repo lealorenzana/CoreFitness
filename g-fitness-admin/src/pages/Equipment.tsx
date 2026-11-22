@@ -8,6 +8,7 @@ import { showToast } from '../utils/toast';
 import { supabase } from '../lib/supabaseClient';
 import { getGymContext } from '../lib/gymContext';
 import { todayKey, localDateKey } from '../utils/dates';
+import SkelRows from '../components/ui/SkelRows';
 
 type Status = 'available' | 'repair' | 'soon';
 interface Item {
@@ -122,7 +123,7 @@ export default function Equipment() {
   }, [exercises, exSearch]);
   const exName = (id: string) => exercises.find((e) => e.id === id)?.name ?? 'Exercise';
 
-  if (items === undefined) return <div className="att"><p className="a-sub">Loading…</p></div>;
+  if (items === undefined) return <div className="att"><SkelRows label="Loading…" /></div>;
   const list = items ?? [];
   const areaOf = (i: Item) => i.location_note?.trim() || NOWHERE;
   const areas = [...new Set(list.map(areaOf))].sort((a, b) => (a === NOWHERE ? 1 : b === NOWHERE ? -1 : a.localeCompare(b)));
