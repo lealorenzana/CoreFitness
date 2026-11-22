@@ -184,8 +184,13 @@ interface DayItem { id: string; start: number; minutes: number; label: string; s
  * The gym's day (Design V2, mock-up B, owner's pick 2026-11-22): opening to closing along the bottom,
  * check-ins per hour as bars, classes (or 1-on-1 sessions) on their real times, a line for now.
  * Drawn at its real pixel size (ResizeObserver), so words are never stretched.
+ *
+ * 2026-11-23 (owner: "is it really like this? fix the chart"): the classes floated mid-chart with the hour
+ * grid running through them. Now they sit in their own labelled lane under the axis, as blocks as long as
+ * the class; the grid stops above the lane; the busiest hour's count is the scale; the part of the day that
+ * has passed is faintly shaded; and an empty bar area says so even when classes are on.
  */
-function DayLine({ perHour, items, open, close }: { perHour: number[]; items: DayItem[]; open: number; close: number }) {
+function DayLine({ perHour, items, open, close, itemWord }: { perHour: number[]; items: DayItem[]; open: number; close: number; itemWord: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
   useEffect(() => {
@@ -196,49 +201,87 @@ function DayLine({ perHour, items, open, close }: { perHour: number[]; items: Da
     return () => ro.disconnect();
   }, []);
   const { w: W, h: H } = size;
+  const GUT = 30;                       // left gutter: the scale and the lane's name
+  const PW = Math.max(1, W - GUT);      // plot width
   const span = Math.max(1, close - open);
-  const x = (h: number) => ((h - open) / span) * W;
-  const axisY = H - 16;
-  // Two lanes for the labels, so neighbours never print over each other.
-  const lanes = items.length ? 2 : 0;
-  const laneTop = axisY - lanes * 30 - 4;
-  const barBottom = lanes ? laneTop - 10 : axisY - 6;
-  const barTop = 8;
-  const max = Math.max(1, ...perHour.slice(Math.floor(open), Math.ceil(close)));
-  const nowH = manilaHours(new Date().toISOString());
-  const step = W / span < 44 ? 2 : 1;
-  const ends = [0, 0];
-  const placed = items.map((it) => {
+  const x = (h: number) => GUT + ((h - open) / span) * PW;
+  const hourW = PW / span;
+  const LANE_H = 26;
+  // Lanes for the class blocks: a block's label sits inside it, after it, or (near closing) before it,
+  // so it never runs off the chart; two blocks with their words never overlap.
+  const ends: number[] = [];
+  const placed = [...items].sort((p, q) => p.start - q.start).map((it) => {
     const left = x(it.start);
-    const width = (it.label.length + it.sub.length + 1) * 6.4;
-    const lane = ends[0] <= left ? 0 : ends[1] <= left ? 1 : (ends[0] <= ends[1] ? 0 : 1);
-    ends[lane] = left + Math.max(width, x(it.start + it.minutes / 60) - left) + 8;
-    return { ...it, lane, left, textX: Math.max(0, Math.min(left, W - width)) };
+    const right = x(it.start + it.minutes / 60);
+    const textW = (it.label.length + it.sub.length + 1) * 6.6;
+    const blockW = Math.max(6, right - left - 2);
+    const side: 'in' | 'after' | 'before' = textW + 16 <= blockW ? 'in' : left + blockW + 7 + textW <= W ? 'after' : 'before';
+    const from = side === 'before' ? left - 7 - textW : left;
+    const to = side === 'after' ? left + blockW + 7 + textW : left + blockW;
+    let lane = ends.findIndex((e) => e + 6 <= from);
+    if (lane === -1) { lane = ends.length; ends.push(0); }
+    ends[lane] = to;
+    return { ...it, lane, left, blockW, side };
   });
+  const lanes = Math.min(3, Math.max(items.length ? 1 : 0, ends.length));
+  const axisY = H - 18;                          // hour labels under this
+  const laneTop = axisY - lanes * LANE_H - (lanes ? 6 : 0);
+  const barBottom = lanes ? laneTop - 8 : axisY;
+  const barTop = 18;
+  const slice = perHour.slice(Math.floor(open), Math.ceil(close));
+  const peak = Math.max(0, ...slice);
+  const max = Math.max(1, peak);
+  const nowH = manilaHours(new Date().toISOString());
+  const step = hourW < 44 ? 2 : 1;
+  const passedTo = Math.min(Math.max(nowH, open), close);
+  const noCheckIns = slice.every((v) => v === 0);
   return (
     <div ref={ref} className="dv2-day" data-day-line>
       {W > 0 && H > 0 && (
-        <svg width={W} height={H} role="img" aria-label="Check-ins per hour today, with classes on their times">
+        <svg width={W} height={H} role="img" aria-label={`Check-ins per hour today, with ${itemWord} on their times`}>
+          {/* the part of today that has already happened */}
+          {passedTo > open && <rect className="passed" x={x(open)} y={0} width={x(passedTo) - x(open)} height={axisY} />}
+          {/* the scale: the busiest hour so far, and the floor */}
+          <line className="grid-h" x1={GUT} x2={W} y1={barTop} y2={barTop} />
+          {peak > 0 && <text className="scale" x={GUT - 6} y={barTop + 4} textAnchor="end">{peak}</text>}
+          <line className="base" x1={GUT} x2={W} y1={barBottom} y2={barBottom} />
+          <text className="scale" x={GUT - 6} y={barBottom + 4} textAnchor="end">0</text>
           {Array.from({ length: Math.floor(span) + 1 }, (_, i) => Math.ceil(open) + i).filter((h) => h <= close).map((h) => (
             <g key={h}>
-              <line className="grid-line" x1={x(h)} x2={x(h)} y1={0} y2={axisY} />
-              {(h - Math.ceil(open)) % step === 0 && x(h) + 30 < W && <text x={x(h) + 3} y={H - 2}>{hourLabel(h)}</text>}
+              <line className="grid-line" x1={x(h)} x2={x(h)} y1={barTop} y2={barBottom} />
+              {(h - Math.ceil(open)) % step === 0 && h < close && <text x={x(h)} y={H - 4} textAnchor={h === Math.ceil(open) ? 'start' : 'middle'}>{hourLabel(h)}</text>}
             </g>
           ))}
           {Array.from({ length: 24 }, (_, h) => h).filter((h) => h >= Math.floor(open) && h < close && perHour[h] > 0).map((h) => {
-            const bh = (perHour[h] / max) * (barBottom - barTop);
-            const bw = Math.min(28, Math.max(4, (W / span) * 0.56));
+            const bh = Math.max(3, (perHour[h] / max) * (barBottom - barTop));
+            const bw = Math.min(30, Math.max(4, hourW * 0.6));
+            const bx = x(h) + (hourW - bw) / 2;
             return (
-              <rect key={h} className={`bar${h > nowH ? ' ahead' : ''}`} x={x(h) + (W / span - bw) / 2} y={barBottom - bh} width={bw} height={bh} rx={2}
-                data-tip={`${hourLabel(h)} to ${hourLabel(h + 1)}: ${perHour[h]} check-in${perHour[h] === 1 ? '' : 's'}`} />
+              <g key={h}>
+                <rect className={`bar${h > nowH ? ' ahead' : ''}`} x={bx} y={barBottom - bh} width={bw} height={bh} rx={3}
+                  data-tip={`${hourLabel(h)} to ${hourLabel(h + 1)}: ${perHour[h]} check-in${perHour[h] === 1 ? '' : 's'}`} />
+                {bw >= 14 && perHour[h] < peak && <text className="bar-n" x={bx + bw / 2} y={barBottom - bh - 5} textAnchor="middle">{perHour[h]}</text>}
+              </g>
             );
           })}
-          {placed.map((it) => {
-            const y = laneTop + it.lane * 30;
+          {noCheckIns && (
+            <text className="empty" x={GUT + PW / 2} y={(barTop + barBottom) / 2} textAnchor="middle">
+              {nowH < open ? `Opens at ${hourLabel(Math.ceil(open))}. Check-ins show here hour by hour.` : 'No check-ins yet today. They show here hour by hour.'}
+            </text>
+          )}
+          {lanes > 0 && (
+            <g>
+              <line className="lane-top" x1={0} x2={W} y1={laneTop - 3} y2={laneTop - 3} />
+              <text className="lane-name" x={0} y={laneTop + 15}>{itemWord === 'classes' ? 'Class' : '1-on-1'}</text>
+            </g>
+          )}
+          {placed.filter((it) => it.lane < 3).map((it) => {
+            const y = laneTop + it.lane * LANE_H;
             return (
               <g key={it.id} className={`cls${it.done ? ' done' : ''}`} data-tip={it.tip}>
-                <rect className="cls-block" x={it.left} y={y} width={Math.max(4, x(it.start + it.minutes / 60) - it.left - 2)} height={6} rx={2} />
-                <text x={it.textX} y={y + 20}>{it.label} <tspan className="sub">{it.sub}</tspan></text>
+                <rect className="cls-block" x={it.left + 1} y={y} width={it.blockW} height={LANE_H - 6} rx={4} />
+                <text x={it.side === 'in' ? it.left + 8 : it.side === 'after' ? it.left + it.blockW + 7 : it.left - 6}
+                  textAnchor={it.side === 'before' ? 'end' : 'start'} y={y + 14}>{it.label} <tspan className="sub">{it.sub}</tspan></text>
               </g>
             );
           })}
@@ -491,10 +534,7 @@ export default function Dashboard() {
                 <Failed what={classesOn ? "today's classes" : "today's sessions"} />
               ) : (
                 <div className="dv2-dayempty">
-                  <DayLine perHour={today.perHour} items={dayItems} open={dayOpen} close={dayClose} />
-                  {today.perHour.every((v) => v === 0) && dayItems.length === 0 && (
-                    <p>No check-ins yet today. They show here hour by hour.</p>
-                  )}
+                  <DayLine perHour={today.perHour} items={dayItems} open={dayOpen} close={dayClose} itemWord={classesOn ? 'classes' : 'sessions'} />
                 </div>
               )}
               {/* The lane's words, for screen readers and the checks (the drawing is an image). */}

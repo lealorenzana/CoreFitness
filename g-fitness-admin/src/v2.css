@@ -73,15 +73,24 @@ button:active:not(:disabled) { transform: scale(0.97); }
 .dv2-day .cls text { fill: var(--color-text-primary); font-weight: 600; }
 .dv2-day .cls.done text { fill: var(--color-text-muted); }
 .dv2-day .cls .sub { fill: var(--color-text-secondary); font-weight: 400; }
-.dv2-day .bar { fill: var(--color-primary-300, #C4B5FD); }
+.dv2-day .bar { fill: var(--color-primary-300, #C4B5FD); transition: opacity 120ms; }
+.dv2-day .bar:hover { opacity: .8; }
+.dv2-day .bar-n { font-size: 11px; font-weight: 600; fill: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+.dv2-day .scale { font-size: 10.5px; fill: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+.dv2-day .grid-h { stroke: rgb(var(--hair-rgb, 255 255 255) / 0.06); stroke-dasharray: 2 4; }
+.dv2-day .base { stroke: rgb(var(--hair-rgb, 255 255 255) / 0.18); }
+.dv2-day .passed { fill: rgb(var(--hair-rgb, 255 255 255) / 0.025); }
+.dv2-day .empty { font-size: 13px; fill: var(--color-text-secondary); }
+.dv2-day .lane-top { stroke: rgb(var(--hair-rgb, 255 255 255) / 0.08); }
+.dv2-day .lane-name { font-size: 11px; fill: var(--color-text-muted); }
 :root[data-mode="light"] .dv2-day .bar { fill: var(--color-primary-600, var(--color-primary)); }
 .dv2-day .bar.ahead { opacity: .45; }
-.dv2-day .grid-line { stroke: var(--color-border); stroke-width: 1; }
+.dv2-day .grid-line { stroke: rgb(var(--hair-rgb, 255 255 255) / 0.05); stroke-width: 1; }
 .dv2-day .now-line { stroke: var(--amber-solid, #F59E0B); stroke-width: 1.5; }
 .dv2-day .now-text { fill: var(--amber-text, var(--amber-solid, #F59E0B)); font-weight: 600; }
-.dv2-day .cls-block { fill: var(--color-primary-300, #C4B5FD); }
-:root[data-mode="light"] .dv2-day .cls-block { fill: var(--color-primary-600, var(--color-primary)); }
-.dv2-day .cls.done .cls-block { fill: rgb(var(--hair-rgb, 255 255 255) / 0.18); }
+/* A class is a block as long as the class, a tint of the gym's colour with its edge; its words sit inside or just after it. */
+.dv2-day .cls-block { fill: color-mix(in srgb, var(--color-primary) 22%, transparent); stroke: color-mix(in srgb, var(--color-primary) 70%, transparent); stroke-width: 1; }
+.dv2-day .cls.done .cls-block { fill: rgb(var(--hair-rgb, 255 255 255) / 0.06); stroke: rgb(var(--hair-rgb, 255 255 255) / 0.16); }
 .dv2-note { padding: 16px; font-size: 12px; color: var(--color-text-muted); }
 
 .dv2-tabs { display: flex; gap: 16px; height: 44px; align-items: stretch; padding: 0 16px; flex: none;
@@ -162,10 +171,8 @@ button.dv2-row:active { transform: none; }
 .acc-note { margin-left: auto; font-size: 11px; color: var(--color-text-muted); }
 .acc-sep { height: 1px; background: var(--color-border); margin: 4px 0; }
 
-/* The day line with nothing in it yet says so, instead of an empty grid. */
+/* The day line's box. */
 .dv2-dayempty { position: relative; flex: 1; min-height: 0; display: flex; }
-.dv2-dayempty > p { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); text-align: center; font-size: 13px;
-  color: var(--color-text-secondary); background: var(--surface-solid); padding: 6px 12px; border-radius: 6px; white-space: nowrap; }
 
 /* The rail: a word under every icon (LESSONS L7), where you are = a raised tile and a 2px mark in the gym's colour. */
 .rail { display: flex; flex-direction: column; align-items: stretch; gap: 2px; padding: 10px 8px; background: var(--surface-solid);
