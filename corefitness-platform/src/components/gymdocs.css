@@ -78,3 +78,14 @@
 .mx-row { display: flex; align-items: center; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
 .mx-count { margin-right: auto; font-size: 12px; color: var(--text-3); }
 .mx-warn { margin: 0; margin-right: auto; font-size: 12.5px; color: var(--warn); }
+
+/* Capacity (2026-11-22): the right column scrolls itself, its cards at their own height (no Show all). */
+.content .page[data-page="capacity"] .cap-4.cap-col { overflow-y: auto !important; display: flex !important; flex-direction: column; gap: 16px !important; min-height: 0; }
+.content .page[data-page="capacity"] .cap-4.cap-col > .card { flex: none !important; min-height: 0 !important; overflow: visible !important; max-height: none !important; }
+
+.content .page[data-page="capacity"] .cap-side { display: flex !important; flex-direction: column; gap: 12px; overflow-y: auto !important; min-height: 0; }
+.cap-seg { display: inline-flex; align-self: flex-start; padding: 3px; border-radius: 9px; border: 1px solid var(--hairline); background: var(--surface-high); flex: none; }
+.cap-seg button { height: 28px; padding: 0 11px; border: 0; border-radius: 6px; background: none; color: var(--text-2); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.cap-seg button.on { background: var(--surface); color: var(--text); box-shadow: 0 0 0 1px var(--hairline); }
+.cap-side .mx { border: 0 !important; padding: 0 !important; background: none !important; }
+.cap-side-body .section-title { margin-top: 0; }

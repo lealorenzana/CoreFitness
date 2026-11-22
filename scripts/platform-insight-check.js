@@ -134,7 +134,11 @@ async (page) => {
     return { under: bar.top >= name.bottom - 1, h: r.getBoundingClientRect().height, barH: bar.height };
   }));
   out.push('capacity rows laid out: ' + (rowsLaid.length === 9 && rowsLaid.every((c) => c.under && c.h < 70 && c.barH <= 8) ? '9 rows, bars under their names' : 'MISSING ' + JSON.stringify(rowsLaid.slice(0, 3))));
-  out.push('limits it cannot see, said so: ' + (/Egress/.test(t) && /Inactivity pause/.test(t) ? 'yes' : 'MISSING'));
+  // Since 2026-11-22 the limits are a tab of the right-hand box (Clean up · Near a limit · Limits).
+  await page.getByRole('tab', { name: 'Limits', exact: true }).click();
+  await page.waitForTimeout(200);
+  const lim = await text();
+  out.push('limits it cannot see, said so: ' + (/Egress/.test(lim) && /Inactivity pause/.test(lim) ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/platform-capacity-140.png' });
   // At the owner's 1700×900 window "Near a limit" once ran over "Largest files": no card overlaps another, none overflows.
   await page.setViewportSize({ width: 1700, height: 900 });

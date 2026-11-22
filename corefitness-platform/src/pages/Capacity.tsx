@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import CleanupCrashes from '../components/CleanupCrashes';
 import { detail } from '../components/DetailLayer';
 import { Link } from 'react-router-dom';
 import { Building2, Database, FileImage, Gauge, HardDrive, LineChart, Lightbulb, Table2, Users } from 'lucide-react';
@@ -33,6 +34,8 @@ function pace(hist: CapacityDay[], key: 'db_bytes' | 'storage_bytes' | 'mau', ca
  */
 export default function Capacity() {
   const [rows, setRows] = useState<CapacityRow[] | null>(null);
+  /** The right column, one box at a time so it always fits (2026-11-22). */
+  const [side, setSide] = useState<'clean' | 'near' | 'limits'>('clean');
   const [hist, setHist] = useState<CapacityDay[] | null>(null);
   const [det, setDet] = useState<CapacityDetail[] | null>(null);
   const [foot, setFoot] = useState<GymFootprint[] | null>(null);
@@ -132,8 +135,25 @@ export default function Capacity() {
           : <TrendChart days={shown} />}
       </section>
 
-      <div className="cap-4 cap-col">
-        <section className="card">
+      {/* The right column scrolls itself (2026-11-22): the clean-up first, it is the one thing here to do;
+          then what to do near a limit, and the limits this page cannot measure. */}
+      {/* The right column (2026-11-22): one box with three tabs, the clean-up first, so it always fits the screen. */}
+      <section className="card cap-4 cap-side" data-va-keep>
+        <div className="cap-seg" role="tablist" aria-label="Capacity tools">
+          {([['clean', 'Clean up'], ['near', 'Near a limit'], ['limits', 'Limits']] as const).map(([k, label]) => (
+            <button key={k} type="button" role="tab" aria-selected={side === k} className={side === k ? 'on' : ''} onClick={() => setSide(k)}>{label}</button>
+          ))}
+        </div>
+        {side === 'clean' && <CleanupCrashes />}
+        {side === 'near' && <div className="cap-side-body">
+          <h2 className="section-title"><Lightbulb size={14} /> Near a limit</h2>
+          <ul className="cap-tips">
+            <li><b>Database:</b> remove demo data (Platform), then look at the biggest tables below, notifications and logs grow fastest.</li>
+            <li><b>Storage:</b> the largest files are listed by gym; a gym's photo allowance is on its plan.</li>
+            <li><b>Past what free allows:</b> Supabase Pro is $25 a month for 8 GB of database and 100 GB of files.</li>
+          </ul>
+        </div>}
+        {side === 'limits' && <div className="cap-side-body">
           <h2 className="section-title"><Gauge size={14} /> Limits this page cannot see</h2>
           <ul className="cap-limits">
             <li data-tip="Data sent out of Supabase, every page load and photo shown. Measured only by Supabase itself."><b>Egress</b><span>5 GB a month</span></li>
@@ -142,16 +162,8 @@ export default function Capacity() {
             <li data-tip="A free project with no activity for a week is paused until someone restores it."><b>Inactivity pause</b><span>after 7 quiet days</span></li>
           </ul>
           <p className="meta" style={{ margin: 0 }}>See them in the Supabase dashboard → Usage.</p>
-        </section>
-        <section className="card side-fill">
-          <h2 className="section-title"><Lightbulb size={14} /> Near a limit</h2>
-          <ul className="cap-tips">
-            <li><b>Database:</b> remove demo data (Platform), then look at the biggest tables below, notifications and logs grow fastest.</li>
-            <li><b>Storage:</b> the largest files are listed by gym; a gym's photo allowance is on its plan.</li>
-            <li><b>Past what free allows:</b> Supabase Pro is $25 a month for 8 GB of database and 100 GB of files.</li>
-          </ul>
-        </section>
-      </div>
+        </div>}
+      </section>
 
       <section className="card cap-3">
         <h2 className="section-title"><Table2 size={14} /> Biggest tables <InfoDot tip="Size on disk including indexes; rows are Postgres's own estimate, never counted by reading them." /></h2>
