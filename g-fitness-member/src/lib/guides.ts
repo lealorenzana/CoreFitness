@@ -189,7 +189,7 @@ export const GUIDES: Guide[] = [
         text: { en: 'Your app → What you run → A group chat for your gym? → Yes. Members with a membership that is active today are in it.', fil: 'Your app → What you run → A group chat for your gym? → Yes. Kasali ang members na may aktibong membership ngayon.' } },
       { scene: { k: 'phone', screen: 'chat' },
         title: { en: 'Everyone chats in one place', fil: 'Iisang lugar ang usapan' },
-        text: { en: 'Members open it from the chat button in their app; you and the desk from Gym chat in the sidebar. Every message can be a push.', fil: 'Bubuksan ito ng members sa chat button ng app; ikaw at ang desk sa Gym chat sa sidebar. Puwedeng may push ang bawat mensahe.' } },
+        text: { en: 'Members open it from the chat button in their app; you and the desk from Messages, then Gym chat. Every message can be a push.', fil: 'Bubuksan ito ng members sa chat button ng app; ikaw at ang desk sa Messages, tapos Gym chat. Puwedeng may push ang bawat mensahe.' } },
       { scene: { k: 'done', text: 'Pinned · Announce only' },
         title: { en: 'Keep it tidy', fil: 'Panatilihing maayos' },
         text: { en: 'Pin up to three messages, remove one with a reason, silence someone, or set announce-only so only staff and coaches post.', fil: 'Mag-pin ng hanggang tatlong mensahe, mag-alis nang may dahilan, patahimikin ang isang tao, o gawing announce-only para staff at coaches lang ang makapag-post.' } },

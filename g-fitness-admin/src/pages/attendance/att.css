@@ -346,3 +346,136 @@
 .att .a-float-list__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 14px;
   font-size: 12px; color: var(--a-muted); border-bottom: 1px solid var(--a-line); flex: none; }
 .att .a-float-list__body { overflow-y: auto; padding: 4px 14px 8px; min-height: 0; }
+
+/* ══ Design V2 (owner, 2026-11-22; design/admin-v2/DECISIONS.md) ══════════════════════════════════════════
+   Every page drawn in this stylesheet loses its slop (LESSONS S1 S4 S6 C2 D2): no glow, no gradient fills,
+   no button shadows, the gym's own colour instead of a fixed violet, 12px cards and 8px controls, tabs that
+   are a line under words instead of a pill bar, status as a dot and a word. Each rule is repeated under
+   :root[data-mode="light"] where light.css styled the same thing more specifically. */
+.att {
+  --a-primary: var(--color-primary); --a-p300: var(--color-primary-300, #C4B5FD); --a-p400: var(--color-primary-400, #A78BFA);
+  --a-plight: color-mix(in srgb, var(--color-primary) 14%, transparent);
+  --a-alight: color-mix(in srgb, #F59E0B 12%, transparent);
+}
+:root[data-mode="light"] .att { --a-p300: var(--color-primary-700, #6D28D9); --a-plight: color-mix(in srgb, var(--color-primary) 10%, #FFFFFF); }
+.att .a-card, :root[data-mode="light"] .att .a-card { border-radius: 12px; box-shadow: none; }
+.att .a-card.glow, :root[data-mode="light"] .att .a-card.glow { background: var(--a-surface); border-color: var(--a-border); box-shadow: none; }
+.att .a-head h1 { font-weight: 650; letter-spacing: -0.02em; }
+.att .a-live::before { box-shadow: none; }
+/* A page's own views: a quiet segmented control (the header already draws the section's underline tabs). */
+.att .a-tabs { background: transparent; border: 1px solid rgb(var(--hair-rgb, 255 255 255) / 0.14); border-radius: 8px; padding: 2px; gap: 2px; }
+.att .a-tabs a, .att .a-tabs button { padding: 5px 12px; border-radius: 6px; font-size: 13px; }
+.att .a-tabs a.on, .att .a-tabs button.on,
+:root[data-mode="light"] .att .a-tabs a.on, :root[data-mode="light"] .att .a-tabs button.on { background: var(--a-raised); color: var(--a-ink); }
+.att .a-tabs em, .att .a-tabs .on em,
+:root[data-mode="light"] .att .a-tabs em, :root[data-mode="light"] .att .a-tabs .on em { background: transparent; color: var(--a-muted); padding: 0; font-size: 12px; }
+.att .a-btn, :root[data-mode="light"] .att .a-btn { border-radius: 8px; box-shadow: none; }
+.att .a-btn.amber, :root[data-mode="light"] .att .a-btn.amber { background: var(--amber-solid, #F59E0B); color: var(--on-amber, #1F1A0A); border-color: transparent; box-shadow: none; }
+.att .a-btn.violet, :root[data-mode="light"] .att .a-btn.violet { background: var(--fill-primary, var(--color-primary)); border-color: transparent; box-shadow: none; }
+.att .a-btn.sm { border-radius: 6px; }
+.att .a-chip { border-radius: 6px; }
+.att .a-chip.on, :root[data-mode="light"] .att .a-chip.on { box-shadow: none; }
+.att .a-pill { background: transparent; padding: 0; color: var(--a-text2); }
+.att .a-pill.a, .att .a-pill.v { background: transparent; }
+.att .a-input { border-radius: 8px; }
+.att .a-input.big { border-color: var(--a-line); box-shadow: none; }
+.att .a-input.big:focus-within { border-color: var(--color-primary); }
+.att .a-toast, :root[data-mode="light"] .att .a-toast { background: var(--a-raised); border-color: var(--a-line); }
+.att .a-toast.amber, :root[data-mode="light"] .att .a-toast.amber { background: var(--a-alight); border-color: var(--a-line); }
+.att .a-status, .att .a-status.off { background: transparent; padding: 0; color: var(--a-text2); display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.att .a-status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--a-p300); }
+.att .a-status.off::before { background: var(--a-muted); }
+/* One neutral initials circle; colour belongs to state, not to whose name it is. */
+.att .a-av.v, .att .a-av.a, .att .a-av.g, .att .a-av.p,
+:root[data-mode="light"] .att .a-av.v, :root[data-mode="light"] .att .a-av.a, :root[data-mode="light"] .att .a-av.g, :root[data-mode="light"] .att .a-av.p {
+  background: var(--a-raised); color: var(--a-text2); }
+.att .a-num { font-weight: 650; }
+
+/* "How it works" and the light status. */
+:root[data-mode="light"] .att .a-status, :root[data-mode="light"] .att .a-status.off { background: transparent; color: var(--a-text2); }
+
+/* ── Attendance › Today, the desk console (owner's pick A, 2026-11-22) ── */
+.att .a-v2 { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; }
+.att .a-v2-main { display: flex; flex-direction: column; gap: 12px; min-height: 0; min-width: 0; }
+.att .a-v2-side { display: flex; flex-direction: column; gap: 12px; min-height: 0; min-width: 0; }
+@media (max-width: 1400px) { .att .a-v2 { grid-template-columns: minmax(0, 1fr) 300px; } }
+/* Check someone in: the field, the last check-in on one line, the tag for the next one. */
+.att [data-checkin-box] { padding: 12px 16px; flex: none; }
+.att [data-checkin-box] .a-ct { margin-bottom: 8px; }
+.att [data-checkin-box] .a-input.big { padding: 10px 14px; }
+.att [data-checkin-box] [data-quick-list] { height: 48px !important; margin-top: 8px !important; border: 0 !important; background: var(--a-raised) !important; border-radius: 8px !important; }
+.att [data-checkin-box] .a-toast { background: transparent !important; }
+.att [data-checkin-box] .a-toast .ok { width: 24px; height: 24px; }
+.att [data-checkin-box] [data-tag-picker] { margin-top: 8px !important; }
+/* Today's log fills the rest of the column. */
+.att [data-today-log] { padding: 10px 16px 12px; }
+.att [data-today-log] .a-ct { margin-bottom: 4px; }
+.att [data-today-log] .a-table td, .att [data-today-log] .a-table th { padding-top: 7px; padding-bottom: 7px; }
+/* The day's figures: one box, rows split by hairlines; who is in today is the hero. */
+.att [data-stats-strip] { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0; background: var(--a-surface);
+  border: 1px solid var(--a-border); border-radius: 12px; overflow: hidden; }
+.att [data-stats-strip] > .a-card, :root[data-mode="light"] .att [data-stats-strip] > .a-card { border: 0; border-radius: 0; background: transparent; box-shadow: none; padding: 12px 16px; }
+.att [data-stats-strip] > .a-card:nth-child(-n+2) { grid-column: 1 / -1; border-bottom: 1px solid var(--a-border); }
+.att [data-stats-strip] > .a-card:nth-child(4) { border-left: 1px solid var(--a-border); }
+.att [data-stats-strip] > .a-card.press:hover { background: rgb(var(--hair-rgb, 255 255 255) / 0.03); }
+.att [data-stats-strip] > .a-card:first-child { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 16px; align-items: end; }
+.att [data-stats-strip] > .a-card:first-child > .a-lbl { grid-column: 1 / -1; }
+.att [data-stats-strip] > .a-card:first-child > div:nth-child(2) { flex-direction: column; align-items: flex-start !important; gap: 0 !important; }
+.att [data-stats-strip] > .a-card:first-child .a-num { font-size: 40px; letter-spacing: -0.04em; line-height: 1.05; }
+.att [data-stats-strip] > .a-card:first-child > .a-spark { margin-top: 0; height: 40px; }
+.att [data-stats-strip] .a-spark i { background: color-mix(in srgb, var(--color-primary) 35%, transparent); }
+.att [data-stats-strip] .a-spark i.now { background: var(--color-primary); }
+.att [data-stats-strip] .a-num { font-size: 22px; }
+.att [data-stats-strip] .a-stack { margin: 6px 0 4px; height: 6px; }
+.att [data-stats-strip] .a-legend button { font-size: 12px; }
+.att [data-stats-strip] .a-sub { font-size: 12px; }
+/* At the door: rows, no drawn screens. */
+.att [data-at-the-door] { flex: 1; padding: 0; overflow-y: auto; overscroll-behavior: contain; }
+.att [data-at-the-door] > .a-ct { height: 44px; margin: 0; padding: 0 16px; border-bottom: 1px solid var(--a-border); }
+.att [data-at-the-door] > .a-ct small { display: none; }
+.att [data-at-the-door] > .a-grid { grid-template-columns: 1fr !important; gap: 0; flex: none !important; }
+.att [data-at-the-door] .a-door, :root[data-mode="light"] .att [data-at-the-door] .a-door {
+  background: transparent; border: 0; border-radius: 0; padding: 10px 16px; flex-direction: row; align-items: center; gap: 12px; }
+.att [data-at-the-door] .a-door + .a-door { border-top: 1px solid var(--a-border); }
+.att [data-at-the-door] .a-door .a-screen { display: none; }
+.att [data-at-the-door] .a-door > div:nth-child(2) { flex: 1; min-width: 0; }
+.att [data-at-the-door] .a-door .a-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.att [data-at-the-door] .a-door > :last-child { margin-top: 0 !important; flex: none; flex-wrap: nowrap !important; }
+.att [data-at-the-door] .a-door .a-btn.amber { background: transparent; color: var(--a-ink); border-color: var(--a-line); }
+.att [data-at-the-door] [data-coaches-row], .att [data-at-the-door] [data-coaches-off] { margin: 0 !important; padding: 10px 16px !important; }
+.att [data-at-the-door] .a-ic { background: transparent; }
+.att [data-at-the-door] .a-door b + .a-status, .att [data-at-the-door] [data-kiosk-status] { font-size: 11px; }
+/* A door row is two lines in the rail: what it is (with its status), then its buttons. */
+.att [data-at-the-door] .a-door { flex-wrap: wrap; row-gap: 8px; }
+.att [data-at-the-door] .a-door > div:nth-child(2) { flex: 1 1 100%; }
+.att [data-at-the-door] .a-door > :last-child { flex: 1 1 100%; display: flex; gap: 8px; }
+.att [data-at-the-door] .a-door > div:last-child > * { flex: 1; justify-content: center; }
+.att [data-at-the-door] [data-kiosk-status] { white-space: nowrap; }
+.att [data-at-the-door] .a-row .t small, .att [data-at-the-door] .a-row .t b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The log's tools stay on one line: a narrower search where room is short. */
+.att [data-today-log] > .a-ct { flex-wrap: nowrap; min-width: 0; }
+.att [data-today-log] > .a-ct > div { min-width: 0; flex-wrap: nowrap; }
+@media (max-width: 1440px) {
+  .att [data-today-log] > .a-ct label.a-input { width: 150px !important; }
+  .att [data-today-log] > .a-ct [data-open-full-log] { padding-left: 8px; padding-right: 8px; }
+}
+/* Lobby TV has one button: one line. */
+.att [data-at-the-door] .a-door[data-door-screen="tv"] { flex-wrap: nowrap; }
+.att [data-at-the-door] .a-door[data-door-screen="tv"] > div:nth-child(2) { flex: 1 1 auto; }
+.att [data-at-the-door] .a-door[data-door-screen="tv"] > :last-child { flex: none; }
+
+/* ── Walk-ins, the desk console ── */
+.att[data-walkins] [data-walkin-card] { flex: none; padding: 12px 16px; }
+.att[data-walkins] [data-walkins-today] { padding: 12px 16px; }
+.att[data-walkins] [data-walkins-rail] > .a-card { padding: 12px 16px; flex: none; }
+.att[data-walkins] [data-walkins-rail] > [data-regular-guests] { flex: 1 1 0; min-height: 0; }
+.att[data-walkins] [data-walkins-hero] .a-num { font-size: 36px; letter-spacing: -0.03em; }
+.att[data-walkins] .a-opt, :root[data-mode="light"] .att[data-walkins] .a-opt { border-radius: 8px; box-shadow: none; }
+
+/* ── A row of figures as one strip split by hairlines (History) ── */
+.att .a-figstrip { gap: 0; background: var(--a-surface); border: 1px solid var(--a-border); border-radius: 12px; overflow: hidden; }
+.att .a-figstrip > .a-card, :root[data-mode="light"] .att .a-figstrip > .a-card { border: 0; border-radius: 0; background: transparent; box-shadow: none; padding: 12px 16px; }
+.att .a-figstrip > .a-card + .a-card { border-left: 1px solid var(--a-border); }
+.att .a-figstrip > .a-card:first-child .a-num { font-size: 36px; letter-spacing: -0.03em; }
+/* History: the calendar box scrolls itself when the month and the weekday bars do not both fit. */
+.att [data-attendance-calendar] { overflow-y: auto; overscroll-behavior: contain; }

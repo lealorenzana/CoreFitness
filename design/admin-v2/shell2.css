@@ -1,0 +1,59 @@
+/* Shell mock-ups A and B (sidebar + header). Sample data. */
+svg.i { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+/* ── A: sections, one open ─────────────────────────────────────────── */
+.sa { display: grid; grid-template-columns: 232px minmax(0, 1fr); height: 100vh; }
+.sa-side { background: var(--surface); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+.sa-gym { display: flex; align-items: center; gap: 10px; height: 56px; padding: 0 12px 0 16px; border-bottom: 1px solid var(--line); flex: none; }
+.sa-gym .logo { width: 28px; height: 28px; border-radius: 6px; background: var(--fill-primary); color: #fff; display: grid; place-items: center; font-size: 11px; font-weight: 700; flex: none; }
+.sa-gym b { font-size: 13px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sa-gym small { font-size: 12px; color: var(--text-3); }
+.sa-gym .sw { margin-left: auto; color: var(--text-3); }
+.sa-nav { flex: 1; min-height: 0; overflow: auto; padding: 12px; display: flex; flex-direction: column; gap: 1px; }
+.sa-nav a, .sa-nav .sec { display: flex; align-items: center; gap: 10px; height: 30px; padding: 0 8px; border-radius: 6px; color: var(--text-2); position: relative; cursor: pointer; }
+.sa-nav a:hover, .sa-nav .sec:hover { background: var(--raised); color: var(--text); }
+.sa-nav a.on { background: var(--raised); color: var(--text); font-weight: 600; }
+.sa-nav a.on::before { content: ''; position: absolute; left: -12px; top: 7px; bottom: 7px; width: 2px; border-radius: 0 2px 2px 0; background: var(--primary-fg); }
+.sa-nav .badge { margin-left: auto; font-size: 11px; color: var(--text-3); }
+.sa-nav .badge.due { color: var(--action); font-weight: 600; }
+.sa-nav .gap { height: 12px; flex: none; }
+.sa-nav .sec { color: var(--text-2); }
+.sa-nav .sec .chev { margin-left: auto; color: var(--text-3); font-size: 11px; }
+.sa-nav .kids { display: flex; flex-direction: column; gap: 1px; margin-left: 15px; padding-left: 10px; border-left: 1px solid var(--line); }
+.sa-nav .kids a { height: 28px; }
+.sa-nav .kids a.on::before { left: -11px; }
+.sa-me { border-top: 1px solid var(--line); padding: 10px 12px; display: flex; align-items: center; gap: 10px; flex: none; }
+.sa-me .av { width: 28px; height: 28px; }
+.sa-me b { font-size: 13px; display: block; } .sa-me small { color: var(--text-3); font-size: 12px; }
+.sa-me .more { margin-left: auto; color: var(--text-3); }
+
+.sa-top { height: 56px; display: flex; align-items: center; gap: 16px; padding: 0 24px; border-bottom: 1px solid var(--line); flex: none; }
+.crumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-3); white-space: nowrap; }
+.crumb b { color: var(--text); font-weight: 600; }
+.cmd { flex: 0 1 380px; margin-left: auto; height: 32px; border: 1px solid var(--line-strong); border-radius: 6px; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 10px; color: var(--text-3); }
+.ico-btn { width: 32px; height: 32px; border-radius: 6px; display: grid; place-items: center; color: var(--text-2); position: relative; }
+.ico-btn:hover { background: var(--raised); }
+.ico-btn .n { position: absolute; top: 3px; right: 1px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--action); color: var(--on-action); font-size: 10px; font-weight: 700; display: grid; place-items: center; }
+
+/* ── B: rail with a word under every icon, the section's pages as tabs in the header ─────────────── */
+.sb { display: grid; grid-template-columns: 76px minmax(0, 1fr); height: 100vh; }
+.sb-rail { background: var(--surface); border-right: 1px solid var(--line); display: flex; flex-direction: column; align-items: stretch; padding: 10px 8px; gap: 2px; min-height: 0; }
+.sb-rail .logo { width: 36px; height: 36px; border-radius: 8px; background: var(--fill-primary); color: #fff; display: grid; place-items: center; font-size: 12px; font-weight: 700; margin: 0 auto 10px; }
+.sb-rail a { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 7px 0 6px; border-radius: 8px; color: var(--text-2); font-size: 11px; font-weight: 500; position: relative; cursor: pointer; }
+.sb-rail a svg.i { width: 18px; height: 18px; }
+.sb-rail a:hover { background: var(--raised); color: var(--text); }
+.sb-rail a.on { background: var(--raised); color: var(--text); font-weight: 600; }
+.sb-rail a.on::before { content: ''; position: absolute; left: -8px; top: 10px; bottom: 10px; width: 2px; border-radius: 0 2px 2px 0; background: var(--primary-fg); }
+.sb-rail a .dot { position: absolute; top: 6px; right: 14px; width: 6px; height: 6px; border-radius: 50%; background: var(--action); }
+.sb-rail .push { margin-top: auto; }
+.sb-rail .me { width: 32px; height: 32px; margin: 8px auto 0; }
+
+.sb-top { flex: none; border-bottom: 1px solid var(--line); }
+.sb-top .row1 { height: 52px; display: flex; align-items: center; gap: 12px; padding: 0 24px; }
+.sb-top .gymname { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.sb-top .gymname small { color: var(--text-3); font-weight: 400; font-size: 12px; }
+.sb-top .row2 { height: 40px; display: flex; align-items: stretch; gap: 20px; padding: 0 24px; }
+.sb-top .row2 a { display: flex; align-items: center; color: var(--text-2); font-weight: 600; border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap; }
+.sb-top .row2 a.on { color: var(--text); border-color: var(--primary-fg); }
+.sb-top .row2 .sec { color: var(--text); font-weight: 650; display: flex; align-items: center; padding-right: 12px; border-right: 1px solid var(--line); margin-right: 0; }
+.ann { position: fixed; left: 12px; bottom: 8px; font-size: 11px; color: var(--text-3); }

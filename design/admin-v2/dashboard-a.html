@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Dashboard A: the strip</title>
+<link rel="stylesheet" href="mock.css">
+<style>
+  .grid { flex: 1; min-height: 0; display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.15fr); }
+  .strip { grid-template-columns: minmax(0, 1.3fr) repeat(5, minmax(0, 1fr)); }
+  .bars { display: flex; align-items: flex-end; gap: 8px; height: 100%; padding: 16px 16px 0; }
+  .bars div { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; }
+  .bars i { display: block; width: 100%; max-width: 28px; background: var(--primary-fg); border-radius: 3px 3px 0 0; opacity: .85; }
+  .bars i.now { opacity: 1; background: var(--fill-primary); }
+  .bars span { font-size: 11px; color: var(--text-3); padding-bottom: 8px; }
+  .chartfoot { padding: 10px 16px; border-top: 1px solid var(--line); color: var(--text-2); font-size: 12px; display: flex; gap: 16px; }
+  .count { color: var(--text-3); font-weight: 500; }
+  @media (max-width: 1400px) { .meter { display: none; } .strip { grid-template-columns: minmax(0, 1.2fr) repeat(5, minmax(0, 1fr)); } .fig .n.hero { font-size: 38px; } }
+  .classfoot { padding: 10px 16px; border-top: 1px solid var(--line); font-size: 12px; }
+</style></head>
+<body data-page="Dashboard">
+<div class="app"><aside class="side" id="side"></aside>
+<div class="main"><div class="top" id="top"></div>
+<div class="page">
+  <div class="head">
+    <div><h1>Today</h1><p>Sunday, 22 November · open 5:00 am to 10:00 pm</p></div>
+    <div class="actions"><button class="btn">Check in</button><button class="btn go">Record payment</button></div>
+  </div>
+
+  <section class="strip" aria-label="Today and this month">
+    <div class="fig"><div class="l">Checked in today</div><div class="n hero">42</div><div class="d"><b>+ 3 walk-ins</b> · 9 more than last Sunday</div></div>
+    <div class="fig"><div class="l">Cash today</div><div class="n">₱3,000</div><div class="d">2 payments · drawer open</div></div>
+    <div class="fig"><div class="l">Revenue, 1 to 22 Nov</div><div class="n">₱10,500</div><div class="d"><b>up 18%</b> on 1 to 22 Oct</div></div>
+    <div class="fig"><div class="l">Active members</div><div class="n">128</div><div class="d"><b>6 joined</b> in November</div></div>
+    <div class="fig"><div class="l">Visits, last 30 days</div><div class="n">912</div><div class="d">same as the 30 before</div></div>
+    <div class="fig"><div class="l">New members, 1 to 22 Nov</div><div class="n">6</div><div class="d"><b>2 more</b> than 1 to 22 Oct</div></div>
+  </section>
+
+  <div class="grid">
+    <section class="box">
+      <header><h2>Needs you <span class="count">4</span></h2><span class="aside">oldest first</span></header>
+      <div class="scroll">
+        <div class="row"><span class="dot warn"></span><div class="t"><b>2 bookings to decide</b><span>oldest waiting 4 days</span></div><button class="act">Review</button></div>
+        <div class="row"><span class="dot warn"></span><div class="t"><b>1 sign-up waiting</b><span>Dino Santos</span></div><button class="act">Approve</button></div>
+        <div class="row"><span class="dot"></span><div class="t"><b>1 online payment to confirm</b><span>GCash · ₱1,500</span></div><button class="act">Confirm</button></div>
+        <div class="row"><span class="dot"></span><div class="t"><b>3 memberships end this week</b><span>Ana Andrada in 1 day</span></div><button class="act">View</button></div>
+      </div>
+    </section>
+
+    <section class="box">
+      <header><h2>Today's classes</h2><span class="aside">3 of 5 to come</span></header>
+      <div class="scroll">
+        <div class="row"><span class="time">6:00 am</span><div class="t"><b style="color:var(--text-3)">Morning HIIT</b><span>Jen Lacsamana · Studio A · done</span></div><span class="num">18/20</span></div>
+        <div class="row"><span class="time">8:00 am</span><div class="t"><b style="color:var(--text-3)">Yoga Flow</b><span>Bianca Soriano · Studio A · done</span></div><span class="num">12/20</span></div>
+        <div class="row"><span class="time">12:30 pm</span><div class="t"><b>Core Blast</b><span>Jen Lacsamana · Studio B</span></div><span class="meter"><i style="width:45%"></i></span><span class="num">9/20</span></div>
+        <div class="row"><span class="time">6:00 pm</span><div class="t"><b>Power Hour</b><span>Dante Evangelista · Studio A</span></div><span class="meter"><i style="width:100%"></i></span><span class="num" style="color:var(--action);font-weight:600">Full</span></div>
+        <div class="row"><span class="time">6:30 pm</span><div class="t"><b>Spin</b><span>Dante Evangelista · Bike room</span></div><span class="meter"><i style="width:60%"></i></span><span class="num">9/15</span></div>
+      </div>
+      <div class="classfoot"><button class="link">Coach ranking</button></div>
+    </section>
+
+    <section class="box">
+      <div class="tabs"><button class="on">Revenue</button><button>Busy hours</button><button>To watch <span class="count">5</span></button>
+        <span class="aside"><span class="seg"><span class="on">Bars</span><span>Line</span></span><span class="seg"><span class="on">2026</span></span></span></div>
+      <div class="bars" style="flex:1;min-height:0">
+        <div><i style="height:30%"></i><span>Jan</span></div><div><i style="height:34%"></i><span>Feb</span></div><div><i style="height:41%"></i><span>Mar</span></div>
+        <div><i style="height:38%"></i><span>Apr</span></div><div><i style="height:47%"></i><span>May</span></div><div><i style="height:52%"></i><span>Jun</span></div>
+        <div><i style="height:49%"></i><span>Jul</span></div><div><i style="height:58%"></i><span>Aug</span></div><div><i style="height:61%"></i><span>Sep</span></div>
+        <div><i style="height:66%"></i><span>Oct</span></div><div><i class="now" style="height:72%"></i><span>Nov</span></div><div><i style="height:0"></i><span>Dec</span></div>
+      </div>
+      <div class="chartfoot"><span>₱118,500 across 2026</span><span>Best month: November so far</span></div>
+    </section>
+  </div>
+</div></div></div>
+<span class="sample">Mock-up A · sample data</span>
+<script src="shell.js"></script>
+</body></html>

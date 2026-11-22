@@ -1,367 +1,42 @@
-import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { getGymContext } from '../../lib/gymContext';
-import { useEffect, useMemo, useState } from 'react';
-import { LogOut, ChevronRight, ChevronDown } from 'lucide-react';
-import { toast } from '../ui/sonner';
+import { NavLink } from 'react-router-dom';
 import { useBranding } from '../../hooks/useBranding';
-import { DEFAULT_WORDS, title, useGymWords } from '../../hooks/useGymWords';
-import { supabase } from '../../lib/supabaseClient';
-import { useGymModules } from '../../hooks/useGymModules';
-import { NAV, NAV_TIPS, isGroup, navVisible, type Entry, type Leaf } from './nav';
-import { myStaffPermissions, type StaffArea } from '../../lib/api/staffPermissions';
+import AccountMenu from './AccountMenu';
+import { useRail, type ShownSection } from './rail';
 
-const BORDER       = 'var(--color-border)';
-const PRIMARY      = 'var(--color-primary)';
-const SECONDARY    = 'var(--color-secondary)';
-const TEXT_MUTED   = 'var(--color-text-muted)';
+/** The rail's width; Layout keeps the page clear of it. */
+export const RAIL_W = 76;
 
-/** The group a path lives in, or null for a top-level page. */
-function groupHolding(pathname: string): string | null {
-  for (const e of NAV) {
-    if (isGroup(e) && e.children.some(
-      (c) => c.path === pathname || (c.alsoMatches?.includes(pathname) ?? false)
-    )) return e.label;
-  }
-  return null;
-}
-
-const ICON_RAIL_W = 56;
-const DETAIL_W = 208;
-const STORAGE_KEY = 'admin_sidebar_collapsed';
-const OPEN_KEY = 'admin_sidebar_open_groups';
-
-interface SidebarProps {
-  collapsed: boolean;
-  onToggle: () => void;
-}
-
-export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [isAdmin, setIsAdmin] = useState(true);
-  // A narrowed staff account (0161): null = the whole desk.
-  const [areas, setAreas] = useState<StaffArea[] | null>(null);
-  useEffect(() => {
-    let alive = true;
-    void myStaffPermissions().then((a) => { if (alive) setAreas(a); });
-    return () => { alive = false; };
-  }, []);
+/**
+ * The admin rail (Design V2, mock-up B, owner's pick 2026-11-22): the gym's mark, one row per section
+ * with a word under every icon, Gym and Help at the foot, and your account on your photo. A section
+ * opens its first page; its other pages are tabs in the header (Header.tsx). Which sections show is
+ * the menu's own rule (owner-only, switched-off parts, a narrowed desk account) via `useRail`.
+ */
+export default function Sidebar() {
   const brand = useBranding();
-  // This gym's own nouns (0114). Defaults to the English words, so the nav
-  // never flickers between two wordings while the read lands.
-  const words = useGymWords();
-  // What this gym runs (0110/0141): a switched-off part leaves the nav too.
-  const modules = useGymModules();
-
-  // Hide admin-only destinations from front-desk staff. Cosmetic only — the real
-  // enforcement is ProtectedRoute's adminOnly guard plus RLS. Defaults to true so
-  // an admin never sees the nav flicker while the role resolves.
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      const ctx = await getGymContext();
-      if (active) setIsAdmin(ctx?.role === 'admin');
-    })();
-    return () => { active = false; };
-  }, []);
-
-  /**
-   * The nav with anything this role cannot reach removed, and any group left
-   * holding exactly one child flattened into that child.
-   */
-  const entries = useMemo<Entry[]>(() => {
-    const visible = navVisible(isAdmin, modules, areas);
-    // Renamed only where the gym actually chose a word — compared key by key
-    // against the defaults, not by "did they rename anything".
-    //
-    // This is not a nicety. The default for `trainers` is "coaches", which is
-    // what the *member* app has always called them; this sidebar has always
-    // said "Trainers". Substituting unconditionally renamed a row for every
-    // gym on the service, including the ones that never opened the setting.
-    // The rule everywhere in 0114 is that a gym which changed nothing reads
-    // exactly as it did before, and only a per-key comparison delivers it.
-    const named = (l: Leaf): Leaf =>
-      (l.noun && words[l.noun] && words[l.noun] !== DEFAULT_WORDS[l.noun]
-        ? { ...l, label: title(words[l.noun]) }
-        : l);
-    const out: Entry[] = [];
-    for (const e of NAV) {
-      if (!isGroup(e)) {
-        if (visible(e)) out.push(named(e));
-        continue;
-      }
-      const children = e.children.filter(visible).map(named);
-      if (children.length === 0) continue;
-      if (children.length === 1) { out.push(children[0]); continue; }
-      out.push({ ...e, children });
-    }
-    return out;
-  }, [isAdmin, words, modules, areas]);
-
-  /**
-   * Which drawers are open — remembered, so the section you work in every day
-   * is already open the next time the dashboard is launched.
-   *
-   * Opening the group holding the current page is done *here*, in the lazy
-   * initialiser, rather than in an effect watching the route. An effect that
-   * calls `setState` on render is the `set-state-in-effect` mistake this
-   * codebase keeps making; and it isn't needed, because a closed group holding
-   * the current page already paints itself selected (see `holdsActive` below).
-   */
-  const [open, setOpen] = useState<string[]>(() => {
-    const here = groupHolding(window.location.pathname);
-    try {
-      const raw = localStorage.getItem(OPEN_KEY);
-      const stored = raw ? (JSON.parse(raw) as string[]) : ['Attendance'];
-      return here && !stored.includes(here) ? [...stored, here] : stored;
-    } catch { return here ? ['Attendance', here] : ['Attendance']; }
-  });
-
-  const toggleGroup = (label: string) => {
-    setOpen((prev) => {
-      const next = prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label];
-      try { localStorage.setItem(OPEN_KEY, JSON.stringify(next)); } catch { /* ignore */ }
-      return next;
-    });
-  };
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut({ scope: 'local' });
-    toast.success('Logged out successfully');
-    navigate('/admin/login');
-  };
-
-  const totalWidth = collapsed ? ICON_RAIL_W : DETAIL_W;
-
+  const { sections, current } = useRail();
+  const item = (s: ShownSection) => (
+    <NavLink key={s.key} to={s.leaves[0].path} className="rail-item" data-active={current?.key === s.key}
+      data-rail={s.key} data-tip={s.leaves.map((l) => l.label).join(' · ')} aria-current={current?.key === s.key ? 'page' : undefined}>
+      <s.icon size={18} strokeWidth={1.75} />
+      <span>{s.label}</span>
+    </NavLink>
+  );
   return (
-    <aside
-      className="h-screen fixed left-0 top-0 z-40 flex transition-all duration-300"
-      style={{ width: totalWidth }}
-    >
-      {/* ─── Icon Rail (only visible when collapsed) ─── */}
-      {collapsed && (
-        <div
-          className="h-full flex flex-col items-center py-4 gap-1 flex-shrink-0"
-          style={{ width: ICON_RAIL_W, background: 'var(--sidebar-rail, var(--color-bg))', borderRight: `1px solid ${BORDER}` }}
-        >
-          {/* Logo */}
-          {/* The rail showed a generic dumbbell for every gym. It shows this
-              gym's logo now, and its initials when there is no logo — never a
-              stand-in mark belonging to nobody. */}
-          <button
-            className="w-9 h-9 rounded-lg flex items-center justify-center mb-4 overflow-hidden flex-shrink-0"
-            style={{ background: brand.logoUrl ? 'var(--color-surface-high)' : PRIMARY }}
-            onClick={onToggle}
-            data-tip={`${brand.name} — expand the menu`}
-          >
-            {brand.logoUrl ? (
-              <img src={brand.logoUrl} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <span className="on-fill text-white font-bold text-[12px]">{brand.initials}</span>
-            )}
-          </button>
-
-          {/* One icon per entry. A group's icon opens its first page — the rail
-              has no room to explain a folder, and landing on the section's main
-              screen is what clicking it means anywhere else. */}
-          <div className="flex-1 flex flex-col gap-1 w-full px-2 overflow-y-auto scrollbar-hide">
-            {entries.map((entry) => {
-              const Icon = entry.icon;
-              const paths = isGroup(entry) ? entry.children.map((c) => c.path) : [entry.path];
-              const isActive = paths.includes(location.pathname);
-              const title = isGroup(entry)
-                ? `${entry.label} — ${entry.children.map((c) => c.label).join(', ')}`
-                : `${entry.label}${NAV_TIPS[entry.path] ? '\n' + NAV_TIPS[entry.path] : ''}`;
-              return (
-                <button
-                  key={entry.label}
-                  onClick={() => {
-                    if (isGroup(entry)) setOpen((p) => (p.includes(entry.label) ? p : [...p, entry.label]));
-                    navigate(paths[0]);
-                  }}
-                  className="w-10 h-10 mx-auto rounded-lg flex items-center justify-center transition-colors relative"
-                  style={{
-                    background: isActive ? 'var(--sidebar-active, var(--color-primary-light))' : 'transparent',
-                    color: isActive ? PRIMARY : TEXT_MUTED,
-                  }}
-                  data-tip={title}
-                >
-                  <Icon size={18} />
-                  {/* A group is more than one destination; the dot says the icon
-                      is a section rather than a page. */}
-                  {isGroup(entry) && (
-                    <span className="absolute bottom-1 right-1 w-1 h-1 rounded-full"
-                      style={{ background: isActive ? PRIMARY : BORDER }} />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Bottom: Logout */}
-          <div className="flex flex-col gap-1 w-full px-2 mt-2">
-            <button
-              onClick={handleLogout}
-              className="w-10 h-10 mx-auto rounded-lg flex items-center justify-center transition-colors"
-              style={{ color: SECONDARY }}
-              data-tip="Logout"
-            >
-              <LogOut size={18} />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ─── Detail Panel (shows when not collapsed) ─── */}
-      {!collapsed && (
-        <div
-          className="sb-panel h-full flex flex-col overflow-hidden"
-          data-sidebar-panel
-          style={{
-            width: DETAIL_W,
-            // Light mode: a solid light tint of the gym's own colour (light.css --sidebar-bg), never plain white.
-            background: 'var(--sidebar-bg, var(--color-surface))',
-            borderRight: `1px solid ${BORDER}`,
-          }}
-        >
-        {/* Brand header with logo */}
-        <div className="sb-brand px-4 pt-4 pb-3 flex items-center gap-3 flex-shrink-0">
-          {/* The gym's own name and logo (0067). These were literals — and
-              the header carried a second copy of the name that could disagree
-              with this one. `truncate`, not `whitespace-nowrap`: a longer gym
-              name should be cut off, not push the nav sideways. */}
-          {brand.logoUrl ? (
-            <img src={brand.logoUrl} alt=""
-              className="sb-mark w-11 h-11 rounded-2xl object-cover flex-shrink-0"
-              style={{ background: 'var(--color-surface-high)' }} />
-          ) : (
-            <span className="sb-mark on-fill w-11 h-11 rounded-2xl flex-shrink-0 flex items-center justify-center text-white font-bold text-[14px]"
-              style={{ background: PRIMARY }}>
-              {brand.initials}
-            </span>
-          )}
-          <div className="flex-1 min-w-0">
-            <p className="sb-name truncate" data-tip={brand.name}>
-              {brand.name}
-            </p>
-            <p className="sb-tag truncate">{brand.tagline || 'Owner’s dashboard'}</p>
-          </div>
-          {/* Collapse: an icon beside the name (2026-11-11) — a full-width bar spent a whole row on it. */}
-          <button onClick={onToggle} className="sb-collapse flex-shrink-0" aria-label="Collapse the sidebar" data-tip="Collapse the sidebar">
-            <ChevronRight size={15} className="rotate-180" />
-          </button>
-        </div>
-
-        {/* Navigation */}
-        <nav className="sb-nav flex-1 px-3 pb-3 overflow-y-auto scrollbar-hide">
-          {entries.map((entry) => {
-            if (!isGroup(entry)) {
-              const isActive = location.pathname === entry.path
-                || (entry.alsoMatches?.includes(location.pathname) ?? false);
-              return (
-                <NavLink
-                  key={entry.path}
-                  to={entry.path}
-                  data-tip={NAV_TIPS[entry.path]}
-                  className="sb-item"
-                  data-active={isActive}
-                >
-                  <span className="sb-ico"><entry.icon size={15} /></span>
-                  <span className="truncate">{entry.label}</span>
-                </NavLink>
-              );
-            }
-
-            const expanded = open.includes(entry.label);
-            const holdsActive = entry.children.some((c) => c.path === location.pathname);
-            // A closed group holding the current page still has to look
-            // selected, or the nav shows nothing highlighted while you are
-            // plainly on one of its pages.
-
-            return (
-              <div key={entry.label}>
-                <button
-                  onClick={() => toggleGroup(entry.label)}
-                  aria-expanded={expanded}
-                  data-tip={NAV_TIPS[entry.label]}
-                  className="sb-item sb-group"
-                  data-active={holdsActive && !expanded}
-                  data-holds={holdsActive}
-                >
-                  <span className="sb-ico"><entry.icon size={15} /></span>
-                  <span className="truncate flex-1 text-left">{entry.label}</span>
-                  <ChevronDown
-                    size={13}
-                    className="sb-chev flex-shrink-0"
-                    style={{ transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)' }}
-                  />
-                </button>
-
-                {expanded && (
-                  // The guide line is what makes these read as *inside* the row
-                  // above rather than as more top-level links.
-                  <div className="sb-children" data-active={holdsActive}>
-                    {entry.children.map((child) => {
-                      const isActive = location.pathname === child.path
-                        || (child.alsoMatches?.includes(location.pathname) ?? false);
-                      return (
-                        <NavLink
-                          key={child.path}
-                          to={child.path}
-                          data-tip={NAV_TIPS[child.path]}
-                          className="sb-item sb-child"
-                          data-active={isActive}
-                        >
-                          <span className="sb-ico"><child.icon size={13} /></span>
-                          <span className="truncate">{child.label}</span>
-                        </NavLink>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </nav>
-
-        {/* Footer — Logout */}
-        <div className="px-3 py-3 flex-shrink-0" style={{ borderTop: `1px solid ${BORDER}` }}>
-          <button onClick={handleLogout} className="sb-item sb-logout">
-            <span className="sb-ico"><LogOut size={15} /></span>
-            <span>Logout</span>
-          </button>
-        </div>
+    <aside className="rail h-screen fixed left-0 top-0 z-40" style={{ width: RAIL_W }} data-sidebar-panel>
+      {/* The gym's own mark (0067): its logo, else its initials on its colour. */}
+      <span className="rail-mark" data-tip={brand.name}>
+        {brand.logoUrl
+          ? <img src={brand.logoUrl} alt="" />
+          : <span className="on-fill">{brand.initials}</span>}
+      </span>
+      <nav className="rail-nav" aria-label="Main menu">
+        {sections.filter((s) => !s.foot).map(item)}
+      </nav>
+      <div className="rail-foot">
+        {sections.filter((s) => s.foot).map(item)}
+        <AccountMenu compact />
       </div>
-      )}
     </aside>
   );
-}
-
-/** Hook to read & persist the sidebar collapsed state. */
-// eslint-disable-next-line react-refresh/only-export-components -- a helper shared with this component; only hot reload in development is affected
-export function useSidebarCollapsed() {
-  const [collapsed, setCollapsed] = useState<boolean>(() => {
-    try { return localStorage.getItem(STORAGE_KEY) === '1'; }
-    catch { return false; }
-  });
-
-  useEffect(() => {
-    const onResize = () => {
-      if (window.innerWidth < 1280 && !collapsed) setCollapsed(true);
-    };
-    onResize();
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const toggle = () => {
-    setCollapsed(prev => {
-      const next = !prev;
-      try { localStorage.setItem(STORAGE_KEY, next ? '1' : '0'); } catch { /* ignore */ }
-      return next;
-    });
-  };
-
-  return { collapsed, toggle };
 }

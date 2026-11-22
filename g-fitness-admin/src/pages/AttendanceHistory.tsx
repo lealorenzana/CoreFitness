@@ -231,7 +231,7 @@ export default function AttendanceHistory() {
       </div>
 
       {/* ── Four cards ── */}
-      <div className="a-grid flex-none" style={{ gridTemplateColumns: 'repeat(4,minmax(0,1fr))' }}>
+      <div className="a-grid flex-none a-figstrip" style={{ gridTemplateColumns: 'repeat(4,minmax(0,1fr))' }} data-history-figures>
         <div className="a-card">
           <div className="a-lbl">Check-ins</div>
           <div className="a-num">{total.toLocaleString('en-PH')}</div>

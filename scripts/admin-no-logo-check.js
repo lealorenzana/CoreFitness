@@ -76,16 +76,12 @@ async (page) => {
   await page.goto('http://localhost:5174/dashboard', { waitUntil: 'domcontentloaded' });
   await page.getByText('Ana Gymanigga', { exact: false }).first().waitFor({ timeout: 15000 });
   let a = await aside();
-  out.push('expanded, no Core Fitness logo: ' + (a.logos.length === 0 ? 'none' : 'MISSING (' + a.logos.join(', ') + ')'));
-  out.push('expanded, the gym\'s initials: ' + (/\bAG\b/.test(a.text) ? 'AG' : 'MISSING'));
+  out.push('the rail, no Core Fitness logo: ' + (a.logos.length === 0 ? 'none' : 'MISSING (' + a.logos.join(', ') + ')'));
+  out.push('the rail, the gym\'s initials: ' + (/\bAG\b/.test(a.text) ? 'AG' : 'MISSING'));
   await page.screenshot({ path: 'shots/no-logo-expanded.png', clip: { x: 0, y: 0, width: 300, height: 140 } });
 
-  await page.getByRole('button', { name: /collapse/i }).first().click();
-  await page.waitForTimeout(500);
-  a = await aside();
-  out.push('collapsed, no Core Fitness logo: ' + (a.logos.length === 0 ? 'none' : 'MISSING (' + a.logos.join(', ') + ')'));
-  out.push('collapsed, the gym\'s initials: ' + (/\bAG\b/.test(a.text) && !/anafitness/i.test(a.text) ? 'AG' : 'MISSING (' + a.text.slice(0, 40) + ')'));
-  await page.screenshot({ path: 'shots/no-logo-collapsed.png', clip: { x: 0, y: 0, width: 120, height: 140 } });
-
+  // Design V2 (shell B): the rail is always the narrow form (no collapse button any more), so the
+  // collapsed case is the rail itself: the gym's initials, never a Core Fitness logo or an email.
+  out.push('the rail, no email in place of a name: ' + (!/anafitness/i.test(a.text) ? 'none' : 'MISSING (' + a.text.slice(0, 40) + ')'));
   return out.join('\n');
 }

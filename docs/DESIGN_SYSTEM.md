@@ -723,3 +723,19 @@ the shell's old page fade had exactly that shape. Sheets and modals keep their f
 are opened by a tap on a live page). `scripts/motion-check.js` proves every animated element ends
 fully opaque, the bar responds, and reduced motion turns the layer off (11 checks). Screenshot
 harnesses shoot with `animations: 'disabled'`.
+
+## Admin, Design V2 (from 2026-11-22)
+
+The owner's choices are in `design/admin-v2/DECISIONS.md`; the rules come from `design/lessons/LESSONS.md`.
+
+- **Flat, no glow**: `src/v2.css` loads last (`main.tsx`). Surfaces are the theme's `*-solid` colours, 1px hairlines,
+  no card shadow, 12px cards, 8px controls, 6px small controls. Only floating things (menus, dialogs) cast a shadow.
+- **Shell B**: a 76px rail with a word under every icon (`Sidebar.tsx`, sections in `rail.ts`), a two-row header
+  (gym name and tagline, search, alerts; then the section's pages as tabs), your account on your photo.
+  The rail mark and the header's first row share one 26px centre line.
+- **Colour roles**: the gym's colour marks where you are (rail marker, tab underline, selected) and state;
+  amber is the one action per area (Record payment, Scan QR). Never a fixed violet.
+- **Status** is a dot and a word (`Pill` in `rd.tsx`), never a tinted pill.
+- **Figures** are one box split by hairlines with one hero number, never a row of identical cards.
+- **Pages**: a page's own views are a quiet segmented control; the work column is on the left, a 300 to 320px
+  rail of figures and tools on the right (the Attendance "desk console", `.a-v2` in `att.css`).

@@ -1,13 +1,12 @@
-import { motion } from 'framer-motion';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGymModules, moduleOn } from '../hooks/useGymModules';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import {
-  ChevronRight, ChevronDown, CalendarClock, UserPlus, ReceiptText, PauseCircle, Hourglass,
-  QrCode, Banknote, Check, Dumbbell, Award, Flag,
+  ChevronRight, ChevronDown,
+  QrCode, Banknote, Award,
 } from 'lucide-react';
 
 import DetailSheet from '../components/ui/DetailSheet';
@@ -15,7 +14,6 @@ import { winbackSweep, type AtRisk } from '../lib/api/retention';
 import { streakNudgeSweep } from '../lib/api/streak';
 import { supabase } from '../lib/supabaseClient';
 import { runPermitReminders } from '../lib/api/applications';
-import { getMyProfile } from '../lib/api/profiles';
 import { getGymSettings } from '../lib/api/settings';
 import PinGymChip from '../components/PinGymChip';
 import { formatCurrency } from '../utils/formatters';
@@ -31,14 +29,14 @@ import {
 import { useTour } from '../components/tour/Tour';
 import { tourFor } from '../lib/tours';
 
-const VIOLET     = '#7C3AED';
+// The gym's own colour, never a fixed violet (Design V2).
+const VIOLET     = 'var(--color-primary)';
 // Text shades go through variables so light mode (light.css, 0234) can deepen them.
 const VIOLET_300 = 'var(--tone-violet-fg, #C4B5FD)';
 const YELLOW     = 'var(--color-secondary, #F59E0B)';
 const TEXT_MUTED = 'var(--color-text-muted)';
 const TEXT_2     = 'var(--color-text-secondary)';
 const BORDER     = 'var(--color-border)';
-const SURFACE    = 'var(--color-surface)';
 
 // ── Filter pill ─────────────────────────────────────────────────────────────
 function FilterSelect({ value, options, onChange }: {
@@ -49,7 +47,7 @@ function FilterSelect({ value, options, onChange }: {
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="appearance-none pl-3 pr-7 py-1.5 rounded-full text-xs font-medium cursor-pointer"
+        className="appearance-none pl-3 pr-7 py-1.5 rounded-md text-xs font-medium cursor-pointer"
         style={{
           background: 'var(--color-surface-raised)',
           border: `1px solid ${BORDER}`,
@@ -81,12 +79,13 @@ function trainerLine(t: TopTrainer): string {
 function heatColor(v: number, max: number) {
   if (v === 0) return 'var(--color-surface-raised)';
   const pct = v / Math.max(1, max);
-  if (pct < 0.25) return 'rgba(124,58,237,0.22)';
-  if (pct < 0.5)  return 'rgba(124,58,237,0.42)';
-  if (pct < 0.75) return 'rgba(124,58,237,0.68)';
-  return 'rgba(155,123,255,0.95)';
+  if (pct < 0.25) return HEAT_LEGEND[1];
+  if (pct < 0.5)  return HEAT_LEGEND[2];
+  if (pct < 0.75) return HEAT_LEGEND[3];
+  return HEAT_LEGEND[4];
 }
-const HEAT_LEGEND = ['var(--color-surface-raised)', 'rgba(124,58,237,0.22)', 'rgba(124,58,237,0.42)', 'rgba(124,58,237,0.68)', 'rgba(155,123,255,0.95)'];
+const HEAT_LEGEND = ['var(--color-surface-raised)', 'color-mix(in srgb, var(--color-primary) 22%, transparent)', 'color-mix(in srgb, var(--color-primary) 42%, transparent)',
+  'color-mix(in srgb, var(--color-primary) 68%, transparent)', 'var(--color-primary)'];
 
 function HeatmapGrid({ cells, compact }: { cells: HeatmapCell[]; compact?: boolean }) {
   const max  = Math.max(0, ...cells.map((c) => c.visits));
@@ -125,6 +124,8 @@ function HeatmapGrid({ cells, compact }: { cells: HeatmapCell[]; compact?: boole
 
 // ── Small pieces ────────────────────────────────────────────────────────────
 const peso = (n: number) => formatCurrency(n);
+/** Chart tooltips float above the page: solid, and readable in both modes. */
+const TIP_STYLE = { backgroundColor: 'var(--surface-solid, #161622)', border: '1px solid var(--color-border)', borderRadius: 8, color: 'var(--color-text-primary)', fontSize: 12 };
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const timeOf = (iso: string) => new Date(iso).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Manila' }).toLowerCase();
 
@@ -136,82 +137,119 @@ function clock(t: string | null | undefined): string | null {
   return `${h % 12 === 0 ? 12 : h % 12}:${m[2]} ${h < 12 ? 'am' : 'pm'}`;
 }
 
-/** The comparison under a figure — computed from real counts, never invented. */
-function deltaText(c: Compared, kind: 'pct' | 'count', vs: string): { text: string; dir: 'up' | 'down' | 'flat' } | null {
+/** The comparison under a figure, in words: what it is compared with is always said (S5). Computed from
+ *  real counts, never invented; null when there is nothing to compare with. */
+function deltaWords(c: Compared, kind: 'pct' | 'count', vs: string): string | null {
   if (c.previous === null) return null;
   const diff = c.value - c.previous;
-  if (diff === 0) return { text: `Same as ${vs}`, dir: 'flat' };
+  if (diff === 0) return `no change on ${vs}`;
   if (kind === 'pct' && c.previous > 0) {
     const pct = Math.round((diff / c.previous) * 100);
-    if (pct === 0) return { text: `About the same as ${vs}`, dir: 'flat' };
-    return { text: `${Math.abs(pct)}% vs ${vs}`, dir: pct > 0 ? 'up' : 'down' };
+    if (pct === 0) return `about the same as ${vs}`;
+    return `${pct > 0 ? 'up' : 'down'} ${Math.abs(pct)}% on ${vs}`;
   }
-  return { text: `${Math.abs(diff)} vs ${vs}`, dir: diff > 0 ? 'up' : 'down' };
+  return `${diff > 0 ? 'up' : 'down'} ${Math.abs(diff)} on ${vs}`;
 }
 
-function Delta({ d }: { d: ReturnType<typeof deltaText> }) {
-  if (!d) return null;
-  const color = d.dir === 'up' ? VIOLET_300 : d.dir === 'down' ? YELLOW : TEXT_MUTED;
-  return (
-    <p className="text-[11px] font-semibold mt-1 truncate" style={{ color }}>
-      {d.dir === 'up' ? '▲ ' : d.dir === 'down' ? '▼ ' : ''}{d.text}
-    </p>
-  );
+/** A section that failed to load says so: empty must only ever mean "nothing here". */
+function Failed({ what }: { what: string }) {
+  return <p className="dv2-note">Couldn&apos;t load {what}. This is a connection problem, not an empty list.</p>;
 }
 
-/** One card of the page. `min-h-0` + `overflow-hidden` keep the page from scrolling. */
-function Card({ children, onClick, tip, glow, className = '', style }: {
-  children: ReactNode; onClick?: () => void; tip?: string; glow?: boolean; className?: string; style?: React.CSSProperties;
+/** "6:00", "6:30 pm" → hours as a number (6, 18.5). Null for anything unreadable. */
+function hourOf(t: string | null | undefined): number | null {
+  const m = /^(\d{1,2}):(\d{2})/.exec(t ?? '');
+  return m ? Number(m[1]) + Number(m[2]) / 60 : null;
+}
+/** An ISO time as hours since Manila midnight. */
+const manilaHours = (iso: string) => { const d = new Date(new Date(iso).getTime() + 8 * 3600000); return d.getUTCHours() + d.getUTCMinutes() / 60; };
+const hourLabel = (h: number) => `${h % 12 === 0 ? 12 : h % 12}${h < 12 || h === 24 ? 'am' : 'pm'}`;
+
+/** One line of "Needs you": a dot, what, detail, one action. Amber dot = someone is waiting on you. */
+function TaskRow({ waiting, title, detail, action, onClick, testId }: {
+  waiting?: boolean; title: string; detail: string; action: string; onClick: () => void; testId: string;
 }) {
-  const Tag = onClick ? 'button' : 'div';
   return (
-    <Tag onClick={onClick} data-tip={tip}
-      className={`rounded-2xl p-4 text-left min-w-0 min-h-0 overflow-hidden flex flex-col items-stretch justify-start ${className}`}
-      style={{
-        background: glow ? 'var(--glow-bg, linear-gradient(160deg, var(--glow-from, #211a3a) 0%, var(--color-surface) 55%))' : SURFACE,
-        border: `1px solid ${glow ? 'var(--glow-line, #2f2752)' : BORDER}`,
-        boxShadow: 'var(--shadow-card)',
-        cursor: onClick ? 'pointer' : 'default',
-        ...style,
-      }}>
-      {children}
-    </Tag>
-  );
-}
-
-function CardHead({ title, right }: { title: string; right?: ReactNode }) {
-  return (
-    <div className="flex items-center justify-between gap-2 mb-2 flex-shrink-0">
-      <h3 className="text-[13px] font-semibold text-white truncate">{title}</h3>
-      {right}
+    <div className="dv2-row" data-task={testId}>
+      <span className={`dv2-dot${waiting ? ' warn' : ''}`} />
+      <span className="t"><b>{title}</b><span>{detail}</span></span>
+      <button className="dv2-act" onClick={onClick}>{action}</button>
     </div>
   );
 }
 
-/** A section that failed to load says so — empty must only ever mean "nothing here". */
-function Failed({ what }: { what: string }) {
-  return <p className="text-[11px]" style={{ color: TEXT_MUTED }}>Couldn&apos;t load {what}. This is a connection problem, not an empty list.</p>;
-}
+interface DayItem { id: string; start: number; minutes: number; label: string; sub: string; done: boolean; tip: string }
 
-/** One line of "Needs you": icon, what, detail, one action. */
-function TaskRow({ icon: Icon, title, detail, action, onClick, testId }: {
-  icon: typeof UserPlus; title: string; detail: string; action: string; onClick: () => void; testId: string;
-}) {
+/**
+ * The gym's day (Design V2, mock-up B, owner's pick 2026-11-22): opening to closing along the bottom,
+ * check-ins per hour as bars, classes (or 1-on-1 sessions) on their real times, a line for now.
+ * Drawn at its real pixel size (ResizeObserver), so words are never stretched.
+ */
+function DayLine({ perHour, items, open, close }: { perHour: number[]; items: DayItem[]; open: number; close: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ w: 0, h: 0 });
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setSize({ w: Math.round(e.contentRect.width), h: Math.round(e.contentRect.height) }));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const { w: W, h: H } = size;
+  const span = Math.max(1, close - open);
+  const x = (h: number) => ((h - open) / span) * W;
+  const axisY = H - 16;
+  // Two lanes for the labels, so neighbours never print over each other.
+  const lanes = items.length ? 2 : 0;
+  const laneTop = axisY - lanes * 30 - 4;
+  const barBottom = lanes ? laneTop - 10 : axisY - 6;
+  const barTop = 8;
+  const max = Math.max(1, ...perHour.slice(Math.floor(open), Math.ceil(close)));
+  const nowH = manilaHours(new Date().toISOString());
+  const step = W / span < 44 ? 2 : 1;
+  const ends = [0, 0];
+  const placed = items.map((it) => {
+    const left = x(it.start);
+    const width = (it.label.length + it.sub.length + 1) * 6.4;
+    const lane = ends[0] <= left ? 0 : ends[1] <= left ? 1 : (ends[0] <= ends[1] ? 0 : 1);
+    ends[lane] = left + Math.max(width, x(it.start + it.minutes / 60) - left) + 8;
+    return { ...it, lane, left, textX: Math.max(0, Math.min(left, W - width)) };
+  });
   return (
-    <div className="flex items-center gap-3 py-2.5 min-w-0" style={{ borderTop: `1px solid ${BORDER}` }} data-task={testId}>
-      <span className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-        style={{ background: 'var(--color-secondary-light)', color: YELLOW }}>
-        <Icon size={15} />
-      </span>
-      <span className="flex-1 min-w-0">
-        <span className="block text-[13px] font-medium text-white truncate">{title}</span>
-        <span className="block text-[11px] truncate" style={{ color: TEXT_2 }}>{detail}</span>
-      </span>
-      <button onClick={onClick}
-        className="h-7 px-3 rounded-lg text-[11px] font-semibold flex-shrink-0"
-        style={{ background: 'var(--color-secondary-light)', color: YELLOW, border: '1px solid #3a2f10' }}>
-        {action}
-      </button>
+    <div ref={ref} className="dv2-day" data-day-line>
+      {W > 0 && H > 0 && (
+        <svg width={W} height={H} role="img" aria-label="Check-ins per hour today, with classes on their times">
+          {Array.from({ length: Math.floor(span) + 1 }, (_, i) => Math.ceil(open) + i).filter((h) => h <= close).map((h) => (
+            <g key={h}>
+              <line className="grid-line" x1={x(h)} x2={x(h)} y1={0} y2={axisY} />
+              {(h - Math.ceil(open)) % step === 0 && x(h) + 30 < W && <text x={x(h) + 3} y={H - 2}>{hourLabel(h)}</text>}
+            </g>
+          ))}
+          {Array.from({ length: 24 }, (_, h) => h).filter((h) => h >= Math.floor(open) && h < close && perHour[h] > 0).map((h) => {
+            const bh = (perHour[h] / max) * (barBottom - barTop);
+            const bw = Math.min(28, Math.max(4, (W / span) * 0.56));
+            return (
+              <rect key={h} className={`bar${h > nowH ? ' ahead' : ''}`} x={x(h) + (W / span - bw) / 2} y={barBottom - bh} width={bw} height={bh} rx={2}
+                data-tip={`${hourLabel(h)} to ${hourLabel(h + 1)}: ${perHour[h]} check-in${perHour[h] === 1 ? '' : 's'}`} />
+            );
+          })}
+          {placed.map((it) => {
+            const y = laneTop + it.lane * 30;
+            return (
+              <g key={it.id} className={`cls${it.done ? ' done' : ''}`} data-tip={it.tip}>
+                <rect className="cls-block" x={it.left} y={y} width={Math.max(4, x(it.start + it.minutes / 60) - it.left - 2)} height={6} rx={2} />
+                <text x={it.textX} y={y + 20}>{it.label} <tspan className="sub">{it.sub}</tspan></text>
+              </g>
+            );
+          })}
+          {nowH >= open && nowH <= close && (
+            <g>
+              <line className="now-line" x1={x(nowH)} x2={x(nowH)} y1={0} y2={axisY} />
+              <text className="now-text" x={x(nowH) + 4} y={11}>now</text>
+            </g>
+          )}
+        </svg>
+      )}
     </div>
   );
 }
@@ -240,8 +278,9 @@ export default function Dashboard() {
   const [memberYear,  setMemberYear]  = useState(years[0]);
   const [attendanceScope, setAttendanceScope] = useState<'weekly' | 'monthly'>('weekly');
 
-  const [firstName, setFirstName] = useState<string | null>(null);
-  const [hours, setHours] = useState<{ open: string | null; close: string | null }>({ open: null, close: null });
+  const [hours, setHours] = useState<{ open: string | null; close: string | null; openH: number | null; closeH: number | null }>({ open: null, close: null, openH: null, closeH: null });
+  /** Which tab of the lower box is showing. */
+  const [tab, setTab] = useState<'month' | 'revenue' | 'busy'>('month');
   const [needs, setNeeds] = useState<NeedsYou | null>(null);
   const [today, setToday] = useState<Today | null>(null);
   // A gym without classes (off by default since 0220) sees today's 1-on-1 sessions in that card.
@@ -260,8 +299,7 @@ export default function Dashboard() {
   const [trainersFailed, setTrainersFailed] = useState(false);
 
   useEffect(() => {
-    getMyProfile().then((p) => setFirstName(p?.first_name?.trim() || null)).catch(() => {});
-    getGymSettings().then((s) => setHours({ open: clock(s?.opening_time), close: clock(s?.closing_time) })).catch(() => {});
+    getGymSettings().then((s) => setHours({ open: clock(s?.opening_time), close: clock(s?.closing_time), openH: hourOf(s?.opening_time), closeH: hourOf(s?.closing_time) })).catch(() => {});
     loadNeedsYou().then(setNeeds).catch(() => {});
     loadToday().then(setToday).catch(() => {});
     loadMonthNumbers().then(setMonth).catch(() => {});
@@ -310,7 +348,7 @@ export default function Dashboard() {
   if (needs?.bookings && needs.bookings.count > 0) {
     const b = needs.bookings;
     tasks.push({ key: 'bookings', count: b.count, node: (
-      <TaskRow key="bookings" testId="bookings" icon={CalendarClock}
+      <TaskRow key="bookings" testId="bookings" waiting
         title={`${plural(b.count, 'booking')} to decide`}
         detail={b.oldestDays == null ? 'classes and 1-on-1 requests' : b.oldestDays === 0 ? 'oldest asked today' : `oldest waiting ${plural(b.oldestDays, 'day')}`}
         action="Review" onClick={() => navigate('/personal-training')} />) });
@@ -319,7 +357,7 @@ export default function Dashboard() {
     const s = needs.signups;
     const rest = s.count - s.names.length;
     tasks.push({ key: 'signups', count: s.count, node: (
-      <TaskRow key="signups" testId="signups" icon={UserPlus}
+      <TaskRow key="signups" testId="signups" waiting
         title={`${plural(s.count, 'sign-up')} waiting`}
         detail={`${s.names.join(', ')}${rest > 0 ? `, +${rest}` : ''}`}
         action="Approve" onClick={() => navigate('/members?pending=1')} />) });
@@ -327,7 +365,7 @@ export default function Dashboard() {
   if (needs?.payments && needs.payments.count > 0) {
     const p = needs.payments;
     tasks.push({ key: 'payments', count: p.count, node: (
-      <TaskRow key="payments" testId="payments" icon={ReceiptText}
+      <TaskRow key="payments" testId="payments" waiting
         title={`${plural(p.count, 'online payment')} to confirm`}
         detail={`${p.methods.join(', ') || 'Sent by members'} · ${peso(p.total)}`}
         action="Confirm" onClick={() => navigate('/payments')} />) });
@@ -336,7 +374,7 @@ export default function Dashboard() {
     const r = needs.requests;
     const what = r.freezes && r.cancels ? 'freeze / cancel' : r.freezes ? 'freeze' : 'cancel';
     tasks.push({ key: 'requests', count: r.count, node: (
-      <TaskRow key="requests" testId="requests" icon={PauseCircle}
+      <TaskRow key="requests" testId="requests"
         title={`${plural(r.count, `${what} request`)}`}
         detail="the refund quote is ready to check"
         action="Decide" onClick={() => navigate('/members')} />) });
@@ -345,7 +383,7 @@ export default function Dashboard() {
     const e = needs.expiring;
     const first = e[0];
     tasks.push({ key: 'expiring', count: e.length, node: (
-      <TaskRow key="expiring" testId="expiring" icon={Hourglass}
+      <TaskRow key="expiring" testId="expiring"
         title={`${plural(e.length, 'membership')} end${e.length === 1 ? 's' : ''} this week`}
         detail={`${first.fullName} in ${plural(first.daysLeft, 'day')}`}
         action="View" onClick={() => setPanel('expiring')} />) });
@@ -355,7 +393,7 @@ export default function Dashboard() {
     const d = needs.coachDues;
     const rest = d.count - d.names.length;
     tasks.push({ key: 'coachdues', count: d.count, node: (
-      <TaskRow key="coachdues" testId="coachdues" icon={Banknote}
+      <TaskRow key="coachdues" testId="coachdues"
         title={`${plural(d.count, 'coach', 'coaches')} behind on dues`}
         detail={`${d.names.join(', ')}${rest > 0 ? `, +${rest}` : ''}`}
         action="View" onClick={() => navigate('/trainers?view=pay')} />) });
@@ -364,7 +402,7 @@ export default function Dashboard() {
   if (needs?.chatReports && needs.chatReports.count > 0) {
     const c = needs.chatReports;
     tasks.push({ key: 'chatreports', count: c.count, node: (
-      <TaskRow key="chatreports" testId="chatreports" icon={Flag}
+      <TaskRow key="chatreports" testId="chatreports" waiting
         title={`${plural(c.count, 'chat message')} reported`}
         detail="members flagged them in the gym chat"
         action="Review" onClick={() => navigate('/gym-chat?reports=1')} />) });
@@ -372,300 +410,246 @@ export default function Dashboard() {
   const todo = tasks.reduce((s, t) => s + t.count, 0);
   const needsFailed = needs !== null && [needs.bookings, needs.signups, needs.payments, needs.requests, needs.expiring].some((x) => x === null);
 
-  const hour = Number(new Date().toLocaleString('en-PH', { hour: 'numeric', hour12: false, timeZone: 'Asia/Manila' }));
-  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   const dateLine = new Date().toLocaleDateString('en-PH', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Manila' });
 
   const classes = today?.classes ?? null;
   const sessionsToday = today?.sessions ?? null;
   const stillToCome = classes ? classes.filter((c) => !c.done).length : 0;
 
+  // What goes on the day line's lane: classes, or 1-on-1 sessions where the gym runs no classes.
+  const dayItems: DayItem[] = classesOn
+    ? (classes ?? []).map((c) => {
+      const full = c.capacity > 0 && c.booked >= c.capacity;
+      const seats = c.capacity > 0 ? (full && !c.done ? 'Full' : `${c.booked}/${c.capacity}`) : String(c.booked);
+      return { id: c.id, start: manilaHours(c.startsAt), minutes: c.minutes, label: c.name, sub: seats, done: c.done,
+        tip: `${timeOf(c.startsAt)} · ${c.name} · ${[c.coach ?? 'No coach yet', c.location].filter(Boolean).join(' · ')} · ${seats}${c.done ? ' · done' : ''}` };
+    })
+    : (sessionsToday ?? []).map((x) => ({ id: x.id, start: manilaHours(x.startsAt), minutes: x.minutes, label: x.member ?? 'A member',
+      sub: x.coach ? `with ${x.coach}` : '', done: x.done, tip: `${timeOf(x.startsAt)} · ${x.member ?? 'A member'}${x.coach ? ` with ${x.coach}` : ''}${x.done ? ' · done' : ''}` }));
+  // The range drawn: the gym's hours when set, widened to hold anything that happened outside them.
+  const activeHours = (today?.perHour ?? []).map((v, h) => (v > 0 ? h : null)).filter((h): h is number => h !== null);
+  const dayOpen = Math.floor(Math.min(hours.openH ?? 6, ...activeHours, ...dayItems.map((i) => i.start)));
+  const dayClose = Math.ceil(Math.max(hours.closeH ?? 22, ...activeHours.map((h) => h + 1), ...dayItems.map((i) => i.start + i.minutes / 60)));
+
   return (
-    <div className="h-full flex flex-col gap-3 overflow-hidden" data-dashboard="a1">
-      {/* ── HEADER ─────────────────────────────────────────────────────────── */}
-      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-        className="flex items-end justify-between gap-4 flex-shrink-0">
+    <div className="dv2" data-dashboard="v2">
+      <div className="dv2-head">
         <div className="min-w-0">
-          <h1 className="text-xl font-bold text-white truncate">{greeting}{firstName ? `, ${firstName}` : ''}</h1>
-          <p className="text-[12px] truncate" style={{ color: TEXT_2 }}>
-            {dateLine}
-            {hours.open && hours.close ? ` · open ${hours.open} – ${hours.close}` : ''}
-            {today?.checkIns != null ? ` · ${plural(today.checkIns, 'check-in')} so far` : ''}
-          </p>
+          <h1>Today</h1>
+          <p className="truncate">{dateLine}{hours.open && hours.close ? ` · open ${hours.open} to ${hours.close}` : ''}</p>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="dv2-actions">
           <PinGymChip />
-          <button onClick={() => navigate('/attendance')}
-            className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg font-semibold text-[12px] text-white"
-            style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>
-            <QrCode size={14} /> Check in
-          </button>
-          <button onClick={() => navigate('/payments?record=new')}
-            className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg font-semibold text-[12px]"
-            style={{ background: 'var(--amber-solid, #F59E0B)', color: 'var(--on-amber, #000000)' }}>
-            <Banknote size={14} /> Record payment
-          </button>
+          <button className="dv2-btn" onClick={() => navigate('/attendance')}><QrCode size={14} /> Check in</button>
+          <button className="dv2-btn go" onClick={() => navigate('/payments?record=new')}><Banknote size={14} /> Record payment</button>
         </div>
-      </motion.div>
+      </div>
 
-      {/* ── THE PAGE ────────────────────────────────────────────────────────
-          Three bands filling exactly the height left: today (tasks + now),
-          this month's figures (a fixed 96px — a number needs that whatever the
-          screen), then the longer view. `minmax(0, 1fr)`, never a bare `1fr`,
-          or one long name pushes a band past the viewport and the page scrolls. */}
-      <div className="flex-1 min-h-0 grid gap-3"
-        style={{ gridTemplateRows: 'minmax(0, 1.2fr) 96px minmax(0, 1fr)' }}>
-
-        {/* Band 1 — needs you, and today. */}
-        <div className="grid gap-3 min-h-0" style={{ gridTemplateColumns: 'minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1fr)', gridTemplateRows: 'auto minmax(0, 1fr)' }}>
-          <Card glow className="row-span-2" style={{ gridRow: '1 / 3' }}>
-            <CardHead title="Needs you" right={needs && (
-              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
-                style={todo > 0 ? { background: 'var(--color-secondary-light)', color: YELLOW } : { background: 'var(--color-primary-light)', color: VIOLET_300 }}>
-                {todo > 0 ? `${todo} to do` : 'All clear'}
-              </span>
-            )} />
-            <div className="flex-1 min-h-0 overflow-y-auto -mt-px" data-needs-you>
-              {needs === null ? (
-                <p className="text-[12px]" style={{ color: TEXT_MUTED }}>Loading…</p>
-              ) : tasks.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-center gap-2">
-                  <span className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'var(--color-primary-light)', color: VIOLET_300 }}><Check size={18} /></span>
-                  <p className="text-[13px] font-medium text-white">Nothing is waiting for you</p>
-                  <p className="text-[11px]" style={{ color: TEXT_2 }}>New bookings, sign-ups and payments will show here.</p>
-                </div>
-              ) : tasks.map((t) => t.node)}
-              {needsFailed && <p className="text-[11px] pt-2" style={{ color: TEXT_MUTED }}>Part of this list couldn&apos;t load — open the pages in the sidebar to be sure.</p>}
-            </div>
-          </Card>
-
-          <Card onClick={() => navigate('/attendance')} tip="Everyone checked in today, at the desk, kiosk or by QR">
-            <CardHead title="Checked in today" right={<ChevronRight size={14} style={{ color: TEXT_MUTED }} />} />
-            <p className="text-2xl font-bold text-white tabular-nums">{today ? (today.checkIns ?? '—') : '…'}</p>
-            <p className="text-[11px] mt-0.5 truncate" style={{ color: TEXT_2 }}>
-              {today?.walkIns != null ? `+ ${plural(today.walkIns, 'walk-in')}` : today ? 'members and coaches' : ''}
-            </p>
-          </Card>
-
-          <Card onClick={() => navigate('/payments')} tip="Cash payments recorded today, from the same figure as End of day">
-            <CardHead title="Cash today" right={<ChevronRight size={14} style={{ color: TEXT_MUTED }} />} />
-            <p className="text-2xl font-bold text-white tabular-nums">{today ? (today.cash ? peso(today.cash.cashIn) : '—') : '…'}</p>
-            <p className="text-[11px] mt-0.5 truncate" style={{ color: TEXT_2 }}>
-              {today?.cash ? `${plural(today.cash.payments, 'payment')} · ${today.cash.closed ? 'drawer closed' : 'drawer open'}` : ''}
-            </p>
-          </Card>
-
-          <Card style={{ gridColumn: '2 / 4' }}>
-            {classesOn ? (<>
-            <CardHead title="Today's classes" right={
-              <span className="flex items-center gap-3">
-                {classes && classes.length > 0 && <span className="text-[11px]" style={{ color: TEXT_2 }}>{stillToCome} of {classes.length} still to come</span>}
-                <button onClick={() => setPanel('trainers')} className="text-[11px] font-semibold inline-flex items-center gap-1" style={{ color: YELLOW }}
-                  data-tip="Coaches ranked by sessions run in the last 90 days, then by rating">
-                  <Award size={12} /> Coach ranking
-                </button>
-              </span>
-            } />
-            <div className="flex-1 min-h-0 overflow-y-auto" data-today-classes>
-              {today === null ? (
-                <p className="text-[12px]" style={{ color: TEXT_MUTED }}>Loading…</p>
-              ) : classes === null ? (
-                <Failed what="today's classes" />
-              ) : classes.length === 0 ? (
-                <p className="text-[12px]" style={{ color: TEXT_2 }}>No classes today. <button className="font-semibold" style={{ color: YELLOW }} onClick={() => navigate('/schedule')}>Open the schedule</button></p>
-              ) : classes.map((c) => {
-                const full = c.capacity > 0 && c.booked >= c.capacity;
-                return (
-                  <div key={c.id} className="flex items-center gap-3 py-2 min-w-0" style={{ borderTop: `1px solid ${BORDER}` }}>
-                    <span className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ background: 'var(--color-surface-raised)', color: c.done ? TEXT_MUTED : VIOLET_300 }}>
-                      {c.done ? <Check size={14} /> : <Dumbbell size={14} />}
-                    </span>
-                    <span className="flex-1 min-w-0">
-                      <span className="block text-[13px] font-medium truncate" style={{ color: c.done ? TEXT_MUTED : '#fff' }}>
-                        {timeOf(c.startsAt)} · {c.name}
-                      </span>
-                      <span className="block text-[11px] truncate" style={{ color: TEXT_2 }}>
-                        {[c.coach, c.location, c.done ? 'done' : null].filter(Boolean).join(' · ') || 'No coach yet'}
-                      </span>
-                    </span>
-                    {!c.done && c.capacity > 0 && (
-                      <span className="w-28 h-1.5 rounded-full overflow-hidden flex-shrink-0" style={{ background: 'var(--color-surface-high)' }}>
-                        <span className="block h-full rounded-full" style={{ width: `${Math.min(100, (c.booked / c.capacity) * 100)}%`, background: VIOLET }} />
-                      </span>
-                    )}
-                    <span className="w-12 text-right text-[11px] font-semibold tabular-nums flex-shrink-0" style={{ color: full ? YELLOW : TEXT_2 }}>
-                      {c.capacity > 0 ? (full && !c.done ? 'Full' : `${c.booked}/${c.capacity}`) : c.booked}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-            </>) : (<>
-            <CardHead title="Today's sessions" right={
-              <span className="flex items-center gap-3">
-                {sessionsToday && sessionsToday.length > 0 && <span className="text-[11px]" style={{ color: TEXT_2 }}>{sessionsToday.filter((x) => !x.done).length} of {sessionsToday.length} still to come</span>}
-                <button onClick={() => setPanel('trainers')} className="text-[11px] font-semibold inline-flex items-center gap-1" style={{ color: YELLOW }}
-                  data-tip="Coaches ranked by sessions run in the last 90 days, then by rating">
-                  <Award size={12} /> Coach ranking
-                </button>
-              </span>
-            } />
-            <div className="flex-1 min-h-0 overflow-y-auto" data-today-sessions>
-              {today === null ? (
-                <p className="text-[12px]" style={{ color: TEXT_MUTED }}>Loading…</p>
-              ) : sessionsToday === null ? (
-                <Failed what="today's sessions" />
-              ) : sessionsToday.length === 0 ? (
-                <p className="text-[12px]" style={{ color: TEXT_2 }}>No 1-on-1 sessions today. <button className="font-semibold" style={{ color: YELLOW }} onClick={() => navigate('/personal-training?tab=sessions')}>Open Personal training</button></p>
-              ) : sessionsToday.map((x) => (
-                <div key={x.id} className="flex items-center gap-3 py-2 min-w-0" style={{ borderTop: `1px solid ${BORDER}` }}>
-                  <span className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ background: 'var(--color-surface-raised)', color: x.done ? TEXT_MUTED : VIOLET_300 }}>
-                    {x.done ? <Check size={14} /> : <Dumbbell size={14} />}
-                  </span>
-                  <span className="flex-1 min-w-0">
-                    <span className="block text-[13px] font-medium truncate" style={{ color: x.done ? TEXT_MUTED : '#fff' }}>
-                      {timeOf(x.startsAt)} · {x.member ?? 'A member'}
-                    </span>
-                    <span className="block text-[11px] truncate" style={{ color: TEXT_2 }}>
-                      {[x.coach ? `with ${x.coach}` : null, x.done ? 'done' : null].filter(Boolean).join(' · ') || 'Single session'}
-                    </span>
-                  </span>
-                </div>
-              ))}
-            </div>
-            </>)}
-          </Card>
-        </div>
-
-        {/* Band 2 — this month, against the same days last month. */}
-        <div className="grid gap-3 min-h-0" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }} data-month-numbers>
-          <Card onClick={() => navigate('/revenue')} tip={`Completed payments from the 1st to today, compared with the same days of ${month?.previousLabel ?? 'last month'}`}>
-            <p className="text-[12px] font-medium truncate" style={{ color: TEXT_2 }}>Revenue · {month?.monthLabel ?? 'this month'}</p>
-            <p className="text-2xl font-bold text-white tabular-nums truncate">{month ? (month.revenue ? peso(month.revenue.value) : '—') : '…'}</p>
-            {month?.revenue && <Delta d={deltaText(month.revenue, 'pct', month.previousLabel)} />}
-          </Card>
-          <Card onClick={() => navigate('/members')} tip="Memberships active right now">
-            <p className="text-[12px] font-medium truncate" style={{ color: TEXT_2 }}>Active members</p>
-            <p className="text-2xl font-bold text-white tabular-nums">{month ? (month.activeMembers ? month.activeMembers.value : '—') : '…'}</p>
-            {month?.activeMembers && (
-              <p className="text-[11px] font-semibold mt-1 truncate" style={{ color: month.activeMembers.joinedThisMonth > 0 ? VIOLET_300 : TEXT_MUTED }}>
-                {month.activeMembers.joinedThisMonth > 0 ? `▲ ${month.activeMembers.joinedThisMonth} joined this month` : 'No one new this month yet'}
-              </p>
-            )}
-          </Card>
-          <Card onClick={() => setPanel('attendance')} tip="Check-ins in the last 30 days, compared with the 30 before">
-            <p className="text-[12px] font-medium truncate" style={{ color: TEXT_2 }}>Visits · last 30 days</p>
-            <p className="text-2xl font-bold text-white tabular-nums">{month ? (month.visits30 ? month.visits30.value : '—') : '…'}</p>
-            {month?.visits30 && <Delta d={deltaText(month.visits30, 'pct', 'the 30 before')} />}
-          </Card>
-          <Card onClick={() => setPanel('members')} tip={`New members from the 1st to today, compared with the same days of ${month?.previousLabel ?? 'last month'}`}>
-            <p className="text-[12px] font-medium truncate" style={{ color: TEXT_2 }}>New members · {month?.monthLabel ?? 'this month'}</p>
-            <p className="text-2xl font-bold text-white tabular-nums">{month ? (month.newMembers ? month.newMembers.value : '—') : '…'}</p>
-            {month?.newMembers && <Delta d={deltaText(month.newMembers, 'count', month.previousLabel)} />}
-          </Card>
-        </div>
-
-        {/* Band 3 — the longer view. */}
-        <div className="grid gap-3 min-h-0" style={{ gridTemplateColumns: 'minmax(0, 1.35fr) minmax(0, 1fr) minmax(0, 1fr)' }}>
-          <Card>
-            <div className="flex items-start justify-between gap-2 mb-2 flex-shrink-0">
-              <div className="min-w-0">
-                <h3 className="text-[13px] font-semibold text-white">Revenue by month</h3>
-                <p className="text-[11px] mt-0.5" style={{ color: TEXT_MUTED }}>{peso(yearRevenue)} across {revenueYear}</p>
-              </div>
-              <div className="flex items-center gap-1.5 flex-shrink-0">
-                <div className="flex p-0.5 rounded-lg" style={{ background: 'var(--color-surface-high)' }}>
-                  {(['bars', 'trend'] as const).map((m) => (
-                    <button key={m} onClick={() => setChartMode(m)}
-                      data-tip={m === 'bars' ? 'Each month as a bar' : 'The same months as a line'}
-                      className="px-2 h-6 rounded-md text-[10px] font-semibold capitalize"
-                      style={{ background: chartMode === m ? VIOLET : 'transparent', color: chartMode === m ? '#fff' : TEXT_2 }}>
-                      {m}
-                    </button>
-                  ))}
-                </div>
-                <FilterSelect value={revenueYear} options={years} onChange={setRevenueYear} />
-              </div>
-            </div>
-            <div className="flex-1 min-h-0">
-              <ResponsiveContainer width="100%" height="100%">
-                {chartMode === 'bars' ? (
-                  <BarChart data={revenueData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={BORDER as string} vertical={false} />
-                    <XAxis dataKey="month" stroke={TEXT_MUTED as string} tick={{ fill: '#9CA3AF', fontSize: 10 }} axisLine={false} tickLine={false} />
-                    <YAxis stroke={TEXT_MUTED as string} tick={{ fill: '#9CA3AF', fontSize: 10 }} axisLine={false} tickLine={false} width={48}
-                      tickFormatter={(v: number) => (v >= 1000 ? `₱${Math.round(v / 1000)}k` : `₱${v}`)} />
-                    <Tooltip formatter={(v) => peso(Number(v) || 0)}
-                      contentStyle={{ backgroundColor: '#1E1B30', border: `1px solid ${BORDER}`, borderRadius: 12, color: '#fff', fontSize: 12 }}
-                      cursor={{ fill: 'rgba(124,58,237,0.08)' }} />
-                    <Bar dataKey="revenue" fill={VIOLET} radius={[8, 8, 0, 0]} maxBarSize={38} />
-                  </BarChart>
-                ) : (
-                  <LineChart data={revenueData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={BORDER as string} vertical={false} />
-                    <XAxis dataKey="month" stroke={TEXT_MUTED as string} tick={{ fill: '#9CA3AF', fontSize: 10 }} axisLine={false} tickLine={false} />
-                    <YAxis stroke={TEXT_MUTED as string} tick={{ fill: '#9CA3AF', fontSize: 10 }} axisLine={false} tickLine={false} width={48}
-                      tickFormatter={(v: number) => (v >= 1000 ? `₱${Math.round(v / 1000)}k` : `₱${v}`)} />
-                    <Tooltip formatter={(v) => peso(Number(v) || 0)} contentStyle={{ backgroundColor: '#1E1B30', border: `1px solid ${BORDER}`, borderRadius: 12, color: '#fff', fontSize: 12 }} />
-                    <Line type="monotone" dataKey="revenue" stroke={VIOLET_300} strokeWidth={2.5} dot={{ fill: VIOLET_300, r: 3 }} activeDot={{ r: 6 }} />
-                  </LineChart>
-                )}
-              </ResponsiveContainer>
-            </div>
-          </Card>
-
-          <Card onClick={() => setPanel('heatmap')} tip="Check-ins by day and time over the last 30 days — open for the numbers">
-            <CardHead title="Busy hours" right={<span className="text-[11px]" style={{ color: TEXT_MUTED }}>last 30 days</span>} />
-            <div className="flex-1 min-h-0">
-              {heatmapState === 'loading' ? (
-                <p className="text-[11px]" style={{ color: TEXT_MUTED }}>Loading…</p>
-              ) : heatmapState === 'failed' ? (
-                <Failed what="check-ins" />
-              ) : heatmap.length === 0 ? (
-                <p className="text-[11px]" style={{ color: TEXT_MUTED }}>No check-ins in the last 30 days.</p>
-              ) : <HeatmapGrid cells={heatmap} compact />}
-            </div>
-            {heatmapState === 'ready' && busiestCell && busiestCell.visits > 0 && (
-              <p className="text-[11px] mt-2 flex-shrink-0 truncate" style={{ color: TEXT_2 }}>
-                Busiest: {busiestCell.day} around {busiestCell.hour} · lighter is quieter
-              </p>
-            )}
-          </Card>
-
-          <Card>
-            <CardHead title="Members to watch" right={Array.isArray(watch) && watch.length > 0 && (
-              <button onClick={() => navigate('/retention')} className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
-                style={{ background: 'var(--color-primary-light)', color: VIOLET_300 }} data-tip="Everyone at risk, and the win-back messages">
-                {watch.length} ›
+      <div className="dv2-grid">
+        <div className="dv2-left">
+          {/* The day so far: the hero number, then the day from opening to closing. */}
+          <section className="dv2-box" aria-label="The day so far">
+            <header>
+              <h2>The day so far</h2>
+              <span className="dv2-aside">bars are check-ins per hour</span>
+            </header>
+            <div className="dv2-figs">
+              <button className="dv2-fig as-btn" onClick={() => navigate('/attendance')} data-tip="Everyone checked in today, at the desk, kiosk or by QR">
+                <div className="l">Checked in today</div>
+                <div className="n hero">{today ? (today.checkIns ?? '—') : '…'}</div>
               </button>
-            )} />
-            <div className="flex-1 min-h-0 overflow-y-auto" data-members-to-watch>
-              {watch === 'loading' ? (
-                <p className="text-[12px]" style={{ color: TEXT_MUTED }}>Loading…</p>
-              ) : watch === null ? (
-                <Failed what="who might leave" />
-              ) : watch === undefined ? (
-                <p className="text-[12px]" style={{ color: TEXT_2 }}>Risk scores appear once the retention update is live.</p>
-              ) : watch.length === 0 ? (
-                <p className="text-[12px]" style={{ color: TEXT_2 }}>No one looks likely to leave right now.</p>
-              ) : watch.slice(0, 4).map((m) => (
-                <button key={m.memberId} onClick={() => navigate(`/members?open=${m.memberId}`)}
-                  className="w-full flex items-center gap-2.5 py-2 text-left min-w-0" style={{ borderTop: `1px solid ${BORDER}` }}>
-                  <span className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0"
-                    style={m.level === 'high' ? { background: 'var(--color-secondary-light)', color: YELLOW } : { background: 'var(--color-surface-raised)', color: VIOLET_300 }}>
-                    {m.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
-                  </span>
-                  <span className="flex-1 min-w-0">
-                    <span className="block text-[13px] font-medium text-white truncate">{m.name}</span>
-                    <span className="block text-[11px] truncate" style={{ color: TEXT_2 }}>{m.reasons[0] ?? 'needs a check-in'}</span>
-                  </span>
-                </button>
-              ))}
+              <div className="dv2-fig">
+                <div className="l">Walk-ins</div>
+                <div className="n">{today ? (today.walkIns ?? '—') : '…'}</div>
+                <div className="d">guests, apart from members</div>
+              </div>
+              <button className="dv2-fig as-btn" onClick={() => navigate('/payments')} data-tip="Cash payments recorded today, from the same figure as End of day">
+                <div className="l">Cash today</div>
+                <div className="n">{today ? (today.cash ? peso(today.cash.cashIn) : '—') : '…'}</div>
+                <div className="d">{today?.cash ? `${plural(today.cash.payments, 'payment')} · ${today.cash.closed ? 'drawer closed' : 'drawer open'}` : ''}</div>
+              </button>
+              {classesOn ? (
+                <div className="dv2-fig">
+                  <div className="l">Classes</div>
+                  <div className="n">{classes === null ? '—' : classes.length === 0 ? 'None' : `${stillToCome} of ${classes.length}`}</div>
+                  <div className="d">{classes && classes.length > 0 ? 'still to come' : <button className="dv2-link" onClick={() => navigate('/schedule')}>Open the schedule</button>}</div>
+                </div>
+              ) : (
+                <div className="dv2-fig">
+                  <div className="l">1-on-1 sessions</div>
+                  <div className="n">{sessionsToday === null ? '—' : sessionsToday.length === 0 ? 'None' : `${sessionsToday.filter((x) => !x.done).length} of ${sessionsToday.length}`}</div>
+                  <div className="d">{sessionsToday && sessionsToday.length > 0 ? 'still to come' : <button className="dv2-link" onClick={() => navigate('/personal-training?tab=sessions')}>Open Personal training</button>}</div>
+                </div>
+              )}
             </div>
-          </Card>
+            <div className="flex-1 min-h-0 flex flex-col" data-today-classes={classesOn ? '' : undefined} data-today-sessions={classesOn ? undefined : ''}>
+              {today === null ? (
+                <p className="dv2-note">Loading…</p>
+              ) : today.perHour === null ? (
+                <Failed what="today's check-ins" />
+              ) : (classesOn ? classes : sessionsToday) === null ? (
+                <Failed what={classesOn ? "today's classes" : "today's sessions"} />
+              ) : (
+                <div className="dv2-dayempty">
+                  <DayLine perHour={today.perHour} items={dayItems} open={dayOpen} close={dayClose} />
+                  {today.perHour.every((v) => v === 0) && dayItems.length === 0 && (
+                    <p>No check-ins yet today. They show here hour by hour.</p>
+                  )}
+                </div>
+              )}
+              {/* The lane's words, for screen readers and the checks (the drawing is an image). */}
+              <ul className="sr-only">
+                {dayItems.map((i) => <li key={i.id}>{i.tip}</li>)}
+              </ul>
+            </div>
+          </section>
+
+          <div className="dv2-low">
+            {/* This month, Revenue by month and Busy hours: one box with tabs instead of three. */}
+            <section className="dv2-box">
+              <div className="dv2-tabs" role="tablist">
+                <button role="tab" aria-selected={tab === 'month'} onClick={() => setTab('month')}>This month</button>
+                <button role="tab" aria-selected={tab === 'revenue'} onClick={() => setTab('revenue')}>Revenue by month</button>
+                <button role="tab" aria-selected={tab === 'busy'} onClick={() => setTab('busy')}>Busy hours</button>
+                {tab === 'revenue' && (
+                  <span className="dv2-aside">
+                    <span className="dv2-seg">
+                      {(['bars', 'trend'] as const).map((m) => (
+                        <button key={m} aria-pressed={chartMode === m} onClick={() => setChartMode(m)}
+                          data-tip={m === 'bars' ? 'Each month as a bar' : 'The same months as a line'}>{m === 'bars' ? 'Bars' : 'Line'}</button>
+                      ))}
+                    </span>
+                    <FilterSelect value={revenueYear} options={years} onChange={setRevenueYear} />
+                  </span>
+                )}
+                {tab === 'busy' && <span className="dv2-aside">last 30 days</span>}
+              </div>
+
+              {tab === 'month' && (
+                <div className="dv2-mfig" data-month-numbers>
+                  <button className="dv2-fig as-btn" onClick={() => navigate('/revenue')}
+                    data-tip={`Completed payments from the 1st to today, compared with the same days of ${month?.previousLabel ?? 'last month'}`}>
+                    <div className="l">Revenue, {month?.monthLabel ?? 'this month'} so far</div>
+                    <div className="n">{month ? (month.revenue ? peso(month.revenue.value) : '—') : '…'}</div>
+                    <div className="d">{month?.revenue ? deltaWords(month.revenue, 'pct', `the same days of ${month.previousLabel}`) : ''}</div>
+                  </button>
+                  <button className="dv2-fig as-btn" onClick={() => navigate('/members')} data-tip="Memberships active right now">
+                    <div className="l">Active members</div>
+                    <div className="n">{month ? (month.activeMembers ? month.activeMembers.value : '—') : '…'}</div>
+                    <div className="d">{month?.activeMembers ? (month.activeMembers.joinedThisMonth > 0 ? `${month.activeMembers.joinedThisMonth} joined in ${month.monthLabel}` : `no one new in ${month.monthLabel} yet`) : ''}</div>
+                  </button>
+                  <button className="dv2-fig as-btn" onClick={() => setPanel('attendance')} data-tip="Check-ins in the last 30 days, compared with the 30 before">
+                    <div className="l">Visits, last 30 days</div>
+                    <div className="n">{month ? (month.visits30 ? month.visits30.value : '—') : '…'}</div>
+                    <div className="d">{month?.visits30 ? deltaWords(month.visits30, 'pct', 'the 30 days before') : ''}</div>
+                  </button>
+                  <button className="dv2-fig as-btn" onClick={() => setPanel('members')}
+                    data-tip={`New members from the 1st to today, compared with the same days of ${month?.previousLabel ?? 'last month'}`}>
+                    <div className="l">New members, {month?.monthLabel ?? 'this month'} so far</div>
+                    <div className="n">{month ? (month.newMembers ? month.newMembers.value : '—') : '…'}</div>
+                    <div className="d">{month?.newMembers ? deltaWords(month.newMembers, 'count', `the same days of ${month.previousLabel}`) : ''}</div>
+                  </button>
+                </div>
+              )}
+
+              {tab === 'revenue' && (
+                <div className="flex-1 min-h-0 flex flex-col" data-revenue-chart>
+                  <div className="dv2-chart">
+                    <ResponsiveContainer width="100%" height="100%">
+                      {chartMode === 'bars' ? (
+                        <BarChart data={revenueData}>
+                          <CartesianGrid stroke={BORDER as string} vertical={false} />
+                          <XAxis dataKey="month" tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                          <YAxis tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} width={52}
+                            tickFormatter={(v: number) => (v >= 1000 ? `₱${Math.round(v / 1000)}k` : `₱${v}`)} />
+                          <Tooltip formatter={(v) => peso(Number(v) || 0)} contentStyle={TIP_STYLE} cursor={{ fill: 'rgb(var(--hair-rgb, 255 255 255) / 0.05)' }} />
+                          <Bar dataKey="revenue" fill={VIOLET} radius={[3, 3, 0, 0]} maxBarSize={32} />
+                        </BarChart>
+                      ) : (
+                        <LineChart data={revenueData}>
+                          <CartesianGrid stroke={BORDER as string} vertical={false} />
+                          <XAxis dataKey="month" tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                          <YAxis tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} width={52}
+                            tickFormatter={(v: number) => (v >= 1000 ? `₱${Math.round(v / 1000)}k` : `₱${v}`)} />
+                          <Tooltip formatter={(v) => peso(Number(v) || 0)} contentStyle={TIP_STYLE} />
+                          <Line type="monotone" dataKey="revenue" stroke={VIOLET} strokeWidth={2} dot={{ fill: VIOLET, r: 3 }} activeDot={{ r: 5 }} />
+                        </LineChart>
+                      )}
+                    </ResponsiveContainer>
+                  </div>
+                  <p className="dv2-note" style={{ paddingTop: 8, paddingBottom: 12 }}>{peso(yearRevenue)} across {revenueYear}</p>
+                </div>
+              )}
+
+              {tab === 'busy' && (
+                <button className="dv2-heat text-left" onClick={() => setPanel('heatmap')} data-tip="Check-ins by day and time over the last 30 days. Open for the numbers">
+                  <div className="flex-1 min-h-0 w-full">
+                    {heatmapState === 'loading' ? (
+                      <p className="text-[12px]" style={{ color: TEXT_MUTED }}>Loading…</p>
+                    ) : heatmapState === 'failed' ? (
+                      <Failed what="check-ins" />
+                    ) : heatmap.length === 0 ? (
+                      <p className="text-[12px]" style={{ color: TEXT_MUTED }}>No check-ins in the last 30 days.</p>
+                    ) : <HeatmapGrid cells={heatmap} compact />}
+                  </div>
+                  {heatmapState === 'ready' && busiestCell && busiestCell.visits > 0 && (
+                    <p className="text-[12px] flex-shrink-0 truncate" style={{ color: TEXT_2 }}>
+                      Busiest: {busiestCell.day} around {busiestCell.hour} · lighter is quieter
+                    </p>
+                  )}
+                </button>
+              )}
+            </section>
+
+            <section className="dv2-box">
+              <header>
+                <h2>Members to watch{Array.isArray(watch) && watch.length > 0 && <span className="dv2-count">{watch.length}</span>}</h2>
+                {Array.isArray(watch) && watch.length > 0 && (
+                  <span className="dv2-aside"><button className="dv2-link" onClick={() => navigate('/retention')} data-tip="Everyone at risk, and the win-back messages">All</button></span>
+                )}
+              </header>
+              <div className="dv2-scroll" data-members-to-watch>
+                {watch === 'loading' ? (
+                  <p className="dv2-note">Loading…</p>
+                ) : watch === null ? (
+                  <Failed what="who might leave" />
+                ) : watch === undefined ? (
+                  <p className="dv2-note">Risk scores appear once the retention update is live.</p>
+                ) : watch.length === 0 ? (
+                  <div className="dv2-empty"><b>No one looks likely to leave</b><span>Members who stop coming will show here.</span></div>
+                ) : watch.slice(0, 6).map((m) => (
+                  <button key={m.memberId} onClick={() => navigate(`/members?open=${m.memberId}`)} className="dv2-row">
+                    <span className="dv2-av">{m.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}</span>
+                    <span className="t"><b>{m.name}</b><span>{m.reasons[0] ?? 'needs a check-in'}</span></span>
+                    <span className="dv2-state"><span className={`dv2-dot${m.level === 'high' ? ' warn' : ''}`} />{m.level === 'high' ? 'High' : 'Medium'}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          </div>
         </div>
+
+        {/* Needs you: the queue, one action each. */}
+        <section className="dv2-box" aria-label="Needs you">
+          <header>
+            <h2>Needs you{needs && todo > 0 && <span className="dv2-count">{todo} to do</span>}</h2>
+            {needs && todo === 0 && <span className="dv2-aside">all clear</span>}
+          </header>
+          <div className="dv2-scroll" data-needs-you>
+            {needs === null ? (
+              <p className="dv2-note">Loading…</p>
+            ) : tasks.length === 0 ? (
+              <div className="dv2-empty"><b>Nothing is waiting for you</b><span>New bookings, sign-ups and payments will show here.</span></div>
+            ) : tasks.map((t) => t.node)}
+            {needsFailed && <p className="dv2-note">Part of this list couldn&apos;t load. Open the pages in the sidebar to be sure.</p>}
+          </div>
+          <button className="dv2-row" style={{ borderTop: '1px solid var(--color-border)', borderBottom: 0 }} onClick={() => setPanel('trainers')}
+            data-tip="Coaches ranked by sessions run in the last 90 days, then by rating">
+            <Award size={14} style={{ color: TEXT_MUTED }} />
+            <span className="t"><b>Coach ranking</b><span>who ran the most sessions in 90 days</span></span>
+            <ChevronRight size={14} style={{ color: TEXT_MUTED }} />
+          </button>
+        </section>
       </div>
 
       <DetailSheet
@@ -683,9 +667,9 @@ export default function Dashboard() {
             <ResponsiveContainer width="100%" height={280}>
               <LineChart data={memberData}>
                 <CartesianGrid strokeDasharray="3 3" stroke={BORDER as string} vertical={false} />
-                <XAxis dataKey="month" stroke={TEXT_MUTED as string} tick={{ fill: '#9CA3AF', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis allowDecimals={false} stroke={TEXT_MUTED as string} tick={{ fill: '#9CA3AF', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ backgroundColor: '#1E1B30', border: `1px solid ${BORDER}`, borderRadius: 12, color: '#fff', fontSize: 12 }} />
+                <XAxis dataKey="month" stroke={TEXT_MUTED as string} tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis allowDecimals={false} stroke={TEXT_MUTED as string} tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={TIP_STYLE} />
                 <Line type="monotone" dataKey="newMembers" name="New members" stroke={VIOLET_300} strokeWidth={2.5} dot={{ fill: VIOLET_300, r: 4 }} activeDot={{ r: 6 }} />
               </LineChart>
             </ResponsiveContainer>
@@ -709,11 +693,11 @@ export default function Dashboard() {
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={attendanceData}>
                 <CartesianGrid strokeDasharray="3 3" stroke={BORDER as string} vertical={false} />
-                <XAxis dataKey="day" stroke={TEXT_MUTED as string} tick={{ fill: '#9CA3AF', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis allowDecimals={false} stroke={TEXT_MUTED as string} tick={{ fill: '#9CA3AF', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ backgroundColor: '#1E1B30', border: `1px solid ${BORDER}`, borderRadius: 12, color: '#fff', fontSize: 12 }}
-                  cursor={{ fill: 'rgba(124,58,237,0.08)' }} />
-                <Bar dataKey="count" name="Check-ins" fill={VIOLET} radius={[8, 8, 0, 0]} maxBarSize={42} />
+                <XAxis dataKey="day" stroke={TEXT_MUTED as string} tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis allowDecimals={false} stroke={TEXT_MUTED as string} tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={TIP_STYLE}
+                  cursor={{ fill: 'rgb(var(--hair-rgb, 255 255 255) / 0.05)' }} />
+                <Bar dataKey="count" name="Check-ins" fill={VIOLET} radius={[3, 3, 0, 0]} maxBarSize={36} />
               </BarChart>
             </ResponsiveContainer>
             <p className="text-[11px] mt-3" style={{ color: TEXT_2 }}>
@@ -739,8 +723,8 @@ export default function Dashboard() {
         {panel === 'trainers' && (
           <div className="space-y-1.5">
             <p className="text-[11px] mb-2" style={{ color: TEXT_MUTED }}>
-              Ranked by sessions run in the last 90 days — approved PT sessions and classes
-              taught, both already past — then by the gym&apos;s evaluation average.
+              Ranked by sessions run in the last 90 days (approved PT sessions and classes
+              taught, both already past), then by the gym&apos;s evaluation average.
             </p>
             {trainersFailed ? (
               <p className="text-[11px]" style={{ color: TEXT_MUTED }}>Couldn&apos;t load the ranking.</p>

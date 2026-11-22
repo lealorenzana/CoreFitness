@@ -127,7 +127,7 @@ async (page) => {
   await page.getByText('Tess Test').first().waitFor({ timeout: 15000 });
   out.push('a verified, expiring credential shows on the card: ' + (/1 verified · 1 expiring/.test(await text()) ? 'yes' : 'MISSING'));
   out.push('a certificate waiting for a decision says so on the card: ' + (/Needs review · 1/.test(await text()) ? 'yes' : 'MISSING'));
-  out.push('the sidebar has no separate Credentials page: ' + ((await page.locator('aside nav a[href="/credentials"]').count()) === 0 ? 'yes' : 'STILL SHOWN'));
+  out.push('the sidebar has no separate Credentials page: ' + ((await page.locator("aside a[href=\"/credentials\"], .cf-tabs a[href=\"/credentials\"]").count()) === 0 ? 'yes' : 'STILL SHOWN'));
   await page.getByText('Tess Test').first().click();
   await page.locator('[data-credential-review="trainer"] button', { hasText: /Verify/ }).first().waitFor({ timeout: 10000 }).catch(() => {});
   const drawer = await text();

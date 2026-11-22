@@ -262,6 +262,9 @@ async (page) => {
   const gymAction = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--color-secondary').trim().toLowerCase());
   say("a gym's own button colour shows in light (not the default amber)", gymAction === '#6d28d9', gymAction);
   await page.screenshot({ path: 'shots/admin-light-dashboard-settled.png' });
+  // Design V2: Light or dark lives in the account menu at the foot of the sidebar.
+  await page.locator('[data-account-menu]').first().click();
+  await page.waitForTimeout(200);
   await page.locator('[data-mode-toggle]').click();
   await page.waitForTimeout(400);
   say('the sun/moon flips to dark and saves it', (await page.evaluate(() => document.documentElement.dataset.mode)) === 'dark' && setCalls.some((c) => c.p_mode === 'dark'));

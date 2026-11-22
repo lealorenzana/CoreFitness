@@ -81,13 +81,15 @@ async (page) => {
   let t = await text();
   out.push("banner counts the platform's grace (10): " + (/goes read-only 9 days from now/.test(t) ? '9 days' : 'MISSING'));
   out.push('the owner\'s visit sweeps reminders: ' + (SWEEPS.n >= 1 ? 'yes' : 'MISSING'));
-  await page.getByRole('link', { name: 'Your plan' }).first().click();
+  // Design V2 (shell B): Your plan is a tab of the Gym section.
+  await page.locator('[data-rail="gym"]').click();
+  await page.locator('.cf-tabs').getByRole('link', { name: 'Your plan' }).click();
   await page.getByText('Payments to Core Fitness').waitFor({ timeout: 10000 });
   await page.waitForTimeout(400);
   t = await text();
   out.push('Your plan: ' + (/\/subscription$/.test(page.url()) && /2 days overdue/.test(t) && /Read-only from/.test(t) && /10 days after the due date/.test(t) ? 'dates and grace shown' : 'MISSING ' + page.url()));
   out.push('how full the plan is: ' + (/38 of 100/.test(t) && /2 of 3/.test(t) ? 'shown' : 'MISSING'));
-  out.push('Your plan in the sidebar: ' + ((await page.locator('aside').getByText('Your plan').count()) === 1 ? 'yes' : 'MISSING'));
+  out.push('Your plan in the menu: ' + ((await page.locator('.cf-tabs').getByText('Your plan').count()) === 1 ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/admin-subscription.png' });
   await page.getByRole('button', { name: 'Receipt' }).click();
   await page.getByRole('document', { name: 'Receipt CF-2026-00012' }).waitFor({ timeout: 5000 });

@@ -112,6 +112,8 @@ export async function loadNeedsYou(): Promise<NeedsYou> {
 export interface TodayClass {
   id: string; name: string; startsAt: string; coach: string | null; location: string | null;
   capacity: number; booked: number; done: boolean;
+  /** How long it runs, for the dashboard's day line (Design V2). */
+  minutes: number;
 }
 
 export interface Today {
@@ -121,9 +123,14 @@ export interface Today {
   classes: TodayClass[] | null;
   /** Today's confirmed 1-on-1 sessions (simplify, 2026-10-28) — the card when the gym runs no classes. */
   sessions: TodaySession[] | null;
+  /** Check-ins in each Manila hour today (24 slots), for the day line. Null if it could not load. */
+  perHour: number[] | null;
 }
 
-export interface TodaySession { id: string; startsAt: string; member: string | null; coach: string | null; done: boolean }
+export interface TodaySession { id: string; startsAt: string; member: string | null; coach: string | null; done: boolean; minutes: number }
+
+/** The hour of the day in Manila (UTC+8), whatever the computer's own zone. */
+const manilaHour = (iso: string) => new Date(new Date(iso).getTime() + 8 * 3600000).getUTCHours();
 
 export async function loadToday(): Promise<Today> {
   const day = todayKey();
@@ -162,7 +169,7 @@ export async function loadToday(): Promise<Today> {
     return rows.map((r) => ({
       id: r.id, name: r.name, startsAt: r.scheduled_at,
       coach: r.trainer_id ? names.get(r.trainer_id) ?? null : null,
-      location: r.location, capacity: r.capacity ?? 0, booked: booked.get(r.id) ?? 0,
+      location: r.location, capacity: r.capacity ?? 0, booked: booked.get(r.id) ?? 0, minutes: r.duration_minutes ?? 60,
       done: new Date(r.scheduled_at).getTime() + (r.duration_minutes ?? 60) * 60000 < now,
     }));
   })().catch(() => null);
@@ -180,13 +187,23 @@ export async function loadToday(): Promise<Today> {
       .map((p) => [p.id, `${p.first_name} ${p.last_name}`.trim()]));
     const now = Date.now();
     return rows.map((r) => ({
-      id: r.id, startsAt: r.starts_at, member: names.get(r.member_id) ?? null, coach: names.get(r.trainer_id) ?? null,
+      id: r.id, startsAt: r.starts_at, member: names.get(r.member_id) ?? null, coach: names.get(r.trainer_id) ?? null, minutes: r.duration_minutes ?? 60,
       done: new Date(r.starts_at).getTime() + (r.duration_minutes ?? 60) * 60000 < now,
     }));
   })().catch(() => null);
 
-  const [c, w, k, cl, se] = await Promise.all([checkIns, walkIns, cash, classes, sessions]);
-  return { checkIns: c, walkIns: w, cash: k, classes: cl, sessions: se };
+  // The times only (one column), bucketed by Manila hour. A day's check-ins are hundreds at most.
+  const perHour = supabase.from('attendance').select('check_in_time')
+    .gte('check_in_time', from).lt('check_in_time', to).limit(5000)
+    .then((r) => {
+      if (r.error) return null;
+      const slots = Array<number>(24).fill(0);
+      for (const row of (r.data ?? []) as { check_in_time: string }[]) slots[manilaHour(row.check_in_time)] += 1;
+      return slots;
+    }, () => null);
+
+  const [c, w, k, cl, se, ph] = await Promise.all([checkIns, walkIns, cash, classes, sessions, perHour]);
+  return { checkIns: c, walkIns: w, cash: k, classes: cl, sessions: se, perHour: ph };
 }
 
 // ── This month, against the last ───────────────────────────────────────────────

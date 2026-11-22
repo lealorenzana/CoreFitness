@@ -724,7 +724,7 @@ export default function Members() {
                 const daysLeft = daysUntilExpiry(m);
                 const lapsingSoon = m.membershipStatus === 'active' && daysLeft != null && daysLeft >= 0 && daysLeft <= EXPIRING_SOON_DAYS;
                 const frozenOnce = (m.membership?.freeze_count ?? 0) >= 1;
-                const pill = m.accountStatus === 'pending_approval' ? <span className="a-pill" style={{ background: '#13233d', color: '#93c5fd' }}>Awaiting approval</span>
+                const pill = m.accountStatus === 'pending_approval' ? <span className="a-pill" style={{ background: 'color-mix(in srgb, #3B82F6 14%, transparent)', color: '#93c5fd' }}>Awaiting approval</span>
                   : m.accountStatus === 'suspended' ? <span className="a-pill a">Suspended</span>
                   : !m.membershipStatus ? <span className="a-sub">No plan</span>
                   : lapsingSoon ? <span className="a-pill a">Expiring</span>

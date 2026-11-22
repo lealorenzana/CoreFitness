@@ -196,14 +196,11 @@ export default function GlobalSearch() {
     <button
       onClick={() => setOpen(true)}
       data-tip="Find a member, payment, class, page or setting — a letter is enough (Ctrl K)"
-      className="flex items-center gap-2 h-10 pl-3 pr-2 rounded-full transition-colors w-full max-w-md"
-      style={{ background: 'var(--color-surface-raised)', border: `1px solid ${BORDER}` }}
-      onMouseEnter={(e) => (e.currentTarget.style.borderColor = PRIMARY)}
-      onMouseLeave={(e) => (e.currentTarget.style.borderColor = BORDER)}
+      className="cf-top-search"
     >
       <Search size={15} style={{ color: TEXT_MUTED }} />
-      <span className="text-sm flex-1 text-left" style={{ color: TEXT_MUTED }}>Search anything…</span>
-      <kbd className="hidden md:inline-flex items-center h-6 px-1.5 rounded text-xs font-medium"
+      <span className="flex-1 text-left truncate" style={{ color: TEXT_MUTED }}>Search anything…</span>
+      <kbd className="hidden md:inline-flex items-center"
         style={{ background: 'var(--color-surface)', border: `1px solid ${BORDER}`, color: TEXT_MUTED }}>Ctrl K</kbd>
     </button>
   );

@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Dashboard B: the day line</title>
+<link rel="stylesheet" href="mock.css">
+<style>
+  .grid { flex: 1; min-height: 0; display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr) 360px; }
+  .left { display: grid; gap: 16px; min-height: 0; grid-template-rows: minmax(0, 1.15fr) minmax(0, 1fr); }
+  .low { display: grid; gap: 16px; min-height: 0; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+  .dayhead { display: flex; align-items: flex-start; gap: 32px; padding: 16px 16px 0; flex: none; }
+  .dayhead .fig { padding: 0; }
+  .dayhead .fig + .fig { border: 0; }
+  .day { flex: 1; min-height: 0; padding: 8px 16px 12px; display: flex; align-items: flex-end; overflow: hidden; }
+  .day svg { width: 100%; height: 100%; overflow: visible; }
+  .day text { font: 11px Inter, system-ui, sans-serif; fill: var(--text-3); }
+  .day .cls text { fill: var(--text); font-weight: 600; font-size: 11px; }
+  .day .cls .sub { fill: var(--text-2); font-weight: 400; }
+  .count { color: var(--text-3); font-weight: 500; }
+  .mfig { display: grid; grid-template-columns: 1fr 1fr; flex: 1; min-height: 0; }
+  .mfig .fig { border-bottom: 1px solid var(--line); }
+  .mfig .fig:nth-child(odd) { border-left: 0; }
+  .mfig .fig:nth-child(even) { border-left: 1px solid var(--line); }
+  .mfig .fig:nth-last-child(-n+2) { border-bottom: 0; }
+  .spark { height: 28px; margin-top: 8px; }
+  .spark path { fill: none; stroke: var(--primary-fg); stroke-width: 1.75; }
+</style></head>
+<body data-page="Dashboard">
+<div class="app"><aside class="side" id="side"></aside>
+<div class="main"><div class="top" id="top"></div>
+<div class="page">
+  <div class="head">
+    <div><h1>Today</h1><p>Sunday, 22 November</p></div>
+    <div class="actions"><button class="btn">Check in</button><button class="btn go">Record payment</button></div>
+  </div>
+
+  <div class="grid">
+    <div class="left">
+      <section class="box">
+        <header><h2>The day so far</h2><span class="aside">open 5:00 am to 10:00 pm · bars are check-ins per hour</span></header>
+        <div class="dayhead">
+          <div class="fig"><div class="l">Checked in</div><div class="n hero">42</div></div>
+          <div class="fig"><div class="l">Walk-ins</div><div class="n">3</div></div>
+          <div class="fig"><div class="l">Cash today</div><div class="n">₱3,000</div><div class="d">drawer open</div></div>
+          <div class="fig"><div class="l">Classes</div><div class="n">3 of 5</div><div class="d">still to come</div></div>
+        </div>
+        <div class="day"><svg id="dayline" preserveAspectRatio="xMinYMid meet"></svg></div>
+      </section>
+
+      <div class="low">
+        <section class="box">
+          <div class="tabs"><button class="on">This month</button><button>Revenue by month</button><button>Busy hours</button></div>
+          <div class="mfig">
+            <div class="fig"><div class="l">Revenue, 1 to 22 Nov</div><div class="n">₱10,500</div><div class="d"><b>up 18%</b> on 1 to 22 Oct</div></div>
+            <div class="fig"><div class="l">Active members</div><div class="n">128</div><div class="d"><b>6 joined</b> in November</div></div>
+            <div class="fig"><div class="l">Visits, last 30 days</div><div class="n">912</div><div class="d">same as the 30 before</div></div>
+            <div class="fig"><div class="l">New members, 1 to 22 Nov</div><div class="n">6</div><div class="d"><b>2 more</b> than 1 to 22 Oct</div></div>
+          </div>
+        </section>
+        <section class="box">
+          <header><h2>Members to watch <span class="count">5</span></h2><span class="aside"><button class="link">All</button></span></header>
+          <div class="scroll">
+            <div class="row"><span class="av">AL</span><div class="t"><b>Angelica Lopez</b><span>no visit in 16 days</span></div><span class="state"><span class="dot warn"></span>High</span></div>
+            <div class="row"><span class="av">BC</span><div class="t"><b>Ben Cruz</b><span>visits halved this month</span></div><span class="state"><span class="dot warn"></span>High</span></div>
+            <div class="row"><span class="av">GT</span><div class="t"><b>Gina Tan</b><span>membership ends in 4 days</span></div><span class="state"><span class="dot"></span>Medium</span></div>
+            <div class="row"><span class="av">HV</span><div class="t"><b>Hector Villa</b><span>skipped 2 booked classes</span></div><span class="state"><span class="dot"></span>Medium</span></div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <section class="box">
+      <header><h2>Needs you <span class="count">4</span></h2><span class="aside">oldest first</span></header>
+      <div class="scroll">
+        <div class="row"><span class="dot warn"></span><div class="t"><b>2 bookings to decide</b><span>oldest waiting 4 days</span></div><button class="act">Review</button></div>
+        <div class="row"><span class="dot warn"></span><div class="t"><b>1 sign-up waiting</b><span>Dino Santos</span></div><button class="act">Approve</button></div>
+        <div class="row"><span class="dot"></span><div class="t"><b>1 online payment to confirm</b><span>GCash · ₱1,500</span></div><button class="act">Confirm</button></div>
+        <div class="row"><span class="dot"></span><div class="t"><b>3 memberships end this week</b><span>Ana Andrada in 1 day</span></div><button class="act">View</button></div>
+        <div class="row"><span class="dot off"></span><div class="t"><b>Coach ranking</b><span>who ran the most sessions in 90 days</span></div><button class="act">Open</button></div>
+      </div>
+    </section>
+  </div>
+</div></div></div>
+<span class="sample">Mock-up B · sample data</span>
+<script src="shell.js"></script>
+<script>
+  // The gym's day from opening to closing: check-ins per hour, classes on their own lane, a line for now.
+  const svg = document.getElementById('dayline');
+  const open = 5, close = 22, W = svg.clientWidth; svg.setAttribute("viewBox", `0 0 ${W} 220`); svg.setAttribute("preserveAspectRatio", "none"); svg.style.height = "220px"; const x = (h) => ((h - open) / (close - open)) * W;
+  const hits = { 5: 3, 6: 8, 7: 6, 8: 4, 9: 2, 10: 2, 11: 1, 12: 4, 13: 3, 14: 2, 15: 3, 16: 4 };
+  const now = 16.6, max = 8, base = 120;
+  let s = '';
+  for (let h = open; h <= close; h += 1) {
+    s += `<line x1="${x(h)}" x2="${x(h)}" y1="0" y2="200" stroke="var(--line)" stroke-width="1"/>`;
+    if ((h - open) % 2 === 0) s += `<text x="${x(h) + 3}" y="216">${h % 12 || 12}${h < 12 ? 'am' : 'pm'}</text>`;
+  }
+  for (const [h, v] of Object.entries(hits)) {
+    const bh = (v / max) * 100, bw = W / (close - open) - 10;
+    s += `<rect x="${x(+h) + 5}" y="${base - bh}" width="${bw}" height="${bh}" rx="2" fill="var(--primary-fg)" opacity="${+h + 1 > now ? .5 : .85}"/>`;
+  }
+  const C = [[6, 1, 'Morning HIIT', '18/20', 1], [8, 1.25, 'Yoga Flow', '12/20', 1], [12.5, .5, 'Core Blast', '9/20', 0], [18, 1, 'Power Hour', 'Full', 0], [18.5, .75, 'Spin', '9/15', 0]];
+  C.forEach(([h, d, n, b, done], i) => {
+    const y = 136 + (i % 2 ? 32 : 0);
+    // Block = the class's real length; the label sits under it, never spilling into a neighbour.
+    s += `<g class="cls"><rect x="${x(h)}" y="${y}" width="${x(h + d) - x(h) - 2}" height="8" rx="2" fill="${done ? 'var(--line-strong)' : 'var(--primary-fg)'}"/>
+      <text x="${x(h)}" y="${y + 22}" ${done ? 'style="fill:var(--text-3)"' : ''}>${n} <tspan class="sub">${b}</tspan></text></g>`;
+  });
+  s += `<line x1="${x(now)}" x2="${x(now)}" y1="0" y2="200" stroke="var(--action)" stroke-width="1.5"/><text x="${x(now) + 4}" y="12" style="fill:var(--action);font-weight:600">now</text>`;
+  svg.innerHTML = s;
+</script>
+</body></html>

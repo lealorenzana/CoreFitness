@@ -196,13 +196,15 @@ async (page) => {
   const go = async (p) => { await page.goto('http://localhost:5174' + p, { waitUntil: 'domcontentloaded' }); await page.waitForTimeout(2000); };
   await page.emulateMedia({ colorScheme: 'light' });
 
-  // ---- the light sidebar is the gym's own tint, not white ----
+  // ---- the light rail is solid ----
+  // Design V2 (owner, 2026-11-22, shell B and "flat, no glow"): the rail is the theme's own surface, a faint
+  // tint of the gym's colour, never see-through. The strong gym-colour panel of 2026-11-14 was replaced.
   await go('/members');
   const sb = await page.evaluate(() => {
-    const panel = [...document.querySelectorAll('aside div')].find((d) => d.getBoundingClientRect().width > 150 && getComputedStyle(d).backgroundColor !== 'rgba(0, 0, 0, 0)');
-    return panel ? getComputedStyle(panel).backgroundColor : null;
+    const rail = document.querySelector('aside.rail');
+    return rail ? getComputedStyle(rail).backgroundColor : null;
   });
-  say('light sidebar is a solid tint, not plain white', !!sb && sb !== 'rgb(255, 255, 255)' && !/rgba\(.*, 0\)/.test(sb), String(sb));
+  say('light rail is solid, not see-through', !!sb && !/rgba\(.*, 0(\.\d+)?\)/.test(sb) && !/\/ 0(\.\d+)?\)/.test(sb), String(sb));
 
   // ---- Members → Switching ----
   say('Members has a Switching tab with the one waiting', /Switching\s*1/.test(await page.locator('[data-open-switches]').innerText().catch(() => '')));

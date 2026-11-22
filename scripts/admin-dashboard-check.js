@@ -161,38 +161,41 @@ async (page) => {
   const go = async (w, h) => {
     await page.setViewportSize({ width: w, height: h });
     await page.goto('http://localhost:5174/dashboard', { waitUntil: 'domcontentloaded' });
-    await page.locator('[data-dashboard="a1"]').waitFor({ timeout: 15000 });
+    await page.locator('[data-dashboard="v2"]').waitFor({ timeout: 15000 });
     await page.locator('[data-task="expiring"]').waitFor({ timeout: 15000 }).catch(() => {});
     await page.waitForTimeout(1500);
   };
   await go(1440, 900);
   const text = async (sel) => (await page.locator(sel).innerText()).replace(/\s+/g, ' ');
   const needs = await text('[data-needs-you]');
-  out.push('greets the owner by name, with the gym’s hours: ' + (/Good (morning|afternoon|evening), Gabby/.test(await page.locator('h1').innerText()) && /open 6:00 am – 9:00 pm/.test(await text('[data-dashboard="a1"]')) ? 'yes' : 'MISSING'));
+  // Design V2 (2026-11-22): the page is named for the day, not a greeting (LESSONS S5), with the gym's hours.
+  out.push('names the day, with the gym’s hours: ' + (/^Today$/.test((await page.locator('h1').innerText()).trim()) && /open 6:00 am to 9:00 pm/.test(await text('[data-dashboard="v2"]')) ? 'yes' : 'MISSING'));
   out.push('needs you: bookings, oldest age: ' + (/2 bookings to decide oldest waiting 2 days Review/.test(needs) ? 'yes' : 'MISSING ' + needs.slice(0, 120)));
   out.push('…sign-ups with names: ' + (/3 sign-ups waiting Andrea S\., Carlo B\., \+1 Approve/.test(needs) ? 'yes' : 'MISSING'));
   out.push('…online payments with the total: ' + (/2 online payments to confirm GCash · ₱2,300(\.00)? Confirm/.test(needs) ? 'yes' : 'MISSING'));
   out.push('…freeze and cancel asks: ' + (/2 freeze \/ cancel requests/.test(needs) ? 'yes' : 'MISSING'));
   out.push('…memberships ending, soonest first: ' + (/2 memberships end this week Ivy Aquino in 3 days View/.test(needs) ? 'yes' : 'MISSING'));
-  out.push('…and the count of things to do: ' + (/11 to do/.test(await text('[data-dashboard="a1"]')) ? 'yes' : 'MISSING'));
-  const dash = await text('[data-dashboard="a1"]');
-  out.push('checked in today (not "in the gym now"), walk-ins apart, voided ones left out: ' + (/Checked in today 18 \+ 2 walk-ins/.test(dash) && !/in the gym now/i.test(dash) ? 'yes' : 'MISSING'));
+  out.push('…and the count of things to do: ' + (/11 to do/.test(await text('[data-dashboard="v2"]')) ? 'yes' : 'MISSING'));
+  const dash = await text('[data-dashboard="v2"]');
+  out.push('checked in today (not "in the gym now"), walk-ins apart, voided ones left out: ' + (/Checked in today 18 Walk-ins 2/.test(dash) && !/in the gym now/i.test(dash) ? 'yes' : 'MISSING'));
   out.push('cash today from the drawer’s figure: ' + (/Cash today ₱4,350(\.00)? 6 payments · drawer open/.test(dash) ? 'yes' : 'MISSING'));
   const classes = await text('[data-today-classes]');
   out.push('today’s classes: done, filling, full: ' + (/Morning HIIT/.test(classes) && /done/.test(classes) && /9\/12/.test(classes) && /Full/.test(classes) ? 'yes' : 'MISSING ' + classes.slice(0, 160)));
   const nums = await text('[data-month-numbers]');
-  out.push('revenue compared with the same days of last month: ' + (/₱22,800(\.00)? ▲ 14% vs/.test(nums) ? 'yes' : 'MISSING ' + nums.slice(0, 160)));
-  out.push('new members compared, a fall shown in amber words: ' + (/New members · \w+ 4 ▼ 2 vs/.test(nums) ? 'yes' : 'MISSING'));
-  out.push('visits over 30 days against the 30 before: ' + (/Visits · last 30 days \d+ ▲ \d+% vs the 30 before/.test(nums) ? 'yes' : 'MISSING'));
+  out.push('revenue compared with the same days of last month: ' + (/₱22,800(\.00)? up 14% on the same days of/.test(nums) ? 'yes' : 'MISSING ' + nums.slice(0, 160)));
+  out.push('new members compared, a fall said in words: ' + (/New members, \w+ so far 4 down 2 on the same days of/.test(nums) ? 'yes' : 'MISSING'));
+  out.push('visits over 30 days against the 30 before: ' + (/Visits, last 30 days \d+ up \d+% on the 30 days before/.test(nums) ? 'yes' : 'MISSING'));
   out.push('members to watch, riskiest first: ' + (/Rhea Santos membership ends in 4 days.*Ivy Aquino/.test(await text('[data-members-to-watch]')) ? 'yes' : 'MISSING'));
   const fits = async () => page.evaluate(() => ({ page: document.scrollingElement.scrollHeight <= innerHeight + 1, wide: document.scrollingElement.scrollWidth <= innerWidth + 1 }));
   let f = await fits();
   out.push('1440×900: no page scroll, nothing sideways: ' + (f.page && f.wide ? 'yes' : 'MISSING ' + JSON.stringify(f)));
-  await page.screenshot({ path: 'shots/admin-dashboard-a1.png' });
+  // The day line is drawn: one bar per hour with check-ins, and the classes on their times.
+  out.push('the day line draws today’s check-ins and classes: ' + ((await page.locator('[data-day-line] rect.bar').count()) > 0 && (await page.locator('[data-day-line] g.cls').count()) > 0 ? 'yes' : 'MISSING'));
+  await page.screenshot({ path: 'shots/admin-dashboard-v2.png' });
   await go(1280, 720);
   f = await fits();
   out.push('1280×720: still fits: ' + (f.page && f.wide ? 'yes' : 'MISSING ' + JSON.stringify(f)));
-  await page.screenshot({ path: 'shots/admin-dashboard-a1-small.png' });
+  await page.screenshot({ path: 'shots/admin-dashboard-v2-small.png' });
 
   await page.locator('[data-task="expiring"] button').click();
   await page.getByText('Memberships ending this week').waitFor({ timeout: 5000 }).catch(() => {});

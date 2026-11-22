@@ -168,18 +168,18 @@ async (page) => {
     say(`${from} lands on Personal training`, want.test(page.url()), page.url());
   }
 
-  // ── The sidebar: Personal training always; class pages only while classes are on ──
+  // ── The menu: Personal training always; class pages only while classes are on ──
+  // Design V2 (shell B): a section's pages are the header's tabs (.cf-tabs); the rail's "Coaching" is the
+  // section's name, so only the tab links are read (the old Coaching and Bookings pages must not return).
+  const menuTabs = async () => (await page.locator(".cf-tabs a").allInnerTexts()).map((t) => t.trim());
   await go('/personal-training');
-  let nav = await page.locator('aside, nav').first().innerText();
-  say('sidebar: Personal training, and no Class bookings or Schedule with classes off', /Personal training/.test(nav) && !/Class bookings/.test(nav) && !/Schedule/.test(nav), nav.replace(/\s+/g, ' ').slice(0, 300));
-  say('…no Coaching or Bookings rows left', !/\bCoaching\b/.test(nav) && !/^Bookings$/m.test(nav));
+  let nav = await menuTabs();
+  say('menu: Personal training, and no Class bookings or Schedule with classes off', nav.includes('Personal training') && !nav.includes('Class bookings') && !nav.includes('Schedule'), nav.join(', '));
+  say('…no Coaching or Bookings pages left', !nav.includes('Coaching') && !nav.includes('Bookings'));
   MODULES = { classes: true };
-  await go('/dashboard');
-  nav = await page.locator('aside, nav').first().innerText();
-  await page.getByText('Classes', { exact: true }).first().click().catch(() => {});
-  await page.waitForTimeout(500);
-  nav = await page.locator('aside, nav').first().innerText();
-  say('with classes on: Schedule and Class bookings come back', /Schedule/.test(nav) && /Class bookings/.test(nav), nav.replace(/\s+/g, ' ').slice(0, 300));
+  await go('/personal-training');
+  nav = await menuTabs();
+  say('with classes on: Schedule and Class bookings come back', nav.includes('Schedule') && nav.includes('Class bookings'), nav.join(', '));
   await go('/bookings/classes');
   say('Class bookings is its own page', /Class bookings/.test(await text()), page.url());
 

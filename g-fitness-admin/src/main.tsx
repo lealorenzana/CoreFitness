@@ -2,6 +2,8 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import './light.css'
+// Design V2 (2026-11-22): loaded last so it wins over both (design/admin-v2/DECISIONS.md).
+import './v2.css'
 import { applyColorMode } from './lib/colorMode'
 import App from './App.tsx'
 import { installErrorReporter } from './lib/errorReporter'

@@ -107,14 +107,13 @@ async (page) => {
 
   const out = [];
   const text = () => page.evaluate(() => document.body.innerText.replace(/\s+/g, ' '));
+  // Design V2 (shell B): every page in the menu is named in its section's rail tooltip ("Payments · Shop ·
+  // Plans · Revenue"), and the sections themselves are the rail's words. A switched-off page leaves both.
   const openGroups = async () => {
-    for (const g of ['Classes', 'Billing', 'Reports', 'Engagement', 'Training']) {
-      const b = page.locator('aside nav').getByRole('button', { name: new RegExp('^' + g) });
-      if (await b.count() && (await b.first().getAttribute('aria-expanded')) === 'false') await b.first().click();
-    }
     await page.waitForTimeout(300);
-    return page.evaluate(() => [...document.querySelectorAll('aside nav a, aside nav button')]
-      .map((e) => e.innerText.trim()).filter(Boolean));
+    return page.evaluate(() => [...document.querySelectorAll('[data-rail]')].flatMap((r) => [
+      r.innerText.trim(), ...(r.getAttribute('data-tip') ?? '').split(' · ').map((x) => x.trim()),
+    ]).filter(Boolean));
   };
 
   await page.setViewportSize({ width: 1700, height: 900 });

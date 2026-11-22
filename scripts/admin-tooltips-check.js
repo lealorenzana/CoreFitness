@@ -64,11 +64,12 @@ async (page) => {
   const hover = async (loc) => { await loc.hover(); await page.waitForTimeout(450); return tip(); };
   await page.setViewportSize({ width: 1400, height: 900 });
   await page.goto('http://localhost:5174/dashboard', { waitUntil: 'domcontentloaded' });
-  await page.locator('aside').getByText('Attendance').first().waitFor({ timeout: 15000 });
+  await page.locator('.cf-tabs').getByText('Attendance').first().waitFor({ timeout: 15000 });
   await page.waitForTimeout(600);
 
-  out.push('a sidebar page says what it is for: ' + (/Check people in/.test(await hover(page.locator('aside a', { hasText: 'Attendance' }).first())) ? 'yes' : 'MISSING'));
-  out.push('a sidebar group too: ' + (/Payments, the shop and membership plans/.test(await hover(page.locator('aside button', { hasText: 'Billing' }).first())) ? 'yes' : 'MISSING'));
+  // Design V2 (shell B): a page's tab says what it is for; a section's rail button names its pages.
+  out.push('a menu page says what it is for: ' + (/Check people in/.test(await hover(page.locator('.cf-tabs a', { hasText: 'Attendance' }).first())) ? 'yes' : 'MISSING'));
+  out.push('a section too: ' + (/Payments · Shop · Plans/.test(await hover(page.locator('[data-rail="money"]'))) ? 'yes' : 'MISSING'));
   out.push('the alerts bell has a name and a tip: ' + (/Alerts|thing/.test(await hover(page.getByRole('button', { name: /Alerts|alert/ }).first())) ? 'yes' : 'MISSING'));
   out.push('the search explains itself: ' + (/Find a member, payment/.test(await hover(page.locator('button', { hasText: 'Search anything' }).first())) ? 'yes' : 'MISSING'));
 

@@ -65,7 +65,7 @@ async (page) => {
 
   const out = [];
   const headerPhoto = () => page.evaluate(() =>
-    document.querySelector('header img')?.getAttribute('src') ?? null);
+    document.querySelector('[data-account-menu] img')?.getAttribute('src') ?? null);
 
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('http://localhost:5174/settings?tab=profile', { waitUntil: 'domcontentloaded' });

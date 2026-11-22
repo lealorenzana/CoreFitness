@@ -111,10 +111,14 @@ async (page) => {
   });
 
   const out = [];
+  // Design V2 (shell B): the gym's name and tagline sit in the header, its mark on the rail, and every page's
+  // name in the rail's tooltips and the header's tabs. "The shell" is all of them.
   const aside = () => page.evaluate(() => {
     const a = document.querySelector('aside');
+    const h = document.querySelector('header');
+    const tips = [...document.querySelectorAll('[data-rail]')].map((r) => r.getAttribute('data-tip') ?? '').join(' ');
     return {
-      text: (a?.innerText ?? '').replace(/\s+/g, ' '),
+      text: `${a?.innerText ?? ''} ${h?.innerText ?? ''} ${tips}`.replace(/\s+/g, ' '),
       logos: [...(a?.querySelectorAll('img') ?? [])].map((i) => i.getAttribute('src')),
     };
   });
@@ -126,7 +130,9 @@ async (page) => {
   out.push('first owner sees G Fitness: ' + (/G Fitness/i.test(s.text) ? 'shown' : 'MISSING'));
 
   // 2. Logout, from the sidebar — the button the reporter pressed.
-  await page.getByRole('button', { name: 'Logout' }).last().click();
+  // Design V2: Log out is in the account menu at the foot of the sidebar.
+  await page.locator('[data-account-menu]').first().click();
+  await page.getByRole('menuitem', { name: 'Log out on this device' }).click();
   await page.waitForURL('**/admin/login', { timeout: 8000 });
   await page.waitForTimeout(800);
 
@@ -144,7 +150,7 @@ async (page) => {
   out.push('first gym name gone: ' + (/G Fitness/i.test(s.text) ? 'MISSING (still G Fitness)' : 'gone'));
   out.push('first gym logo gone: ' + (s.logos.includes(GYMS.u1.logo_url) ? 'MISSING (still G Fitness logo)' : 'gone'));
   // The nouns are the same kind of cache. G Fitness calls trainers "PTs"; Ana renamed nothing.
-  await page.getByRole('button', { name: /^People/ }).click().catch(() => {});
+  await page.locator('[data-rail="people"]').click().catch(() => {});
   await page.waitForTimeout(500);
   s = await aside();
   out.push('first gym nouns gone: ' + (/\bPTs\b/.test(s.text) ? 'MISSING (still says PTs)' : 'gone'));

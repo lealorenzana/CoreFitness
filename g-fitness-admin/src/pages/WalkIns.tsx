@@ -187,7 +187,10 @@ export default function WalkIns() {
           </div>
         )} />
 
-      <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0,1.65fr) minmax(0,1fr)', flex: 1 }}>
+      {/* Design V2 (the desk console, as on Today): record and see today's walk-ins on the left; the drawer,
+          prices, guests worth a call and the guide on the right rail. */}
+      <div className="a-v2" data-att-v2>
+        <div className="a-v2-main">
         {prices === undefined ? <div className="a-card"><p className="a-sub">Loading…</p></div>
           : !canSell ? (
             <div className="a-card glow" style={{ alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 10 }}>
@@ -271,34 +274,29 @@ export default function WalkIns() {
                 </div>
               )}
 
-              {regulars && (
-                <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--a-border)', flex: 1, display: 'flex', flexDirection: 'column' }} data-regular-guests>
-                  <div className="a-ct" style={{ marginBottom: 6 }}><h3><HeartHandshake size={16} />Guests who could join</h3><small>came 3+ times in 30 days</small></div>
-                  {regulars.length === 0 ? <p className="a-sub">Nobody yet — a guest who comes three times in a month shows here.</p> : (
-                    <div className="a-grid" style={{ gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: 10, alignItems: 'start' }}>
-                      {regulars.slice(0, 3).map((g) => (
-                        <div key={g.guest_id} className="a-opt" style={{ padding: 14, gap: 8, cursor: 'default' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <Av name={g.name} small />
-                            <div style={{ minWidth: 0 }}><b style={{ fontSize: 13 }} className="block truncate">{g.name}</b><div className="a-sub">last came {ago(g.last_visit)}</div></div>
-                          </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between' }} className="a-sub"><span>{g.visits} visits · {peso(g.spent)}</span>{cheapest && <span>{cheapest.name} {peso(cheapest.price)}</span>}</div>
-                          {cheapest && <div className="a-bar" style={{ width: '100%', flex: 'none', height: 6 }}><i style={{ width: `${Math.min(100, (g.spent / cheapest.price) * 100)}%` }} /></div>}
-                          {cheapest && <div className="a-sub" style={{ fontSize: 11 }}>spent so far vs. {cheapest.name}</div>}
-                          {g.phone
-                            ? <a href={`tel:${g.phone.replace(/[^0-9+]/g, '')}`} className="a-btn soft sm" style={{ marginTop: 'auto' }}><Phone size={13} />Call {g.phone}</a>
-                            : <span className="a-sub text-center" style={{ marginTop: 'auto' }}>No phone on file — ask next visit</span>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           )}
 
+          <div className="a-card" style={{ minHeight: 0, flex: 1 }} data-walkins-today>
+            <div className="a-ct"><h3><Footprints size={16} />Today's walk-ins</h3><button type="button" className="a-link" style={{ color: 'var(--a-p300)' }} onClick={() => setHistOpen(true)}>Past walk-ins →</button></div>
+            {visits.length === 0 ? <p className="a-sub" style={{ padding: '10px 0' }}>No walk-ins yet today.</p> : (
+              <div className="a-scroll" data-walkin-list>
+                {visits.map((v) => (
+                  <div key={v.id} className="a-row" style={{ opacity: v.voided ? 0.55 : 1 }}>
+                    <Av name={v.name} small />
+                    <div className="t"><b>{v.name}{v.voided ? ' · voided' : ''}</b>
+                      <small>{KIND[v.kind]} · {v.amount > 0 ? `${peso(v.amount)} · ${v.method}` : '₱0'} · {new Date(v.visited_at).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' }).toLowerCase()}</small></div>
+                    {!v.voided && <button type="button" className="a-btn ghost sm" disabled={busy} onClick={() => setToVoid({ id: v.id, name: v.name })}><Undo2 size={12} />Void</button>}
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="a-sub" style={{ marginTop: 'auto', paddingTop: 8 }}>Void a mistake before the drawer closes.</div>
+          </div>
+        </div>
+
         {/* ── The rail ── */}
-        <div className="a-grid a-scroll" style={{ gridTemplateRows: 'auto auto minmax(0,1fr) auto', alignContent: 'start' }} data-walkins-rail>
+        <div className="a-v2-side" data-walkins-rail>
           <div className="a-card" data-walkins-hero>
             <div className="a-ct"><h3><Wallet size={16} />Today in the drawer</h3><small>from walk-ins</small></div>
             <div className="a-num">{peso(cash)}</div>
@@ -317,22 +315,27 @@ export default function WalkIns() {
                 : 'Day passes are off.'}
             </div>
           </div>
-          <div className="a-card" style={{ minHeight: 0 }}>
-            <div className="a-ct"><h3><Footprints size={16} />Today's walk-ins</h3><button type="button" className="a-link" style={{ color: 'var(--a-p300)' }} onClick={() => setHistOpen(true)}>Past walk-ins →</button></div>
-            {visits.length === 0 ? <p className="a-sub" style={{ padding: '10px 0' }}>No walk-ins yet today.</p> : (
-              <div className="a-scroll" data-walkin-list>
-                {visits.map((v) => (
-                  <div key={v.id} className="a-row" style={{ opacity: v.voided ? 0.55 : 1 }}>
-                    <Av name={v.name} small />
-                    <div className="t"><b>{v.name}{v.voided ? ' · voided' : ''}</b>
-                      <small>{KIND[v.kind]} · {v.amount > 0 ? `${peso(v.amount)} · ${v.method}` : '₱0'} · {new Date(v.visited_at).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' }).toLowerCase()}</small></div>
-                    {!v.voided && <button type="button" className="a-btn ghost sm" disabled={busy} onClick={() => setToVoid({ id: v.id, name: v.name })}><Undo2 size={12} />Void</button>}
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className="a-sub" style={{ marginTop: 'auto', paddingTop: 8 }}>Void a mistake before the drawer closes.</div>
-          </div>
+          {regulars && (
+            <div className="a-card" style={{ minHeight: 0, flex: 1 }} data-regular-guests>
+              <div className="a-ct"><h3><HeartHandshake size={16} />Guests who could join</h3><small>3+ visits in 30 days</small></div>
+              {regulars.length === 0 ? <p className="a-sub">Nobody yet. A guest who comes three times in a month shows here.</p> : (
+                <div className="a-scroll">
+                  {regulars.slice(0, 6).map((g) => (
+                    <div key={g.guest_id} className="a-row" style={{ alignItems: 'center' }}>
+                      <Av name={g.name} small />
+                      <div className="t">
+                        <b>{g.name}</b>
+                        <small>{g.visits} visits · {peso(g.spent)}{cheapest ? ` of ${peso(cheapest.price)} (${cheapest.name})` : ''} · last came {ago(g.last_visit)}</small>
+                      </div>
+                      {g.phone
+                        ? <a href={`tel:${g.phone.replace(/[^0-9+]/g, '')}`} className="a-btn sm" data-tip={`Call ${g.phone}`}><Phone size={13} />Call</a>
+                        : <span className="a-sub" data-tip="No phone on file. Ask on their next visit">No phone</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           <button type="button" className="a-card press text-left" style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: '11px 14px' }} onClick={() => setGuideOpen(true)} data-walkin-guide-open>
             <HelpCircle size={15} style={{ color: 'var(--a-p300)' }} /><b style={{ fontSize: 12.5 }}>How walk-ins and day passes work</b>
           </button>

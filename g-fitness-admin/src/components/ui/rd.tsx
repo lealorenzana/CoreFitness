@@ -20,7 +20,8 @@ import Popover from './Popover';
 import { TONE, type Tone } from './rdTokens';
 
 // Each fill is a variable whose fallback is the dark look; light.css gives the solid light value.
-const CARD_BG = 'var(--rd-card-bg, linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0) 60%), var(--color-surface))';
+// Design V2: a flat surface with a hairline; no sheen, no glow.
+const CARD_BG = 'var(--rd-card-bg, var(--color-surface))';
 const CARD_LINE = '1px solid var(--rd-card-line, rgba(255, 255, 255, 0.06))';
 const MUTED = 'var(--color-text-muted)';
 const SECOND = 'var(--color-text-secondary)';
@@ -75,14 +76,9 @@ export function RdHeader({ title, subtitle, tabs, actions }: {
 
 export function RdCard({ children, className = '', style, glow, ...rest }: React.HTMLAttributes<HTMLDivElement> & { glow?: boolean }) {
   return (
-    <div {...rest} className={`rounded-2xl ${className}`}
-      style={{
-        background: glow
-          ? 'var(--rd-glow-bg, radial-gradient(120% 160% at 0% 0%, rgba(124, 58, 237, 0.30), rgba(124, 58, 237, 0) 55%), radial-gradient(80% 120% at 100% 100%, rgba(124, 58, 237, 0.10), transparent 60%), var(--color-surface))'
-          : CARD_BG,
-        border: glow ? '1px solid rgba(139, 92, 246, 0.28)' : CARD_LINE,
-        ...style,
-      }}>
+    // `glow` is kept so callers compile, and marks the card for tests; it no longer paints a glow (Design V2, S6).
+    <div {...rest} data-glow={glow ? 'true' : undefined} className={`rounded-xl ${className}`}
+      style={{ background: CARD_BG, border: CARD_LINE, ...style }}>
       {children}
     </div>
   );
@@ -93,7 +89,7 @@ export function IconTile({ icon: Icon, tone = 'violet', size = 56 }: { icon: Luc
   return (
     <span data-tile={tone} className="grid place-items-center flex-none" style={{
       width: size, height: size, borderRadius: Math.round(size * 0.3), background: t.bg, border: `1px solid ${t.line}`,
-      boxShadow: `inset 0 1px 0 rgba(255,255,255,0.06), 0 10px 30px -14px ${t.dot}`,
+
     }}>
       <Icon size={Math.round(size * 0.44)} style={{ color: t.fg }} strokeWidth={1.9} />
     </span>
@@ -328,7 +324,7 @@ export function RdSelect({ value, onChange, children, label, className = '' }: {
 
 type BtnVariant = 'primary' | 'secondary' | 'amber' | 'ghost' | 'danger' | 'soft';
 const BTN: Record<BtnVariant, React.CSSProperties> = {
-  primary: { background: 'var(--fill-primary, linear-gradient(180deg, #8B5CF6, #7C3AED))', color: '#fff', border: '1px solid rgba(167,139,250,0.6)', boxShadow: '0 10px 30px -12px rgba(124,58,237,0.8)' },
+  primary: { background: 'var(--fill-primary, var(--color-primary))', color: '#fff', border: '1px solid transparent' },
   secondary: { background: 'var(--rd-soft-bg, rgba(255,255,255,0.025))', color: 'var(--color-text-primary)', border: '1px solid var(--rd-input-line, rgba(255,255,255,0.12))' },
   amber: { background: TONE.amber.bg, color: TONE.amber.fg, border: `1px solid ${TONE.amber.line}` },
   ghost: { background: 'transparent', color: SECOND, border: '1px solid transparent' },
@@ -352,10 +348,12 @@ export function RdButton({ variant = 'secondary', icon: Icon, children, size = '
 export function Pill({ tone = 'gray', children, icon: Icon, solidDot }: { tone?: Tone; children: React.ReactNode; icon?: LucideIcon; solidDot?: boolean }) {
   const t = TONE[tone];
   return (
-    <span className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[13.5px] font-medium whitespace-nowrap"
-      style={{ background: t.bg, border: `1px solid ${t.line}`, color: t.fg }}>
-      {solidDot && <span className="w-2 h-2 rounded-full" style={{ background: t.dot }} />}
-      {Icon && <Icon size={14} />}
+    // Design V2: status is a dot and a word, never a coloured pill (owner, 2026-11-22). `solidDot` is
+    // kept for callers; every pill now has its dot unless it carries an icon, which takes the dot's place.
+    <span data-pill={tone} data-solid-dot={solidDot ? 'true' : undefined}
+      className="inline-flex items-center gap-1.5 text-[13px] font-medium whitespace-nowrap"
+      style={{ color: 'var(--color-text-primary)' }}>
+      {Icon ? <Icon size={14} style={{ color: t.fg }} /> : <span className="w-1.5 h-1.5 rounded-full flex-none" style={{ background: t.dot }} />}
       {children}
     </span>
   );

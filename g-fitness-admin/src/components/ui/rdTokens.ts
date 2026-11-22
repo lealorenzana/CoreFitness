@@ -3,7 +3,8 @@ export type Tone = 'violet' | 'amber' | 'green' | 'red' | 'blue' | 'gray';
 
 export const TONE: Record<Tone, { fg: string; bg: string; line: string; dot: string }> = {
   // Text shades and the grey fill go through variables so light mode (light.css, 0234) can deepen them.
-  violet: { fg: 'var(--tone-violet-fg, #C4B5FD)', bg: 'rgba(124, 58, 237, 0.16)', line: 'rgba(139, 92, 246, 0.45)', dot: '#8B5CF6' },
+  // The gym's own colour, never a fixed violet (Design V2).
+  violet: { fg: 'var(--tone-violet-fg, #C4B5FD)', bg: 'color-mix(in srgb, var(--color-primary) 16%, transparent)', line: 'color-mix(in srgb, var(--color-primary) 45%, transparent)', dot: 'var(--color-primary)' },
   amber:  { fg: 'var(--tone-amber-fg, #FBBF24)', bg: 'rgba(245, 158, 11, 0.13)', line: 'rgba(245, 158, 11, 0.45)', dot: '#F59E0B' },
   green:  { fg: 'var(--tone-green-fg, #4ADE80)', bg: 'rgba(34, 197, 94, 0.12)',  line: 'rgba(34, 197, 94, 0.38)',  dot: '#22C55E' },
   red:    { fg: 'var(--tone-red-fg, #F87171)', bg: 'rgba(239, 68, 68, 0.12)',  line: 'rgba(239, 68, 68, 0.38)',  dot: '#EF4444' },

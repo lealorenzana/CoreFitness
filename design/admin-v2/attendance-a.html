@@ -1,0 +1,92 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Attendance A: desk console</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="shell2.css"><style>
+.pg { flex: 1; min-height: 0; padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
+.ph { display: flex; align-items: center; gap: 16px; flex: none; }
+.ph h1 { font-size: 22px; font-weight: 650; letter-spacing: -.02em; }
+.ph p { color: var(--text-2); font-size: 13px; }
+.seg2 { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--line-strong); border-radius: 8px; }
+.seg2 a { padding: 5px 12px; border-radius: 6px; color: var(--text-2); font-weight: 600; cursor: pointer; white-space: nowrap; }
+.seg2 a.on { background: var(--raised); color: var(--text); }
+.seg2 a em { font-style: normal; color: var(--text-3); font-weight: 500; margin-left: 4px; }
+.live { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); }
+.live::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--primary-fg); }
+.find { display: flex; gap: 8px; }
+.find .in { flex: 1; height: 48px; border: 1px solid var(--line-strong); border-radius: 8px; display: flex; align-items: center; gap: 10px; padding: 0 14px; font-size: 15px; color: var(--text-3); background: var(--surface); }
+.find .in b { color: var(--text); font-weight: 500; }
+.find .kb { margin-left: auto; font-size: 11px; border: 1px solid var(--line-strong); border-radius: 4px; padding: 1px 6px; color: var(--text-3); }
+.find .go { height: 48px; padding: 0 18px; border-radius: 8px; background: var(--action); color: var(--on-action); font-weight: 650; display: inline-flex; align-items: center; gap: 8px; }
+.tagrow { display: flex; align-items: center; gap: 8px; color: var(--text-2); font-size: 12px; flex-wrap: nowrap; }
+.tagrow .t { height: 28px; padding: 0 10px; border-radius: 6px; border: 1px solid var(--line-strong); display: inline-flex; align-items: center; color: var(--text-2); font-weight: 600; white-space: nowrap; }
+.tagrow .t.on { border-color: var(--primary-fg); color: var(--text); background: var(--raised); }
+.okbar { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; background: var(--raised); }
+.okbar .c { width: 24px; height: 24px; border-radius: 50%; background: var(--fill-primary); color: #fff; display: grid; place-items: center; flex: none; }
+.okbar .c svg { stroke: #fff; }
+.okbar .t { flex: 1; min-width: 0; } .okbar .t b { font-weight: 600; } .okbar .t span { color: var(--text-2); font-size: 12px; margin-left: 8px; }
+.btn.sm { height: 28px; font-size: 12px; padding: 0 10px; }
+table.log { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.log th { text-align: left; font-size: 12px; color: var(--text-3); font-weight: 500; padding: 8px 16px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--surface); }
+table.log td { padding: 9px 16px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.log td.n b { font-weight: 600; } table.log td.n span { color: var(--text-3); margin-left: 8px; font-size: 12px; }
+table.log td.m { color: var(--text-2); } table.log td.r { text-align: right; }
+table.log .how { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); }
+.filters { display: flex; align-items: center; gap: 8px; }
+.mini { height: 30px; border: 1px solid var(--line-strong); border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; color: var(--text-3); font-size: 12px; min-width: 180px; }
+.kv { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.kv:last-child { border-bottom: 0; }
+.kv .t { flex: 1; min-width: 0; } .kv .t b { display: block; font-weight: 600; } .kv .t span { color: var(--text-2); font-size: 12px; }
+.kv > svg.i { color: var(--text-3); }
+.stack { display: flex; height: 6px; border-radius: 3px; overflow: hidden; gap: 2px; margin-top: 8px; }
+.stack i { display: block; background: var(--primary-fg); } .stack i.b { opacity: .55; } .stack i.c { background: var(--line-strong); }
+.leg { display: flex; gap: 12px; margin-top: 6px; font-size: 12px; color: var(--text-2); }
+.leg span { display: inline-flex; align-items: center; gap: 5px; }
+.spark { display: flex; align-items: flex-end; gap: 3px; height: 36px; }
+.spark i { flex: 1; background: var(--primary-fg); opacity: .8; border-radius: 2px 2px 0 0; }
+.spark i.f { opacity: .2; }
+
+.a-wrap { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; }
+.a-main { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.a-side { display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+.a-fig { padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.a-fig:last-child { border-bottom: 0; }
+.a-fig .l { font-size: 12px; color: var(--text-2); display: flex; justify-content: space-between; }
+.a-fig .n { font-size: 22px; font-weight: 650; letter-spacing: -.02em; margin-top: 2px; }
+.a-fig .n.hero { font-size: 40px; letter-spacing: -.04em; line-height: 1.05; }
+.a-fig .d { font-size: 12px; color: var(--text-3); }
+.a-hero { display: flex; align-items: flex-end; gap: 16px; }
+.a-hero .spark { flex: 1; }
+</style></head><body>
+<div class="sb"><nav class="sb-rail"><span class="logo">CF</span><a class="on"><svg class="i" width="16" height="16" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z"/></svg>Desk</a><a class=""><svg class="i" width="16" height="16" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg>People</a><a class=""><svg class="i" width="16" height="16" viewBox="0 0 24 24"><path d="M6.5 6.5h11M6.5 17.5h11M4 9v6M20 9v6M2 11v2M22 11v2"/></svg>Coaching</a><a class=""><svg class="i" width="16" height="16" viewBox="0 0 24 24"><path d="M2 6h20v12H2zM2 10h20"/></svg>Money</a><a class=""><svg class="i" width="16" height="16" viewBox="0 0 24 24"><path d="M3 3v18h18M7 15l4-4 3 3 5-6"/></svg>Reports</a><a class=""><svg class="i" width="16" height="16" viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/></svg>Engage</a><a class=""><svg class="i" width="16" height="16" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Messages</a><a class=""><svg class="i" width="16" height="16" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V2H6.5A2.5 2.5 0 0 0 4 4.5zM4 19.5V22h16"/></svg>Library</a><a class="push"><svg class="i" width="16" height="16" viewBox="0 0 24 24"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6"/></svg>Gym</a><a><svg class="i" width="16" height="16" viewBox="0 0 24 24"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></svg>Help</a><span class="av me">GO</span></nav>
+<div class="main"><div class="sb-top"><div class="row1"><span class="gymname">Core Fitness Lab <small>Mamburao</small></span>
+<div class="cmd"><svg class="i" width="16" height="16" viewBox="0 0 24 24"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16M21 21l-4.3-4.3"/></svg>Search anything<span class="kbd">Ctrl K</span></div><button class="ico-btn"><svg class="i" width="18" height="18" viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 21h4"/></svg><span class="n">30</span></button></div>
+<div class="row2"><span class="sec">Desk</span><a>Today</a><a class="on">Attendance</a><a>Notifications</a></div></div>
+<div class="pg">
+  <div class="ph"><div><h1>Attendance</h1><p><span class="live">Live</span> · Sunday, 22 November · open until 10:00 pm</p></div>
+    <div class="seg2" style="margin-left:auto"><a class="on">Today<em>42</em></a><a>Walk-ins<em>3</em></a><a>History</a></div></div>
+  <div class="a-wrap">
+    <div class="a-main">
+      <section class="box" style="flex:none"><div style="padding:16px;display:flex;flex-direction:column;gap:12px"><div class="find"><div class="in"><svg class="i" width="18" height="18" viewBox="0 0 24 24"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16M21 21l-4.3-4.3"/></svg>Name, phone or the code under their QR<span class="kb">Enter</span></div><button class="go"><svg class="i" width="18" height="18" viewBox="0 0 24 24"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h3v3h-3zM18 18h3v3h-3z"/></svg>Scan QR</button></div><div class="okbar"><span class="c"><svg class="i" width="14" height="14" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span><div class="t"><b>Ana Par is in</b><span>6:05 pm · Cardio · tagged at the desk</span></div><button class="btn sm">Undo</button></div><div class="tagrow"><svg class="i" width="14" height="14" viewBox="0 0 24 24"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8zM7.5 7.5h.01"/></svg>Tag the next check-in <span class="t on">None</span><span class="t">Weight Training</span><span class="t">Cardio</span><span class="t">Strength</span><span class="t">More</span></div></div></section>
+      <section class="box" style="flex:1">
+        <header><h2>Today's check-ins <span class="count">42</span></h2><span class="aside"><span class="seg2"><a class="on">All</a><a>Kiosk<em>24</em></a><a>Desk scan<em>11</em></a><a>Typed<em>7</em></a></span>
+          <span class="mini"><svg class="i" width="14" height="14" viewBox="0 0 24 24"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16M21 21l-4.3-4.3"/></svg>Find in today</span><button class="btn sm"><svg class="i" width="14" height="14" viewBox="0 0 24 24"><path d="M12 3v12M6 11l6 6 6-6M4 21h16"/></svg>Export</button></span></header>
+        <div class="scroll"><table class="log"><thead><tr><th>Time</th><th>Member</th><th>How</th><th>Activity</th><th>Tagged by</th><th></th></tr></thead><tbody><tr><td>6:05 pm</td><td class="n"><b>Ana Par</b><span>Free Plan</span></td><td><span class="how"><svg class="i" width="14" height="14" viewBox="0 0 24 24"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h3v3h-3zM18 18h3v3h-3z"/></svg>Desk scan</span></td><td class="m">Cardio</td><td class="m">Front desk</td><td class="r"><button class="btn sm" style="border:0;color:var(--text-2)">Undo</button></td></tr><tr><td>5:48 pm</td><td class="n"><b>Ben Cruz</b><span>Premium</span></td><td><span class="how"><svg class="i" width="14" height="14" viewBox="0 0 24 24"><path d="M5 2h14v20H5zM11 18h2"/></svg>Kiosk</span></td><td class="m">Weight Training</td><td class="m">Their pick</td><td class="r"><button class="btn sm" style="border:0;color:var(--text-2)">Undo</button></td></tr><tr><td>5:31 pm</td><td class="n"><b>Carla Diaz</b><span>Premium</span></td><td><span class="how"><svg class="i" width="14" height="14" viewBox="0 0 24 24"><path d="M5 2h14v20H5zM11 18h2"/></svg>Kiosk</span></td><td class="m">Strength</td><td class="m">Their pick</td><td class="r"><button class="btn sm" style="border:0;color:var(--text-2)">Undo</button></td></tr><tr><td>4:12 pm</td><td class="n"><b>Ana Iturralde</b><span>Premium</span></td><td><span class="how"><svg class="i" width="14" height="14" viewBox="0 0 24 24"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h3v3h-3zM18 18h3v3h-3z"/></svg>Typed</span></td><td class="m">Weight Training</td><td class="m">Front desk</td><td class="r"><button class="btn sm" style="border:0;color:var(--text-2)">Undo</button></td></tr><tr><td>3:40 pm</td><td class="n"><b>Dino Santos</b><span>Free Trial</span></td><td><span class="how"><svg class="i" width="14" height="14" viewBox="0 0 24 24"><path d="M5 2h14v20H5zM11 18h2"/></svg>Kiosk</span></td><td class="m">Not recorded</td><td class="m"></td><td class="r"><button class="btn sm" style="border:0;color:var(--text-2)">Undo</button></td></tr><tr><td>12:05 pm</td><td class="n"><b>Ana Andrada</b><span>Free Trial</span></td><td><span class="how"><svg class="i" width="14" height="14" viewBox="0 0 24 24"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h3v3h-3zM18 18h3v3h-3z"/></svg>Desk scan</span></td><td class="m">Cardio</td><td class="m">Front desk</td><td class="r"><button class="btn sm" style="border:0;color:var(--text-2)">Undo</button></td></tr><tr><td>10:05 am</td><td class="n"><b>Angelica Lopez</b><span>Premium</span></td><td><span class="how"><svg class="i" width="14" height="14" viewBox="0 0 24 24"><path d="M5 2h14v20H5zM11 18h2"/></svg>Kiosk</span></td><td class="m">Weight Training</td><td class="m">Their pick</td><td class="r"><button class="btn sm" style="border:0;color:var(--text-2)">Undo</button></td></tr><tr><td>9:05 am</td><td class="n"><b>Aileen Navarro</b><span>Free Plan</span></td><td><span class="how"><svg class="i" width="14" height="14" viewBox="0 0 24 24"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h3v3h-3zM18 18h3v3h-3z"/></svg>Desk scan</span></td><td class="m">Cardio</td><td class="m">Front desk</td><td class="r"><button class="btn sm" style="border:0;color:var(--text-2)">Undo</button></td></tr><tr><td>7:30 am</td><td class="n"><b>Ella Reyes</b><span>Premium</span></td><td><span class="how"><svg class="i" width="14" height="14" viewBox="0 0 24 24"><path d="M5 2h14v20H5zM11 18h2"/></svg>Kiosk</span></td><td class="m">Strength</td><td class="m">Their pick</td><td class="r"><button class="btn sm" style="border:0;color:var(--text-2)">Undo</button></td></tr><tr><td>6:12 am</td><td class="n"><b>Franco Lim</b><span>Premium</span></td><td><span class="how"><svg class="i" width="14" height="14" viewBox="0 0 24 24"><path d="M5 2h14v20H5zM11 18h2"/></svg>Kiosk</span></td><td class="m">Cardio</td><td class="m">Their pick</td><td class="r"><button class="btn sm" style="border:0;color:var(--text-2)">Undo</button></td></tr></tbody></table></div>
+      </section>
+    </div>
+    <div class="a-side">
+      <section class="box" style="flex:none">
+        <div class="a-fig"><div class="l">Checked in today<span>9 more than last Sunday</span></div>
+          <div class="a-hero"><div class="n hero">42</div><div class="spark"><i style="height:30%"></i><i style="height:80%"></i><i style="height:60%"></i><i style="height:40%"></i><i style="height:20%"></i><i style="height:20%"></i><i style="height:10%"></i><i style="height:45%"></i><i style="height:35%"></i><i style="height:25%"></i><i style="height:40%"></i><i style="height:55%"></i><i style="height:0%" class=f></i><i style="height:0%" class=f></i><i style="height:0%" class=f></i><i style="height:0%" class=f></i><i style="height:0%" class=f></i></div></div></div>
+        <div class="a-fig"><div class="l">How they came in</div><div class="stack"><i style="flex:24"></i><i class="b" style="flex:11"></i><i class="c" style="flex:7"></i></div>
+          <div class="leg"><span>Kiosk 24</span><span>Desk scan 11</span><span>Typed 7</span></div></div>
+        <div class="a-fig" style="display:flex;gap:24px"><div><div class="l">Walk-ins</div><div class="n">3</div><div class="d">₱450 in the drawer</div></div>
+          <div><div class="l">Members this week</div><div class="n">96</div><div class="d">of 128 active, 75%</div></div></div>
+      </section>
+      <section class="box" style="flex:1">
+        <header><h2>At the door</h2></header>
+        <div class="kv"><svg class="i" width="18" height="18" viewBox="0 0 24 24"><path d="M5 2h14v20H5zM11 18h2"/></svg><div class="t"><b>Kiosk</b><span><span class="dot"></span> 24 today · last 5:48 pm</span></div><button class="btn sm">Open</button></div>
+        <div class="kv"><svg class="i" width="18" height="18" viewBox="0 0 24 24"><path d="M2 7h20v12H2zM8 3l4 4 4-4"/></svg><div class="t"><b>Lobby TV</b><span>Classes, records and the gym goal</span></div><button class="btn sm">Open</button></div>
+        <div class="kv"><svg class="i" width="18" height="18" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M17 11l2 2 4-4"/></svg><div class="t"><b>2 of 3 coaches in</b><span>Jen 5:50 am · Dante 1:10 pm</span></div><button class="btn sm">See all</button></div>
+        <div class="kv" style="border:0"><span></span><div class="t"><span style="color:var(--primary-fg);font-weight:600">How the kiosk works</span></div></div>
+      </section>
+    </div>
+  </div></div></div></div><span class="ann">Attendance A: desk console · sample data</span>
+<script>document.documentElement.dataset.mode = new URLSearchParams(location.search).get("mode") === "light" ? "light" : "dark";</script></body></html>

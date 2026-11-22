@@ -1,0 +1,229 @@
+/* ── Design V2 (owner, 2026-11-22; design/admin-v2/DECISIONS.md) ─────────────────────────────────────────
+   Loaded LAST (main.tsx), so it wins over index.css and light.css without !important wars.
+   Flat, no glow: the gym's colours no longer drift behind frosted panels (S6 in design/lessons/LESSONS.md);
+   surfaces are the gym theme's own SOLID colours, hairline borders, no card shadow, 12px corners.
+   The gym's colour shows on what is selected and on the one main button, never behind everything.
+   Gym themes still reach every surface: only the *-solid names are read here, never a fixed colour. */
+
+:root, :root[data-mode="dark"], :root[data-mode="light"] {
+  --color-surface: var(--surface-solid);
+  --color-surface-raised: var(--raised-solid);
+  --a-surface: var(--a-surface-solid, var(--surface-solid));
+  --a-raised: var(--a-raised-solid, var(--raised-solid));
+  --shadow-card: none;
+  --radius-card: 12px;
+  /* The old "glow" cards are plain cards now. */
+  --glow-bg: var(--surface-solid);
+  --glow-line: var(--color-border);
+  --rd-glow-bg: var(--surface-solid);
+  --rd-card-bg: var(--surface-solid);
+}
+
+/* No colour behind the page. */
+.cf-ambient { display: none; }
+
+/* Press feedback on touchdown (M-table: scale .97 on :active). */
+button:active:not(:disabled) { transform: scale(0.97); }
+@media (prefers-reduced-motion: reduce) { button:active:not(:disabled) { transform: none; } }
+
+/* ── Dashboard V2: the day line (pages/Dashboard.tsx, .dv2) ───────────────────────────────────────────── */
+.dv2 { height: 100%; display: flex; flex-direction: column; gap: 16px; min-height: 0; font-variant-numeric: tabular-nums; }
+.dv2-head { display: flex; align-items: flex-end; gap: 16px; flex: none; }
+.dv2-head h1 { font-size: 22px; font-weight: 650; letter-spacing: -0.02em; color: var(--color-text-primary); line-height: 1.2; }
+.dv2-head p { font-size: 13px; color: var(--color-text-secondary); margin-top: 2px; }
+.dv2-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.dv2-btn { height: 32px; padding: 0 12px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600;
+  border: 1px solid rgb(var(--hair-rgb, 255 255 255) / 0.14); color: var(--color-text-primary); white-space: nowrap; }
+.dv2-btn:hover { background: rgb(var(--hair-rgb, 255 255 255) / 0.05); }
+.dv2-btn.go { background: var(--amber-solid, #F59E0B); color: var(--on-amber, #1a1206); border-color: transparent; }
+.dv2-btn.go:hover { filter: brightness(1.06); background: var(--amber-solid, #F59E0B); }
+
+.dv2-grid { flex: 1; min-height: 0; display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr) 360px; }
+.dv2-left { display: grid; gap: 16px; min-height: 0; grid-template-rows: minmax(0, 1.15fr) minmax(0, 1fr); }
+.dv2-low { display: grid; gap: 16px; min-height: 0; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+
+.dv2-box { background: var(--surface-solid); border: 1px solid var(--color-border); border-radius: 12px; min-height: 0; min-width: 0;
+  display: flex; flex-direction: column; overflow: hidden; }
+.dv2-box > header { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px; flex: none;
+  border-bottom: 1px solid var(--color-border); }
+.dv2-box > header h2 { font-size: 13px; font-weight: 600; color: var(--color-text-primary); white-space: nowrap; }
+.dv2-count { color: var(--color-text-muted); font-weight: 500; margin-left: 4px; }
+.dv2-aside { margin-left: auto; color: var(--color-text-muted); font-size: 12px; display: flex; gap: 12px; align-items: center; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dv2-scroll { overflow-y: auto; min-height: 0; flex: 1; overscroll-behavior: contain; }
+.dv2-link { color: var(--color-primary-300, #C4B5FD); font-weight: 600; font-size: 12px; }
+:root[data-mode="light"] .dv2-link { color: var(--color-primary-700, #6D28D9); }
+
+.dv2-figs { display: flex; align-items: flex-start; gap: 32px; padding: 16px 16px 0; flex: none; }
+.dv2-fig { min-width: 0; padding: 16px; }
+.dv2-figs .dv2-fig { padding: 0; }
+.dv2-fig .l { color: var(--color-text-secondary); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dv2-fig .n { font-size: 24px; font-weight: 650; letter-spacing: -0.02em; margin-top: 4px; color: var(--color-text-primary); line-height: 1.15; white-space: nowrap; }
+.dv2-fig .n.hero { font-size: 44px; letter-spacing: -0.04em; line-height: 1.05; }
+.dv2-fig .d { font-size: 12px; color: var(--color-text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dv2-fig .d b { color: var(--color-text-secondary); font-weight: 600; }
+.dv2-fig.as-btn { text-align: left; border-radius: 0; }
+.dv2-fig.as-btn:hover { background: rgb(var(--hair-rgb, 255 255 255) / 0.03); }
+.dv2-fig.as-btn:active { transform: none; }
+
+.dv2-day { flex: 1; min-height: 0; padding: 8px 16px 12px; display: flex; align-items: stretch; }
+.dv2-day svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.dv2-day text { font-size: 11px; fill: var(--color-text-muted); font-family: inherit; }
+.dv2-day .cls { cursor: default; }
+.dv2-day .cls text { fill: var(--color-text-primary); font-weight: 600; }
+.dv2-day .cls.done text { fill: var(--color-text-muted); }
+.dv2-day .cls .sub { fill: var(--color-text-secondary); font-weight: 400; }
+.dv2-day .bar { fill: var(--color-primary-300, #C4B5FD); }
+:root[data-mode="light"] .dv2-day .bar { fill: var(--color-primary-600, var(--color-primary)); }
+.dv2-day .bar.ahead { opacity: .45; }
+.dv2-day .grid-line { stroke: var(--color-border); stroke-width: 1; }
+.dv2-day .now-line { stroke: var(--amber-solid, #F59E0B); stroke-width: 1.5; }
+.dv2-day .now-text { fill: var(--amber-text, var(--amber-solid, #F59E0B)); font-weight: 600; }
+.dv2-day .cls-block { fill: var(--color-primary-300, #C4B5FD); }
+:root[data-mode="light"] .dv2-day .cls-block { fill: var(--color-primary-600, var(--color-primary)); }
+.dv2-day .cls.done .cls-block { fill: rgb(var(--hair-rgb, 255 255 255) / 0.18); }
+.dv2-note { padding: 16px; font-size: 12px; color: var(--color-text-muted); }
+
+.dv2-tabs { display: flex; gap: 16px; height: 44px; align-items: stretch; padding: 0 16px; flex: none;
+  border-bottom: 1px solid var(--color-border); overflow: hidden; }
+.dv2-tabs > button { color: var(--color-text-secondary); font-size: 13px; font-weight: 600; border-bottom: 2px solid transparent; white-space: nowrap; }
+.dv2-tabs > button[aria-selected="true"] { color: var(--color-text-primary); border-color: var(--color-primary); }
+.dv2-tabs > button:active { transform: none; }
+.dv2-tabs .dv2-aside { gap: 8px; }
+.dv2-seg { display: inline-flex; border: 1px solid rgb(var(--hair-rgb, 255 255 255) / 0.14); border-radius: 6px; overflow: hidden; }
+.dv2-seg button { padding: 2px 8px; font-size: 12px; color: var(--color-text-secondary); }
+.dv2-seg button[aria-pressed="true"] { background: var(--raised-solid); color: var(--color-text-primary); font-weight: 600; }
+.dv2-seg select { background: transparent; font-size: 12px; color: var(--color-text-primary); padding: 2px 8px; border: 0; outline: none; }
+
+.dv2-mfig { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); flex: 1; min-height: 0; }
+.dv2-mfig .dv2-fig { border-bottom: 1px solid var(--color-border); display: flex; flex-direction: column; justify-content: center; }
+.dv2-mfig .dv2-fig:nth-child(even) { border-left: 1px solid var(--color-border); }
+.dv2-mfig .dv2-fig:nth-last-child(-n+2) { border-bottom: 0; }
+.dv2-chart { flex: 1; min-height: 0; padding: 12px 8px 4px 0; }
+.dv2-heat { flex: 1; min-height: 0; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
+
+.dv2-row { display: flex; align-items: center; gap: 12px; padding: 10px 16px; min-width: 0; width: 100%; text-align: left;
+  border-bottom: 1px solid var(--color-border); }
+.dv2-row:last-child { border-bottom: 0; }
+button.dv2-row:hover { background: rgb(var(--hair-rgb, 255 255 255) / 0.03); }
+button.dv2-row:active { transform: none; }
+.dv2-row .t { flex: 1; min-width: 0; }
+.dv2-row .t b { display: block; font-size: 13px; font-weight: 600; color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dv2-row .t span { display: block; font-size: 12px; color: var(--color-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dv2-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-primary-300, #C4B5FD); flex: none; display: inline-block; }
+:root[data-mode="light"] .dv2-dot { background: var(--color-primary-600, var(--color-primary)); }
+.dv2-dot.warn, :root[data-mode="light"] .dv2-dot.warn { background: var(--amber-solid, #F59E0B); }
+.dv2-dot.off, :root[data-mode="light"] .dv2-dot.off { background: var(--color-text-muted); }
+.dv2-state { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--color-text-secondary); white-space: nowrap; flex: none; }
+.dv2-act { height: 28px; padding: 0 10px; border-radius: 6px; border: 1px solid rgb(var(--hair-rgb, 255 255 255) / 0.14); font-weight: 600;
+  font-size: 12px; flex: none; color: var(--color-text-primary); }
+.dv2-act:hover { background: rgb(var(--hair-rgb, 255 255 255) / 0.05); }
+.dv2-av { width: 28px; height: 28px; border-radius: 50%; background: var(--raised-solid); display: grid; place-items: center; font-size: 11px;
+  font-weight: 600; color: var(--color-text-secondary); flex: none; }
+.dv2-empty { padding: 24px 16px; display: flex; flex-direction: column; gap: 4px; }
+.dv2-empty b { font-size: 13px; color: var(--color-text-primary); font-weight: 600; }
+.dv2-empty span { font-size: 12px; color: var(--color-text-secondary); }
+
+/* 1280: the rail narrows, the figure row tightens. */
+@media (max-width: 1440px) {
+  .dv2-grid { grid-template-columns: minmax(0, 1fr) 320px; }
+  .dv2-figs { gap: 24px; }
+  .dv2-fig .n.hero { font-size: 38px; }
+}
+
+/* Light: a quiet grey ground with only a breath of the gym's colour (C4: tint the greys, about 3%). */
+:root[data-mode="light"] {
+  --color-bg: color-mix(in srgb, var(--color-primary) 3%, #F3F3F6);
+  --raised-solid: color-mix(in srgb, var(--color-primary) 4%, #F1F1F4);
+}
+
+/* ── Shell B (owner's pick, 2026-11-22): the rail, the account menu, the two-row header ─────────────── */
+.acc-btn { width: 100%; display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 8px; border-radius: 6px; text-align: left; }
+.acc-btn:hover, .acc-btn[aria-expanded="true"] { background: rgb(var(--hair-rgb, 255 255 255) / 0.05); }
+.acc-btn.compact { width: 40px; height: 40px; padding: 0; justify-content: center; }
+.acc-who { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.acc-who b { font-size: 13px; font-weight: 600; color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.acc-who small { font-size: 12px; color: var(--color-text-muted); }
+.acc-chev { color: var(--color-text-muted); flex: none; }
+.acc-menu { position: fixed; z-index: 1000; width: 240px; padding: 4px; border-radius: 8px; background: var(--surface-solid);
+  border: 1px solid rgb(var(--hair-rgb, 255 255 255) / 0.12); box-shadow: 0 16px 40px -16px rgb(0 0 0 / 0.6);
+  transform-origin: bottom left; animation: acc-in 0.16s ease-out; }
+:root[data-mode="light"] .acc-menu { box-shadow: 0 16px 40px -16px rgb(30 30 60 / 0.3); }
+@keyframes acc-in { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .acc-menu { animation: none; } }
+.acc-head { padding: 8px 10px; border-bottom: 1px solid var(--color-border); margin-bottom: 4px; display: flex; flex-direction: column; }
+.acc-head b { font-size: 13px; color: var(--color-text-primary); font-weight: 600; }
+.acc-head small { font-size: 12px; color: var(--color-text-muted); }
+.acc-menu button { width: 100%; height: 34px; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-radius: 6px;
+  font-size: 13px; color: var(--color-text-primary); text-align: left; }
+.acc-menu button svg { color: var(--color-text-muted); flex: none; }
+.acc-menu button:hover, .acc-menu button:focus-visible { background: rgb(var(--hair-rgb, 255 255 255) / 0.06); outline: none; }
+.acc-menu button:active { transform: none; }
+.acc-note { margin-left: auto; font-size: 11px; color: var(--color-text-muted); }
+.acc-sep { height: 1px; background: var(--color-border); margin: 4px 0; }
+
+/* The day line with nothing in it yet says so, instead of an empty grid. */
+.dv2-dayempty { position: relative; flex: 1; min-height: 0; display: flex; }
+.dv2-dayempty > p { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); text-align: center; font-size: 13px;
+  color: var(--color-text-secondary); background: var(--surface-solid); padding: 6px 12px; border-radius: 6px; white-space: nowrap; }
+
+/* The rail: a word under every icon (LESSONS L7), where you are = a raised tile and a 2px mark in the gym's colour. */
+.rail { display: flex; flex-direction: column; align-items: stretch; gap: 2px; padding: 10px 8px; background: var(--surface-solid);
+  border-right: 1px solid var(--color-border); }
+.rail-mark { width: 36px; height: 36px; border-radius: 8px; margin: 0 auto 10px; overflow: hidden; flex: none; display: grid; place-items: center;
+  background: var(--fill-primary, var(--color-primary)); color: #fff; font-size: 12px; font-weight: 700; }
+.rail-mark img { width: 100%; height: 100%; object-fit: cover; }
+.rail-nav { display: flex; flex-direction: column; gap: 2px; min-height: 0; overflow-y: auto; scrollbar-width: none; }
+.rail-foot { margin-top: auto; display: flex; flex-direction: column; gap: 2px; align-items: stretch; padding-top: 8px; }
+.rail-foot .acc-btn.compact { margin: 6px auto 0; }
+.rail-item { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 7px 0 6px; border-radius: 8px;
+  color: var(--color-text-secondary); font-size: 11px; font-weight: 500; line-height: 1.2; text-align: center; }
+.rail-item:hover { background: rgb(var(--hair-rgb, 255 255 255) / 0.05); color: var(--color-text-primary); }
+.rail-item[data-active="true"] { background: var(--raised-solid); color: var(--color-text-primary); font-weight: 600; }
+.rail-item[data-active="true"]::before { content: ''; position: absolute; left: -8px; top: 10px; bottom: 10px; width: 2px; border-radius: 0 2px 2px 0;
+  background: var(--color-primary); }
+.rail-item:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+
+/* The header: the bar (gym, search, alerts), then the section's pages as tabs. */
+.cf-top-row { height: 48px; display: flex; align-items: center; gap: 16px; padding: 0 24px; }
+.cf-gym { display: flex; align-items: baseline; gap: 8px; white-space: nowrap; flex: none; max-width: 40%; }
+.cf-gym b { font-size: 13px; font-weight: 650; color: var(--color-text-primary); }
+.cf-gym span { font-size: 12px; color: var(--color-text-muted); }
+.cf-tabs { height: 36px; display: flex; align-items: stretch; gap: 20px; padding: 0 24px; overflow-x: auto; scrollbar-width: none; }
+.cf-tabs-sec { display: flex; align-items: center; padding-right: 16px; margin-right: -4px; border-right: 1px solid var(--color-border);
+  font-size: 13px; font-weight: 650; color: var(--color-text-primary); white-space: nowrap; }
+.cf-tab { display: flex; align-items: center; font-size: 13px; font-weight: 600; color: var(--color-text-secondary); white-space: nowrap;
+  border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.cf-tab:hover { color: var(--color-text-primary); }
+.cf-tab[data-active="true"] { color: var(--color-text-primary); border-bottom-color: var(--color-primary); }
+
+/* The rail mark and the bar share one centre line: 8px + 36/2 = 52/2 = 26px. */
+.cf-top-row { height: 52px; }
+.rail { padding-top: 8px; }
+
+/* "How it works" (guides.css is byte-identical in both apps, so admin's flat version lives here): a quiet
+   outlined button, not a tinted pill. `body` outranks guides.css, which loads later. */
+body .gd-open { height: 32px; border-radius: 8px; background: transparent; color: var(--color-text-primary);
+  border: 1px solid rgb(var(--hair-rgb, 255 255 255) / 0.14); }
+body .gd-open:hover { background: rgb(var(--hair-rgb, 255 255 255) / 0.05); }
+body .gd-open svg { color: var(--color-text-muted); }
+
+/* ── The header's tools (owner, 2026-11-22: "fix this alignment and sizing", asked twice) ─────────────────
+   Search and alerts are one group at the right: both 40px tall on the row's centre line, both filled with the
+   raised surface and a hairline, 8px corners, 8px apart, 24px from the edge. The alert count sits INSIDE the
+   bell's box (top right), so nothing hangs off it. */
+.cf-top-row { height: 56px; gap: 12px; }
+.rail { padding-top: 10px; }
+.cf-top-search { display: flex; align-items: center; gap: 10px; height: 40px; width: 100%; max-width: 440px; padding: 0 8px 0 14px;
+  border-radius: 8px; font-size: 13px; background: var(--raised-solid) !important; border: 1px solid rgb(var(--hair-rgb, 255 255 255) / 0.12) !important;
+  color: var(--color-text-muted); }
+.cf-top-search:hover { border-color: rgb(var(--hair-rgb, 255 255 255) / 0.24) !important; }
+.cf-top-search:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.cf-top-search kbd { height: 22px; padding: 0 6px; border-radius: 4px; font-size: 11px; font-family: inherit;
+  background: var(--surface-solid) !important; border: 1px solid rgb(var(--hair-rgb, 255 255 255) / 0.12) !important; }
+.cf-top .cf-top-icon { position: relative; width: 40px; height: 40px; flex: none; border-radius: 8px; display: inline-grid; place-items: center;
+  background: var(--raised-solid); border: 1px solid rgb(var(--hair-rgb, 255 255 255) / 0.12); color: var(--color-text-secondary); }
+.cf-top .cf-top-icon:hover { border-color: rgb(var(--hair-rgb, 255 255 255) / 0.24); color: var(--color-text-primary); }
+.cf-bell-count { position: absolute; top: 5px; right: 5px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 8px;
+  display: grid; place-items: center; font-size: 9.5px; font-weight: 700; line-height: 1;
+  background: var(--amber-solid, #F59E0B); color: var(--on-amber, #1a1206); }

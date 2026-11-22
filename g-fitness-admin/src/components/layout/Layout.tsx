@@ -1,8 +1,7 @@
-import Ambient from './Ambient';
 import { Outlet, useLocation } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import Sidebar, { useSidebarCollapsed } from './Sidebar';
+import Sidebar, { RAIL_W } from './Sidebar';
 import Header from './Header';
 import TooltipLayer from '../ui/TooltipLayer';
 import GymLook from '../GymLook';
@@ -18,7 +17,6 @@ import ColorModeAsk from '../colormode/ColorModeAsk';
 export default function Layout() {
   const location = useLocation();
   const mainRef = useRef<HTMLDivElement>(null);
-  const { collapsed, toggle } = useSidebarCollapsed();
   // 0198: a gym whose free trial has ended gets its plan page and nothing else.
   const [ctx, setCtx] = useState<GymContext | null>(null);
   useEffect(() => {
@@ -37,12 +35,10 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen overflow-hidden relative" style={{ background: 'var(--color-bg)', isolation: 'isolate' }}>
-      {/* The gym's colours drifting behind the glass (2026-11-07). */}
-      <Ambient />
-      <Sidebar collapsed={collapsed} onToggle={toggle} />
+      <Sidebar />
       <div
         className="flex-1 flex flex-col overflow-hidden transition-all duration-200"
-        style={{ marginLeft: collapsed ? 56 : 208 }}
+        style={{ marginLeft: RAIL_W }}
       >
         <Header />
         {/* Above <main>, not inside it: it must not scroll away, and it must

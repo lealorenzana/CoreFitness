@@ -431,244 +431,250 @@ Let ${member.profile.first_name} in anyway?`)) return;
         sub={<><span className="a-live">Live</span>&nbsp; {longDate}{closesAt ? ` · open until ${closesAt}` : ''}</>} />
       <OfflineScans onRecorded={reloadAfterSend} />
 
-      <div className="a-grid flex-none" style={{ gridTemplateColumns: 'minmax(0,1.5fr) minmax(0,1fr)' }}>
-        {/* ── Check someone in ── */}
-        <div className="a-card glow" data-checkin-box ref={checkinBox}>
-          <div className="a-ct"><h3><ScanLine size={16} />Check someone in</h3><small>scan, type a name, or the code under their QR</small></div>
-          <div style={{ display: 'flex', gap: 10 }} ref={searchRow}>
-            <label className="a-input big" style={{ flex: 1 }}>
-              <Search size={19} />
-              <input value={query} onChange={(e) => { setQuery(e.target.value); setListOpen(true); }} onFocus={() => setListOpen(true)} onClick={() => setListOpen(true)}
-                onKeyDown={(e) => e.key === 'Enter' && submitQuery()}
-                placeholder="Name, email or code (A3F 92B)" aria-label="Check-in code or name" />
-              {query && <span className="a-kbd">Enter ↵</span>}
-            </label>
-            <button type="button" className="a-btn violet" style={{ padding: '0 20px', fontSize: 13 }} onClick={() => setIsScannerOpen(true)} data-scan-qr
-              data-tip="Open the camera to scan a member's or coach's code"><QrCode size={19} />Scan QR</button>
+      {/* Design V2 (owner's pick "desk console", 2026-11-22): the desk's one job on the left (find, check in,
+          see it land, the log); the day's figures and the door on a right rail. */}
+      <div className="a-v2" data-att-v2>
+        <div className="a-v2-main">
+          {/* ── Check someone in ── */}
+          <div className="a-card glow" data-checkin-box ref={checkinBox}>
+            <div className="a-ct"><h3><ScanLine size={16} />Check someone in</h3><small>scan, type a name, or the code under their QR</small></div>
+            <div style={{ display: 'flex', gap: 10 }} ref={searchRow}>
+              <label className="a-input big" style={{ flex: 1 }}>
+                <Search size={19} />
+                <input value={query} onChange={(e) => { setQuery(e.target.value); setListOpen(true); }} onFocus={() => setListOpen(true)} onClick={() => setListOpen(true)}
+                  onKeyDown={(e) => e.key === 'Enter' && submitQuery()}
+                  placeholder="Name, email or code (A3F 92B)" aria-label="Check-in code or name" />
+                {query && <span className="a-kbd">Enter ↵</span>}
+              </label>
+              <button type="button" className="a-btn amber" style={{ padding: "0 20px", fontSize: 13 }} onClick={() => setIsScannerOpen(true)} data-scan-qr
+                data-tip="Open the camera to scan a member's or coach's code"><QrCode size={19} />Scan QR</button>
+            </div>
+
+            {/* What the box found — members, and coaches when the owner has coach check-in on. A fixed box that scrolls itself. */}
+            <div className="a-scroll" data-quick-list style={{ marginTop: 10, borderRadius: 14, background: 'var(--a-well, #0f0f19)', border: '1px solid var(--a-line)', padding: '4px 12px', height: 96 }}>
+              {!q && shown ? (
+              <div className="a-toast" style={{ margin: '-4px -12px', height: 'calc(100% + 8px)', borderRadius: 13, border: 0 }} data-last-checkin>
+                <span className="ok"><Check size={16} /></span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <b style={{ fontSize: 13 }}>{shown.name} is in</b>
+                  <div className="a-sub truncate">{clock(shown.at)}{shown.kind === 'coach' ? ' · coach' : shown.activity ? ` · ${shown.activity} · ${shown.by === 'member' ? 'their pick' : 'set at desk'}` : ''}{!last ? ' · the latest today' : ''}</div>
+                </div>
+                <button type="button" className="a-btn ghost sm" onClick={() => {
+                  if (shown.kind === 'coach') return setToUndoCoach({ id: shown.id, name: shown.name });
+                  const row = today.find((r) => r.id === shown.id);
+                  if (row) setToUndo(row);
+                }}>Undo</button>
+              </div>
+              ) : !q ? (
+                <p className="a-sub h-full grid place-items-center text-center" style={{ fontSize: 12 }}>
+                  Start typing to find a member{door?.coachCheckin ? ' or a coach' : ''}. A scanned or typed code checks them in at once.
+                </p>
+              ) : memberHits.length + coachHits.length === 0 ? (
+                <p className="a-sub h-full grid place-items-center" style={{ fontSize: 12 }}>No members found</p>
+              ) : (
+                <button type="button" className="a-sub h-full w-full grid place-items-center" style={{ fontSize: 12 }} onClick={() => setListOpen(true)} data-found-note>
+                  {memberHits.length + coachHits.length} found{listOpen ? ' — pick one in the list' : ' — show the list'}
+                </button>
+              )}
+            </div>
+            {floating && anchor && createPortal(
+              <div ref={floatList} className="att a-float-list" role="listbox" aria-label="People found" data-quick-list-float
+                style={{ position: 'fixed', top: anchor.top, left: anchor.left, width: anchor.width, maxHeight: anchor.maxH }}>
+                <div className="a-float-list__head">
+                  <span>{memberHits.length + coachHits.length} found{memberHits.length > 20 ? ' · the first 20 — type more to narrow it' : ''}</span>
+                  <button type="button" className="a-btn ghost sm" onClick={() => setListOpen(false)}>Close</button>
+                </div>
+                <div className="a-float-list__body">
+                  {coachHits.slice(0, 5).map((c) => (
+                    <div key={c.id} className="a-row" data-quick-coach>
+                      <Av name={c.name} photo={c.photo} />
+                      <div className="t"><b>{c.name}</b><small><span className="a-dot a" /> Coach · <span className="a-code">{formatCheckInCode(c.id)}</span></small></div>
+                      <span className="a-pill a"><Dumbbell size={12} />Coach</span>
+                      {c.checkedInAt ? <span className="a-sub">in at {clock(c.checkedInAt)}</span>
+                        : <button type="button" className="a-btn amber sm" onClick={() => void doCoachCheckIn(c, 'manual')}>Check in</button>}
+                    </div>
+                  ))}
+                  {memberHits.slice(0, 20).map((m) => {
+                    const w = whoOf[m.profile.id];
+                    const name = `${m.profile.first_name} ${m.profile.last_name}`;
+                    const pick = picks.get(m.profile.id);
+                    const left = w?.expiry ? daysBetween(todayStr, w.expiry) : null;
+                    return (
+                      <div key={m.profile.id} className="a-row">
+                        <Av name={name} photo={m.profile.photo_url} />
+                        <div className="t">
+                          <b>{name}</b>
+                          <small>
+                            <span className={`a-dot ${w?.usable ? 'v' : 'a'}`} />
+                            {w ? `${w.plan} · ${w.usable ? (left !== null && left <= 7 ? `ends in ${left} day${left === 1 ? '' : 's'}` : 'active') : w.status === 'frozen' ? 'frozen' : 'expired'}` : 'No plan'} ·
+                            <span className="a-code">{formatCheckInCode(m.profile.id)}</span>
+                          </small>
+                        </div>
+                        {pick && !activity && <span className="a-pill v" data-tip="What they picked on their QR screen"><Smartphone size={12} />picked {pick}</span>}
+                        {inToday.has(m.profile.id) ? <span className="a-sub">already in</span>
+                          : <button type="button" className="a-btn amber sm" onClick={() => void doCheckIn(m, 'manual')}>Check in</button>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>, document.body)}
+
+            {/* The next check-in's tag: the four used most today, the rest under More. Amber while set, with None to clear.
+                The desk's tag beats a member's own pick. */}
+            {activityOptions.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 12, flexWrap: 'nowrap', minWidth: 0 }} data-tag-picker>
+                <span className="a-lbl inline-flex items-center gap-1.5 flex-none" style={{ marginRight: 3, color: activity ? 'var(--a-a300)' : undefined }}><Tag size={13} />Tag the next check-in</span>
+                <div className="flex items-center gap-[7px] min-w-0 overflow-hidden" data-tag-chips>
+                  <button type="button" className={`a-chip ${activity === '' ? 'v' : ''}`} onClick={() => setActivity('')} aria-pressed={activity === ''}>None</button>
+                  {[...topTags, ...(activity && !topTags.includes(activity) ? [activity] : [])].map((t) => (
+                    <button key={t} type="button" className={`a-chip ${activity === t ? 'on' : ''}`} onClick={() => setActivity(activity === t ? '' : t)} aria-pressed={activity === t}>
+                      {activity === t && <Check size={12} />}{t}{tagCount[t] ? <em>{tagCount[t]}</em> : null}
+                    </button>
+                  ))}
+                </div>
+                {activityOptions.length > topTags.length && (
+                  <select className="a-chip flex-none" value="" onChange={(e) => e.target.value && setActivity(e.target.value)} aria-label="More activities" data-tag-select>
+                    <option value="">More…</option>
+                    {activityOptions.filter((o) => !topTags.includes(o)).map((o) => <option key={o} value={o}>{o}{tagCount[o] ? ` (${tagCount[o]})` : ''}</option>)}
+                  </select>
+                )}
+              </div>
+            )}
+
           </div>
 
-          {/* What the box found — members, and coaches when the owner has coach check-in on. A fixed box that scrolls itself. */}
-          <div className="a-scroll" data-quick-list style={{ marginTop: 10, borderRadius: 14, background: 'var(--a-well, #0f0f19)', border: '1px solid var(--a-line)', padding: '4px 12px', height: 96 }}>
-            {!q && shown ? (
-            <div className="a-toast" style={{ margin: '-4px -12px', height: 'calc(100% + 8px)', borderRadius: 13, border: 0 }} data-last-checkin>
-              <span className="ok"><Check size={16} /></span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <b style={{ fontSize: 13 }}>{shown.name} is in</b>
-                <div className="a-sub truncate">{clock(shown.at)}{shown.kind === 'coach' ? ' · coach' : shown.activity ? ` · ${shown.activity} · ${shown.by === 'member' ? 'their pick' : 'set at desk'}` : ''}{!last ? ' · the latest today' : ''}</div>
+          {/* ── Today's log ── */}
+          <div className="a-card" style={{ flex: 1 }} data-today-log>
+            <div className="a-ct">
+              <h3><ListChecks size={16} />Today’s check-ins</h3>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                {(['all', 'kiosk', 'desk', 'typed'] as Way[]).map((k) => (
+                  <button key={k} type="button" className={`a-chip ${way === k ? 'v' : ''}`} onClick={() => { setWay(k); setLogPage(1); }} data-way={k}>
+                    {WAY_LABEL[k]} <em>{k === 'all' ? today.length : byWay[k]}</em>
+                  </button>
+                ))}
+                <label className="a-input sm" style={{ width: 210 }}><Search size={14} />
+                  <input value={logSearch} onChange={(e) => { setLogSearch(e.target.value); setLogPage(1); }} placeholder="Search today…" aria-label="Search today" /></label>
+                <button type="button" className="a-btn sm" onClick={exportLog} data-tip="Export what the log shows as CSV"><Download size={14} />Export</button>
+                <button type="button" className="a-btn sm" onClick={() => setFullOpen(true)} data-open-full-log data-tip="Every check-in today in one window"><Maximize2 size={14} />View all</button>
               </div>
-              <button type="button" className="a-btn ghost sm" onClick={() => {
-                if (shown.kind === 'coach') return setToUndoCoach({ id: shown.id, name: shown.name });
-                const row = today.find((r) => r.id === shown.id);
-                if (row) setToUndo(row);
-              }}>Undo</button>
             </div>
-            ) : !q ? (
-              <p className="a-sub h-full grid place-items-center text-center" style={{ fontSize: 12 }}>
-                Start typing to find a member{door?.coachCheckin ? ' or a coach' : ''}. A scanned or typed code checks them in at once.
-              </p>
-            ) : memberHits.length + coachHits.length === 0 ? (
-              <p className="a-sub h-full grid place-items-center" style={{ fontSize: 12 }}>No members found</p>
-            ) : (
-              <button type="button" className="a-sub h-full w-full grid place-items-center" style={{ fontSize: 12 }} onClick={() => setListOpen(true)} data-found-note>
-                {memberHits.length + coachHits.length} found{listOpen ? ' — pick one in the list' : ' — show the list'}
-              </button>
+            <div ref={fitRef} className="a-scroll" style={{ flex: 1 }} data-rd-table>
+              <table className="a-table">
+                <thead><tr><th>Time</th><th>Member</th><th>How</th><th>Activity</th><th>By</th><th /></tr></thead>
+                <tbody>
+                  {logRecords.slice((page - 1) * perPage, page * perPage).map((r) => (
+                    <LogRow key={r.id} row={r} name={nameOf(r.member_id)} photo={memberById[r.member_id]?.profile.photo_url} plan={whoOf[r.member_id]?.plan}
+                      by={byOf(r)} onUndo={() => setToUndo(r)} height={logRecords.length > perPage ? fitRowHeight : undefined} />
+                  ))}
+                </tbody>
+              </table>
+              {logRecords.length === 0 && (
+                <div className="a-sub text-center" style={{ padding: '22px 0', fontSize: 12.5 }}>
+                  {today.length === 0 ? 'Nobody has checked in today yet. When members check in, they’ll appear here.' : 'No check-ins match these filters.'}
+                  {today.length > 0 && <> <button type="button" className="a-link" style={{ color: 'var(--a-p300)' }} onClick={() => { setWay('all'); setLogSearch(''); setLogPlan('all'); }}>Clear filters</button></>}
+                </div>
+              )}
+            </div>
+            {logRecords.length > 0 && (
+              <div className="a-sub" style={{ paddingTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} data-rd-footer>
+                <span>Showing {(page - 1) * perPage + 1}–{Math.min(logRecords.length, page * perPage)} of {logRecords.length} check-ins today</span>
+                <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  {pages > 1 && <>
+                    <button type="button" className="a-chip" style={{ padding: '3px 8px' }} disabled={page <= 1} onClick={() => setLogPage(page - 1)} aria-label="Previous page"><ChevronLeft size={13} /></button>
+                    <span>{page} / {pages}</span>
+                    <button type="button" className="a-chip" style={{ padding: '3px 8px' }} disabled={page >= pages} onClick={() => setLogPage(page + 1)} aria-label="Next page"><ChevronRight size={13} /></button>
+                  </>}
+                  <Link to="/attendance-history" className="a-link" style={{ color: 'var(--a-p300)', marginLeft: 8 }}>Other days →</Link>
+                </span>
+              </div>
             )}
           </div>
-          {floating && anchor && createPortal(
-            <div ref={floatList} className="att a-float-list" role="listbox" aria-label="People found" data-quick-list-float
-              style={{ position: 'fixed', top: anchor.top, left: anchor.left, width: anchor.width, maxHeight: anchor.maxH }}>
-              <div className="a-float-list__head">
-                <span>{memberHits.length + coachHits.length} found{memberHits.length > 20 ? ' · the first 20 — type more to narrow it' : ''}</span>
-                <button type="button" className="a-btn ghost sm" onClick={() => setListOpen(false)}>Close</button>
-              </div>
-              <div className="a-float-list__body">
-                {coachHits.slice(0, 5).map((c) => (
-                  <div key={c.id} className="a-row" data-quick-coach>
-                    <Av name={c.name} photo={c.photo} />
-                    <div className="t"><b>{c.name}</b><small><span className="a-dot a" /> Coach · <span className="a-code">{formatCheckInCode(c.id)}</span></small></div>
-                    <span className="a-pill a"><Dumbbell size={12} />Coach</span>
-                    {c.checkedInAt ? <span className="a-sub">in at {clock(c.checkedInAt)}</span>
-                      : <button type="button" className="a-btn amber sm" onClick={() => void doCoachCheckIn(c, 'manual')}>Check in</button>}
-                  </div>
-                ))}
-                {memberHits.slice(0, 20).map((m) => {
-                  const w = whoOf[m.profile.id];
-                  const name = `${m.profile.first_name} ${m.profile.last_name}`;
-                  const pick = picks.get(m.profile.id);
-                  const left = w?.expiry ? daysBetween(todayStr, w.expiry) : null;
-                  return (
-                    <div key={m.profile.id} className="a-row">
-                      <Av name={name} photo={m.profile.photo_url} />
-                      <div className="t">
-                        <b>{name}</b>
-                        <small>
-                          <span className={`a-dot ${w?.usable ? 'v' : 'a'}`} />
-                          {w ? `${w.plan} · ${w.usable ? (left !== null && left <= 7 ? `ends in ${left} day${left === 1 ? '' : 's'}` : 'active') : w.status === 'frozen' ? 'frozen' : 'expired'}` : 'No plan'} ·
-                          <span className="a-code">{formatCheckInCode(m.profile.id)}</span>
-                        </small>
-                      </div>
-                      {pick && !activity && <span className="a-pill v" data-tip="What they picked on their QR screen"><Smartphone size={12} />picked {pick}</span>}
-                      {inToday.has(m.profile.id) ? <span className="a-sub">already in</span>
-                        : <button type="button" className="a-btn amber sm" onClick={() => void doCheckIn(m, 'manual')}>Check in</button>}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>, document.body)}
 
-          {/* The next check-in's tag: the four used most today, the rest under More. Amber while set, with None to clear.
-              The desk's tag beats a member's own pick. */}
-          {activityOptions.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 12, flexWrap: 'nowrap', minWidth: 0 }} data-tag-picker>
-              <span className="a-lbl inline-flex items-center gap-1.5 flex-none" style={{ marginRight: 3, color: activity ? 'var(--a-a300)' : undefined }}><Tag size={13} />Tag the next check-in</span>
-              <div className="flex items-center gap-[7px] min-w-0 overflow-hidden" data-tag-chips>
-                <button type="button" className={`a-chip ${activity === '' ? 'v' : ''}`} onClick={() => setActivity('')} aria-pressed={activity === ''}>None</button>
-                {[...topTags, ...(activity && !topTags.includes(activity) ? [activity] : [])].map((t) => (
-                  <button key={t} type="button" className={`a-chip ${activity === t ? 'on' : ''}`} onClick={() => setActivity(activity === t ? '' : t)} aria-pressed={activity === t}>
-                    {activity === t && <Check size={12} />}{t}{tagCount[t] ? <em>{tagCount[t]}</em> : null}
+        </div>
+        <div className="a-v2-side">
+          {/* ── Four cards ── */}
+          <div className="a-grid flex-none" data-stats-strip>
+            <div className="a-card">
+              <div className="a-lbl">Checked in today</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                <div className="a-num">{today.length}</div>
+                <span className="a-sub"><span className={diff >= 0 ? 'a-up' : 'a-dn'}>{diff >= 0 ? '▲' : '▼'} {Math.abs(diff)}</span> vs last {lastWeekday}</span>
+              </div>
+              <div className="a-spark" data-tip={`Check-ins by hour, ${hours.open}:00–${hours.close}:00`}>
+                {perHour.map((n, i) => <i key={i} className={hours.open + i === nowHour ? 'now' : ''} style={{ height: `${Math.max(6, (n / maxHour) * 100)}%`, opacity: hours.open + i > nowHour ? 0.35 : 1 }} />)}
+              </div>
+            </div>
+            <div className="a-card">
+              <div className="a-lbl">How they came in</div>
+              <div className="a-num">{scanned} <span style={{ fontSize: 15, color: 'var(--a-text2)', fontWeight: 600 }}>scanned</span></div>
+              <div className="a-stack">
+                {today.length > 0 && <><i style={{ flex: byWay.kiosk, background: 'var(--hx-1, #9578fb)' }} /><i style={{ flex: byWay.desk, background: 'var(--hx-2, #6447c7)' }} /><i style={{ flex: byWay.typed, background: 'var(--hx-3, #3b3560)' }} /></>}
+              </div>
+              <div className="a-legend">
+                {(['kiosk', 'desk', 'typed'] as const).map((k) => (
+                  <button key={k} type="button" onClick={() => { setWay(way === k ? 'all' : k); setLogPage(1); }} style={way === k ? { color: '#fff' } : undefined} data-tip="Show only these in the log">
+                    <span className={`a-dot ${k === 'kiosk' ? 'v' : k === 'desk' ? 'd' : 'm'}`} />{WAY_LABEL[k]} {byWay[k]}
                   </button>
                 ))}
               </div>
-              {activityOptions.length > topTags.length && (
-                <select className="a-chip flex-none" value="" onChange={(e) => e.target.value && setActivity(e.target.value)} aria-label="More activities" data-tag-select>
-                  <option value="">More…</option>
-                  {activityOptions.filter((o) => !topTags.includes(o)).map((o) => <option key={o} value={o}>{o}{tagCount[o] ? ` (${tagCount[o]})` : ''}</option>)}
-                </select>
-              )}
             </div>
-          )}
-
-        </div>
-
-        {/* ── At the door ── */}
-        <div className="a-card" data-at-the-door>
-          <div className="a-ct"><h3><DoorOpen size={16} />At the door</h3><small>screens for the gym floor</small></div>
-          <div className="a-grid" style={{ gridTemplateColumns: '1fr 1fr', flex: 1 }}>
-            <div className="a-door" data-door-screen="kiosk">
-              {/* What the kiosk did today — never a "Running" it cannot know. */}
-              <div className="a-screen"><span className="a-qrm"><QrCode size={24} /></span></div>
-              <div><div className="flex items-center justify-between gap-2"><b>Kiosk</b>
-                <span className={`a-status ${kioskRows.length ? '' : 'off'}`} style={{ position: 'static' }} data-kiosk-status>{kioskRows.length ? `${kioskRows.length} today · last ${clock(lastKiosk!)}` : 'No scans yet'}</span></div><div className="a-sub">Members scan their own QR on a tablet by the door{door?.coachCheckin ? ' — coaches too' : ''}.</div></div>
-              <div className="flex items-center gap-2" style={{ marginTop: 'auto', flexWrap: 'wrap' }}>
-                <button type="button" className="a-btn amber" onClick={() => navigate('/kiosk')}><Tablet size={16} />Open kiosk</button>
-                <PageGuide id="kiosk" label="How it works" />
-              </div>
-            </div>
-            <div className="a-door" data-door-screen="tv">
-              <div className="a-screen"><div className="a-tv"><span /><span /><span /><span /><span /></div></div>
-              <div><b>Lobby TV</b><div className="a-sub">Today’s classes, records and the gym goal, big.</div></div>
-              <button type="button" className="a-btn" style={{ marginTop: 'auto' }} onClick={() => navigate('/tv')}><MonitorPlay size={16} />Open lobby TV</button>
-            </div>
-          </div>
-          {door?.coachCheckin ? (
-            <button type="button" className="a-row text-left w-full" style={{ marginTop: 8, borderTop: '1px solid var(--a-border)', paddingTop: 8, paddingBottom: 0 }}
-              onClick={() => setCoachesOpen(true)} data-coaches-row>
-              <span className="a-ic"><UserCheck size={15} /></span>
-              <div className="t">
-                <b>{coachesIn.length} of {coaches.length} coaches in</b>
-                <small>{coachesIn.length ? coachesIn.map((c) => `${c.name} ${clock(c.checkedInAt!)}`).join(' · ') : 'Nobody yet today — they scan their own QR'}</small>
-              </div>
-              <div style={{ display: 'flex' }}>
-                {coachesIn.slice(0, 3).map((c, i) => <span key={c.id} style={{ marginLeft: i ? -8 : 0, borderRadius: 999, border: '2px solid var(--a-surface)' }}><Av name={c.name} photo={c.photo} small /></span>)}
+            <button type="button" className="a-card press text-left" onClick={() => navigate('/attendance/walk-ins')} data-tip="Open Walk-ins">
+              <div className="a-lbl">Walk-ins today</div>
+              <div className="a-num">{walkIns ? liveWalkIns.length : '—'}</div>
+              <div className="a-sub inline-flex items-center gap-1.5" style={{ marginTop: 6 }}>
+                <Banknote size={13} />{walkIns ? `${peso(walkCash)} in the drawer · ${packVisits} pack visit${packVisits === 1 ? '' : 's'}` : 'Walk-ins are not set up'}
               </div>
             </button>
-          ) : door ? (
-            <Link to="/settings?tab=gym" className="a-row" style={{ marginTop: 8, borderTop: '1px solid var(--a-border)', paddingTop: 8, paddingBottom: 0 }} data-coaches-off>
-              <span className="a-ic"><UserCheck size={15} /></span>
-              <div className="t"><b>Coaches can check in too</b><small>The owner turns it on in Settings → Gym Information</small></div>
-            </Link>
-          ) : null}
-        </div>
-      </div>
+            <button type="button" className="a-card press text-left" onClick={() => navigate('/attendance-history')} data-tip="Open History">
+              <div className="a-lbl">Members this week</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}><div className="a-num">{weekUnique}</div><span className="a-sub">of {activeMembers} active</span></div>
+              {weekShare !== null && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}><div className="a-bar"><i style={{ width: `${weekShare}%` }} /></div><span className="a-sub">{weekShare}%</span></div>
+              )}
+            </button>
+          </div>
 
-      {/* ── Four cards ── */}
-      <div className="a-grid flex-none" style={{ gridTemplateColumns: 'repeat(4,minmax(0,1fr))' }} data-stats-strip>
-        <div className="a-card">
-          <div className="a-lbl">Checked in today</div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-            <div className="a-num">{today.length}</div>
-            <span className="a-sub"><span className={diff >= 0 ? 'a-up' : 'a-dn'}>{diff >= 0 ? '▲' : '▼'} {Math.abs(diff)}</span> vs last {lastWeekday}</span>
-          </div>
-          <div className="a-spark" data-tip={`Check-ins by hour, ${hours.open}:00–${hours.close}:00`}>
-            {perHour.map((n, i) => <i key={i} className={hours.open + i === nowHour ? 'now' : ''} style={{ height: `${Math.max(6, (n / maxHour) * 100)}%`, opacity: hours.open + i > nowHour ? 0.35 : 1 }} />)}
-          </div>
-        </div>
-        <div className="a-card">
-          <div className="a-lbl">How they came in</div>
-          <div className="a-num">{scanned} <span style={{ fontSize: 15, color: 'var(--a-text2)', fontWeight: 600 }}>scanned</span></div>
-          <div className="a-stack">
-            {today.length > 0 && <><i style={{ flex: byWay.kiosk, background: 'var(--hx-1, #9578fb)' }} /><i style={{ flex: byWay.desk, background: 'var(--hx-2, #6447c7)' }} /><i style={{ flex: byWay.typed, background: 'var(--hx-3, #3b3560)' }} /></>}
-          </div>
-          <div className="a-legend">
-            {(['kiosk', 'desk', 'typed'] as const).map((k) => (
-              <button key={k} type="button" onClick={() => { setWay(way === k ? 'all' : k); setLogPage(1); }} style={way === k ? { color: '#fff' } : undefined} data-tip="Show only these in the log">
-                <span className={`a-dot ${k === 'kiosk' ? 'v' : k === 'desk' ? 'd' : 'm'}`} />{WAY_LABEL[k]} {byWay[k]}
-              </button>
-            ))}
-          </div>
-        </div>
-        <button type="button" className="a-card press text-left" onClick={() => navigate('/attendance/walk-ins')} data-tip="Open Walk-ins">
-          <div className="a-lbl">Walk-ins today</div>
-          <div className="a-num">{walkIns ? liveWalkIns.length : '—'}</div>
-          <div className="a-sub inline-flex items-center gap-1.5" style={{ marginTop: 6 }}>
-            <Banknote size={13} />{walkIns ? `${peso(walkCash)} in the drawer · ${packVisits} pack visit${packVisits === 1 ? '' : 's'}` : 'Walk-ins are not set up'}
-          </div>
-        </button>
-        <button type="button" className="a-card press text-left" onClick={() => navigate('/attendance-history')} data-tip="Open History">
-          <div className="a-lbl">Members this week</div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}><div className="a-num">{weekUnique}</div><span className="a-sub">of {activeMembers} active</span></div>
-          {weekShare !== null && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}><div className="a-bar"><i style={{ width: `${weekShare}%` }} /></div><span className="a-sub">{weekShare}%</span></div>
-          )}
-        </button>
-      </div>
-
-      {/* ── Today's log ── */}
-      <div className="a-card" style={{ flex: 1 }} data-today-log>
-        <div className="a-ct">
-          <h3><ListChecks size={16} />Today’s check-ins</h3>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {(['all', 'kiosk', 'desk', 'typed'] as Way[]).map((k) => (
-              <button key={k} type="button" className={`a-chip ${way === k ? 'v' : ''}`} onClick={() => { setWay(k); setLogPage(1); }} data-way={k}>
-                {WAY_LABEL[k]} <em>{k === 'all' ? today.length : byWay[k]}</em>
-              </button>
-            ))}
-            <label className="a-input sm" style={{ width: 210 }}><Search size={14} />
-              <input value={logSearch} onChange={(e) => { setLogSearch(e.target.value); setLogPage(1); }} placeholder="Search today…" aria-label="Search today" /></label>
-            <button type="button" className="a-btn sm" onClick={exportLog} data-tip="Export what the log shows as CSV"><Download size={14} />Export</button>
-            <button type="button" className="a-btn sm" onClick={() => setFullOpen(true)} data-open-full-log data-tip="Every check-in today in one window"><Maximize2 size={14} />View all</button>
-          </div>
-        </div>
-        <div ref={fitRef} className="a-scroll" style={{ flex: 1 }} data-rd-table>
-          <table className="a-table">
-            <thead><tr><th>Time</th><th>Member</th><th>How</th><th>Activity</th><th>By</th><th /></tr></thead>
-            <tbody>
-              {logRecords.slice((page - 1) * perPage, page * perPage).map((r) => (
-                <LogRow key={r.id} row={r} name={nameOf(r.member_id)} photo={memberById[r.member_id]?.profile.photo_url} plan={whoOf[r.member_id]?.plan}
-                  by={byOf(r)} onUndo={() => setToUndo(r)} height={logRecords.length > perPage ? fitRowHeight : undefined} />
-              ))}
-            </tbody>
-          </table>
-          {logRecords.length === 0 && (
-            <div className="a-sub text-center" style={{ padding: '22px 0', fontSize: 12.5 }}>
-              {today.length === 0 ? 'Nobody has checked in today yet. When members check in, they’ll appear here.' : 'No check-ins match these filters.'}
-              {today.length > 0 && <> <button type="button" className="a-link" style={{ color: 'var(--a-p300)' }} onClick={() => { setWay('all'); setLogSearch(''); setLogPlan('all'); }}>Clear filters</button></>}
+          {/* ── At the door ── */}
+          <div className="a-card" data-at-the-door>
+            <div className="a-ct"><h3><DoorOpen size={16} />At the door</h3><small>screens for the gym floor</small></div>
+            <div className="a-grid" style={{ gridTemplateColumns: '1fr 1fr', flex: 1 }}>
+              <div className="a-door" data-door-screen="kiosk">
+                {/* What the kiosk did today — never a "Running" it cannot know. */}
+                <div className="a-screen"><span className="a-qrm"><QrCode size={24} /></span></div>
+                <div><div className="flex items-center justify-between gap-2"><b>Kiosk</b>
+                  <span className={`a-status ${kioskRows.length ? '' : 'off'}`} style={{ position: 'static' }} data-kiosk-status>{kioskRows.length ? `${kioskRows.length} today · last ${clock(lastKiosk!)}` : 'No scans yet'}</span></div><div className="a-sub">Members scan their own QR on a tablet by the door{door?.coachCheckin ? ' — coaches too' : ''}.</div></div>
+                <div className="flex items-center gap-2" style={{ marginTop: 'auto', flexWrap: 'wrap' }}>
+                  <button type="button" className="a-btn amber" onClick={() => navigate('/kiosk')}><Tablet size={16} />Open kiosk</button>
+                  <PageGuide id="kiosk" label="How it works" />
+                </div>
+              </div>
+              <div className="a-door" data-door-screen="tv">
+                <div className="a-screen"><div className="a-tv"><span /><span /><span /><span /><span /></div></div>
+                <div><b>Lobby TV</b><div className="a-sub">Today’s classes, records and the gym goal, big.</div></div>
+                <button type="button" className="a-btn" style={{ marginTop: 'auto' }} onClick={() => navigate('/tv')}><MonitorPlay size={16} />Open lobby TV</button>
+              </div>
             </div>
-          )}
-        </div>
-        {logRecords.length > 0 && (
-          <div className="a-sub" style={{ paddingTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} data-rd-footer>
-            <span>Showing {(page - 1) * perPage + 1}–{Math.min(logRecords.length, page * perPage)} of {logRecords.length} check-ins today</span>
-            <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              {pages > 1 && <>
-                <button type="button" className="a-chip" style={{ padding: '3px 8px' }} disabled={page <= 1} onClick={() => setLogPage(page - 1)} aria-label="Previous page"><ChevronLeft size={13} /></button>
-                <span>{page} / {pages}</span>
-                <button type="button" className="a-chip" style={{ padding: '3px 8px' }} disabled={page >= pages} onClick={() => setLogPage(page + 1)} aria-label="Next page"><ChevronRight size={13} /></button>
-              </>}
-              <Link to="/attendance-history" className="a-link" style={{ color: 'var(--a-p300)', marginLeft: 8 }}>Other days →</Link>
-            </span>
+            {door?.coachCheckin ? (
+              <button type="button" className="a-row text-left w-full" style={{ marginTop: 8, borderTop: '1px solid var(--a-border)', paddingTop: 8, paddingBottom: 0 }}
+                onClick={() => setCoachesOpen(true)} data-coaches-row>
+                <span className="a-ic"><UserCheck size={15} /></span>
+                <div className="t">
+                  <b>{coachesIn.length} of {coaches.length} coaches in</b>
+                  <small>{coachesIn.length ? coachesIn.map((c) => `${c.name} ${clock(c.checkedInAt!)}`).join(' · ') : 'Nobody yet today — they scan their own QR'}</small>
+                </div>
+                <div style={{ display: 'flex' }}>
+                  {coachesIn.slice(0, 3).map((c, i) => <span key={c.id} style={{ marginLeft: i ? -8 : 0, borderRadius: 999, border: '2px solid var(--a-surface)' }}><Av name={c.name} photo={c.photo} small /></span>)}
+                </div>
+              </button>
+            ) : door ? (
+              <Link to="/settings?tab=gym" className="a-row" style={{ marginTop: 8, borderTop: '1px solid var(--a-border)', paddingTop: 8, paddingBottom: 0 }} data-coaches-off>
+                <span className="a-ic"><UserCheck size={15} /></span>
+                <div className="t"><b>Coaches can check in too</b><small>The owner turns it on in Settings → Gym Information</small></div>
+              </Link>
+            ) : null}
           </div>
-        )}
+        </div>
       </div>
 
       <FloatingWindow open={fullOpen} onClose={() => setFullOpen(false)} title="Today's check-ins" icon={Users} count={logRecords.length} data-full-log

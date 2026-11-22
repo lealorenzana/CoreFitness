@@ -130,8 +130,9 @@ async (page) => {
   await page.waitForTimeout(2500);
   let t = await text();
   out.push('programs page: ' + (/Programs/.test(t) && /No programs yet/.test(t) ? 'shown' : 'MISSING'));
-  const nav = await page.evaluate(() => document.querySelector('aside')?.innerText ?? '');
-  out.push('linked from the sidebar: ' + (/Programs/.test(nav) ? 'yes' : 'MISSING'));
+  // Design V2 (shell B): a page is in the menu when its section's rail button lists it.
+  const nav = await page.evaluate(() => [...document.querySelectorAll('[data-rail]')].map((r) => r.getAttribute('data-tip') ?? '').join(' · '));
+  out.push('linked from the menu: ' + (/Programs/.test(nav) ? 'yes' : 'MISSING'));
 
   await page.getByRole('button', { name: 'Add Push / Pull / Legs' }).click();
   await page.waitForTimeout(1200);
