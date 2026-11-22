@@ -122,7 +122,8 @@ export default function ViewAll({ boxes, root, fit = false }: { boxes: string; r
         const box = (el.closest(boxes) as HTMLElement | null) ?? el;
         if (!area.contains(box) || box.classList.contains(FLOAT) || found.has(box)) continue;
         const r = box.getBoundingClientRect();
-        if (r.width < 160 || r.bottom < 0 || r.top > innerHeight) continue;
+        // A box whose top edge is below the screen has nowhere visible to put the button (it was placed off screen).
+        if (r.width < 160 || r.bottom < 0 || r.top + 40 > innerHeight) continue;
         // The box's top-right corner, beside its title (2026-11-08): at the bottom it covered the page numbers.
         // A heading that already has buttons at its right (Open the site, Write to the owner, CSV): View all sits to
         // their left, on the same line, instead of on top of them (2026-11-08).
