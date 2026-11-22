@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CalendarPlus, Check, Search, X } from 'lucide-react';
 import { listMembers } from '../../lib/api/members';
 import { listMemberships } from '../../lib/api/memberships';
@@ -43,6 +43,18 @@ export default function DeskBookCard({ onBooked, focusKey, only }: { onBooked: (
   const [classes, setClasses] = useState<CalendarSession[] | null>(null);
   const [pick, setPick] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  // The page's "Book for a member" button bumps focusKey: bring this card into view and put the cursor
+  // in the member search (it used to only reload the lists, so the button looked dead).
+  useEffect(() => {
+    if (!focusKey) return;
+    const el = rootRef.current;
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    (inputRef.current ?? el).focus({ preventScroll: true });
+    el.animate?.([{ boxShadow: '0 0 0 2px var(--color-primary)' }, { boxShadow: '0 0 0 2px transparent' }], { duration: 900, easing: 'ease-out' });
+  }, [focusKey]);
 
   useEffect(() => {
     void (async () => {
@@ -92,13 +104,13 @@ export default function DeskBookCard({ onBooked, focusKey, only }: { onBooked: (
     try {
       if (kind === 'class' && chosenClass) {
         await deskBookClass(member.id, chosenClass.id);
-        showToast(`${member.name} is booked into ${chosenClass.name} — they have been told`, 'success');
+        showToast(`${member.name} is booked into ${chosenClass.name}: they have been told`, 'success');
       } else if (kind === 'pt' && chosenSlot && coach) {
         await deskBookPt({ trainerId: coach, memberId: member.id, startsAt: chosenSlot.at, durationMinutes: chosenSlot.minutes });
         const coachName = trainers.find((t) => t.profile.id === coach)?.profile.first_name ?? 'your coach';
         await notifyUser({ userId: member.id, type: 'booking', title: 'Booked by the gym', message: `A 1-on-1 with ${coachName} on ${dayLabel(day, today) === 'Today' ? 'today' : day} at ${timeOf(chosenSlot.at)} is confirmed.`, actionUrl: '/member/bookings' }).catch(() => undefined);
         setPts(await listPtSessions().catch(() => pts));
-        showToast(`${member.name} has a 1-on-1 at ${timeOf(chosenSlot.at)} — they have been told`, 'success');
+        showToast(`${member.name} has a 1-on-1 at ${timeOf(chosenSlot.at)}: they have been told`, 'success');
       }
       setPick(null);
       onBooked();
@@ -111,7 +123,7 @@ export default function DeskBookCard({ onBooked, focusKey, only }: { onBooked: (
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(today, i));
   return (
-    <div className="a-card glow" data-desk-book style={{ flexShrink: 0 }}>
+    <div ref={rootRef} tabIndex={-1} className="a-card" data-desk-book style={{ flexShrink: 0, outline: 'none' }}>
       <div className="a-ct"><h3><CalendarPlus size={16} />Book for a member</h3><small>at the desk, in 3 taps</small></div>
       {member ? (
         <div className="a-input" style={{ fontSize: 12.5 }}><Av name={member.name} photo={member.photo} small /><span className="truncate" style={{ color: '#fff' }}>{member.name}</span>
@@ -120,7 +132,7 @@ export default function DeskBookCard({ onBooked, focusKey, only }: { onBooked: (
       ) : (
         <div className="relative">
           <label className="a-input" style={{ fontSize: 12.5 }}><Search size={14} />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find the member…" aria-label="Member to book" /></label>
+            <input ref={inputRef} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find the member…" aria-label="Member to book" /></label>
           {hits.length > 0 && (
             <div className="a-card" style={{ position: 'absolute', zIndex: 6, left: 0, right: 0, top: 46, padding: '4px 10px' }}>
               {hits.map((m) => (
@@ -164,7 +176,7 @@ export default function DeskBookCard({ onBooked, focusKey, only }: { onBooked: (
         <Check size={15} />{member && chosenClass ? `Book ${member.name.split(' ')[0]} into ${chosenClass.name} · ${timeOf(chosenClass.startsAt)}`
           : member && chosenSlot ? `Book ${member.name.split(' ')[0]} a 1-on-1 · ${timeOf(chosenSlot.at)}` : 'Pick a member and a time'}
       </button>
-      <div className="a-sub" style={{ marginTop: 6 }}>A desk booking is confirmed at once — the member is told.</div>
+      <div className="a-sub" style={{ marginTop: 6 }}>A desk booking is confirmed at once: the member is told.</div>
     </div>
   );
 }

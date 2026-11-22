@@ -1,4 +1,4 @@
-/* The animated set-up guides (2026-11-14). BYTE-IDENTICAL in admin and member — diff before changing.
+/* The animated set-up guides (2026-11-14). BYTE-IDENTICAL in admin and member: diff before changing.
    Gym colours only: --gd-acc is the gym's colour (its deep shade in light, for white words on it), --gd-act the
    gym's action colour. The dialog is solid (floating things stay solid), lines are drawn with --hair-rgb, light mode
    has no gradient behind words. Motion is CSS keyframes only; reduced motion shows each scene finished. */
@@ -13,54 +13,52 @@
 }
 
 /* ---- the open button ---- */
-.gd-open { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px; border-radius: 999px;
-  font-size: 12.5px; font-weight: 600; color: var(--gd-acc); background: color-mix(in srgb, var(--gd-acc) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--gd-acc) 35%, transparent); cursor: pointer; white-space: nowrap; }
-.gd-open:hover { background: color-mix(in srgb, var(--gd-acc) 20%, transparent); }
-:root:not([data-mode="light"]) .gd-open { color: var(--color-primary-300, var(--color-primary)); }
+.gd-open { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px; border-radius: 8px;
+  font-size: 13px; font-weight: 500; color: var(--gd-ink); background: transparent;
+  border: 1px solid var(--gd-line); cursor: pointer; white-space: nowrap; transition: background-color 80ms; }
+.gd-open svg { color: var(--gd-ink2); }
+.gd-open:hover { background: var(--gd-softer); }
 
 /* ---- the list (Help → Guides) ---- */
 .gd-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 10px; }
-.gd-card { display: flex; gap: 12px; align-items: flex-start; text-align: left; padding: 14px; border-radius: 14px; cursor: pointer;
-  background: var(--gd-softer); border: 1px solid var(--gd-line); color: var(--gd-ink); transition: border-color .15s, background .15s; }
-.gd-card:hover { border-color: color-mix(in srgb, var(--gd-acc) 50%, transparent); background: var(--gd-soft); }
-.gd-card-ico { flex: none; width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; color: #fff; background: var(--gd-acc); }
+.gd-card { display: flex; gap: 10px; align-items: flex-start; text-align: left; padding: 14px; border-radius: 12px; cursor: pointer;
+  background: transparent; border: 1px solid var(--gd-line); color: var(--gd-ink); transition: border-color 80ms, background-color 80ms; }
+.gd-card:hover { background: var(--gd-softer); border-color: rgb(var(--hair-rgb, 255 255 255) / 0.22); }
+.gd-card-ico { flex: none; width: 16px; height: 20px; display: grid; place-items: center; color: var(--gd-ink2); }
 .gd-card-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.gd-card-body b { font-size: 14px; }
+.gd-card-body b { font-size: 13.5px; font-weight: 600; }
 .gd-card-body small { font-size: 12.5px; line-height: 1.45; color: var(--gd-ink2); }
 .gd-card-body em { font-style: normal; font-size: 12px; color: var(--gd-ink2); margin-top: 2px; }
 
 /* ---- the dialog ---- */
 .gd-scrim { position: fixed; inset: 0; z-index: 4000; display: grid; place-items: center; padding: 16px;
   background: rgb(6 6 12 / 0.62); animation: gd-fade .2s both; }
-.gd-dialog { width: min(860px, 100%); max-height: calc(100dvh - 32px); overflow: auto; border-radius: 20px;
-  background: var(--raised-solid, #1E1B30); color: var(--gd-ink); border: 1px solid var(--gd-line);
-  box-shadow: 0 30px 80px -30px rgb(0 0 0 / 0.6); animation: gd-rise .25s both; }
-.gd-head { display: flex; align-items: center; gap: 12px; padding: 16px 18px 10px; }
+.gd-dialog { width: min(860px, 100%); max-height: calc(100dvh - 32px); overflow: auto; border-radius: 12px;
+  background: var(--surface-solid, var(--raised-solid, #1E1B30)); color: var(--gd-ink); border: 1px solid var(--gd-line);
+  box-shadow: 0 24px 64px -24px rgb(0 0 0 / 0.5); animation: gd-rise .2s both; }
+.gd-head { display: flex; align-items: center; gap: 10px; padding: 18px 22px 14px; }
 .gd-head-t { flex: 1; min-width: 0; }
-.gd-head-t small { font-size: 12px; color: var(--gd-ink2); font-weight: 600; letter-spacing: .02em; }
-.gd-head-t h2 { margin: 2px 0 0; font-size: 18px; font-weight: 750; }
-.gd-lang { display: flex; border: 1px solid var(--gd-line); border-radius: 10px; overflow: hidden; }
-.gd-lang button { padding: 6px 10px; font-size: 12px; font-weight: 700; color: var(--gd-ink2); background: transparent; cursor: pointer; }
-.gd-lang button.on { color: #fff; background: var(--gd-acc); }
-.gd-x { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; color: var(--gd-ink2); border: 1px solid var(--gd-line); cursor: pointer; background: transparent; }
-.gd-body { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 18px; padding: 6px 18px 14px; align-items: center; }
+.gd-head-t h2 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
+.gd-lang { display: flex; gap: 2px; padding: 2px; border: 1px solid var(--gd-line); border-radius: 8px; }
+.gd-lang button { height: 26px; padding: 0 9px; border-radius: 6px; font-size: 12px; font-weight: 600; color: var(--gd-ink2); background: transparent; cursor: pointer; }
+.gd-lang button.on { color: var(--gd-ink); background: var(--gd-soft); }
+.gd-x { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; color: var(--gd-ink2); border: 0; cursor: pointer; background: transparent; }
+.gd-x:hover { background: var(--gd-softer); }
+.gd-body { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 28px; padding: 4px 22px 22px; align-items: center; }
 @media (max-width: 680px) { .gd-body { grid-template-columns: minmax(0, 1fr); } }
-.gd-stage { position: relative; aspect-ratio: 16 / 11; border-radius: 16px; overflow: hidden; border: 1px solid var(--gd-line);
-  background: color-mix(in srgb, var(--gd-acc) 10%, var(--raised-solid, #1E1B30)); display: grid; place-items: center; padding: 14px; }
+.gd-stage { position: relative; aspect-ratio: 16 / 11; border-radius: 10px; overflow: hidden; border: 1px solid var(--gd-line);
+  background: var(--gd-softer); display: grid; place-items: center; padding: 18px; }
 .gd-words { animation: gd-fade .3s both; }
-.gd-n { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 9px; font-size: 13px; font-weight: 800; color: #fff; background: var(--gd-acc); }
-.gd-words h3 { margin: 10px 0 6px; font-size: 17px; font-weight: 750; line-height: 1.3; }
+.gd-words h3 { margin: 0 0 8px; font-size: 16px; font-weight: 600; line-height: 1.35; }
 .gd-words p { margin: 0; font-size: 14px; line-height: 1.6; color: var(--gd-ink2); }
-.gd-foot { display: flex; align-items: center; gap: 8px; padding: 12px 18px 16px; border-top: 1px solid var(--gd-line); flex-wrap: wrap; }
-.gd-dots { display: flex; gap: 6px; margin-right: auto; }
-.gd-dots span { width: 8px; height: 8px; border-radius: 99px; background: var(--gd-soft); transition: width .2s, background .2s; }
-.gd-dots span.done { background: color-mix(in srgb, var(--gd-acc) 55%, transparent); }
-.gd-dots span.on { width: 22px; background: var(--gd-acc); }
-.gd-btn { height: 38px; padding: 0 16px; border-radius: 11px; font-size: 13.5px; font-weight: 650; cursor: pointer; }
+.gd-foot { display: flex; align-items: center; gap: 8px; padding: 14px 22px; border-top: 1px solid var(--gd-line); flex-wrap: wrap; }
+.gd-count { margin-right: auto; font-size: 12.5px; color: var(--gd-ink2); font-variant-numeric: tabular-nums; }
+.gd-btn { height: 36px; padding: 0 14px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; transition: background-color 80ms, filter 80ms; }
 .gd-btn.ghost { color: var(--gd-ink); background: transparent; border: 1px solid var(--gd-line); }
+.gd-btn.ghost:hover:not(:disabled) { background: var(--gd-softer); }
 .gd-btn.ghost:disabled { opacity: .45; cursor: default; }
-.gd-btn.fill { color: #fff; background: var(--gd-act); border: 1px solid var(--gd-act); }
+.gd-btn.fill { font-weight: 600; color: var(--on-action, #fff); background: var(--gd-act); border: 1px solid var(--gd-act); }
+.gd-btn.fill:hover { filter: brightness(1.08); }
 
 /* ---- scene parts ---- */
 .gd-line { height: 8px; border-radius: 6px; background: var(--gd-soft); margin: 6px 0; }
@@ -81,11 +79,11 @@
 .gd-page { position: relative; flex: 1; padding: 14px 16px; }
 
 .gd-app { width: 100%; height: 100%; display: grid; grid-template-columns: 42% 1fr; border-radius: 12px; overflow: hidden; border: 1px solid var(--gd-line); }
-.gd-side { padding: 10px 8px; display: flex; flex-direction: column; gap: 5px; background: color-mix(in srgb, var(--gd-acc) 16%, transparent); }
+.gd-side { padding: 10px 8px; display: flex; flex-direction: column; gap: 5px; border-right: 1px solid var(--gd-line); }
 .gd-row { display: flex; align-items: center; gap: 7px; height: 26px; padding: 0 8px; border-radius: 8px; font-size: 11.5px; font-weight: 600; color: var(--gd-ink2); white-space: nowrap; overflow: hidden; }
 .gd-row i { flex: none; width: 13px; height: 13px; border-radius: 4px; background: var(--gd-soft); }
 .gd-row.hit { animation: gd-hit .5s both; }
-.gd-main { padding: 12px; background: var(--gd-softer); }
+.gd-main { padding: 12px; }
 .gd-card-ph { height: 45%; border-radius: 10px; margin-top: 10px; background: var(--gd-soft); }
 
 .gd-panel { position: relative; width: 100%; height: 100%; border-radius: 12px; padding: 16px; background: var(--gd-softer); border: 1px solid var(--gd-line); display: flex; flex-direction: column; justify-content: center; }
@@ -193,7 +191,7 @@
 @keyframes gd-tap { 0% { opacity: 0; transform: scale(.4) } 15% { opacity: 1 } 45% { opacity: 0; transform: scale(1.6) } 100% { opacity: 0 } }
 @keyframes gd-type { from { max-width: 0 } }
 @keyframes gd-blink { 50% { opacity: 0 } }
-@keyframes gd-hit { to { color: #fff; background: var(--gd-acc) } }
+@keyframes gd-hit { to { color: var(--gd-ink); background: var(--gd-soft); box-shadow: inset 2px 0 0 var(--gd-acc) } }
 @keyframes gd-sw-track { to { background: var(--gd-acc) } }
 @keyframes gd-sw-knob { to { transform: translateX(18px) } }
 @keyframes gd-grow { to { width: 100% } }

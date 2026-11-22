@@ -326,6 +326,8 @@ button.v2-fig:hover { background: color-mix(in srgb, var(--surface-solid) 94%, v
   transition: background-color 120ms, color 80ms, border-color 120ms; }
 .v2-chip:hover { color: var(--color-text-primary); }
 .v2-chip[aria-selected="true"] { background: var(--raised-solid); color: var(--color-text-primary); border-color: rgb(var(--hair-rgb, 255 255 255) / 0.24); }
+/* A picked answer in a form (radio or toggle): the gym's colour marks the choice, the words stay plain. */
+.v2-chip[aria-checked="true"], .v2-chip[aria-pressed="true"] { background: color-mix(in srgb, var(--color-primary) 14%, transparent); color: var(--color-text-primary); border-color: var(--color-primary); }
 .v2-chip em { font-style: normal; font-weight: 500; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
 
 /* Buttons. */
@@ -386,3 +388,8 @@ button.v2-railrow:hover, .v2-railbtn:hover { background: rgb(var(--hair-rgb, 255
 
 /* A sticky table heading sits on the solid surface (index.css gave it a faint gradient: light mode allows none behind words). */
 .rd-fit-scroll thead th { background: var(--surface-solid, #161622) !important; }
+
+/* Toasts (sonner.tsx): rise in from the bottom. */
+.v2-toast { animation: v2-toast-in 180ms var(--v2-ease, ease-out) both; }
+@keyframes v2-toast-in { from { opacity: 0; transform: translateY(8px) scale(.98); } }
+@media (prefers-reduced-motion: reduce) { .v2-toast { animation: none; } }

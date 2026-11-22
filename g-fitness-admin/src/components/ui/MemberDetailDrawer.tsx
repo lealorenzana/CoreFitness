@@ -5,7 +5,7 @@ import {
   X, User, CreditCard, CalendarCheck, TrendingUp, CalendarClock, MessageSquare,
   Mail, Phone, MapPin, Cake, ShieldAlert, QrCode, FileCheck, Trash2, Banknote, Pause, Play, Ban,
 } from 'lucide-react';
-import Avatar from './Avatar';
+import { Initials } from './rd';
 import DatePicker from './DatePicker';
 import { todayKey } from '../../utils/dates';
 import Badge from './Badge';
@@ -243,19 +243,19 @@ function DrawerBody({
         style={{ borderBottom: '1px solid var(--color-border)' }}>
         <div className="flex items-center gap-3 min-w-0">
           <div className="relative flex-shrink-0">
-            <Avatar name={fullName} photoUrl={photoUrl} size={52} tone="secondary" />
+            <Initials name={fullName} photo={photoUrl} size={44} />
             {photoUrl && (
               <button onClick={removePhoto} disabled={removingPhoto}
                 data-tip="Remove this member's photo"
                 className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center disabled:opacity-50"
-                style={{ background: 'var(--color-secondary)', color: '#000' }}>
+                style={{ background: 'var(--color-surface)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.16)', color: 'var(--color-text-secondary)' }}>
                 <Trash2 size={11} />
               </button>
             )}
           </div>
           <div className="min-w-0">
-            <h2 className="text-xl font-bold text-white truncate">{fullName}</h2>
-            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+            <h2 className="text-[18px] font-semibold text-white truncate">{fullName}</h2>
+            <div className="flex items-center gap-x-3 gap-y-1 mt-0.5 flex-wrap">
               {current
                 ? <Badge variant={MEMBERSHIP_BADGE[current.status]}>{current.status}</Badge>
                 : <Badge variant="Inactive">no membership</Badge>}
@@ -264,7 +264,7 @@ function DrawerBody({
               {switchMark === 'out' && <span data-switched-out data-tip="Their payments and visits stay here; their training went with them."><Badge variant="Inactive">Switched to another gym</Badge></span>}
               {byPlatform && <span data-platform-suspended-mark data-tip="Core Fitness suspended this account in every gym. Only Core Fitness can lift it."><Badge variant="Suspended">Suspended by Core Fitness</Badge></span>}
               {current?.membership_plans?.name && (
-                <span className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+                <span className="text-[13px]" style={{ color: 'var(--color-text-secondary)' }}>
                   {current.membership_plans.name}
                 </span>
               )}
@@ -280,35 +280,35 @@ function DrawerBody({
                 const exp = await exportMemberData(profile.id);
                 downloadExport(exp, fullName);
                 const missing = Object.keys(exp.unavailable).length;
-                showToast(missing ? `Exported — ${missing} section(s) could not be read and are listed in the file` : 'Member data exported', 'success');
+                showToast(missing ? `Exported. ${missing} section(s) could not be read and are listed in the file` : 'Member data exported', 'success');
               } catch (err) {
                 showToast(err instanceof Error ? err.message : 'Could not export', 'error');
               }
             }}
-            className="px-2.5 h-8 rounded-lg text-[11px] font-semibold"
-            data-tip="Everything held about this member, as one file — for a data request"
+            className="px-3 h-9 rounded-lg text-[13px] font-medium hover:bg-white/[0.05]"
+            data-tip="Everything held about this member, as one file, for a data request"
             style={{ color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>
             Export data
           </button>
-          <button aria-label="Close" onClick={onClose} className="p-1.5 rounded-lg" style={{ color: 'var(--color-text-muted)' }}>
-            <X size={20} />
+          <button aria-label="Close" onClick={onClose} className="w-9 h-9 grid place-items-center rounded-lg hover:bg-white/[0.06]" style={{ color: 'var(--color-text-secondary)' }}>
+            <X size={16} />
           </button>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex overflow-x-auto flex-shrink-0" style={{ borderBottom: '1px solid var(--color-border)' }}>
+      <div className="flex gap-5 px-5 overflow-x-auto flex-shrink-0" role="tablist" style={{ borderBottom: '1px solid var(--color-border)' }}>
         {TABS.map((t) => {
           const Icon = t.icon;
           const active = tab === t.id;
           return (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold whitespace-nowrap transition-colors"
+            <button key={t.id} onClick={() => setTab(t.id)} role="tab" aria-selected={active}
+              className="flex items-center gap-1.5 py-3 -mb-px text-[13px] font-medium whitespace-nowrap transition-colors hover:text-white"
               style={{
-                borderBottom: `2px solid ${active ? 'var(--color-secondary)' : 'transparent'}`,
-                color: active ? 'var(--color-secondary)' : 'var(--color-text-muted)',
+                borderBottom: `2px solid ${active ? 'var(--color-primary)' : 'transparent'}`,
+                color: active ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
               }}>
-              <Icon size={13} /> {t.label}
+              <Icon size={14} /> {t.label}
             </button>
           );
         })}
@@ -325,8 +325,8 @@ function DrawerBody({
       </div>
 
       {/* At-a-glance strip — the four numbers the desk is actually asked for. */}
-      <div className="grid grid-cols-4 gap-px flex-shrink-0"
-        style={{ background: 'var(--color-border)', borderTop: '1px solid var(--color-border)' }}>
+      <div className="grid grid-cols-4 flex-shrink-0 px-5 py-3"
+        style={{ borderTop: '1px solid var(--color-border)' }}>
         <FootStat label="Visit days" value={String(stats.visitDays)} />
         <FootStat
           label="Last visit"
@@ -347,9 +347,9 @@ function DrawerBody({
 
 function FootStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="px-3 py-2.5" style={{ background: 'var(--color-surface)' }}>
-      <p className="text-[9px] uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>{label}</p>
-      <p className="text-sm font-bold text-white truncate">{value}</p>
+    <div className="min-w-0">
+      <p className="text-[12px]" style={{ color: 'var(--color-text-secondary)' }}>{label}</p>
+      <p className="text-[15px] font-semibold text-white tabular-nums truncate first-letter:uppercase">{value}</p>
     </div>
   );
 }
@@ -363,9 +363,9 @@ function OverviewTab({ detail }: { detail: MemberDetail }) {
   const hasEmergencyContact = !!(member.emergency_contact_name || member.emergency_contact_phone);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-7">
       <Section title="Contact">
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-4">
           <InfoCell icon={Mail} label="Email" value={realEmail(profile.email) ?? 'No email'} />
           <InfoCell icon={Phone} label="Phone" value={profile.phone ? formatPhoneNumber(profile.phone) : null} />
           <InfoCell icon={MapPin} label="Address" value={member.address} className="col-span-2" />
@@ -374,7 +374,7 @@ function OverviewTab({ detail }: { detail: MemberDetail }) {
       </Section>
 
       <Section title="Intake">
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-x-6 gap-y-4">
           {/* Age is derived from the birth date on every read (0031). A stored age
               is right for one year and then lies without anything noticing. */}
           <InfoCell
@@ -409,7 +409,7 @@ function OverviewTab({ detail }: { detail: MemberDetail }) {
 
       <Section title="Emergency contact">
         {hasEmergencyContact ? (
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-x-6 gap-y-4">
             <InfoCell icon={User} label="Name" value={member.emergency_contact_name} />
             <InfoCell icon={Phone} label="Phone" value={member.emergency_contact_phone ? formatPhoneNumber(member.emergency_contact_phone) : null} />
             <InfoCell icon={ShieldAlert} label="Relationship" value={member.emergency_contact_relationship} />
@@ -417,10 +417,9 @@ function OverviewTab({ detail }: { detail: MemberDetail }) {
         ) : (
           // Called out rather than shown as three dashes. In a room full of heavy
           // objects this is the one blank field that can matter.
-          <div className="rounded-xl p-3 flex items-start gap-2"
-            style={{ background: 'var(--color-secondary-light)', border: '1px solid rgba(245,158,11,0.30)' }}>
+          <div className="flex items-start gap-2">
             <ShieldAlert size={14} style={{ color: 'var(--color-secondary)' }} className="mt-0.5 flex-shrink-0" />
-            <p className="text-[11px]" style={{ color: 'var(--color-secondary)' }}>
+            <p className="text-[13px]" style={{ color: 'var(--color-text-primary)' }}>
               No emergency contact on file. Ask for one at their next visit and add it with Edit.
             </p>
           </div>
@@ -428,26 +427,26 @@ function OverviewTab({ detail }: { detail: MemberDetail }) {
       </Section>
 
       <Section title="Training level">
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-4">
           {/* Two different levels, deliberately named apart. Labelling both
               "level" is what made the member app contradict itself. */}
-          <div className="rounded-xl p-3" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-            <p className="text-[9px] uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>Says they are</p>
-            <p className="text-sm font-semibold text-white capitalize mt-0.5">{member.experience_level || 'not set'}</p>
+          <div className="py-3" style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)' }}>
+            <p className="text-[12px]" style={{ color: 'var(--color-text-muted)' }}>Says they are</p>
+            <p className="text-[20px] font-semibold text-white capitalize leading-tight mt-0.5">{member.experience_level || 'not set'}</p>
             <p className="text-[10px] mt-1" style={{ color: 'var(--color-text-muted)' }}>Self-declared at onboarding</p>
           </div>
           {progression ? (
-            <div className="rounded-xl p-3" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-              <p className="text-[9px] uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>Earned here</p>
-              <p className="text-sm font-semibold capitalize mt-0.5" style={{ color: 'var(--color-secondary)' }}>{progression.level}</p>
+            <div className="py-3" style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)' }}>
+              <p className="text-[12px]" style={{ color: 'var(--color-text-muted)' }}>Earned here</p>
+              <p className="text-[20px] font-semibold text-white capitalize leading-tight mt-0.5">{progression.level}</p>
               <p className="text-[10px] mt-1" style={{ color: 'var(--color-text-muted)' }}>
                 {progression.training_days} training days · {progression.consistent_weeks} consistent weeks
               </p>
             </div>
           ) : (
-            <div className="rounded-xl p-3 flex items-center" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
+            <div className="py-3 flex items-center" style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)' }}>
               <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
-                Earned level unavailable — migration 0028 is not live on this database.
+                Earned level unavailable: migration 0028 is not live on this database.
               </p>
             </div>
           )}
@@ -463,7 +462,7 @@ function OverviewTab({ detail }: { detail: MemberDetail }) {
       <AccountHistorySection profileId={profile.id} />
 
       <Section title="Activity">
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-4 gap-x-6 gap-y-4">
           <MiniStat label="Visits logged" value={String(stats.visits)} />
           <MiniStat label="Days last 30" value={String(stats.visitDaysLast30)} />
           <MiniStat label="Class bookings" value={String(stats.bookingsApproved)} sub={stats.bookingsPending > 0 ? `${stats.bookingsPending} pending` : undefined} />
@@ -508,26 +507,26 @@ function MembershipTab({ detail, onRefresh }: { detail: MemberDetail; onRefresh:
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-7">
       {/* Asked for in the phone app (0091). Recording the payment closes it. */}
       {detail.renewalRequest && (
-        <div className="rounded-xl p-3 text-xs" style={{ background: 'var(--color-secondary-light)', border: '1px solid rgba(245,158,11,0.35)' }}>
+        <div className="py-3 text-xs" style={{ background: 'var(--color-secondary-light)', border: '1px solid rgba(245,158,11,0.35)' }}>
           <p className="font-semibold" style={{ color: 'var(--color-secondary)' }}>
-            Coming to renew — {detail.renewalRequest.planName}
+            Coming to renew: {detail.renewalRequest.planName}
             {detail.renewalRequest.planPrice > 0 ? ` · ₱${detail.renewalRequest.planPrice.toLocaleString('en-PH')}` : ''}
           </p>
           <p className="mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
             Asked {formatDate(detail.renewalRequest.createdAt)}{detail.renewalRequest.note ? ` · ${detail.renewalRequest.note}` : ''}.
             {current?.membership_plans?.name && current.membership_plans.name !== detail.renewalRequest.planName
               ? ` Approve it in Payments → To approve: one click moves them to ${detail.renewalRequest.planName} and records the payment.`
-              : ' Approve it in Payments → To approve, or record their payment — either closes the request.'}
+              : ' Approve it in Payments → To approve, or record their payment: either closes the request.'}
           </p>
         </div>
       )}
 
       <Section title="Current membership">
         {current ? (
-          <div className="rounded-xl p-4" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
+          <div className="py-3" style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)' }}>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-base font-bold text-white">{current.membership_plans?.name ?? 'Unknown plan'}</p>
@@ -541,7 +540,7 @@ function MembershipTab({ detail, onRefresh }: { detail: MemberDetail; onRefresh:
               <Badge variant={MEMBERSHIP_BADGE[current.status]}>{current.status}</Badge>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 mt-3">
+            <div className="grid grid-cols-3 gap-x-6 gap-y-4 mt-3">
               <MiniStat label="Started" value={current.start_date ? formatDate(current.start_date) : 'not started'} />
               {/* A null expiry means two different things (0024) and the two must
                   not share a dash: a lifetime plan, or a membership never paid for. */}
@@ -558,11 +557,11 @@ function MembershipTab({ detail, onRefresh }: { detail: MemberDetail; onRefresh:
             {/* The same four figures the member sees under You → This term so far. */}
             {detail.termUse && current.status !== 'frozen' && (
               <div className="mt-3">
-                <p className="text-[9px] uppercase tracking-wider mb-1.5" style={{ color: 'var(--color-text-muted)' }}>
+                <p className="text-[12px] mb-1.5" style={{ color: 'var(--color-text-muted)' }}>
                   This term so far · {detail.termUse.elapsedDays} day{detail.termUse.elapsedDays === 1 ? '' : 's'} in
                   {' '}· came in on {Math.round((detail.termUse.visitDays / detail.termUse.elapsedDays) * 100)}% of days
                 </p>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-4 gap-x-6 gap-y-4">
                   <MiniStat label="Visit days" value={String(detail.termUse.visitDays)} />
                   <MiniStat label="Classes" value={String(detail.termUse.classes)} />
                   <MiniStat label="1-on-1" value={String(detail.termUse.sessions)} />
@@ -577,7 +576,7 @@ function MembershipTab({ detail, onRefresh }: { detail: MemberDetail; onRefresh:
               </Button>
               {current.status === 'frozen' ? (
                 <Button size="sm" variant="outline" disabled={busy}
-                  onClick={() => act(() => unfreezeMembership(current), 'Membership resumed — frozen days added back')}>
+                  onClick={() => act(() => unfreezeMembership(current), 'Membership resumed: frozen days added back')}>
                   <Play size={13} /> Resume
                 </Button>
               ) : current.status === 'active' ? (
@@ -625,7 +624,7 @@ function MembershipTab({ detail, onRefresh }: { detail: MemberDetail; onRefresh:
                 else await cancelMembership(current.id, payload);
                 showToast(action === 'freeze'
                   ? 'Membership frozen'
-                  : 'Membership cancelled — access runs to expiry', 'success');
+                  : 'Membership cancelled: access runs to expiry', 'success');
                 await onRefresh();
               }}
             />}
@@ -638,13 +637,13 @@ function MembershipTab({ detail, onRefresh }: { detail: MemberDetail; onRefresh:
       <Section title={`Payments (₱${stats.totalPaid.toLocaleString('en-PH')} received)`}>
         {stats.paymentsUnsettled > 0 && (
           <p className="text-[10px] mb-2" style={{ color: 'var(--color-secondary)' }}>
-            {stats.paymentsUnsettled} payment{stats.paymentsUnsettled === 1 ? '' : 's'} not counted in that total — only completed ones are.
+            {stats.paymentsUnsettled} payment{stats.paymentsUnsettled === 1 ? '' : 's'} not counted in that total: only completed ones are.
           </p>
         )}
         {detail.payments.length === 0 ? (
           <Empty text="No payments recorded for this member." />
         ) : (
-          <div className="space-y-1.5">
+          <div >
             {detail.payments.map((p) => (
               <Row key={p.id}
                 title={`₱${Number(p.amount).toLocaleString('en-PH')}`}
@@ -663,7 +662,7 @@ function MembershipTab({ detail, onRefresh }: { detail: MemberDetail; onRefresh:
 
       {history.length > 0 && (
         <Section title="Previous memberships">
-          <div className="space-y-1.5">
+          <div >
             {history.map((m) => (
               <Row key={m.id}
                 title={m.membership_plans?.name ?? 'Unknown plan'}
@@ -807,8 +806,8 @@ function RecordPaymentInline({
 
       showToast(
         changingPlan
-          ? `₱${value.toLocaleString('en-PH')} recorded — ${firstName} is now on ${plan?.name ?? 'the new plan'}`
-          : `₱${value.toLocaleString('en-PH')} recorded — ${firstName}'s membership is active`,
+          ? `₱${value.toLocaleString('en-PH')} recorded: ${firstName} is now on ${plan?.name ?? 'the new plan'}`
+          : `₱${value.toLocaleString('en-PH')} recorded: ${firstName}'s membership is active`,
         'success'
       );
       await onDone();
@@ -825,35 +824,35 @@ function RecordPaymentInline({
           desk — a member upgrades *by* paying. Splitting them into two screens
           is how a member ends up paid-up on the wrong tier. */}
       <div>
-        <label className="text-[9px] uppercase block mb-1" style={{ color: 'var(--color-text-muted)' }}>Plan</label>
+        <label className="text-[12px] block mb-1" style={{ color: 'var(--color-text-muted)' }}>Plan</label>
         <select value={planId} onChange={(e) => setPlanId(e.target.value)}
           className="w-full px-3 py-2 rounded-xl text-white text-xs"
           style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
           {plans.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
-              {Number(p.price) > 0 ? ` — ₱${Number(p.price).toLocaleString('en-PH')}` : ' — free'}
+              {Number(p.price) > 0 ? `: ₱${Number(p.price).toLocaleString('en-PH')}` : ', free'}
               {p.id === currentPlanId ? ' (current)' : ''}
             </option>
           ))}
         </select>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-x-6 gap-y-4">
         <div>
-          <label className="text-[9px] uppercase block mb-1" style={{ color: 'var(--color-text-muted)' }}>Amount (₱)</label>
+          <label className="text-[12px] block mb-1" style={{ color: 'var(--color-text-muted)' }}>Amount (₱)</label>
           <input type="number" min="0" step="0.01" value={amount}
             onChange={(e) => setTypedAmount(e.target.value)}
             className="w-full px-3 py-2 rounded-xl text-white text-xs"
             style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
         </div>
         <div>
-          <label className="text-[9px] uppercase block mb-1" style={{ color: 'var(--color-text-muted)' }}>Date received</label>
+          <label className="text-[12px] block mb-1" style={{ color: 'var(--color-text-muted)' }}>Date received</label>
           <DatePicker mode="record" bounds={{ earliest: todayKey().slice(0, 8) + '01' }} value={paidOn} onChange={(v) => v && setPaidOn(v)} />
         </div>
       </div>
       <div>
-        <label className="text-[9px] uppercase block mb-1" style={{ color: 'var(--color-text-muted)' }}>Notes (optional)</label>
+        <label className="text-[12px] block mb-1" style={{ color: 'var(--color-text-muted)' }}>Notes (optional)</label>
         <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. paid in two instalments"
           className="w-full px-3 py-2 rounded-xl text-white text-xs"
           style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
@@ -861,7 +860,7 @@ function RecordPaymentInline({
       <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
         Cash only. {durationDays == null
           ? 'This plan does not expire, so no end date is set.'
-          : `Adds ${durationDays} days — from today, or from the current expiry if it has not passed.`}
+          : `Adds ${durationDays} days: from today, or from the current expiry if it has not passed.`}
       </p>
       {/* Two consequences of a plan change that are invisible until they have
           happened, so they are stated before the button rather than after. */}
@@ -869,7 +868,7 @@ function RecordPaymentInline({
         <p className="text-[10px]" style={{ color: 'var(--color-secondary)' }}>
           This moves {firstName} onto {plan?.name ?? 'the selected plan'}.
           {durationDays == null
-            ? ' Any days remaining on the old plan are not carried over — the new one has no end date to add them to.'
+            ? ' Any days remaining on the old plan are not carried over: the new one has no end date to add them to.'
             : ' Unused days on the current plan carry over.'}
         </p>
       )}
@@ -885,8 +884,8 @@ function RecordPaymentInline({
 function AttendanceTab({ detail }: { detail: MemberDetail }) {
   const { attendance, stats } = detail;
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-2">
+    <div className="space-y-7">
+      <div className="grid grid-cols-3 gap-x-6 gap-y-4">
         <MiniStat label="Check-ins" value={String(stats.visits)} />
         <MiniStat label="Distinct days" value={String(stats.visitDays)} />
         <MiniStat label="Days in last 30" value={String(stats.visitDaysLast30)} />
@@ -895,7 +894,7 @@ function AttendanceTab({ detail }: { detail: MemberDetail }) {
         {attendance.length === 0 ? (
           <Empty text="This member has never checked in." />
         ) : (
-          <div className="space-y-1.5">
+          <div >
             {attendance.map((a) => {
               const at = new Date(a.check_in_time);
               return (
@@ -930,10 +929,10 @@ function ProgressTab({ detail }: { detail: MemberDetail }) {
   const band = latestBmi != null ? bmiBand(latestBmi) : null;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-7">
       {progression && (
         <Section title="Progression">
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-4 gap-x-6 gap-y-4">
             <MiniStat label="Training days" value={String(progression.training_days)} />
             <MiniStat label="Verified" value={String(progression.verified_days)} sub="staff check-in" />
             <MiniStat label="Self-logged" value={String(progression.logged_days)} />
@@ -944,11 +943,11 @@ function ProgressTab({ detail }: { detail: MemberDetail }) {
 
       <StreakSection memberId={detail.identity.profile.id} />
 
-      <Section title={latest ? `Latest measurements — ${formatDate(latest.measured_on)}` : 'Measurements'}>
+      <Section title={latest ? `Latest measurements: ${formatDate(latest.measured_on)}` : 'Measurements'}>
         {!latest ? (
           <Empty text="No body measurements recorded. Members enter these themselves in the phone app." />
         ) : (
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-4 gap-x-6 gap-y-4">
             <MiniStat label="Weight" value={latest.weight_kg != null ? `${latest.weight_kg} kg` : '—'} />
             <MiniStat label="Height" value={latest.height_cm != null ? `${latest.height_cm} cm` : '—'} />
             <MiniStat label="BMI" value={latestBmi != null ? String(latestBmi) : '—'} sub={band?.label} />
@@ -1014,12 +1013,12 @@ function ProgressTab({ detail }: { detail: MemberDetail }) {
         ) : plan.days.length === 0 ? (
           <Empty text="No training days set. Members pick their days under Train → Training plan." />
         ) : (
-          <div className="space-y-1.5">
+          <div >
             <Row title={plan.days.map((d) => DAY_SHORT[d]).join(' · ')}
               subtitle={`${plan.days.length} day${plan.days.length === 1 ? '' : 's'} a week${plan.remindAt ? ` · reminder ${clock(plan.remindAt)}` : ''}`} />
             {/* A routine day, or any day the AI coach set (0145) — so the desk can tell whose plan it is. */}
             {plan.days.filter((d) => plan.routineByDay[d] || plan.coachDays.includes(d)).map((d) => (
-              <Row key={d} title={`${DAY_SHORT[d]} — ${plan.routineByDay[d] ?? 'Any workout'}`}
+              <Row key={d} title={`${DAY_SHORT[d]}: ${plan.routineByDay[d] ?? 'Any workout'}`}
                 subtitle={plan.routineByDay[d] ? 'Planned routine' : 'Training day'}
                 right={plan.coachDays.includes(d) ? <Badge variant="violet">Set by the coach</Badge> : undefined} />
             ))}
@@ -1037,7 +1036,7 @@ function ProgressTab({ detail }: { detail: MemberDetail }) {
         ) : routines.length === 0 ? (
           <Empty text="No routines saved. Members build them under Train → My routines." />
         ) : (
-          <div className="space-y-1.5">
+          <div >
             {routines.map((r) => (
               <Row key={r.id} title={r.name}
                 subtitle={`${r.exerciseCount} exercise${r.exerciseCount === 1 ? '' : 's'} · updated ${formatDate(r.updatedAt)}`}
@@ -1051,7 +1050,7 @@ function ProgressTab({ detail }: { detail: MemberDetail }) {
         {workouts.length === 0 ? (
           <Empty text="No workouts logged." />
         ) : (
-          <div className="space-y-1.5">
+          <div >
             {workouts.slice(0, 20).map((w) => (
               <Row key={w.id}
                 title={w.activity || 'Workout'}
@@ -1078,13 +1077,13 @@ const BOOKING_BADGE: Record<string, string> = {
 function BookingsTab({ detail }: { detail: MemberDetail }) {
   const { bookings, ptSessions } = detail;
   return (
-    <div className="space-y-4">
+    <div className="space-y-7">
       <BookingHabitsSection memberId={detail.identity.profile.id} />
       <Section title={`Class bookings (${bookings.length})`}>
         {bookings.length === 0 ? (
           <Empty text="No class bookings." />
         ) : (
-          <div className="space-y-1.5">
+          <div >
             {bookings.map((b) => (
               <Row key={b.id}
                 title={b.classes?.name ?? 'Class'}
@@ -1104,7 +1103,7 @@ function BookingsTab({ detail }: { detail: MemberDetail }) {
         {ptSessions.length === 0 ? (
           <Empty text="No 1-on-1 sessions." />
         ) : (
-          <div className="space-y-1.5">
+          <div >
             {ptSessions.map((s) => (
               <Row key={s.id}
                 title={new Date(s.starts_at).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })}
@@ -1148,12 +1147,12 @@ function BookingHabitsSection({ memberId }: { memberId: string }) {
     <Section title="Showing up">
       <div className="space-y-2" data-drawer-habits>
         {pause && (
-          <div className="rounded-xl p-3 flex items-start gap-3" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }} data-drawer-pause>
+          <div className="py-3 flex items-start gap-3" style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)' }} data-drawer-pause>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>Booking in the app is paused until {when(pause.until)}</p>
               <p className="text-[11px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{pause.reason}. You can still book for them.</p>
             </div>
-            <Button size="sm" variant="secondary" disabled={busy} onClick={() => void act(() => liftBookingPause(memberId), 'Pause lifted — they can book again')}>Lift pause</Button>
+            <Button size="sm" variant="secondary" disabled={busy} onClick={() => void act(() => liftBookingPause(memberId), 'Pause lifted: they can book again')}>Lift pause</Button>
           </div>
         )}
         {record === null ? <Empty text="Their no-shows could not be loaded." />
@@ -1164,9 +1163,9 @@ function BookingHabitsSection({ memberId }: { memberId: string }) {
               right={<Badge variant="Pending">{m.mark === 'late_cancel' ? 'Late cancel' : 'No-show'}</Badge>} />
           ))}
         {repeats.map((r) => (
-          <Row key={r.id} title={`${r.what} — every ${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][r.weekday]}`}
+          <Row key={r.id} title={`${r.what}: every ${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][r.weekday]}`}
             subtitle={`${r.weeks ? `${r.weeks} weeks from ${formatDate(r.firstDate)}` : 'until stopped'} · ${r.weekList.filter((w) => w.outcome === 'booked').length} booked${r.weekList.some((w) => w.outcome === 'refused') ? `, ${r.weekList.filter((w) => w.outcome === 'refused').length} could not be` : ''}`}
-            right={<Button size="sm" variant="secondary" disabled={busy} onClick={() => void act(() => stopRepeat(r.id), 'Repeat stopped — the weeks already booked stay')}>Stop</Button>} />
+            right={<Button size="sm" variant="secondary" disabled={busy} onClick={() => void act(() => stopRepeat(r.id), 'Repeat stopped: the weeks already booked stay')}>Stop</Button>} />
         ))}
       </div>
     </Section>
@@ -1184,10 +1183,10 @@ function NotesTab({ detail }: { detail: MemberDetail }) {
     return (
       <div className="space-y-2">
         {records.map((n) => (
-          <div key={n.id} className="rounded-xl p-3"
-            style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
+          <div key={n.id} className="py-3"
+            style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)' }}>
             <div className="flex items-center justify-between gap-2 mb-1">
-              <p className="text-xs font-semibold" style={{ color: 'var(--color-secondary)' }}>{n.coach}</p>
+              <p className="text-[13px] font-semibold text-white">{n.coach}</p>
               <span className="flex items-center gap-2 flex-shrink-0">
                 {n.seenAt !== undefined && (
                   <span className="text-[9px] px-2 py-0.5 rounded-full font-medium"
@@ -1215,10 +1214,10 @@ function NotesTab({ detail }: { detail: MemberDetail }) {
   return (
     <div className="space-y-2">
       {detail.notes.map((n) => (
-        <div key={n.id} className="rounded-xl p-3"
-          style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
+        <div key={n.id} className="py-3"
+          style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)' }}>
           <div className="flex items-center justify-between gap-2 mb-1">
-            <p className="text-xs font-semibold" style={{ color: 'var(--color-secondary)' }}>{n.title}</p>
+            <p className="text-[13px] font-semibold text-white">{n.title}</p>
             <span className="text-[10px] flex-shrink-0" style={{ color: 'var(--color-text-muted)' }}>{formatDate(n.date)}</span>
           </div>
           {/* No trainer attribution: `notifications` records the recipient, not
@@ -1271,7 +1270,7 @@ function ShopPurchasesSection({ memberId }: { memberId: string }) {
   return (
     <Section title={`Shop purchases${sales.length ? ` (₱${spent.toLocaleString('en-PH')})` : ''}`}>
       {sales.length === 0 ? <Empty text="Nothing bought at the counter under this member's name." /> : (
-        <div className="space-y-1.5">
+        <div >
           {sales.slice(0, 8).map((s) => (
             <Row key={s.id}
               title={`₱${s.total.toLocaleString('en-PH')}${s.voidedAt ? ' · voided' : ''}`}
@@ -1399,7 +1398,7 @@ function PointsSection({ memberId }: { memberId: string }) {
     const { error } = await supabase.rpc('mark_redemption_collected', { p_id: id });
     setHanding(null);
     if (error) { showToast(error.message, 'error'); return; }
-    showToast('Handed over — the member sees it as collected', 'success');
+    showToast('Handed over: the member sees it as collected', 'success');
     setTick((t) => t + 1);
   };
 
@@ -1435,7 +1434,7 @@ function PointsSection({ memberId }: { memberId: string }) {
           </span>
         </div>
         <p className="text-[10px] mt-1" style={{ color: 'var(--color-text-muted)' }}>
-          Earned automatically. Nobody can add or remove points by hand — approve
+          Earned automatically. Nobody can add or remove points by hand: approve
           a reward on the Rewards page to spend them.
         </p>
         {savingFor && (
@@ -1563,7 +1562,7 @@ function AchievementsSection({ memberId }: { memberId: string }) {
       )}
       {closest.length > 0 && (
         <div className="space-y-2">
-          <p className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>Closest to unlocking</p>
+          <p className="text-[12px]" style={{ color: 'var(--color-text-muted)' }}>Closest to unlocking</p>
           {closest.map((a) => {
             const p = progress!.get(a.key)!;
             const f = progressFraction(p) ?? 0;
@@ -1597,7 +1596,7 @@ const STATUS_WORD: Record<string, string> = {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <h3 className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--color-text-muted)' }}>
+      <h3 className="text-[13px] font-semibold mb-2.5" style={{ color: 'var(--color-text-primary)' }}>
         {title}
       </h3>
       {children}
@@ -1642,17 +1641,16 @@ function InfoCell({
   icon: typeof User; label: string; value: string | null | undefined; className?: string; mono?: boolean;
 }) {
   return (
-    <div className={`rounded-xl p-3 min-w-0 ${className ?? ''}`}
-      style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-      <div className="flex items-center gap-1.5 mb-1">
-        <Icon size={12} style={{ color: 'var(--color-text-muted)' }} />
-        <span className="text-[9px] uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>{label}</span>
+    <div className={`min-w-0 ${className ?? ''}`}>
+      <div className="flex items-center gap-1.5 mb-0.5">
+        <Icon size={13} style={{ color: 'var(--color-text-muted)' }} />
+        <span className="text-[12px]" style={{ color: 'var(--color-text-secondary)' }}>{label}</span>
       </div>
       {/* An absent value reads as absent. It never falls back to another
           member's data, a placeholder name, or an invented default. */}
-      <p className={`text-xs truncate ${value ? 'text-white font-medium' : ''} ${mono ? 'font-mono tracking-widest' : ''}`}
+      <p className={`text-[13.5px] truncate ${value ? 'text-white' : ''} ${mono ? 'font-mono tracking-widest' : ''}`}
         style={value ? undefined : { color: 'var(--color-text-muted)' }}>
-        {value || 'not on file'}
+        {value || 'Not on file'}
       </p>
     </div>
   );
@@ -1671,14 +1669,14 @@ function StreakSection({ memberId }: { memberId: string }) {
     return () => { alive = false; };
   }, [memberId]);
   if (!s) return null;
-  const week = s.frozen ? 'Frozen — paused'
+  const week = s.frozen ? 'Frozen, paused'
     : s.needed === 0 ? 'Reached'
-    : s.atRisk ? `Needs ${s.needed} — every day left`
+    : s.atRisk ? `Needs ${s.needed}, every day left`
     : s.outOfReach ? 'Out of reach'
     : `${s.daysThisWeek} of ${s.target}`;
   return (
     <Section title="Gym streak">
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-4 gap-x-6 gap-y-4">
         <MiniStat label="Current" value={`${s.current} ${s.current === 1 ? 'week' : 'weeks'}`} />
         <MiniStat label="Best" value={`${s.best} ${s.best === 1 ? 'week' : 'weeks'}`} />
         <MiniStat label="Target" value={`${s.target} days`} sub="a week, their choice" />
@@ -1690,10 +1688,10 @@ function StreakSection({ memberId }: { memberId: string }) {
 
 function MiniStat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-xl p-2.5 min-w-0" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
-      <p className="text-[9px] uppercase tracking-wider truncate" style={{ color: 'var(--color-text-muted)' }}>{label}</p>
-      <p className="text-sm font-bold text-white truncate">{value}</p>
-      {sub && <p className="text-[9px] truncate" style={{ color: 'var(--color-text-muted)' }}>{sub}</p>}
+    <div className="min-w-0">
+      <p className="text-[12px] truncate" style={{ color: 'var(--color-text-secondary)' }}>{label}</p>
+      <p className="text-[20px] font-semibold text-white truncate tabular-nums leading-tight mt-0.5">{value}</p>
+      {sub && <p className="text-[12px] truncate" style={{ color: 'var(--color-text-muted)' }}>{sub}</p>}
     </div>
   );
 }
@@ -1704,15 +1702,15 @@ function Row({
   title: string; subtitle?: string; right?: React.ReactNode; note?: string | null;
 }) {
   return (
-    <div className="rounded-xl px-3 py-2.5" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
+    <div className="py-2.5" style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)' }}>
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs text-white font-semibold truncate">{title}</p>
-          {subtitle && <p className="text-[10px] truncate" style={{ color: 'var(--color-text-muted)' }}>{subtitle}</p>}
+          <p className="text-[13.5px] text-white font-medium truncate">{title}</p>
+          {subtitle && <p className="text-[12px] truncate" style={{ color: 'var(--color-text-secondary)' }}>{subtitle}</p>}
         </div>
         {right && <div className="flex-shrink-0">{right}</div>}
       </div>
-      {note && <p className="text-[10px] mt-1.5" style={{ color: 'var(--color-text-secondary)' }}>{note}</p>}
+      {note && <p className="text-[12px] mt-1" style={{ color: 'var(--color-text-secondary)' }}>{note}</p>}
     </div>
   );
 }
@@ -1773,7 +1771,7 @@ function RoomsSection({ memberId }: { memberId: string }) {
       {data.rooms.length === 0 ? (
         <Empty text="In no rooms. Booking a class or a 1-on-1 puts them in its room; a coach can give them a group code." />
       ) : (
-        <div className="space-y-1.5">
+        <div >
           {data.rooms.map((x) => <Row key={x.id} title={x.name} subtitle={`${KIND[x.kind]} · ${x.trainerName}`} />)}
           {r && r.assigned > 0 && (
             <Row title="Classwork" subtitle={`${r.onTime} of ${r.assigned} on time · ${r.late} late · ${r.missing} missing`} />
@@ -1820,9 +1818,9 @@ function RecordsSection({ memberId }: { memberId: string }) {
       {records.length === 0 ? (
         <Empty text="None yet. A set heavier (or longer) than their best on an exercise becomes one." />
       ) : (
-        <div className="space-y-1.5">
+        <div >
           {records.slice(0, 8).map((r) => (
-            <Row key={r.id} title={`${r.exerciseName} — ${recordValue(r.kind, r.value)}`}
+            <Row key={r.id} title={`${r.exerciseName}: ${recordValue(r.kind, r.value)}`}
               subtitle={`up from ${recordValue(r.kind, r.previous)} · ${formatDate(r.achievedAt)}`}
               right={
                 <Button size="sm" variant="ghost" disabled={busy === r.id} onClick={() => setToRemove(r)}
@@ -1834,7 +1832,7 @@ function RecordsSection({ memberId }: { memberId: string }) {
         </div>
       )}
       <ReasonDialog isOpen={!!toRemove} onClose={() => setToRemove(null)} title="Remove the record" danger
-        message={toRemove ? <>Remove <b className="text-white">{toRemove.exerciseName} — {recordValue(toRemove.kind, toRemove.value)}</b>? Its points are taken back, and it stops being the bar a real lift has to beat.</> : ''}
+        message={toRemove ? <>Remove <b className="text-white">{toRemove.exerciseName}: {recordValue(toRemove.kind, toRemove.value)}</b>? Its points are taken back, and it stops being the bar a real lift has to beat.</> : ''}
         confirmText="Remove" quick={['Not a real lift', 'Typed by mistake', 'Wrong exercise']} onConfirm={remove} />
     </Section>
   );
@@ -1871,7 +1869,7 @@ function CoachingSection({ memberId }: { memberId: string }) {
   if (!row) return null;
   return (
     <Section title="Coach">
-      <div data-drawer-coaching className="rounded-xl p-3" style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
+      <div data-drawer-coaching className="py-3" style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)' }}>
         <p className="text-sm font-semibold text-white">{coachName ?? 'Their coach'}{row.kind === 'group' ? ' · group' : ''}</p>
         <p className="text-[11px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
           {row.status === 'active' && row.ends_on

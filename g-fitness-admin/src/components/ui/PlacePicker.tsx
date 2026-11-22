@@ -52,12 +52,11 @@ export default function PlacePicker({ value, onChange, inputClass = STEP_INPUT, 
     setParts(next);
     onChange([next.street.trim(), next.town, next.province].filter(Boolean).join(', '));
   };
-  const label = 'block text-[12.5px] font-semibold mb-1.5';
+  const label = 'block text-[12px] font-medium mb-1.5';
   const labelStyle = { color: 'var(--color-text-secondary)' };
 
   return (
-    <div className="grid grid-cols-2 gap-x-3 gap-y-3 rounded-2xl p-4" data-place-picker
-      style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)' }}>
+    <div className="grid grid-cols-2 gap-x-3 gap-y-3" data-place-picker>
       <label className="min-w-0">
         <span className={label} style={labelStyle}>Province</span>
         <select value={parts.province} disabled={!places} aria-label="Province" className={`${inputClass} w-full`} style={inputStyle}

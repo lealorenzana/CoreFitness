@@ -63,7 +63,7 @@ export default function StaffAccounts({ accounts, meId, onStatus, onChanged }: {
     setBusy(true);
     try {
       await setStaffPermissions(id, areas && areas.length === ALL.length ? null : areas);
-      showToast(areas === null || areas.length === ALL.length ? 'Back to the whole front desk' : 'Saved — the database holds them to it from now on', 'success');
+      showToast(areas === null || areas.length === ALL.length ? 'Back to the whole front desk' : 'Saved: the database holds them to it from now on', 'success');
       setEditing(null);
       await load();
     } catch (e) {
@@ -103,7 +103,7 @@ export default function StaffAccounts({ accounts, meId, onStatus, onChanged }: {
                 </div>
                 <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full"
                   style={live ? { background: 'var(--color-primary-light)', color: 'var(--color-primary)' } : { background: 'var(--color-secondary-light)', color: 'var(--color-secondary)' }}>
-                  {live ? 'Can sign in' : a.status === 'suspended' ? 'Suspended — cannot sign in' : a.status.replace('_', ' ')}
+                  {live ? 'Can sign in' : a.status === 'suspended' ? 'Suspended: cannot sign in' : a.status.replace('_', ' ')}
                 </span>
                 {a.id !== meId && (
                   <div className="flex gap-1">
@@ -125,7 +125,7 @@ export default function StaffAccounts({ accounts, meId, onStatus, onChanged }: {
                     <Button size="sm" variant="ghost" disabled={busy} onClick={() => void save(a.id, null)}>Whole front desk</Button>
                     <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>Cancel</Button>
                   </div>
-                  {editing.areas.length === 0 && <p className="text-[11px]" style={{ color: 'var(--color-secondary)' }}>Tick at least one — or suspend the account if they should do nothing.</p>}
+                  {editing.areas.length === 0 && <p className="text-[11px]" style={{ color: 'var(--color-secondary)' }}>Tick at least one: or suspend the account if they should do nothing.</p>}
                 </div>
               ) : (
                 <div className="flex items-center gap-1.5 flex-wrap">
@@ -173,7 +173,7 @@ function AddStaffWizard({ onClose, onCreated, permsLive }: { onClose: () => void
     setErr(null);
     if (step === 1) {
       const em = f.email.trim();
-      if (!em && !f.username.trim()) { setErr(usernamesOn ? 'Give an email or a username — they sign in with it.' : 'They sign in with this — type a real address.'); return; }
+      if (!em && !f.username.trim()) { setErr(usernamesOn ? 'Give an email or a username: they sign in with it.' : 'They sign in with this: type a real address.'); return; }
       if (em && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) { setErr('That is not an email address.'); return; }
       if (em && await isEmailTaken(em)) { setErr('This email already has an account.'); return; }
       if (f.username.trim()) {
@@ -190,7 +190,7 @@ function AddStaffWizard({ onClose, onCreated, permsLive }: { onClose: () => void
     try {
       const created = await createStaffAccount({ firstName: f.firstName.trim(), lastName: f.lastName.trim(), email: f.email.trim(), phone: f.phone.trim() || undefined, username: f.username.trim() || undefined });
       if (permsLive && f.areas.length < ALL.length) {
-        await setStaffPermissions(created.id, f.areas).catch(() => showToast('They were added with the whole desk — set what they may do from the list.', 'error'));
+        await setStaffPermissions(created.id, f.areas).catch(() => showToast('They were added with the whole desk: set what they may do from the list.', 'error'));
       }
       setDone({ name: `${f.firstName.trim()} ${f.lastName.trim()}`, email: created.email ?? null, username: created.username ?? null, password: created.password ?? null });
       setSlipOpen(true);
@@ -217,7 +217,7 @@ function AddStaffWizard({ onClose, onCreated, permsLive }: { onClose: () => void
 
   const ready = step === 0 ? !!f.firstName.trim() && !!f.lastName.trim() : step === 1 ? !!f.email.trim() || !!f.username.trim() : f.areas.length > 0;
   return (
-    <StepModal title="Add front-desk staff" subtitle="A login for the dashboard — only the parts of the desk you choose"
+    <StepModal title="Add front-desk staff" subtitle="A login for the dashboard: only the parts of the desk you choose"
       steps={STEPS} step={step} onStep={setStep} canNext={ready} onNext={() => void next()} onBack={() => setStep(step - 1)}
       onClose={onClose} finishLabel="Add staff" busy={busy}>
       {step === 0 && (<>
@@ -241,7 +241,7 @@ function AddStaffWizard({ onClose, onCreated, permsLive }: { onClose: () => void
         </p>
       </>)}
       {step === 2 && (
-        <StepField label="What may they do?" hint="Everything is ticked — untick what this person should not touch. Pricing, coaches, settings and these permissions are always the owner's.">
+        <StepField label="What may they do?" hint="Everything is ticked: untick what this person should not touch. Pricing, coaches, settings and these permissions are always the owner's.">
           <AreaPicker value={f.areas} onChange={(v) => setF({ ...f, areas: v })} />
         </StepField>
       )}

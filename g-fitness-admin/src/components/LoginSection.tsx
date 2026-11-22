@@ -49,7 +49,7 @@ export default function LoginSection({ userId, name, role }: { userId: string; n
           {info.username ? `@${info.username}` : 'No username'}
         </p>
         <span className="text-[11px]" style={{ color: 'var(--color-text-secondary)' }}>
-          · {info.hasEmail ? 'signs in with email' + (info.username ? ' or username' : '') : 'no email — signs in with the username'}
+          · {info.hasEmail ? 'signs in with email' + (info.username ? ' or username' : '') : 'no email: signs in with the username'}
           {!info.setUp && ' · has not finished their first sign-in'}
         </span>
         <span className="flex-1" />
@@ -63,7 +63,7 @@ export default function LoginSection({ userId, name, role }: { userId: string; n
       </div>
       {!info.canReset && info.hasEmail && info.setUp && (
         <p className="text-[11px] mt-1.5" style={{ color: 'var(--color-text-secondary)' }}>
-          Forgot their password? They use “Forgot password” on the sign-in screen — it goes to their own email.
+          Forgot their password? They use “Forgot password” on the sign-in screen: it goes to their own email.
         </p>
       )}
       <ConfirmDialog isOpen={asking} onClose={() => setAsking(false)} onConfirm={() => void reset()} type="warning"

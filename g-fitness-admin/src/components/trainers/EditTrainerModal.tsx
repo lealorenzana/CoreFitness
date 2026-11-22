@@ -70,7 +70,7 @@ export default function EditTrainerModal({ trainer, onClose, onSaved }: {
   ];
 
   return (
-    <StepModal title={`Edit ${name}`} subtitle="The same details you gave when adding them — open any section."
+    <StepModal title={`Edit ${name}`} subtitle="The same details you gave when adding them: open any section."
       steps={TRAINER_STEPS} step={tab} onStep={setTab} canNext onNext={() => void save()} onBack={() => undefined}
       onClose={onClose} finishLabel="Save changes" busy={busy} tabs flagged={flagged}>
       {tab === 0 && <WhoSection d={d} set={set} errors={errors} />}

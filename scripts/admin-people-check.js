@@ -194,7 +194,7 @@ async (page) => {
   // The areas are a second read after the list: wait for them rather than racing it.
   await page.getByText('Check-ins', { exact: true }).first().waitFor({ timeout: 6000 }).catch(() => {});
   const st = await text();
-  out.push('status said plainly: ' + (/Can sign in/.test(st) && /Suspended — cannot sign in/.test(st) && (await page.getByRole('button', { name: /Let them sign in again/ }).count()) === 1 ? 'yes' : 'MISSING'));
+  out.push('status said plainly: ' + (/Can sign in/.test(st) && /Suspended: cannot sign in/.test(st) && (await page.getByRole('button', { name: /Let them sign in again/ }).count()) === 1 ? 'yes' : 'MISSING'));
   out.push('a narrowed account shows its areas: ' + (/Check-ins Shop/.test(st) && /The whole front desk/.test(st) ? 'yes' : 'MISSING ' + st.slice(st.indexOf('Front-desk staff'), st.indexOf('Front-desk staff') + 700) + ' | whole=' + /The whole front desk/.test(st)));
   await page.getByRole('button', { name: 'Change' }).first().click();
   await page.getByLabel('Payments').check();

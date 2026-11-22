@@ -39,7 +39,7 @@ export default function AddTrainerWizard({ onClose, onCreated }: { onClose: () =
     if (step === 0 && !e.phone && d.phone.trim() && await isPhoneTaken(d.phone)) e.phone = 'Another account already uses this number.';
     if (step === 3) {
       const em = login.email.trim();
-      if (!em && !login.username.trim()) e.email = usernamesOn ? 'Give an email or a username — they sign in with it.' : 'They sign in with this.';
+      if (!em && !login.username.trim()) e.email = usernamesOn ? 'Give an email or a username. They sign in with it.' : 'They sign in with this.';
       else if (em && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) e.email = 'That is not an email address.';
       else if (em && await isEmailTaken(em)) e.email = 'This email already has an account.';
       if (login.username.trim()) {
@@ -67,7 +67,7 @@ export default function AddTrainerWizard({ onClose, onCreated }: { onClose: () =
           focus_areas: d.focus.length ? d.focus : null,
           certifications: certifications.length ? certifications : null,
           achievements: d.achievements.trim() || null,
-        }).catch(() => showToast('They were added, but their coaching details did not save — add them with Edit.', 'error'));
+        }).catch(() => showToast('They were added, but their coaching details did not save. Add them with Edit.', 'error'));
       }
       setDone({ name: `${d.firstName.trim()} ${d.lastName.trim()}`, email: created.email ?? null, username: created.username ?? null, password: created.password ?? null });
       setSlipOpen(true);
@@ -83,13 +83,13 @@ export default function AddTrainerWizard({ onClose, onCreated }: { onClose: () =
     return (
       <StepModal title={`${done.name} is on the team`} steps={TRAINER_STEPS} step={TRAINER_STEPS.length - 1} onStep={() => undefined} canNext={false}
         onNext={() => undefined} onBack={() => undefined} onClose={onClose} finishLabel="" hideNav>
-        <div className="flex items-center gap-3 rounded-xl p-3" style={{ background: 'var(--color-primary-light)' }}>
-          <span className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'var(--color-primary)' }}><Check size={18} color="#fff" /></span>
-          <p className="text-sm text-white">Their coach account is ready.</p>
+        <div className="flex items-center gap-3">
+          <Check size={18} className="flex-none" style={{ color: 'var(--color-primary)' }} />
+          <p className="text-[14px] text-white">Their coach account is ready.</p>
         </div>
         <Button size="sm" variant="ghost" onClick={() => setSlipOpen(true)} data-show-slip><KeyRound size={13} /> Show the login slip</Button>
-        <div className="rounded-xl p-3 text-xs flex gap-2" style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}>
-          <ShieldCheck size={15} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--color-primary)' }} />
+        <div className="text-[12.5px] flex gap-2" style={{ color: 'var(--color-text-secondary)' }}>
+          <ShieldCheck size={15} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--color-text-muted)' }} />
           <span>For the <b className="text-white">verified</b> mark on their profile, they upload each certificate in the app (Profile → Edit profile → Certificates) and you check it under Trainers → Credentials.
             Until then members read their certifications as the coach&rsquo;s own words.</span>
         </div>
@@ -106,7 +106,7 @@ export default function AddTrainerWizard({ onClose, onCreated }: { onClose: () =
     : step === 3 ? !!login.email.trim() || !!login.username.trim() : true;
 
   return (
-    <StepModal title="Add a trainer" subtitle="A coach account for the app — they run classes, sessions and rooms from their phone"
+    <StepModal title="Add a trainer" subtitle="A coach account for the app. They run classes, sessions and rooms from their phone."
       steps={TRAINER_STEPS} step={step} onStep={setStep} canNext={ready}
       onNext={() => void (async () => {
         if (!(await check())) return;
@@ -130,7 +130,7 @@ export default function AddTrainerWizard({ onClose, onCreated }: { onClose: () =
               placeholder="e.g. coach.rae" autoCapitalize="off" spellCheck={false} className={`${STEP_INPUT} font-mono`} style={STEP_INPUT_STYLE} />
           </StepField>
         )}
-        <p className="text-xs flex items-start gap-2 rounded-lg p-2.5" style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}>
+        <p className="text-[12.5px] flex items-start gap-2" style={{ color: 'var(--color-text-secondary)' }}>
           <KeyRound size={14} className="flex-none mt-0.5" />
           A one-time password is made for them and shown on a login slip. At their first sign-in they choose their own. Or invite them from Invitations to have it emailed.
         </p>

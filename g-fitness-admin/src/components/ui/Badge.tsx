@@ -80,22 +80,22 @@ const STYLE_MAP: Record<string, { background: string; color: string; border: str
  */
 const STATUS_TIPS: Record<string, string> = {
   Active: 'Paid up and able to use the gym',
-  Expired: 'The membership ended — renew it to let them back in',
+  Expired: 'The membership ended. Renew it to let them back in',
   Expiring: 'Ends within a few days and has not been renewed',
   Suspended: 'Access is paused by the desk; nothing is deleted',
   Inactive: 'No current membership',
-  Archived: 'Kept on record but hidden from the working lists — members are never deleted',
+  Archived: 'Kept on record but hidden from the working lists. Members are never deleted',
   Frozen: 'Paused on request: no access, and the frozen days are added back to the end date',
   Pending: 'Waiting for someone at the desk to approve it',
   Confirmed: 'Booked and holding a place',
   Completed: 'It happened',
-  Cancelled: 'Called off — the place was given back',
+  Cancelled: 'Called off, and the place was given back',
   Failed: 'It did not go through',
   Rejected: 'Turned down',
   QR: 'Checked in by scanning their QR code',
   Manual: 'Checked in by hand at the desk',
   Trial: 'On a free trial',
-  Free: 'On the free plan — the free workout library is never locked',
+  Free: 'On the free plan. The free workout library is never locked',
   Premium: 'On a paid plan that unlocks the premium features',
 };
 
@@ -104,21 +104,18 @@ function Badge({ className, variant = 'violet', children, style, ...props }: Bad
   const said = typeof children === 'string' ? children.trim() : '';
   const tip = STATUS_TIPS[variant] ?? STATUS_TIPS[said] ?? STATUS_TIPS[said.charAt(0).toUpperCase() + said.slice(1).toLowerCase()];
   return (
+    // Design V2 (owner, 2026-11-22): status is a dot and a word, never a coloured pill.
     <div
       data-tip={tip}
       className={cn(
-        'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap',
+        'inline-flex items-center gap-1.5 text-[13px] font-medium whitespace-nowrap first-letter:uppercase',
         className,
       )}
-      style={{
-        background: tokens.background,
-        color: tokens.color,
-        borderColor: tokens.border,
-        ...style,
-      }}
+      style={{ color: 'var(--color-text-primary)', ...style }}
       {...props}
     >
-      {children}
+      <span aria-hidden className="w-1.5 h-1.5 rounded-full flex-none" style={{ background: tokens.color === 'var(--color-text-secondary)' ? 'var(--color-text-muted)' : tokens.color }} />
+      <span className="first-letter:uppercase">{children}</span>
     </div>
   );
 }

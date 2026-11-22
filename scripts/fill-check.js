@@ -257,7 +257,7 @@ async (page) => {
     CRED('cr5', 'tx2', 'Powerlifting Coach', 'cred/tx2/pl.png', 'image/png', 'verified', 20),
     CRED('cr6', 'tx3', 'HIIT Specialist', 'cred/tx3/hiit.png', 'image/png', 'verified', 25),
     CRED('cr7', 'tx5', 'Gymnastics Rings', 'cred/tx5/rings.jpg', 'image/jpeg', 'rejected', 30,
-      'The photo is blurred — the licence number cannot be read.'),
+      'The photo is blurred: the licence number cannot be read.'),
     CRED('cr8', 'tx6', 'Pilates Mat Instructor', 'cred/tx6/pilates.png', 'image/png', 'verified', 40),
   ];
 

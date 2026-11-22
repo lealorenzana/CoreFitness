@@ -92,7 +92,7 @@ function validityLine(row: Row): { text: string; warn: boolean } | null {
   const left = daysLeft(row);
   if (left === null) return row.issuer ? { text: row.issuer, warn: false } : null;
   const when = new Date(`${row.expires_on}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
-  const v = left < 0 ? `expired ${when} — members no longer see it` : left <= 30 ? `expires in ${left} day${left === 1 ? '' : 's'}` : `valid until ${when}`;
+  const v = left < 0 ? `expired ${when}: members no longer see it` : left <= 30 ? `expires in ${left} day${left === 1 ? '' : 's'}` : `valid until ${when}`;
   return { text: [row.issuer, v].filter(Boolean).join(' · '), warn: left <= 30 };
 }
 
@@ -178,7 +178,7 @@ function Preview({ row, signed, broken, large, onRetry, onBroken }: {
       ? note(<AlertTriangle size={iconSize} style={{ color: 'var(--color-secondary)' }} />,
           "Couldn't load the preview", 'A connection problem, not a missing file.', true)
       : note(<ImageOff size={iconSize} style={{ color: TEXT_MUTED }} />,
-          'File not in storage', 'The record exists but its file was never uploaded — ask the trainer to upload it again.');
+          'File not in storage', 'The record exists but its file was never uploaded: ask the trainer to upload it again.');
   }
   if (broken) {
     return note(<ImageOff size={iconSize} style={{ color: 'var(--color-secondary)' }} />,
@@ -401,10 +401,10 @@ function Viewer({ row, signed, broken, busy, position, startRejecting,
               rejecting ? (
                 <>
                   <label className="block text-[11px] font-semibold" style={{ color: TEXT_SECOND }} htmlFor="reject-reason">
-                    Reason — the trainer sees this
+                    Reason: the trainer sees this
                   </label>
                   <textarea id="reject-reason" autoFocus value={note} onChange={(e) => setNote(e.target.value)} rows={3}
-                    placeholder="e.g. The photo is blurred — the licence number can't be read."
+                    placeholder="e.g. The photo is blurred: the licence number can't be read."
                     className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none resize-none"
                     style={{ background: 'var(--color-bg)', border: `1px solid ${BORDER}` }} />
                   <div className="flex gap-2">
@@ -590,8 +590,8 @@ export default function CredentialReview({ trainerId, compact = false, onChanged
         .eq('id', row.id)
         .select('id');
       if (error) throw error;
-      assertWrote(data, 'That credential could not be updated — it may have been removed.');
-      showToast(status === 'verified' ? 'Marked verified' : 'Rejected — the trainer will see your reason', 'success');
+      assertWrote(data, 'That credential could not be updated: it may have been removed.');
+      showToast(status === 'verified' ? 'Marked verified' : 'Rejected: the trainer will see your reason', 'success');
       await load();
       onChanged?.();
     } catch (err) {
@@ -656,14 +656,14 @@ export default function CredentialReview({ trainerId, compact = false, onChanged
         <p className="text-[14.5px]" style={{ color: TEXT_MUTED }}>Loading credentials…</p>
       ) : failed ? (
         <RdCard><EmptyBlock icon={AlertTriangle} title="Couldn't load credentials"
-          body="A connection problem, not an empty list — nothing has been reviewed or missed. Reload to try again." /></RdCard>
+          body="A connection problem, not an empty list: nothing has been reviewed or missed. Reload to try again." /></RdCard>
       ) : rows.length === 0 ? (
         <RdCard><EmptyBlock icon={Award} title="No certificates uploaded yet"
           body={trainerId ? 'This coach adds them under Profile → Edit profile in the app; they appear here to verify.'
             : 'Trainers add these from their own profile screen in the phone app.'} /></RdCard>
       ) : shown.length === 0 ? (
         <RdCard><EmptyBlock icon={FileText} title={`No ${filter === 'pending' ? 'waiting' : filter} credentials`}
-          body="Try another filter — the rest are still on All." /></RdCard>
+          body="Try another filter: the rest are still on All." /></RdCard>
       ) : (
         <div className="grid gap-5" style={{ gridTemplateColumns: compact ? 'repeat(auto-fill, minmax(230px, 1fr))' : 'repeat(auto-fill, minmax(270px, 1fr))' }}>
           {pageRows.map((r) => (
@@ -723,7 +723,7 @@ export default function CredentialReview({ trainerId, compact = false, onChanged
         {([
           ['pending', 'Waiting for review', counts.pending, counts.pending ? 'decide on each document' : 'nothing to decide', counts.pending > 0],
           ['verified', 'Verified', counts.verified, 'members see the verified mark', false],
-          ['expiring', 'Expiring or lapsed', counts.expiring, 'within 30 days — members stop seeing a lapsed one', counts.expiring > 0],
+          ['expiring', 'Expiring or lapsed', counts.expiring, 'within 30 days: members stop seeing a lapsed one', counts.expiring > 0],
           ['all', 'Coaches with nothing on file', nothingOnFile.length, coaches ? `of ${coaches.length} coach${coaches.length === 1 ? '' : 'es'}` : 'roster not loaded', nothingOnFile.length > 0],
         ] as const).map(([key, label, n, sub, warn]) => (
           <button key={label} type="button" className={`a-card press text-left ${filter === key && key !== 'all' ? 'on' : ''}`} data-credential-tile-count={key}
@@ -778,7 +778,7 @@ export default function CredentialReview({ trainerId, compact = false, onChanged
                 )}
               </div>
             ))}
-            {byCoach.length > 7 && <p className="a-sub" style={{ paddingTop: 4 }}>+{byCoach.length - 7} more — search a name to find them</p>}
+            {byCoach.length > 7 && <p className="a-sub" style={{ paddingTop: 4 }}>+{byCoach.length - 7} more: search a name to find them</p>}
           </div>
 
           {counts.expiring > 0 && (

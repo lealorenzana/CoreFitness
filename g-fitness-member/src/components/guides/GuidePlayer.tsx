@@ -9,7 +9,8 @@ import './guides.css';
  * EN | Filipino, and "Take me there". Motion is CSS only (gd-* in guides.css; never requestAnimationFrame),
  * in the gym's own colours, light and dark; with reduced motion every scene shows its finished state.
  *
- * BYTE-IDENTICAL in g-fitness-admin and g-fitness-member (no icon library, no router) — diff before changing.
+ * BYTE-IDENTICAL in g-fitness-admin and g-fitness-member (no icon library, no router): diff before changing.
+ * Design V2 (owner, 2026-11-22): flat and quiet around the scene; no eyebrow, numbered badge or dot pager.
  */
 
 export type Lang = 'en' | 'fil';
@@ -79,7 +80,6 @@ export function GuidePlayer({ guide, lang: lang0 = 'en', onClose, onGo }: { guid
       <div className="gd-dialog" role="dialog" aria-modal="true" aria-label={tx(guide.title, lang)} onClick={(e) => e.stopPropagation()}>
         <div className="gd-head">
           <div className="gd-head-t">
-            <small>{lang === 'fil' ? 'Gabay' : 'Guide'} · {i + 1}/{guide.steps.length}</small>
             <h2>{tx(guide.title, lang)}</h2>
           </div>
           <div className="gd-lang" role="radiogroup" aria-label="Language">
@@ -100,16 +100,13 @@ export function GuidePlayer({ guide, lang: lang0 = 'en', onClose, onGo }: { guid
             <SceneView s={step.scene} />
           </div>
           <div className="gd-words" key={`w-${guide.id}-${i}-${lang}`}>
-            <span className="gd-n">{i + 1}</span>
             <h3>{tx(step.title, lang)}</h3>
             <p>{tx(step.text, lang)}</p>
           </div>
         </div>
 
         <div className="gd-foot">
-          <div className="gd-dots" aria-hidden>
-            {guide.steps.map((_, n) => <span key={n} className={n === i ? 'on' : n < i ? 'done' : ''} />)}
-          </div>
+          <span className="gd-count">{lang === 'fil' ? `Hakbang ${i + 1} ng ${guide.steps.length}` : `Step ${i + 1} of ${guide.steps.length}`}</span>
           {guide.where && <button type="button" className="gd-btn ghost" onClick={go}>{lang === 'fil' ? 'Dalhin ako roon' : 'Take me there'}</button>}
           <button type="button" className="gd-btn ghost" disabled={i === 0} onClick={() => setI(i - 1)}>{lang === 'fil' ? 'Bumalik' : 'Back'}</button>
           {last

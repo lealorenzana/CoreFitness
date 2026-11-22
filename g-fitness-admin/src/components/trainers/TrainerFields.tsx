@@ -16,10 +16,8 @@ function Chips({ list, picked, onPick, label }: { list: string[]; picked: string
       {list.map((v) => {
         const on = picked.includes(v);
         return (
-          <button key={v} type="button" onClick={() => onPick(v)} aria-pressed={on} className="h-8 px-3 rounded-full text-xs font-semibold transition-colors"
-            style={{ background: on ? 'var(--color-primary-light)' : 'var(--color-surface-high)', color: on ? '#fff' : 'var(--color-text-secondary)',
-              border: `1px solid ${on ? 'var(--color-primary)' : 'var(--color-border)'}` }}>
-            {on ? '✓ ' : ''}{v}
+          <button key={v} type="button" onClick={() => onPick(v)} aria-pressed={on} className="v2-chip">
+            {v}
           </button>
         );
       })}
@@ -41,25 +39,23 @@ export function WhoSection({ d, set, errors, autoFocus }: { d: TrainerDraft; set
         <input value={d.lastName} onChange={(e) => set('lastName', e.target.value)} aria-label="Last name" className={STEP_INPUT} style={STEP_INPUT_STYLE} />
       </StepField>
     </div>
-    <StepField label="Mobile number" hint="Optional — the desk's way to reach them." error={errors.phone}>
+    <StepField label="Mobile number" hint="Optional. The desk's way to reach them." error={errors.phone}>
       <input value={d.phone} inputMode="tel" placeholder="0917 123 4567" onChange={(e) => set('phone', e.target.value)} aria-label="Mobile number" className={STEP_INPUT} style={STEP_INPUT_STYLE} />
     </StepField>
     <StepField label="Years coaching" hint="Members see “N years coaching” on their profile. Leave it blank rather than guess." error={errors.years}>
       <div className="flex items-center gap-2 flex-wrap" data-years-field>
         <div className="flex items-center rounded-lg overflow-hidden" style={STEP_INPUT_STYLE}>
           <button type="button" aria-label="One year less" onClick={() => set('years', String(Math.max(0, (y ?? 1) - 1)))}
-            className="w-9 h-10 grid place-items-center text-white/80 hover:bg-white/5">−</button>
+            className="w-9 h-9 grid place-items-center hover:bg-white/5" style={{ color: 'var(--color-text-secondary)' }}>−</button>
           <input type="number" min={0} max={70} value={d.years} onChange={(e) => set('years', e.target.value)} aria-label="Years coaching"
-            placeholder="—" className="w-14 h-10 bg-transparent text-center text-sm text-white outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
+            placeholder="" className="w-12 h-9 bg-transparent text-center text-sm text-white outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
           <button type="button" aria-label="One year more" onClick={() => set('years', String(Math.min(70, (y ?? -1) + 1)))}
-            className="w-9 h-10 grid place-items-center text-white/80 hover:bg-white/5">+</button>
+            className="w-9 h-9 grid place-items-center hover:bg-white/5" style={{ color: 'var(--color-text-secondary)' }}>+</button>
         </div>
         <div className="flex gap-1 flex-wrap">
           {YEAR_PICKS.map((n) => (
             <button key={n} type="button" onClick={() => set('years', String(n))} aria-pressed={y === n}
-              className="h-8 min-w-[34px] px-2 rounded-lg text-xs font-semibold"
-              style={{ background: y === n ? 'var(--color-primary-light)' : 'var(--color-surface-high)', color: y === n ? '#fff' : 'var(--color-text-secondary)',
-                border: `1px solid ${y === n ? 'var(--color-primary)' : 'var(--color-border)'}` }}>{n === 0 ? '<1' : n === 15 ? '15+' : n}</button>
+              className="v2-chip justify-center min-w-[36px]">{n === 0 ? '<1' : n === 15 ? '15+' : n}</button>
           ))}
           {d.years !== '' && <button type="button" onClick={() => set('years', '')} className="h-8 px-2 text-xs" style={{ color: 'var(--color-text-secondary)' }}>Clear</button>}
         </div>
@@ -75,9 +71,7 @@ export function CoachSection({ d, set, errors }: { d: TrainerDraft; set: Set; er
     <StepField label="The line under their name" hint="Members see it on the coach list." error={errors.specialization}>
       <div className="flex gap-1.5 flex-wrap mb-2">
         {TITLES.map((t) => (
-          <button key={t} type="button" onClick={() => set('specialization', t)} aria-pressed={d.specialization === t} className="h-8 px-3 rounded-full text-xs font-semibold"
-            style={{ background: d.specialization === t ? 'var(--color-primary-light)' : 'var(--color-surface-high)', color: d.specialization === t ? '#fff' : 'var(--color-text-secondary)',
-              border: `1px solid ${d.specialization === t ? 'var(--color-primary)' : 'var(--color-border)'}` }}>{t}</button>
+          <button key={t} type="button" onClick={() => set('specialization', t)} aria-pressed={d.specialization === t} className="v2-chip">{t}</button>
         ))}
       </div>
       <input value={d.specialization} onChange={(e) => set('specialization', e.target.value)} aria-label="Specialization" placeholder="Or type your own" className={STEP_INPUT} style={STEP_INPUT_STYLE} />
@@ -85,21 +79,21 @@ export function CoachSection({ d, set, errors }: { d: TrainerDraft; set: Set; er
     <StepField label="Trains for" hint="Members pick a goal under Coaches → Find your coach; these decide which goals list them.">
       <Chips label="Trains for" list={[...FOCUS, ...d.focus.filter((x) => !FOCUS.includes(x))]} picked={d.focus} onPick={(v) => set('focus', toggle(d.focus, v))} />
     </StepField>
-    <p className="text-[11.5px] rounded-lg px-3 py-2" data-found-under style={{ background: 'var(--color-surface-high)', color: found.length ? 'var(--color-text-secondary)' : 'var(--color-secondary)' }}>
-      {found.length ? <>Members will find them under: <b className="text-white">{found.map((g) => g.goal.label).join(', ')}</b></> : 'Not matched to any member goal yet — pick what they train for.'}
+    <p className="text-[12.5px]" data-found-under style={{ color: found.length ? 'var(--color-text-secondary)' : 'var(--color-secondary)' }}>
+      {found.length ? <>Members will find them under: <b className="text-white">{found.map((g) => g.goal.label).join(', ')}</b></> : 'Not matched to any member goal yet. Pick what they train for.'}
     </p>
     <StepField label="Certifications they hold" hint="Their own statement until they upload the certificate and you verify it under Credentials.">
       <Chips label="Certifications" list={CERTS} picked={d.certs} onPick={(v) => set('certs', toggle(d.certs, v))} />
-      <input value={d.otherCert} onChange={(e) => set('otherCert', e.target.value)} aria-label="Other certifications" placeholder="Other — separate with commas"
+      <input value={d.otherCert} onChange={(e) => set('otherCert', e.target.value)} aria-label="Other certifications" placeholder="Other, separated by commas"
         className={`${STEP_INPUT} mt-2`} style={STEP_INPUT_STYLE} />
     </StepField>
     <StepField label="About them" hint="Members read this on their profile.">
       <textarea value={d.bio} rows={3} onChange={(e) => set('bio', e.target.value)} aria-label="Bio" placeholder="What they are known for, who they love training"
-        className="w-full px-3 py-2 rounded-lg text-sm text-white outline-none resize-none" style={STEP_INPUT_STYLE} />
+        className="w-full px-3 py-2 rounded-lg text-[14px] text-white outline-none resize-none" style={STEP_INPUT_STYLE} />
     </StepField>
-    <StepField label="Achievements" hint="Optional — competitions, athletic background, notable results.">
+    <StepField label="Achievements" hint="Optional: competitions, athletic background, notable results.">
       <textarea value={d.achievements} rows={2} onChange={(e) => set('achievements', e.target.value)} aria-label="Achievements"
-        className="w-full px-3 py-2 rounded-lg text-sm text-white outline-none resize-none" style={STEP_INPUT_STYLE} />
+        className="w-full px-3 py-2 rounded-lg text-[14px] text-white outline-none resize-none" style={STEP_INPUT_STYLE} />
     </StepField>
   </>);
 }
@@ -107,8 +101,7 @@ export function CoachSection({ d, set, errors }: { d: TrainerDraft; set: Set; er
 /** Section 3 — the days they coach (display only; bookable hours are theirs to set in the app). */
 export function DaysSection({ d, set }: { d: TrainerDraft; set: Set }) {
   const preset = (days: string[], label: string) => (
-    <button type="button" onClick={() => set('days', days)} className="h-8 px-3 rounded-lg text-xs font-semibold"
-      style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>{label}</button>
+    <button type="button" onClick={() => set('days', days)} className="h-8 px-2.5 rounded-lg text-[12.5px] font-medium hover:text-white" style={{ color: 'var(--color-text-secondary)' }}>{label}</button>
   );
   return (
     <StepField label="Days they coach" hint="Shown on their profile. Their hours for 1-on-1 bookings they set in the app, under Bookable hours.">
