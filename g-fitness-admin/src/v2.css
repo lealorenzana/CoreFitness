@@ -482,3 +482,5 @@ button.v2-railrow:hover, .v2-railbtn:hover { background: rgb(var(--hair-rgb, 255
   background-size: 200% 100%; animation: v2-shimmer 1.3s linear infinite; }
 .cf-skel:first-child { height: 18px; }
 @media (prefers-reduced-motion: reduce) { .cf-skel { animation: none; } }
+/* The rail wears the gym's own colour in dark mode (owner, 2026-11-23): a deep shade of its main colour. */
+:root:not([data-mode="light"]) .rail { background: color-mix(in srgb, var(--color-primary) 30%, #0B0B0A); }

@@ -203,14 +203,28 @@ export default function GymApp() {
     <div className="att" data-your-app>
       <div className="a-head">
         <div className="min-w-0"><h1>Your app</h1><p>Everything {app.gym_name}'s members see on their phones: change it here, watch it change on the right</p></div>
-        <div className="a-tabs" role="tablist" aria-label="Your app sections">
-          {APP_TABS.filter(([k]) => k !== 'coach' || coachSold).map(([k, t, Icon]) => (
-            <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>
-              <Icon size={14} />{t}
-            </button>
-          ))}
-        </div>
       </div>
+
+      {/* Settings-app layout (owner, 2026-11-23, after Discord's): the sections down the left, the open one's
+          steps under it with a line beside the current; the content in one column; the phone on the right. */}
+      <div className="ya-shell">
+      <nav className="ya-nav" role="tablist" aria-label="Your app sections" aria-orientation="vertical">
+        {APP_TABS.filter(([k]) => k !== 'coach' || coachSold).map(([k, t, Icon]) => (
+          <div key={k}>
+            <button type="button" role="tab" aria-selected={tab === k} className={`ya-item ${tab === k ? 'on' : ''}`} onClick={() => setTab(k)}>
+              <Icon size={16} />{t}
+            </button>
+            {k === 'look' && tab === 'look' && (
+              <div className="ya-sub" role="tablist" aria-label="Look steps">
+                {([['pair', 'Colour pair'], ['own', 'Your own colours'], ['premium', 'Premium theme'], ['logo', 'Logo and name']] as const).map(([s, l]) => (
+                  <button key={s} type="button" role="tab" aria-selected={lookStep === s} className={lookStep === s ? 'on' : ''} onClick={() => setLookStep(s)} data-look-step={s}>{l}</button>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </nav>
+      <div className="ya-main" key={tab}>
 
       {/* ---- Look ---------------------------------------------------------------------- */}
       {tab === 'look' && (
@@ -229,12 +243,7 @@ export default function GymApp() {
         )}>
           {/* Four steps, one at a time (2026-11-02): pairs, saved and premium themes and the two pickers
               were stacked into one long list whose titles did not say how they differ. */}
-          <div className="a-ct"><h3><Palette size={16} />Your look</h3><small>pick a step: the preview follows</small></div>
-          <div className="flex gap-1.5 flex-wrap" style={{ marginBottom: 12 }} role="tablist" aria-label="Look steps">
-            {([['pair', '1 · Colour pair'], ['own', '2 · Your own colours'], ['premium', '3 · Premium theme'], ['logo', '4 · Logo and name']] as const).map(([k, l]) => (
-              <button key={k} type="button" role="tab" aria-selected={lookStep === k} className={`a-chip ${lookStep === k ? 'v' : ''}`} onClick={() => setLookStep(k)} data-look-step={k}>{l}</button>
-            ))}
-          </div>
+          <h2 className="ya-h">{{ pair: 'Colour pair', own: 'Your own colours', premium: 'Premium theme', logo: 'Logo and name' }[lookStep]}</h2>
 
           {lookStep === 'pair' && <>
             <p className="a-sub" style={{ marginBottom: 10 }}>The quickest way: a ready-made pair sets your main colour and your button colour together. Free.</p>
@@ -501,6 +510,8 @@ export default function GymApp() {
       {tab === 'pay' && <PayTab />}
       {tab === 'tv' && <TvTab />}
       {tab === 'moments' && <CelebrationsTab />}
+      </div>
+      </div>
 
       {poster && (
         <JoinPoster
