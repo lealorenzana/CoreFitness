@@ -182,7 +182,7 @@ async (page) => {
     await page.getByRole('button', { name: /Progress/ }).first().click();
     await page.waitForTimeout(1000);
   };
-  const rowWith = (a, b) => page.locator('aside div.rounded-xl', { hasText: a }).filter({ hasText: b });
+  const rowWith = (a, b) => page.locator('aside [data-row]', { hasText: a }).filter({ hasText: b });
 
   await openProgress();
   let t = await text();
@@ -192,9 +192,9 @@ async (page) => {
   out.push('the coach routine is tagged: ' + (await rowWith('Coach push day', 'Built with the coach').count() > 0 ? 'yes' : 'MISSING'));
   out.push('the member routine is not: ' + (await rowWith('Leg day', 'Built with the coach').count() === 0 ? 'yes' : 'NO, tagged'));
   out.push('one routine tag: ' + ((t.match(/Built with the coach/g) || []).length === 1 ? 'yes' : 'NO ' + (t.match(/Built with the coach/g) || []).length));
-  out.push('Wednesday is tagged as the coach\'s: ' + (await rowWith('Wed — Coach push day', 'Set by the coach').count() > 0 ? 'yes' : 'MISSING'));
-  out.push('Friday (any workout) is tagged too: ' + (await rowWith('Fri — Any workout', 'Set by the coach').count() > 0 ? 'yes' : 'MISSING'));
-  out.push('Monday is not: ' + (await rowWith('Mon — Leg day', 'Set by the coach').count() === 0 ? 'yes' : 'NO, tagged'));
+  out.push('Wednesday is tagged as the coach\'s: ' + (await rowWith('Wed: Coach push day', 'Set by the coach').count() > 0 ? 'yes' : 'MISSING'));
+  out.push('Friday (any workout) is tagged too: ' + (await rowWith('Fri: Any workout', 'Set by the coach').count() > 0 ? 'yes' : 'MISSING'));
+  out.push('Monday is not: ' + (await rowWith('Mon: Leg day', 'Set by the coach').count() === 0 ? 'yes' : 'NO, tagged'));
   await page.getByText('Saved routines').first().scrollIntoViewIfNeeded().catch(() => {});
   await page.screenshot({ path: 'shots/admin-coach-mark.png' });
 

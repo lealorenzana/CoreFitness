@@ -200,12 +200,12 @@ function Body({
         </button>
       </div>
 
-      <div className="flex gap-5 px-5 overflow-x-auto flex-shrink-0" role="tablist" style={{ borderBottom: '1px solid var(--color-border)' }}>
+      <div className="flex gap-5 px-5 overflow-x-auto flex-shrink-0" style={{ borderBottom: '1px solid var(--color-border)' }}>
         {TABS.map((t) => {
           const Icon = t.icon;
           const active = tab === t.id;
           return (
-            <button key={t.id} onClick={() => setTab(t.id)} role="tab" aria-selected={active}
+            <button key={t.id} onClick={() => setTab(t.id)} aria-pressed={active}
               className="flex items-center gap-1.5 py-3 -mb-px text-[13px] font-medium whitespace-nowrap transition-colors hover:text-white"
               style={{
                 borderBottom: `2px solid ${active ? 'var(--color-primary)' : 'transparent'}`,

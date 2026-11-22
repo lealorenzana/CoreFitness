@@ -12,7 +12,7 @@ import { useBranding } from '../hooks/useBranding';
 import { useSearchParams } from 'react-router-dom';
 import Popover from '../components/ui/Popover';
 import { useFitRows } from '../hooks/useFitRows';
-import { RdSelect, RdButton, DotMenu, IconTile, Pill, EmptyBlock, SearchField, Initials } from '../components/ui/rd';
+import { RdSelect, RdButton, DotMenu, IconTile, Pill, EmptyBlock, SearchField, Initials, CountUp, MiniBars } from '../components/ui/rd';
 import { Av, Pager } from './attendance/parts';
 import FloatingWindow from '../components/ui/FloatingWindow';
 import './attendance/att.css';
@@ -411,7 +411,7 @@ export default function Members() {
       // still could not check in. Idempotent, so a member who already has a
       // plan keeps it.
       await startFreeMembership(m.id);
-      showToast(`${m.fullName} can now sign in — started on the free plan`, 'success');
+      showToast(`${m.fullName} can now sign in: started on the free plan`, 'success');
       notifyUser({
         userId: m.id,
         type: 'membership',
@@ -450,7 +450,7 @@ export default function Members() {
     await unfreezeMembership(m.membership);
     await recordReason({ action: 'membership.resumed', subjectType: 'membership', subjectId: m.membership.id, memberId: m.id,
       summary: `Resumed ${m.fullName}'s frozen membership`, reason });
-    showToast(`${m.fullName}'s membership resumed — frozen days added back`, 'success');
+    showToast(`${m.fullName}'s membership resumed: frozen days added back`, 'success');
     setToResume(null);
     await load();
   };
@@ -458,7 +458,7 @@ export default function Members() {
   const handleCancel = async (detail: Omit<MembershipActionDetail, 'memberId'>) => {
     if (!toCancel?.membership) return;
     await cancelMembership(toCancel.membership.id, { ...detail, memberId: toCancel.id });
-    showToast(`${toCancel.fullName}'s membership cancelled — access runs to expiry`, 'success');
+    showToast(`${toCancel.fullName}'s membership cancelled: access runs to expiry`, 'success');
     setToCancel(null);
     await load();
   };
@@ -480,7 +480,7 @@ export default function Members() {
       await setAccountStatus(toSuspend.id, next, reason);
       showToast(
         next === 'suspended'
-          ? `${toSuspend.fullName} suspended — they can no longer log in`
+          ? `${toSuspend.fullName} suspended: they can no longer log in`
           : `${toSuspend.fullName} reactivated`,
         'success'
       );
@@ -545,6 +545,13 @@ export default function Members() {
   const newThis = members.filter((m) => (m.joinedOn ?? '').slice(0, 7) === monthKey).length;
   const newPrev = members.filter((m) => (m.joinedOn ?? '').slice(0, 7) === prevMonth).length;
   const monthName = (k: string) => new Date(`${k}-01T00:00:00`).toLocaleDateString('en-PH', { month: 'long' });
+  // New members in each of the last six months, oldest first (the "New this month" card's bars).
+  const lastSix = Array.from({ length: 6 }, (_, i) => {
+    const [y, mo] = monthKey.split('-').map(Number);
+    const d = new Date(Date.UTC(y, mo - 1 - (5 - i), 1));
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+  });
+  const joinsBy = lastSix.map((k) => members.filter((m) => (m.joinedOn ?? '').slice(0, 7) === k).length);
   const firstName = (n: string) => { const [f, l] = n.split(' '); return l ? `${f} ${l[0]}.` : f; };
   const ago = (iso: string | undefined) => {
     if (!iso) return 'Never';
@@ -563,7 +570,7 @@ export default function Members() {
                 <Pause size={18} style={{ color: 'var(--a-a300)' }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <b style={{ fontSize: 13 }}>{r.memberName} asks to {r.kind === 'freeze' ? `pause for ${r.requestedDays} days` : 'cancel'}{r.planName ? ` (${r.planName})` : ''}</b>
-                  <div className="a-sub truncate">&ldquo;{r.reason}&rdquo;{r.expiryDate ? ` — term ends ${r.expiryDate}` : ''} — {r.kind === 'freeze' ? 'freezing' : 'cancelling'} them closes the request</div>
+                  <div className="a-sub truncate">&ldquo;{r.reason}&rdquo;{r.expiryDate ? ` · term ends ${r.expiryDate}` : ''} · {r.kind === 'freeze' ? 'freezing' : 'cancelling'} them closes the request</div>
                 </div>
                 {more > 0 && <button type="button" className="a-btn ghost sm" style={{ color: 'var(--a-a300)' }} onClick={() => setRequestsOpen(true)} data-see-all-requests>See all {more + 1}</button>}
                 <button type="button" className="a-btn soft sm" onClick={() => setViewingId(r.memberId)}>Open</button>
@@ -598,7 +605,7 @@ export default function Members() {
       <div className="a-head">
         <div className="min-w-0">
           <h1>{showArchived ? 'Archived members' : 'Members'}</h1>
-          <p>{showArchived ? 'History kept — restore anyone from the row menu.'
+          <p>{showArchived ? 'History kept: restore anyone from the row menu.'
             : `${members.length} members · ${activeCount} active${expiringSoon ? ` · ${expiringSoon} expiring this week` : ''}`}</p>
         </div>
         <nav className="a-tabs" data-rd-tabs aria-label="Members views">
@@ -615,15 +622,15 @@ export default function Members() {
         <div className="a-grid flex-none a-figstrip" style={{ gridTemplateColumns: 'repeat(4,minmax(0,1fr))' }} data-members-hero>
           <button type="button" className="a-card press text-left" onClick={() => pickChip('active')}>
             <div className="a-lbl">Active</div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}><div className="a-num">{activeCount}</div><span className="a-sub">of {members.length}{share !== null ? ` · ${Math.round(share * 100)}%` : ''}</span></div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}><div className="a-num"><CountUp value={activeCount} /></div><span className="a-sub">of {members.length}{share !== null ? ` · ${Math.round(share * 100)}%` : ''}</span></div>
             {share !== null && <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}><div className="a-bar"><i style={{ width: `${share * 100}%` }} /></div></div>}
           </button>
           <div className="a-card" style={expiringSoon ? { borderColor: 'var(--a-warn-line, #3e310f)' } : undefined} data-expiring-card>
             <div className="a-lbl" style={expiringSoon ? { color: 'var(--a-a300)' } : undefined}>Expiring in {EXPIRING_SOON_DAYS} days</div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}><div className="a-num">{expiringSoon}</div>{toRenew > 0 && <span className="a-sub">₱{toRenew.toLocaleString('en-PH')} to renew</span>}</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}><div className="a-num"><CountUp value={expiringSoon} /></div>{toRenew > 0 && <span className="a-sub">₱{toRenew.toLocaleString('en-PH')} to renew</span>}</div>
             <div className="a-sub" style={{ marginTop: 8 }}>
               {expiringSoon === 0 ? 'Nobody this week.' : <>
-                {expiringRows.slice(0, 2).map((m) => firstName(m.fullName)).join(' · ')}{expiringSoon > 2 ? ` · +${expiringSoon - 2}` : ''} —{' '}
+                {expiringRows.slice(0, 2).map((m) => firstName(m.fullName)).join(' · ')}{expiringSoon > 2 ? ` · +${expiringSoon - 2}` : ''} ·{' '}
                 <button type="button" className="a-link" style={{ color: 'var(--a-a300)', fontSize: 11 }} onClick={() => pickChip('expiring')}>show</button>{' · '}
                 <button type="button" className="a-link" style={{ color: 'var(--a-a300)', fontSize: 11 }} onClick={() => setRemindOpen(true)} data-remind-all>remind all</button>
               </>}
@@ -631,13 +638,16 @@ export default function Members() {
           </div>
           <button type="button" className="a-card press text-left" onClick={() => pickChip('pending')}>
             <div className="a-lbl">Payment due</div>
-            <div className="a-num">{pendingPayment}</div>
+            <div className="a-num"><CountUp value={pendingPayment} /></div>
             <div className="a-sub" style={{ marginTop: 6 }}>{pendingPayment === 1 ? 'a plan waiting for its first cash' : 'plans waiting for their first cash'}</div>
           </button>
           <div className="a-card">
             <div className="a-lbl">New this month</div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}><div className="a-num">{newThis}</div>
-              <span className="a-sub"><span className={newThis >= newPrev ? 'a-up' : 'a-dn'}>{newThis >= newPrev ? '▲' : '▼'} {Math.abs(newThis - newPrev)}</span> vs {monthName(prevMonth)}</span></div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}><div className="a-num"><CountUp value={newThis} /></div>
+              <span className="a-sub"><span className={newThis >= newPrev ? 'a-up' : 'a-dn'}>{newThis >= newPrev ? '▲' : '▼'} {Math.abs(newThis - newPrev)}</span> vs {monthName(prevMonth)}</span>
+              <div style={{ marginLeft: 'auto', width: 88, alignSelf: 'flex-end' }} data-joins-bars>
+                <MiniBars values={joinsBy} labels={lastSix.map((k) => `${monthName(k)}, new members`)} />
+              </div></div>
             <div className="a-sub" style={{ marginTop: 6 }}>
               {pendingCount > 0 ? <button type="button" className="a-link" style={{ fontSize: 11, color: 'var(--a-p300)' }} onClick={() => setShowPendingPanel(true)}>{pendingCount} sign-up{pendingCount === 1 ? '' : 's'} waiting for you</button> : 'no sign-ups waiting'}
             </div>
@@ -855,7 +865,7 @@ export default function Members() {
         title={toSuspend?.accountStatus === 'suspended' ? 'Reactivate Account' : 'Suspend Account'}
         message={
           toSuspend?.accountStatus === 'suspended'
-            ? `Let ${toSuspend?.fullName ?? 'this member'} log in again? Their membership and history are untouched — this only restores access.`
+            ? `Let ${toSuspend?.fullName ?? 'this member'} log in again? Their membership and history are untouched: this only restores access.`
             : `Suspend ${toSuspend?.fullName ?? 'this member'}? They will not be able to log in to the phone app. Their membership keeps running and nothing is deleted, so this is reversible at any time.`
         }
         confirmText={toSuspend?.accountStatus === 'suspended' ? 'Reactivate' : 'Suspend'}
@@ -882,7 +892,7 @@ export default function Members() {
           showArchived
             ? { label: 'Note (optional)', placeholder: 'Rejoined on 1 October.' }
             : { label: 'Reason for archiving', required: true,
-                placeholder: 'Moved away — asked to be taken off the roster.',
+                placeholder: 'Moved away: asked to be taken off the roster.',
                 hint: 'Kept with their payment and attendance history.' }
         }
         title={showArchived ? 'Restore Member' : 'Archive Member'}
@@ -937,7 +947,7 @@ export default function Members() {
                           userId: reg.auth_user_id,
                           type: 'membership',
                           title: "You're in",
-                          message: `Welcome to ${branding.name}, ${reg.first_name}. Your membership is active — you can book classes now.`,
+                          message: `Welcome to ${branding.name}, ${reg.first_name}. Your membership is active: you can book classes now.`,
                           actionUrl: '/member/home',
                         }).catch(() => {
                           showToast('Approved, but the member could not be notified', 'error');

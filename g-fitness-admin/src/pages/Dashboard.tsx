@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type CSSProperties } from 'react';
+import { CountUp, Skel, Spark, Initials } from '../components/ui/rd';
 import { useNavigate } from 'react-router-dom';
 import { useGymModules, moduleOn } from '../hooks/useGymModules';
 import {
@@ -258,7 +259,7 @@ function DayLine({ perHour, items, open, close, itemWord }: { perHour: number[];
             const bx = x(h) + (hourW - bw) / 2;
             return (
               <g key={h}>
-                <rect className={`bar${h > nowH ? ' ahead' : ''}`} x={bx} y={barBottom - bh} width={bw} height={bh} rx={3}
+                <rect className={`bar${h > nowH ? ' ahead' : ''}`} style={{ '--i': h - Math.floor(open) } as CSSProperties} x={bx} y={barBottom - bh} width={bw} height={bh} rx={3}
                   data-tip={`${hourLabel(h)} to ${hourLabel(h + 1)}: ${perHour[h]} check-in${perHour[h] === 1 ? '' : 's'}`} />
                 {bw >= 14 && perHour[h] < peak && <text className="bar-n" x={bx + bw / 2} y={barBottom - bh - 5} textAnchor="middle">{perHour[h]}</text>}
               </g>
@@ -499,16 +500,16 @@ export default function Dashboard() {
             <div className="dv2-figs">
               <button className="dv2-fig as-btn" onClick={() => navigate('/attendance')} data-tip="Everyone checked in today, at the desk, kiosk or by QR">
                 <div className="l">Checked in today</div>
-                <div className="n hero">{today ? (today.checkIns ?? '—') : '…'}</div>
+                <div className="n hero">{today ? (today.checkIns === null ? '—' : <CountUp value={today.checkIns} />) : <Skel w={56} h={40} />}</div>
               </button>
               <div className="dv2-fig">
                 <div className="l">Walk-ins</div>
-                <div className="n">{today ? (today.walkIns ?? '—') : '…'}</div>
+                <div className="n">{today ? (today.walkIns === null ? '—' : <CountUp value={today.walkIns} />) : <Skel w={36} h={24} />}</div>
                 <div className="d">guests, apart from members</div>
               </div>
               <button className="dv2-fig as-btn" onClick={() => navigate('/payments')} data-tip="Cash payments recorded today, from the same figure as End of day">
                 <div className="l">Cash today</div>
-                <div className="n">{today ? (today.cash ? peso(today.cash.cashIn) : '—') : '…'}</div>
+                <div className="n">{today ? (today.cash ? peso(today.cash.cashIn) : '—') : <Skel w={72} h={24} />}</div>
                 <div className="d">{today?.cash ? `${plural(today.cash.payments, 'payment')} · ${today.cash.closed ? 'drawer closed' : 'drawer open'}` : ''}</div>
               </button>
               {classesOn ? (
@@ -570,23 +571,29 @@ export default function Dashboard() {
                   <button className="dv2-fig as-btn" onClick={() => navigate('/revenue')}
                     data-tip={`Completed payments from the 1st to today, compared with the same days of ${month?.previousLabel ?? 'last month'}`}>
                     <div className="l">Revenue, {month?.monthLabel ?? 'this month'} so far</div>
-                    <div className="n">{month ? (month.revenue ? peso(month.revenue.value) : '—') : '…'}</div>
+                    <div className="n">{month ? (month.revenue ? peso(month.revenue.value) : '—') : <Skel w={96} h={26} />}</div>
                     <div className="d">{month?.revenue ? deltaWords(month.revenue, 'pct', `the same days of ${month.previousLabel}`) : ''}</div>
+                    {month?.revenue && (
+                      <div className="spark" data-revenue-trend>
+                        <Spark values={month.revenue.daily.cur} compare={month.revenue.daily.prev}
+                          label={`Running total: ${peso(month.revenue.value)} so far this month, against ${peso(month.revenue.previous ?? 0)} by the same day of ${month.previousLabel} (dashed)`} />
+                      </div>
+                    )}
                   </button>
                   <button className="dv2-fig as-btn" onClick={() => navigate('/members')} data-tip="Memberships active right now">
                     <div className="l">Active members</div>
-                    <div className="n">{month ? (month.activeMembers ? month.activeMembers.value : '—') : '…'}</div>
+                    <div className="n">{month ? (month.activeMembers ? <CountUp value={month.activeMembers.value} /> : '—') : <Skel w={48} h={26} />}</div>
                     <div className="d">{month?.activeMembers ? (month.activeMembers.joinedThisMonth > 0 ? `${month.activeMembers.joinedThisMonth} joined in ${month.monthLabel}` : `no one new in ${month.monthLabel} yet`) : ''}</div>
                   </button>
                   <button className="dv2-fig as-btn" onClick={() => setPanel('attendance')} data-tip="Check-ins in the last 30 days, compared with the 30 before">
                     <div className="l">Visits, last 30 days</div>
-                    <div className="n">{month ? (month.visits30 ? month.visits30.value : '—') : '…'}</div>
+                    <div className="n">{month ? (month.visits30 ? <CountUp value={month.visits30.value} /> : '—') : <Skel w={48} h={26} />}</div>
                     <div className="d">{month?.visits30 ? deltaWords(month.visits30, 'pct', 'the 30 days before') : ''}</div>
                   </button>
                   <button className="dv2-fig as-btn" onClick={() => setPanel('members')}
                     data-tip={`New members from the 1st to today, compared with the same days of ${month?.previousLabel ?? 'last month'}`}>
                     <div className="l">New members, {month?.monthLabel ?? 'this month'} so far</div>
-                    <div className="n">{month ? (month.newMembers ? month.newMembers.value : '—') : '…'}</div>
+                    <div className="n">{month ? (month.newMembers ? <CountUp value={month.newMembers.value} /> : '—') : <Skel w={36} h={26} />}</div>
                     <div className="d">{month?.newMembers ? deltaWords(month.newMembers, 'count', `the same days of ${month.previousLabel}`) : ''}</div>
                   </button>
                 </div>
@@ -659,7 +666,7 @@ export default function Dashboard() {
                   <div className="dv2-empty"><b>No one looks likely to leave</b><span>Members who stop coming will show here.</span></div>
                 ) : watch.slice(0, 6).map((m) => (
                   <button key={m.memberId} onClick={() => navigate(`/members?open=${m.memberId}`)} className="dv2-row">
-                    <span className="dv2-av">{m.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}</span>
+                    {m.photoUrl ? <Initials name={m.name} photo={m.photoUrl} size={32} /> : <span className="dv2-av">{m.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}</span>}
                     <span className="t"><b>{m.name}</b><span>{m.reasons[0] ?? 'needs a check-in'}</span></span>
                     <span className="dv2-state"><span className={`dv2-dot${m.level === 'high' ? ' warn' : ''}`} />{m.level === 'high' ? 'High' : 'Medium'}</span>
                   </button>

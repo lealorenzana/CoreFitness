@@ -297,12 +297,12 @@ function DrawerBody({
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-5 px-5 overflow-x-auto flex-shrink-0" role="tablist" style={{ borderBottom: '1px solid var(--color-border)' }}>
+      <div className="flex gap-5 px-5 overflow-x-auto flex-shrink-0" style={{ borderBottom: '1px solid var(--color-border)' }}>
         {TABS.map((t) => {
           const Icon = t.icon;
           const active = tab === t.id;
           return (
-            <button key={t.id} onClick={() => setTab(t.id)} role="tab" aria-selected={active}
+            <button key={t.id} onClick={() => setTab(t.id)} aria-pressed={active}
               className="flex items-center gap-1.5 py-3 -mb-px text-[13px] font-medium whitespace-nowrap transition-colors hover:text-white"
               style={{
                 borderBottom: `2px solid ${active ? 'var(--color-primary)' : 'transparent'}`,
@@ -1702,7 +1702,7 @@ function Row({
   title: string; subtitle?: string; right?: React.ReactNode; note?: string | null;
 }) {
   return (
-    <div className="py-2.5" style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)' }}>
+    <div className="py-2.5" data-row style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)' }}>
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[13.5px] text-white font-medium truncate">{title}</p>

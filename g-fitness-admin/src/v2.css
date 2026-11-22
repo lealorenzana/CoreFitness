@@ -203,6 +203,12 @@ button.dv2-row:active { transform: none; }
   border-bottom: 2px solid transparent; margin-bottom: -1px; }
 .cf-tab:hover { color: var(--color-text-primary); }
 .cf-tab[data-active="true"] { color: var(--color-text-primary); border-bottom-color: var(--color-primary); }
+/* Once the sliding line is measured (Header.tsx), it replaces each tab's own underline and glides between tabs. */
+.cf-tabs { position: relative; }
+.cf-tabs[data-slide] .cf-tab[data-active="true"] { border-bottom-color: transparent; }
+.cf-tabs-line { position: absolute; left: 0; bottom: 0; height: 2px; width: 1px; border-radius: 2px; background: var(--color-primary);
+  transform-origin: left; pointer-events: none; transition: transform 260ms var(--v2-ease, ease-out), width 260ms var(--v2-ease, ease-out); }
+.cf-tabs:not([data-slide]) .cf-tabs-line { display: none; }
 
 /* The rail mark and the bar share one centre line: 8px + 36/2 = 52/2 = 26px. */
 .cf-top-row { height: 52px; }
@@ -400,3 +406,42 @@ button.v2-railrow:hover, .v2-railbtn:hover { background: rgb(var(--hair-rgb, 255
 .v2-toast { animation: v2-toast-in 180ms var(--v2-ease, ease-out) both; }
 @keyframes v2-toast-in { from { opacity: 0; transform: translateY(8px) scale(.98); } }
 @media (prefers-reduced-motion: reduce) { .v2-toast { animation: none; } }
+
+/* ── Design V2 pilot (2026-11-23): Dashboard and Members ─────────────────────────────────────────────── */
+@property --v2-n { syntax: '<integer>'; inherits: false; initial-value: 0; }
+.v2-countup-n { --v2-n: 0; counter-reset: v2n var(--v2-n); animation: v2-count 900ms var(--v2-ease, ease-out) both; font-variant-numeric: tabular-nums; }
+.v2-countup-n::after { content: counter(v2n); }
+@keyframes v2-count { from { --v2-n: 0; } }
+
+.v2-skel { display: inline-block; vertical-align: middle; border-radius: 6px;
+  background: linear-gradient(90deg, rgb(var(--hair-rgb, 255 255 255) / 0.06) 0%, rgb(var(--hair-rgb, 255 255 255) / 0.12) 50%, rgb(var(--hair-rgb, 255 255 255) / 0.06) 100%);
+  background-size: 200% 100%; animation: v2-shimmer 1.3s linear infinite; }
+@keyframes v2-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+
+.v2-spark { display: block; width: 100%; height: 30px; overflow: visible; animation: v2-draw 900ms var(--v2-ease, ease-out) both 120ms; }
+.v2-spark .cur { fill: none; stroke: var(--color-primary); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+:root[data-mode="light"] .v2-spark .cur { stroke: var(--fill-primary, var(--color-primary)); }
+.v2-spark .cmp { fill: none; stroke: rgb(var(--hair-rgb, 255 255 255) / 0.22); stroke-width: 1.5; stroke-dasharray: 3 3; }
+@keyframes v2-draw { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+
+.v2-minibars { display: flex; align-items: flex-end; gap: 4px; height: 34px; }
+.v2-minibars span { flex: 1; min-width: 6px; border-radius: 3px 3px 1px 1px; background: rgb(var(--hair-rgb, 255 255 255) / 0.16);
+  transform-origin: bottom; animation: v2-grow 600ms var(--v2-ease, ease-out) both; animation-delay: calc(var(--i, 0) * 45ms); }
+.v2-minibars span.now { background: var(--color-primary); }
+:root[data-mode="light"] .v2-minibars span.now { background: var(--fill-primary, var(--color-primary)); }
+@keyframes v2-grow { from { transform: scaleY(0.04); opacity: .4; } }
+
+/* The day line's bars rise from the floor one after another; class blocks fade in after them. */
+.dv2-day .bar { transform-box: fill-box; transform-origin: bottom; animation: v2-grow 600ms var(--v2-ease, ease-out) both; animation-delay: calc(var(--i, 0) * 25ms); }
+.dv2-day .cls { animation: v2-fade 400ms ease-out both 300ms; }
+@keyframes v2-fade { from { opacity: 0; } }
+
+/* The month cells start at the top, so a cell with a trend line under its number still lines up with its neighbour. */
+.dv2-mfig .dv2-fig { justify-content: flex-start; padding-top: 18px; }
+.dv2-mfig .dv2-fig .spark { margin-top: 8px; max-width: 260px; }
+.dv2-mfig .dv2-fig .spark .v2-spark { height: 24px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .v2-countup-n, .v2-spark, .v2-minibars span, .dv2-day .bar, .dv2-day .cls, .v2-skel { animation: none; }
+  .cf-tabs-line { transition: none; }
+}

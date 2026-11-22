@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { Bell, X, Calendar, Banknote, AlertCircle, Clock, UserPlus, Mail } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useBranding } from '../../hooks/useBranding';
@@ -62,6 +62,29 @@ export default function Header() {
 
   const visible = alerts.filter((a) => !dismissed.has(a.id));
   const unreadCount = visible.length + messages.length;
+
+  // The tab line glides to the page you open (Design V2 pilot, 2026-11-23). Written straight to the DOM:
+  // a measurement, not state. Until it is measured each tab keeps its own underline (no data-slide).
+  const tabsRef = useRef<HTMLElement>(null);
+  const lineRef = useRef<HTMLSpanElement>(null);
+  useLayoutEffect(() => {
+    const nav = tabsRef.current, line = lineRef.current;
+    if (!nav || !line) return;
+    const place = () => {
+      const on = nav.querySelector<HTMLElement>('.cf-tab[data-active="true"]');
+      if (!on) { nav.removeAttribute('data-slide'); return; }
+      const first = !nav.hasAttribute('data-slide');
+      if (first) line.style.transition = 'none';   // the first placement appears in place; only later moves glide
+      line.style.width = `${on.offsetWidth}px`;
+      line.style.transform = `translateX(${on.offsetLeft}px)`;
+      nav.setAttribute('data-slide', '');
+      if (first) { void line.offsetWidth; line.style.transition = ''; }
+    };
+    place();
+    const ro = new ResizeObserver(place);
+    ro.observe(nav);
+    return () => ro.disconnect();
+  }, [current, leaf?.path]);
 
   return (
     <header className="cf-top sticky top-0 z-20" style={{ background: SURFACE, borderBottom: `1px solid ${BORDER}` }}>
@@ -211,7 +234,8 @@ export default function Header() {
       </div>
       </div>
       {/* The pages of the section you are in (rail.ts): where you are, and one tap to its neighbours. */}
-      <nav className="cf-tabs" aria-label={current ? `${current.label} pages` : 'Pages'}>
+      <nav ref={tabsRef} className="cf-tabs" aria-label={current ? `${current.label} pages` : 'Pages'}>
+        <span ref={lineRef} className="cf-tabs-line" aria-hidden />
         {current && (
           <>
             <span className="cf-tabs-sec">{current.label}</span>

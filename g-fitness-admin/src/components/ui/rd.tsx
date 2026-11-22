@@ -602,3 +602,55 @@ export function RdField({ label, hint, group, children }: { label: string; hint?
     </label>
   );
 }
+
+// ─── Design V2 pilot (owner, 2026-11-23: "too bland"): figures that move, shapes for numbers ─────────────
+
+/**
+ * A whole number that counts up once when it appears (CSS only: a registered custom property animated
+ * from 0, drawn by a counter). The real number is always in the page for readers and checks; with
+ * reduced motion, or a number past 999 (a counter cannot draw the comma), it is plain text.
+ */
+export function CountUp({ value }: { value: number }) {
+  if (!Number.isInteger(value) || value < 0 || value > 999) return <>{value.toLocaleString('en-PH')}</>;
+  return (
+    <span className="v2-countup">
+      <span className="sr-only">{value}</span>
+      <span aria-hidden className="v2-countup-n" style={{ '--v2-n': value } as React.CSSProperties} />
+    </span>
+  );
+}
+
+/** A grey shape where a value will be, instead of "…" or "Loading…". */
+export function Skel({ w = 48, h = 14 }: { w?: number | string; h?: number }) {
+  return <span className="v2-skel" style={{ width: w, height: h }} aria-hidden />;
+}
+
+/**
+ * A small trend line from real values, optionally over a comparison line (for example last month to the
+ * same day). It draws itself in from the left. Nothing is drawn with fewer than two points.
+ */
+export function Spark({ values, compare, label }: { values: number[]; compare?: number[]; label: string }) {
+  const n = Math.max(values.length, compare?.length ?? 0);
+  if (values.length < 2) return null;
+  const max = Math.max(1, ...values, ...(compare ?? []));
+  const pts = (v: number[]) => v.map((y, i) => `${((i / (n - 1)) * 100).toFixed(2)},${(29 - (y / max) * 27).toFixed(2)}`).join(' ');
+  return (
+    <svg className="v2-spark" viewBox="0 0 100 30" preserveAspectRatio="none" role="img" aria-label={label}>
+      {compare && compare.length > 1 && <polyline className="cmp" points={pts(compare)} vectorEffect="non-scaling-stroke" />}
+      <polyline className="cur" points={pts(values)} vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+
+/** A handful of bars (for example new members per month), the last one in the gym's colour; each says its value on hover. */
+export function MiniBars({ values, labels }: { values: number[]; labels: string[] }) {
+  const max = Math.max(1, ...values);
+  return (
+    <div className="v2-minibars" role="img" aria-label={values.map((v, i) => `${labels[i]}: ${v}`).join(', ')}>
+      {values.map((v, i) => (
+        <span key={labels[i]} data-tip={`${labels[i]}: ${v}`} className={i === values.length - 1 ? 'now' : ''}
+          style={{ height: `${Math.max(6, (v / max) * 100)}%`, '--i': i } as React.CSSProperties} />
+      ))}
+    </div>
+  );
+}

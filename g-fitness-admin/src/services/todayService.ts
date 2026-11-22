@@ -212,7 +212,8 @@ export async function loadToday(): Promise<Today> {
 export interface Compared { value: number; previous: number | null }
 
 export interface MonthNumbers {
-  revenue: Compared | null;
+  /** `daily`: the running total day by day, this month and last month to the same day (the dashboard's trend line). */
+  revenue: (Compared & { daily: { cur: number[]; prev: number[] } }) | null;
   activeMembers: { value: number; joinedThisMonth: number } | null;
   visits30: Compared | null;
   newMembers: Compared | null;
@@ -235,12 +236,21 @@ export async function loadMonthNumbers(): Promise<MonthNumbers> {
 
   const revenue = (async () => {
     const [cur, prev] = await Promise.all([
-      supabase.from('payments').select('amount').eq('status', 'completed').gte('paid_on', thisFirst).lte('paid_on', day),
-      supabase.from('payments').select('amount').eq('status', 'completed').gte('paid_on', prevFirst).lt('paid_on', prevSameDay),
+      supabase.from('payments').select('amount, paid_on').eq('status', 'completed').gte('paid_on', thisFirst).lte('paid_on', day),
+      supabase.from('payments').select('amount, paid_on').eq('status', 'completed').gte('paid_on', prevFirst).lt('paid_on', prevSameDay),
     ]);
     if (cur.error || prev.error) throw cur.error ?? prev.error;
-    const sum = (rows: { amount: number | string }[] | null) => (rows ?? []).reduce((s, r) => s + (Number(r.amount) || 0), 0);
-    return { value: sum(cur.data), previous: sum(prev.data) };
+    type Row = { amount: number | string; paid_on: string | null };
+    const sum = (rows: Row[] | null) => (rows ?? []).reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    // Day by day, as a running total from the 1st, for as many days as each period has.
+    const running = (rows: Row[] | null, days: number) => {
+      const per = new Array(days).fill(0);
+      for (const r of rows ?? []) { const d = Number((r.paid_on ?? '').slice(8, 10)) - 1; if (d >= 0 && d < days) per[d] += Number(r.amount) || 0; }
+      let t = 0; return per.map((v) => (t += v));
+    };
+    const prevDays = Math.round((Date.parse(prevSameDay) - Date.parse(prevFirst)) / 86400000);
+    return { value: sum(cur.data), previous: sum(prev.data),
+      daily: { cur: running(cur.data as Row[], dayOfMonth), prev: running(prev.data as Row[], prevDays) } };
   })().catch(() => null);
 
   const joined = (from: string, to: string) => supabase.from('gym_people').select('id', { count: 'exact', head: true })
