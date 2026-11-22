@@ -479,3 +479,19 @@
 .att .a-figstrip > .a-card:first-child .a-num { font-size: 36px; letter-spacing: -0.03em; }
 /* History: the calendar box scrolls itself when the month and the weekday bars do not both fit. */
 .att [data-attendance-calendar] { overflow-y: auto; overscroll-behavior: contain; }
+
+/* ── Status is a dot and a word, everywhere this stylesheet draws one (Design V2). A pill with its own icon
+   (how someone checked in) keeps the icon instead of the dot. a = needs a look (amber), v = fine (gym colour),
+   b = waiting on the desk, plain = neither. */
+.att .a-pill { font-size: 12px; font-weight: 500; color: var(--a-ink); gap: 6px; }
+.att .a-pill:not(:has(svg))::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--a-muted); flex: none; }
+.att .a-pill.a::before { background: var(--amber-solid, #F59E0B); }
+.att .a-pill.v::before { background: var(--color-primary); }
+.att .a-pill.b::before { background: #3B82F6; }
+.att .a-pill.a, .att .a-pill.v, .att .a-pill.b, :root[data-mode="light"] .att .a-pill.a, :root[data-mode="light"] .att .a-pill.v { color: var(--a-ink); background: transparent; }
+
+/* ── Members ── */
+/* A row's own actions (Renew, Record payment) are quiet; the page's one amber action is Add member. */
+.att [data-members-table] .a-btn.amber, :root[data-mode="light"] .att [data-members-table] .a-btn.amber,
+.att [data-members-table] .a-btn.soft, :root[data-mode="light"] .att [data-members-table] .a-btn.soft {
+  background: transparent; color: var(--a-ink); border-color: var(--a-line); }

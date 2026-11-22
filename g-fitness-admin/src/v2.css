@@ -227,3 +227,63 @@ body .gd-open svg { color: var(--color-text-muted); }
 .cf-bell-count { position: absolute; top: 5px; right: 5px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 8px;
   display: grid; place-items: center; font-size: 9.5px; font-weight: 700; line-height: 1;
   background: var(--amber-solid, #F59E0B); color: var(--on-amber, #1a1206); }
+
+/* ── Notifications, the mail app (owner's pick, 2026-11-22; pages/Inbox.tsx) ─────────────────────────────── */
+.ib2 { flex: 1; min-height: 0; display: grid; grid-template-columns: 232px minmax(0, 1fr) minmax(0, 1.05fr);
+  background: var(--surface-solid); border: 1px solid var(--color-border); border-radius: 12px; overflow: hidden; }
+.ib2 > * { min-height: 0; min-width: 0; display: flex; flex-direction: column; }
+.ib2 > * + * { border-left: 1px solid var(--color-border); }
+.ib2-fold { padding: 12px 8px; gap: 2px; overflow-y: auto; }
+.ib2-fold button { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-radius: 6px; width: 100%;
+  font-size: 13px; color: var(--color-text-secondary); text-align: left; }
+.ib2-fold button:hover { background: rgb(var(--hair-rgb, 255 255 255) / 0.04); color: var(--color-text-primary); }
+.ib2-fold button[aria-selected="true"], .ib2-fold button[aria-pressed="true"] { background: var(--raised-solid); color: var(--color-text-primary); font-weight: 600; }
+.ib2-fold button:active { transform: none; }
+.ib2-fold button > span { margin-left: auto; font-size: 12px; color: var(--color-text-muted); font-weight: 500; font-variant-numeric: tabular-nums; }
+.ib2-fold button > span.warn { color: var(--amber-solid, #F59E0B); font-weight: 650; }
+.ib2-fold h4 { font-size: 12px; font-weight: 500; color: var(--color-text-muted); padding: 16px 10px 6px; }
+.ib2-bar { height: 52px; flex: none; display: flex; align-items: center; gap: 10px; padding: 0 16px; border-bottom: 1px solid var(--color-border); }
+.ib2-note { font-size: 12px; color: var(--color-text-muted); }
+.ib2-chip { height: 30px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border-radius: 6px; font-size: 12px; font-weight: 600;
+  border: 1px solid rgb(var(--hair-rgb, 255 255 255) / 0.14); color: var(--color-text-primary); white-space: nowrap; }
+.ib2-bulk { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 16px; border-bottom: 1px solid var(--color-border); background: var(--raised-solid); }
+.ib2-bulk > span { font-size: 13px; font-weight: 600; color: var(--color-text-primary); margin-right: 4px; }
+.ib2-day { font-size: 12px; color: var(--color-text-muted); padding: 12px 16px 4px; position: sticky; top: 0; z-index: 1; background: var(--surface-solid); }
+.ib2-msg, .ib2-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--color-border); width: 100%; text-align: left; }
+.ib2-msg:hover, .ib2-row:hover { background: rgb(var(--hair-rgb, 255 255 255) / 0.025); }
+.ib2-row:active { transform: none; }
+.ib2-msg.on { background: var(--raised-solid); box-shadow: inset 2px 0 0 var(--color-primary); }
+.ib2-msg input { margin-top: 3px; flex: none; }
+.ib2-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 7px; flex: none; background: transparent; }
+.ib2-dot.on { background: var(--color-primary-300, #C4B5FD); }
+:root[data-mode="light"] .ib2-dot.on { background: var(--color-primary); }
+.ib2-dot.warn, :root[data-mode="light"] .ib2-dot.warn { background: var(--amber-solid, #F59E0B); }
+.ib2-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; text-align: left; }
+.ib2-t:active { transform: none; }
+.ib2-t > b { font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
+.ib2-t > span:not(.ib2-h) { font-size: 12px; color: var(--color-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ib2-row .ib2-t > span { white-space: normal; }
+.ib2-h { display: flex; align-items: baseline; gap: 8px; }
+.ib2-h b { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ib2-h b.read { font-weight: 500; color: var(--color-text-secondary); }
+.ib2-h time { font-size: 12px; color: var(--color-text-muted); flex: none; font-variant-numeric: tabular-nums; }
+.ib2-go { color: var(--color-text-muted); flex: none; margin-top: 2px; }
+.ib2-icon { width: 30px; height: 30px; border-radius: 6px; display: inline-grid; place-items: center; color: var(--color-text-muted); flex: none; }
+.ib2-icon:hover { background: rgb(var(--hair-rgb, 255 255 255) / 0.06); color: var(--color-text-primary); }
+.ib2-msg .ib2-icon { opacity: 0; }
+.ib2-msg:hover .ib2-icon, .ib2-msg .ib2-icon:focus-visible { opacity: 1; }
+@media (hover: none) { .ib2-msg .ib2-icon { opacity: 1; } }
+.ib2-empty { padding: 24px 16px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--color-text-muted); }
+.ib2-empty b { font-size: 13px; color: var(--color-text-primary); font-weight: 600; }
+.ib2-empty span { font-size: 12px; color: var(--color-text-secondary); }
+.ib2-center { flex: 1; justify-content: center; align-items: center; text-align: center; }
+.ib2-kind { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--color-text-secondary); }
+.ib2-body { padding: 24px; }
+.ib2-body h2 { font-size: 20px; line-height: 1.3; font-weight: 650; letter-spacing: -0.01em; color: var(--color-text-primary); text-wrap: balance; }
+.ib2-when { font-size: 12px; color: var(--color-text-muted); margin-top: 4px; }
+.ib2-text { font-size: 14px; line-height: 1.6; margin-top: 18px; max-width: 60ch; white-space: pre-line; color: var(--color-text-primary); }
+.ib2-aside { font-size: 12px; margin-top: 18px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--color-border); color: var(--color-text-secondary); }
+.ib2-act { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--color-border); }
+.ib2-go-btn { height: 36px; padding: 0 14px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600;
+  background: var(--amber-solid, #F59E0B); color: var(--on-amber, #1a1206); }
+@media (max-width: 1400px) { .ib2 { grid-template-columns: 200px minmax(0, 1fr) minmax(0, 0.9fr); } }

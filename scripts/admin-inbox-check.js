@@ -134,7 +134,13 @@ async (page) => {
   await page.waitForTimeout(400);
   const scrolls = await page.evaluate(() => { const m = document.querySelector('main'); return m ? m.scrollHeight - m.clientHeight : 0; });
   out.push('the page does not scroll; each box scrolls itself: ' + (scrolls <= 2 ? 'yes' : 'MISSING ' + scrolls));
-  out.push('the overview has the ring and the kinds: ' + ((await page.locator('[data-overview] [data-ring]').count()) >= 1 && (await page.locator('[data-kind]').count()) >= 1 ? 'yes' : 'MISSING'));
+  // Design V2 (2026-11-22): a mail app. The kinds are folders, the overview a line of words, no ring.
+  out.push('the overview says what is in the inbox, and the kinds are folders: ' + (/in your inbox/.test(await page.locator('[data-overview]').innerText().catch(() => '')) && (await page.locator('[data-kind]').count()) >= 1 ? 'yes' : 'MISSING'));
+  await page.locator('[data-inbox-tab="attention"]').click();
+  await page.waitForTimeout(300);
+  out.push('Needs attention is a folder of its own: ' + ((await page.locator('[data-attention]').count()) === 1 ? 'yes' : 'MISSING'));
+  await page.locator('[data-inbox-tab="all"]').click();
+  await page.waitForTimeout(300);
   out.push('messages are grouped by day: ' + (/Today/.test(await page.locator('[data-inbox-list]').innerText()) ? 'yes' : 'MISSING'));
   await page.locator('[data-inbox-row]').filter({ hasText: 'AI coach' }).locator('button').nth(0).click();
   await page.waitForTimeout(500);

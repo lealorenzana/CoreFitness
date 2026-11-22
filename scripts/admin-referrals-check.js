@@ -86,11 +86,10 @@ async (page) => {
   const out = [];
   const say = (label, ok, why = '') => out.push(`${label}: ${ok ? 'yes' : 'MISSING' + (why ? ' ' + why : '')}`);
   const go = async (path) => { await page.goto('about:blank'); await page.goto(`http://localhost:5174${path}`, { waitUntil: 'domcontentloaded' }); await page.waitForTimeout(2500); };
-  // The sidebar remembers which groups are open, so open Engagement only when it is closed.
-  const openEngagement = async () => {
-    const g = page.getByRole('button', { name: /Engagement/ }).first();
-    if ((await g.getAttribute('aria-expanded')) !== 'true') { await g.click(); await page.waitForTimeout(400); }
-  };
+  // Design V2 (shell B): no groups to open. A section's pages are named in its rail button's tooltip, so
+  // "the Engagement group" is the Engage section's tooltip (an empty string when the section is gone).
+  const openEngagement = async () => { await page.waitForTimeout(100); };
+  const engageTip = async () => (await page.locator('[data-rail="engage"]').getAttribute('data-tip').catch(() => null)) ?? '';
   const noScroll = async () => page.evaluate(() => document.scrollingElement.scrollHeight - window.innerHeight);
 
   // ── Points OFF, the owner ──
@@ -112,7 +111,7 @@ async (page) => {
   say('a pending referral waits for its first payment', /Waiting for their first payment/.test(head));
   say('the sidebar has Referrals', (await page.locator('a[href="/referrals"]').count()) >= 1);
   await openEngagement();
-  say('…and no Rewards row in the open Engagement group while points are off', (await page.locator('a[href="/rewards"]').count()) === 0);
+  say('…and no Rewards row in the open Engagement group while points are off', (await page.locator('a[href="/rewards"]').count()) === 0 && !/Rewards/.test(await engageTip()));
   const darkScroll = await noScroll();
   say('the page does not scroll', darkScroll <= 0, `(scrolls ${darkScroll}px)`);
   await page.screenshot({ path: 'shots/admin-referrals-off-dark.png' });
@@ -165,7 +164,7 @@ async (page) => {
   say('points on: the tile is points paid out', /Points paid out\s*75/.test(onText), `(${onText.replace(/\s+/g, ' ').slice(0, 200)})`);
   say('points on: a paid row shows its points', /Paid · 50 \+ 25 pts/.test(onText));
   await openEngagement();
-  say('points on: the open Engagement group has Rewards back', (await page.locator('a[href="/rewards"]').count()) >= 1);
+  say('points on: the open Engagement group has Rewards back', /Rewards/.test(await engageTip()));
   await page.screenshot({ path: 'shots/admin-referrals-on-dark.png' });
   await go('/challenges');
   say('points on: no points-off note on the challenge form', (await page.locator('[data-points-off]').count()) === 0);

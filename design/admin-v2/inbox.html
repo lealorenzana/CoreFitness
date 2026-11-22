@@ -1,0 +1,104 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Notifications: inbox</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="shell2.css"><style>
+.pg { flex: 1; min-height: 0; padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
+.ph { display: flex; align-items: center; gap: 16px; flex: none; }
+.ph h1 { font-size: 22px; font-weight: 650; letter-spacing: -.02em; }
+.ph p { color: var(--text-2); font-size: 13px; }
+.seg2 { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--line-strong); border-radius: 8px; }
+.seg2 a { padding: 5px 12px; border-radius: 6px; color: var(--text-2); font-weight: 600; cursor: pointer; white-space: nowrap; }
+.seg2 a.on { background: var(--raised); color: var(--text); }
+.seg2 a em { font-style: normal; color: var(--text-3); font-weight: 500; margin-left: 4px; }
+.live { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); }
+.live::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--primary-fg); }
+.find { display: flex; gap: 8px; }
+.find .in { flex: 1; height: 48px; border: 1px solid var(--line-strong); border-radius: 8px; display: flex; align-items: center; gap: 10px; padding: 0 14px; font-size: 15px; color: var(--text-3); background: var(--surface); }
+.find .in b { color: var(--text); font-weight: 500; }
+.find .kb { margin-left: auto; font-size: 11px; border: 1px solid var(--line-strong); border-radius: 4px; padding: 1px 6px; color: var(--text-3); }
+.find .go { height: 48px; padding: 0 18px; border-radius: 8px; background: var(--action); color: var(--on-action); font-weight: 650; display: inline-flex; align-items: center; gap: 8px; }
+.tagrow { display: flex; align-items: center; gap: 8px; color: var(--text-2); font-size: 12px; flex-wrap: nowrap; }
+.tagrow .t { height: 28px; padding: 0 10px; border-radius: 6px; border: 1px solid var(--line-strong); display: inline-flex; align-items: center; color: var(--text-2); font-weight: 600; white-space: nowrap; }
+.tagrow .t.on { border-color: var(--primary-fg); color: var(--text); background: var(--raised); }
+.okbar { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; background: var(--raised); }
+.okbar .c { width: 24px; height: 24px; border-radius: 50%; background: var(--fill-primary); color: #fff; display: grid; place-items: center; flex: none; }
+.okbar .c svg { stroke: #fff; }
+.okbar .t { flex: 1; min-width: 0; } .okbar .t b { font-weight: 600; } .okbar .t span { color: var(--text-2); font-size: 12px; margin-left: 8px; }
+.btn.sm { height: 28px; font-size: 12px; padding: 0 10px; }
+table.log { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.log th { text-align: left; font-size: 12px; color: var(--text-3); font-weight: 500; padding: 8px 16px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--surface); }
+table.log td { padding: 9px 16px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.log td.n b { font-weight: 600; } table.log td.n span { color: var(--text-3); margin-left: 8px; font-size: 12px; }
+table.log td.m { color: var(--text-2); } table.log td.r { text-align: right; }
+table.log .how { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); }
+.filters { display: flex; align-items: center; gap: 8px; }
+.mini { height: 30px; border: 1px solid var(--line-strong); border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; color: var(--text-3); font-size: 12px; min-width: 180px; }
+.kv { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.kv:last-child { border-bottom: 0; }
+.kv .t { flex: 1; min-width: 0; } .kv .t b { display: block; font-weight: 600; } .kv .t span { color: var(--text-2); font-size: 12px; }
+.kv > svg.i { color: var(--text-3); }
+.stack { display: flex; height: 6px; border-radius: 3px; overflow: hidden; gap: 2px; margin-top: 8px; }
+.stack i { display: block; background: var(--primary-fg); } .stack i.b { opacity: .55; } .stack i.c { background: var(--line-strong); }
+.leg { display: flex; gap: 12px; margin-top: 6px; font-size: 12px; color: var(--text-2); }
+.leg span { display: inline-flex; align-items: center; gap: 5px; }
+.spark { display: flex; align-items: flex-end; gap: 3px; height: 36px; }
+.spark i { flex: 1; background: var(--primary-fg); opacity: .8; border-radius: 2px 2px 0 0; }
+.spark i.f { opacity: .2; }
+
+.ib { flex: 1; min-height: 0; display: grid; grid-template-columns: 240px minmax(0, 1fr) minmax(0, 1.1fr); gap: 0;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.ib > section { min-height: 0; display: flex; flex-direction: column; }
+.ib > section + section { border-left: 1px solid var(--line); }
+.fold { padding: 12px 8px; display: flex; flex-direction: column; gap: 2px; }
+.fold a { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-radius: 6px; color: var(--text-2); cursor: pointer; }
+.fold a.on { background: var(--raised); color: var(--text); font-weight: 600; }
+.fold a .c { margin-left: auto; font-size: 12px; color: var(--text-3); }
+.fold a .c.warn { color: var(--action); font-weight: 650; }
+.fold h4 { font-size: 12px; color: var(--text-3); font-weight: 500; padding: 14px 10px 6px; }
+.tb { height: 52px; display: flex; align-items: center; gap: 10px; padding: 0 16px; border-bottom: 1px solid var(--line); flex: none; }
+.tb .mini { flex: 1; }
+.cb { width: 14px; height: 14px; border: 1px solid var(--line-strong); border-radius: 3px; flex: none; }
+.msg { display: flex; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); cursor: pointer; align-items: flex-start; }
+.msg.on { background: var(--raised); box-shadow: inset 2px 0 0 var(--primary-fg); }
+.msg .u { width: 6px; height: 6px; border-radius: 50%; margin-top: 7px; flex: none; background: transparent; }
+.msg .u.on { background: var(--primary-fg); }
+.msg .t { flex: 1; min-width: 0; }
+.msg .t .h { display: flex; gap: 8px; } .msg .t .h b { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.msg .t .h b.read { font-weight: 500; color: var(--text-2); }
+.msg .t .h time { font-size: 12px; color: var(--text-3); flex: none; }
+.msg .t p { font-size: 12px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+.msg .k { font-size: 12px; color: var(--text-3); }
+.day { font-size: 12px; color: var(--text-3); padding: 12px 16px 4px; }
+.rd { flex: 1; min-height: 0; padding: 24px; overflow: auto; }
+.rd .kind { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); }
+.rd h2 { font-size: 20px; font-weight: 650; letter-spacing: -.01em; margin-top: 10px; text-wrap: balance; }
+.rd .when { font-size: 12px; color: var(--text-3); margin-top: 4px; }
+.rd .body { font-size: 14px; line-height: 1.6; margin-top: 18px; max-width: 60ch; }
+.rd-act { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--line); flex: none; }
+.rd-top { height: 52px; display: flex; align-items: center; gap: 4px; padding: 0 12px 0 24px; border-bottom: 1px solid var(--line); flex: none; color: var(--text-3); font-size: 12px; }
+.rd-top .sp { flex: 1; }
+</style></head><body>
+<div class="sb"><nav class="sb-rail"><span class="logo">CF</span><a class="on"><svg class="i" width="16" height="16" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z"/></svg>Desk</a><a class=""><svg class="i" width="16" height="16" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg>People</a><a class=""><svg class="i" width="16" height="16" viewBox="0 0 24 24"><path d="M6.5 6.5h11M6.5 17.5h11M4 9v6M20 9v6M2 11v2M22 11v2"/></svg>Coaching</a><a class=""><svg class="i" width="16" height="16" viewBox="0 0 24 24"><path d="M2 6h20v12H2zM2 10h20"/></svg>Money</a><a class=""><svg class="i" width="16" height="16" viewBox="0 0 24 24"><path d="M3 3v18h18M7 15l4-4 3 3 5-6"/></svg>Reports</a><a class=""><svg class="i" width="16" height="16" viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/></svg>Engage</a><a class=""><svg class="i" width="16" height="16" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Messages</a><a class=""><svg class="i" width="16" height="16" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V2H6.5A2.5 2.5 0 0 0 4 4.5zM4 19.5V22h16"/></svg>Library</a><a class="push"><svg class="i" width="16" height="16" viewBox="0 0 24 24"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6"/></svg>Gym</a><a><svg class="i" width="16" height="16" viewBox="0 0 24 24"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></svg>Help</a><span class="av me">GO</span></nav>
+<div class="main"><div class="sb-top"><div class="row1"><span class="gymname">Core Fitness Lab <small>Mamburao</small></span>
+<div class="cmd"><svg class="i" width="16" height="16" viewBox="0 0 24 24"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16M21 21l-4.3-4.3"/></svg>Search anything<span class="kbd">Ctrl K</span></div><button class="ico-btn"><svg class="i" width="18" height="18" viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 21h4"/></svg><span class="n">30</span></button></div>
+<div class="row2"><span class="sec">Desk</span><a>Today</a><a>Attendance</a><a class="on">Notifications</a></div></div>
+<div class="pg">
+  <div class="ph"><div><h1>Notifications</h1><p>What needs you now, and every message sent to you.</p></div>
+    <div style="margin-left:auto"><button class="btn"><svg class="i" width="14" height="14" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Mark all as read</button></div></div>
+  <div class="ib">
+    <section><nav class="fold">
+      <a>Needs attention<span class="c warn">27</span></a>
+      <a class="on">Unread<span class="c">3</span></a><a>All<span class="c">5</span></a><a>Archived<span class="c">0</span></a>
+      <h4>Kinds</h4><a>Bookings<span class="c">3 new</span></a><a>Gym system<span class="c">2</span></a>
+    </nav></section>
+    <section>
+      <div class="tb"><span class="cb"></span><span class="mini"><svg class="i" width="14" height="14" viewBox="0 0 24 24"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16M21 21l-4.3-4.3"/></svg>Search messages</span></div>
+      <div class="scroll"><p class="day">Earlier</p><div class="msg on"><span class="cb"></span><span class="u on"></span><div class="t"><div class="h"><b class="">Coach accepted, your turn</b><time>Oct 27</time></div><p>The coach accepted this class booking: Pia Garcia, Morning HIIT. Confirm it on Bookings.</p></div></div><div class="msg"><span class="cb"></span><span class="u on"></span><div class="t"><div class="h"><b class="">Coach accepted, your turn</b><time>Oct 27</time></div><p>The coach accepted this 1-on-1: Lea Lorenzana, Oct 27, 5:00 PM. Confirm it on Bookings.</p></div></div><div class="msg"><span class="cb"></span><span class="u on"></span><div class="t"><div class="h"><b class="">Coach accepted, your turn</b><time>Oct 27</time></div><p>The coach accepted this class booking: Pia Garcia, Strength Basics. Confirm it on Bookings.</p></div></div><div class="msg"><span class="cb"></span><span class="u"></span><div class="t"><div class="h"><b class="read">Weekly backup finished</b><time>Oct 25</time></div><p>Your gym's data was backed up. Nothing to do.</p></div></div><div class="msg"><span class="cb"></span><span class="u"></span><div class="t"><div class="h"><b class="read">New version of the app</b><time>Oct 21</time></div><p>The member app updated itself on every phone.</p></div></div></div>
+      <div class="tb" style="border-top:1px solid var(--line);border-bottom:0;height:44px;color:var(--text-3);font-size:12px">1 to 5 of 5 messages</div>
+    </section>
+    <section>
+      <div class="rd-top"><span class="kind"><svg class="i" width="14" height="14" viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 21h4"/></svg>Bookings</span><span class="sp"></span><button class="ico-btn"><svg class="i" width="16" height="16" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></button><button class="ico-btn"><svg class="i" width="16" height="16" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3"/></svg></button></div>
+      <div class="rd"><h2>Coach accepted, your turn</h2><p class="when">Received Tuesday, 27 October, 5:12 pm</p>
+        <p class="body">The coach accepted this class booking: Pia Garcia, Morning HIIT. Confirm it on Bookings.</p></div>
+      <div class="rd-act"><button class="btn go">Open Bookings</button><button class="btn">Archive</button><button class="btn" style="margin-left:auto;border:0;color:var(--text-2)">Delete</button></div>
+    </section>
+  </div></div></div></div><span class="ann">Notifications: inbox · sample data</span>
+<script>document.documentElement.dataset.mode = new URLSearchParams(location.search).get("mode") === "light" ? "light" : "dark";</script></body></html>

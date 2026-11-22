@@ -62,8 +62,9 @@ export function RdHeader({ title, subtitle, tabs, actions }: {
     <header className="flex items-start justify-between gap-4 flex-wrap" data-rd-header>
       <div className="flex items-center gap-8 flex-wrap min-w-0">
         <div className="min-w-0">
-          <h1 className="text-[30px] leading-tight font-bold text-white tracking-tight">{title}</h1>
-          {subtitle && <p className="text-[15px] mt-1" style={{ color: SECOND }}>{subtitle}</p>}
+          {/* One type scale across the app (Design V2): 22px titles, 13px subtitles. */}
+          <h1 className="text-[22px] leading-tight font-semibold text-white tracking-tight">{title}</h1>
+          {subtitle && <p className="text-[13px] mt-0.5" style={{ color: SECOND }}>{subtitle}</p>}
         </div>
         {tabs && <RdTabs tabs={tabs} />}
       </div>
@@ -201,10 +202,10 @@ export function SearchField({ value, onChange, placeholder, autoFocus, onEnter, 
 }) {
   return (
     <label className="relative flex-1 min-w-[220px] block">
-      <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: MUTED }} />
+      <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: MUTED }} />
       <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} autoFocus={autoFocus}
         aria-label={label ?? placeholder} onKeyDown={(e) => { if (e.key === 'Enter' && onEnter) onEnter(); }}
-        className="w-full h-12 pl-11 pr-4 rounded-xl text-[15px] text-white outline-none focus:ring-2"
+        className="w-full h-9 pl-9 pr-3 rounded-lg text-[13px] text-white outline-none focus:ring-2"
         style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)' }} />
     </label>
   );

@@ -23,3 +23,4 @@ Rules come from `design/lessons/LESSONS.md`; the kit stays `components/ui/rd.tsx
 6. **Account menu**: your name at the foot of the sidebar opens Light or dark, Settings, Log out on this
    device and Log out on all devices; the separate Logout row and the header's sun/moon go away.
 7. **Attendance = mock-up A, "desk console"** (`attendance-a.html`, 2026-11-22): check-in and the log on the left; the day's figures and At the door (kiosk, lobby TV, coaches) on a right rail. Walk-ins and History follow its style.
+8. **Notifications = the mail-app layout** (`inbox.html`, 2026-11-22): folders (Needs attention, Unread, All, Archived, then kinds), the list, the open message.

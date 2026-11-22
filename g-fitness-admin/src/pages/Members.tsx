@@ -608,11 +608,11 @@ export default function Members() {
           <a href="#" className={showArchived ? 'on' : ''} onClick={(e) => { e.preventDefault(); setShowArchived(true); setCurrentPage(1); setChip('all'); }}><Archive size={14} />Archived</a>
         </nav>
         <button type="button" className="a-btn" onClick={() => setShowInvite(true)}><Link2 size={15} />Invite link</button>
-        <button type="button" className="a-btn violet" onClick={() => setIsAddOpen(true)}><UserPlus size={15} />Add member</button>
+        <button type="button" className="a-btn amber" onClick={() => setIsAddOpen(true)}><UserPlus size={15} />Add member</button>
       </div>
 
       {!showArchived && (
-        <div className="a-grid flex-none" style={{ gridTemplateColumns: 'repeat(4,minmax(0,1fr))' }} data-members-hero>
+        <div className="a-grid flex-none a-figstrip" style={{ gridTemplateColumns: 'repeat(4,minmax(0,1fr))' }} data-members-hero>
           <button type="button" className="a-card press text-left" onClick={() => pickChip('active')}>
             <div className="a-lbl">Active</div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}><div className="a-num">{activeCount}</div><span className="a-sub">of {members.length}{share !== null ? ` · ${Math.round(share * 100)}%` : ''}</span></div>
@@ -724,7 +724,7 @@ export default function Members() {
                 const daysLeft = daysUntilExpiry(m);
                 const lapsingSoon = m.membershipStatus === 'active' && daysLeft != null && daysLeft >= 0 && daysLeft <= EXPIRING_SOON_DAYS;
                 const frozenOnce = (m.membership?.freeze_count ?? 0) >= 1;
-                const pill = m.accountStatus === 'pending_approval' ? <span className="a-pill" style={{ background: 'color-mix(in srgb, #3B82F6 14%, transparent)', color: '#93c5fd' }}>Awaiting approval</span>
+                const pill = m.accountStatus === 'pending_approval' ? <span className="a-pill b">Awaiting approval</span>
                   : m.accountStatus === 'suspended' ? <span className="a-pill a">Suspended</span>
                   : !m.membershipStatus ? <span className="a-sub">No plan</span>
                   : lapsingSoon ? <span className="a-pill a">Expiring</span>
