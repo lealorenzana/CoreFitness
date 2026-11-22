@@ -208,6 +208,8 @@ export default function App() {
   const siteAccount = useSiteAccount();
   /** Words the platform changed (0241); a missing key keeps the built-in words below. */
   const tx = useSiteTexts();
+  /** 0261: sections the platform hid. An id the site does not know is ignored; nothing hidden is the default. */
+  const hidden = new Set((tx.hidden_sections ?? '').split(',').map((s) => s.trim()).filter(Boolean));
   const title1 = tx.hero_title_1 ?? 'Run your gym,';
   const [gyms, setGyms] = useState<Gym[] | null>(null);
   const [gymsFailed, setGymsFailed] = useState(false);
@@ -285,7 +287,7 @@ export default function App() {
             <span>Core Fitness</span>
           </a>
           <nav aria-label="Sections">
-            {NAV.map(([id, label]) => <a key={id} href={`#${id}`} className={section === id ? 'on' : ''}>{label}</a>)}
+            {NAV.filter(([id]) => !hidden.has(id)).map(([id, label]) => <a key={id} href={`#${id}`} className={section === id ? 'on' : ''}>{label}</a>)}
           </nav>
           <span className="grow" />
           <a className="link-quiet hide-md" href={`${MEMBER_APP}/get-app`}>Get the member app</a>
@@ -329,10 +331,10 @@ export default function App() {
           </div>
         </section>
 
-        <section className="roles" aria-labelledby="roles-h">
+        <section className="roles" aria-labelledby="roles-h" hidden={hidden.has('roles') || undefined}>
           <div className="wrap">
             <div className="sec-head">
-              <h2 id="roles-h" data-reveal>Four people use it every day.</h2>
+              <h2 id="roles-h" data-reveal>{tx.roles_title ?? 'Four people use it every day.'}</h2>
               <p className="section-lede" data-reveal style={{ ['--d' as string]: 1 }}>The owner, the desk, the coaches and the members. Each has their own screen, all on one system, so nothing is typed twice.</p>
             </div>
             <div className="role-grid">
@@ -357,7 +359,7 @@ export default function App() {
 
         <Scrub />
 
-        <section className="photo-band" id="floor" data-scroll>
+        <section className="photo-band" id="floor" data-scroll hidden={hidden.has('floor') || undefined}>
           <div className="wrap pb-inner">
             <div className="pb-copy">
             <h2 data-reveal>{tx.coaches_title ?? <>Coaches carry <br />the app too.</>}</h2>
@@ -378,10 +380,10 @@ export default function App() {
           </div>
         </section>
 
-        <section className="how" id="how" data-scroll>
+        <section className="how" id="how" data-scroll hidden={hidden.has('how') || undefined}>
           <div className="wrap">
             <div className="sec-head">
-              <h2 data-reveal>From this page to your first member.</h2>
+              <h2 data-reveal>{tx.how_title ?? 'From this page to your first member.'}</h2>
               <p className="section-lede" data-reveal style={{ ['--d' as string]: 1 }}>No card and no commitment to apply. We talk it through with you before anything is paid.</p>
             </div>
             <div className="how-path">
@@ -407,7 +409,7 @@ export default function App() {
           </div>
         </section>
 
-        <section id="pricing">
+        <section id="pricing" hidden={hidden.has('pricing') || undefined}>
           <div className="wrap">
             <div className="price-head">
               <h2 data-reveal>
@@ -467,10 +469,10 @@ export default function App() {
           </div>
         </section>
 
-        <section id="faq">
+        <section id="faq" hidden={hidden.has('faq') || undefined}>
           <div className="wrap faq-grid">
             <div>
-              <h2 data-reveal>Questions owners ask first.</h2>
+              <h2 data-reveal>{tx.faq_title ?? 'Questions owners ask first.'}</h2>
               <p className="section-lede" data-reveal style={{ ['--d' as string]: 1 }}>Something else? Ask in the form below. We answer every application ourselves.</p>
             </div>
             <div className="faq-list">
@@ -484,7 +486,7 @@ export default function App() {
           </div>
         </section>
 
-        <section id="gyms">
+        <section id="gyms" hidden={hidden.has('gyms') || undefined}>
           <div className="wrap">
             <h2 className="mid">{gyms === null || gymsFailed ? 'Gyms on Core Fitness'
               : gyms.length === 1 ? 'One gym, so far.' : `${gyms.length} gyms on Core Fitness.`}</h2>
@@ -505,9 +507,9 @@ export default function App() {
           </div>
         </section>
 
-        <Testimonials />
+        {!hidden.has('voices') && <Testimonials />}
 
-        <div className="wrap"><ApplySection tiers={tiers ?? []} chosen={chosen} siteAccount={siteAccount} /></div>
+        <div className="wrap"><ApplySection tiers={tiers ?? []} chosen={chosen} siteAccount={siteAccount} title={tx.apply_title} closed={tx.apply_closed} /></div>
 
         <SiteFooter />
         </>}
@@ -529,7 +531,11 @@ export default function App() {
 const HEARD = ['Facebook', 'A friend or another gym', 'Google', 'TikTok', 'Instagram', 'A Core Fitness gym', 'Other'];
 const CONTACT: [string, string][] = [['viber', 'Viber'], ['messenger', 'Messenger'], ['sms', 'Text (SMS)'], ['call', 'A call'], ['whatsapp', 'WhatsApp'], ['email', 'Email']];
 
-function ApplySection({ tiers, chosen, siteAccount }: { tiers: Tier[]; chosen: string | null; siteAccount: SiteAccount | null }) {
+function ApplySection({ tiers, chosen, siteAccount, title, closed }: {
+  tiers: Tier[]; chosen: string | null; siteAccount: SiteAccount | null;
+  /** 0261: the platform's heading for the form, and, when set, the message that pauses applications. */
+  title?: string; closed?: string;
+}) {
   const [form, setForm] = useState({
     gym_name: '', owner_name: '', email: '', phone: '', address: '', member_estimate: '', message: '',
     plan: '', billing: 'monthly', heard_from: '', heard_other: '', contact_pref: 'viber', contact_handle: '',
@@ -708,10 +714,21 @@ function ApplySection({ tiers, chosen, siteAccount }: { tiers: Tier[]; chosen: s
     );
   }
 
+  // 0261: the platform paused applications. The words are theirs; My application still works for anyone who applied.
+  if (closed) {
+    return (
+      <section id="apply" data-apply-closed>
+        <span className="eyebrow">Register your gym</span>
+        <h2>Not taking new gyms right now</h2>
+        <p className="section-lede" style={{ whiteSpace: 'pre-wrap' }}>{closed}</p>
+        <p className="note">Already applied? Open <a href="#account">My application</a> to follow it and write to us.</p>
+      </section>
+    );
+  }
   return (
     <section id="apply">
       <span className="eyebrow">Register your gym</span>
-      <h2>Tell us about your gym</h2>
+      <h2>{title ?? 'Tell us about your gym'}</h2>
       <p className="section-lede">No card, no commitment. Pick a plan, tell us who you are, and we will talk it through with you before anything is paid.</p>
 
       <div className="apply-panel tilt-soft" data-reveal>

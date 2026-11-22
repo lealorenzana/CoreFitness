@@ -5,7 +5,9 @@ import { supabase } from './supabase';
  * The words the platform changed on this site (0241, the platform's Website page). A key that is not here keeps
  * the built-in words written in App.tsx, so with no database — or before 0241 — the page reads as it always has.
  */
-export type SiteTexts = Partial<Record<'notice' | 'hero_eyebrow' | 'hero_title_1' | 'hero_title_2' | 'hero_lede' | 'coaches_title' | 'coaches_lede', string>>;
+export type SiteTexts = Partial<Record<'notice' | 'hero_eyebrow' | 'hero_title_1' | 'hero_title_2' | 'hero_lede' | 'coaches_title' | 'coaches_lede'
+  // 0261: four more headings, the sections the platform hid, and a message that pauses the Register your gym form.
+  | 'roles_title' | 'how_title' | 'faq_title' | 'apply_title' | 'hidden_sections' | 'apply_closed', string>>;
 
 export function useSiteTexts(): SiteTexts {
   const [texts, setTexts] = useState<SiteTexts>({});

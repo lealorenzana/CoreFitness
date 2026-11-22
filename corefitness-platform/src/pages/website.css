@@ -1,0 +1,101 @@
+/*
+ * Website (redesign 2026-11-22). A strip of where the site stands; an editor with four tabs (the top of the page,
+ * the sections, the Register form, what is set elsewhere); beside it the page top to bottom, each part with its
+ * heading and an eye to hide or show it.
+ */
+.ws-banner { margin: 0; padding: 10px 14px; border-radius: 10px; border: 1px solid rgb(245 158 11 / .35); background: rgb(245 158 11 / .08);
+  font-size: 13px; color: var(--text); flex: none !important; min-height: 0 !important; }
+.content .page[data-page="website"] > .ws-strip { flex: none !important; min-height: 0 !important; overflow: visible !important; }
+.ws-strip { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border: 1px solid var(--hairline); border-radius: 12px; background: var(--surface); }
+.ws-strip > div { display: flex; flex-direction: column; gap: 2px; padding: 14px 18px; min-width: 0; }
+.ws-strip > div + div { border-left: 1px solid var(--hairline); }
+.ws-strip b { font-size: 24px; font-weight: 650; letter-spacing: -0.02em; line-height: 1.15; color: var(--text); font-variant-numeric: tabular-nums; }
+.ws-strip span { font-size: 12.5px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ws-strip > .warn b { color: var(--warn); }
+
+.content .page[data-page="website"] > .ws { flex: 1 1 auto !important; min-height: 0 !important; overflow: hidden !important;
+  display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; }
+.ws > .card { margin: 0 !important; min-height: 0; overflow: hidden; display: flex; flex-direction: column; padding: 16px 18px !important; }
+
+.ws-head { display: flex; align-items: center; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--hairline); flex: none; }
+.ws-tabs { display: flex; gap: 4px; flex: 1; flex-wrap: wrap; }
+.ws-tabs button { height: 32px; padding: 0 12px; border: 0; border-radius: 8px; background: none; font: inherit; font-size: 13px; font-weight: 600; color: var(--text-2); cursor: pointer; }
+.ws-tabs button:hover { color: var(--text); background: var(--surface-high); }
+.ws-tabs button.on { color: var(--text); background: var(--surface-high); box-shadow: inset 0 -2px 0 var(--accent); }
+.ws-body { flex: 1 1 0%; min-height: 0; overflow-y: auto; padding-top: 14px; padding-right: 4px; }
+.ws-sub { margin: 0 0 14px; font-size: 13px; line-height: 1.55; color: var(--text-3); max-width: 72ch; }
+.ws-none { margin: 0; font-size: 13px; color: var(--text-3); }
+
+.ws-field { display: grid; gap: 6px; padding: 12px 0; border-top: 1px solid var(--hairline); }
+.ws-sub + .ws-field { border-top: 0; padding-top: 0; }
+.ws-field-head { display: flex; align-items: baseline; gap: 12px; }
+.ws-field-head label { flex: 1; display: inline-flex; align-items: center; gap: 6px; margin: 0; font-size: 13px; font-weight: 600; color: var(--text); }
+.ws-field-head em { font-style: normal; font-size: 12px; color: var(--text-3); white-space: nowrap; }
+.ws-field input { height: 38px; }
+.ws-field textarea { resize: vertical; }
+.ws-field-actions { display: flex; align-items: center; gap: 8px; }
+.ws-field-actions .spacer { flex: 1; }
+.ws-msg { font-size: 12.5px; color: var(--text-2); }
+.ws-msg.bad { color: var(--warn); }
+
+/* Sections: a block each, its show or hide on its head. */
+.ws-sec { padding: 12px 14px; margin-bottom: 10px; border: 1px solid var(--hairline); border-radius: 10px; }
+.ws-sec.off { opacity: .6; }
+.ws-sec-head { display: flex; align-items: center; gap: 10px; }
+.ws-sec-head b { flex: 1; font-size: 14px; font-weight: 650; color: var(--text); }
+.ws-sec .ws-field { border-top: 0; padding-bottom: 0; }
+.ws-sec .ws-field + .ws-field { border-top: 1px solid var(--hairline); margin-top: 10px; padding-top: 10px; }
+.ws-fixed { margin: 8px 0 0; font-size: 12.5px; color: var(--text-3); }
+.ws-eye { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--hairline);
+  background: none; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--text); cursor: pointer; }
+.ws-eye:hover:not(:disabled) { background: var(--surface-high); }
+.ws-eye.off { color: var(--text-3); }
+.ws-eye:disabled { opacity: .5; cursor: not-allowed; }
+.ws-eye.icon { width: 30px; height: 30px; padding: 0; justify-content: center; flex: none; }
+
+/* Applications: one switch state, then the message. */
+.ws-switch { display: flex; align-items: center; gap: 12px; padding: 14px 16px; margin-bottom: 6px; border-radius: 10px; border: 1px solid var(--hairline); }
+.ws-switch > svg { color: #34d399; flex: none; }
+.ws-switch.paused { border-color: rgb(245 158 11 / .4); background: rgb(245 158 11 / .07); }
+.ws-switch.paused > svg { color: var(--warn); }
+.ws-switch > span { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.ws-switch b { font-size: 14px; color: var(--text); }
+.ws-switch em { font-style: normal; font-size: 12.5px; color: var(--text-2); }
+
+.ws-links { list-style: none; margin: 0; padding: 0; }
+.ws-links li + li { border-top: 1px solid var(--hairline); }
+.ws-links a { display: flex; align-items: center; gap: 12px; padding: 12px 2px; text-decoration: none; color: var(--text); }
+.ws-links a > svg:first-child { color: var(--text-3); flex: none; }
+.ws-links a > svg:last-child { color: var(--text-3); flex: none; }
+.ws-links a span { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ws-links b { font-size: 13.5px; font-weight: 600; }
+.ws-links em { font-style: normal; font-size: 12.5px; color: var(--text-3); }
+.ws-links a:hover b { text-decoration: underline; text-underline-offset: 3px; }
+
+/* The page, top to bottom */
+.ws-map .section-title { margin: 0 0 10px; flex: none; }
+.ws-parts { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1 1 0%; min-height: 0; display: grid; gap: 6px; align-content: start; }
+.ws-part { display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 12px; border-radius: 10px; border: 1px solid var(--hairline); background: var(--surface-high); }
+.ws-part.off { background: none; border-style: dashed; }
+.ws-part.off .ws-part-main b { color: var(--text-3); text-decoration: line-through; }
+.ws-part.hero { padding-top: 14px; padding-bottom: 14px; }
+.ws-part.hero b { font-size: 15px; }
+.ws-part.hero b span { color: #c4b5fd; }
+.ws-part.notice { background: rgb(245 158 11 / .12); border-color: rgb(245 158 11 / .35); flex-direction: column; align-items: flex-start; gap: 2px; cursor: pointer; }
+.ws-part.paused { border-color: rgb(245 158 11 / .35); }
+.ws-part-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 0; border: 0; background: none; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.ws-part-lbl { font-size: 11.5px; font-weight: 600; color: var(--text-3); }
+.ws-part-main b, .ws-part.notice b { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.ws-part-main:hover b { text-decoration: underline; text-underline-offset: 3px; }
+.ws-flag { flex: none; font-size: 12px; font-weight: 600; color: #34d399; padding-right: 4px; }
+.ws-flag.warn { color: var(--warn); }
+.ws-map-foot { display: flex; align-items: center; gap: 6px; margin: 12px 0 0; padding-top: 10px; border-top: 1px solid var(--hairline); font-size: 12px; color: var(--text-3); flex: none; }
+
+@media (max-width: 1279px) {
+  .content .page[data-page="website"] > .ws { overflow: visible !important; grid-template-columns: minmax(0, 1fr); }
+  .ws-edit { min-height: 560px; }
+}
+
+/* A long heading must never push a row wider than the column (it hid the eye buttons). */
+.ws-parts { grid-template-columns: minmax(0, 1fr); }
+.ws-part { min-width: 0; }

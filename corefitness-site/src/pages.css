@@ -505,3 +505,6 @@ input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:foc
 .pay-number { background: var(--surface); border-color: var(--line); }
 .pay-number code { font-family: inherit; font-size: 16px; font-weight: 650; letter-spacing: .04em; font-variant-numeric: tabular-nums; }
 .bubble.mine { background: var(--surface-high); border-color: var(--line-strong); }
+
+/* 0261: a section the platform hid (Website page). Some sections set their own display, so this one wins. */
+section[hidden] { display: none !important; }
