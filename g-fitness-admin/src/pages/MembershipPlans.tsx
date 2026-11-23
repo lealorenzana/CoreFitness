@@ -289,7 +289,7 @@ export default function MembershipPlans() {
     set({ lines }); setDragAt(null);
   };
 
-  if (loading) return <div className="att"><SkelRows label="Loading plans…" /></div>;
+  if (loading) return <div className="att"><SkelRows shape="settings" label="Loading plans…" /></div>;
 
   const kindTone = (t: PlanTier) => KIND[t][1];
   const customLength = draft && !LENGTHS.some(([d]) => d === draft.days);

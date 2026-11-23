@@ -56,7 +56,7 @@ export default function Shop() {
     finally { setBusy(false); }
   };
 
-  if (products === null) return <SkelRows label="Loading the shop…" />;
+  if (products === null) return <SkelRows shape="cards" label="Loading the shop…" />;
   if (products === undefined) {
     return (
       <RdCard className="p-5 flex items-start gap-3">

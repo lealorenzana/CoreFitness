@@ -240,7 +240,7 @@ export default function GymApp() {
   useEffect(() => { if (app) previewGymLook({ accent: look.accent, action: look.action || null }); }, [app, look.accent, look.action]);
   useEffect(() => () => previewGymLook(null), []);
 
-  if (!ready) return <div className="att"><SkelRows label="Loading…" /></div>;
+  if (!ready) return <div className="att"><SkelRows shape="settings" label="Loading…" /></div>;
   if (!app) {
     return (
       <div className="att"><div className="a-card">

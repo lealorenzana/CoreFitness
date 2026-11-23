@@ -80,7 +80,7 @@ export default function Programs() {
     }
   };
 
-  if (programs === undefined) return <div className="att"><SkelRows label="Loading programs…" /></div>;
+  if (programs === undefined) return <div className="att"><SkelRows shape="split" label="Loading programs…" /></div>;
   if (programs === null) return <div className="att"><div className="a-card"><p className="a-sub">Programs need migration 0122_gym_programs.sql, which is not pasted yet (or the list could not load).</p></div></div>;
 
   const program = editingProgram && editingProgram !== 'new' ? programs.find((p) => p.id === editingProgram) ?? null : null;

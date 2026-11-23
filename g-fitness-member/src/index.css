@@ -2029,6 +2029,33 @@ label:has(> .field-input[style*="border: none"]:focus) {
 .cf-skel { display: block; height: 14px; border-radius: 6px;
   background: linear-gradient(90deg, rgb(var(--hair-rgb, 255 255 255) / 0.06) 0%, rgb(var(--hair-rgb, 255 255 255) / 0.13) 50%, rgb(var(--hair-rgb, 255 255 255) / 0.06) 100%);
   background-size: 200% 100%; animation: cf-skel-shimmer 1.3s linear infinite; }
-.cf-skel:first-child { height: 18px; }
+.cf-skel { height: 12px; }
+/* Shaped like what is coming (owner, 2026-11-23): list rows inside a box, page shapes for a whole page loading. */
+.cf-skr { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-top: 1px solid rgb(var(--hair-rgb, 255 255 255) / 0.05); }
+.cf-skr:first-child { border-top: 0; }
+.cf-skr > span { flex: 1; min-width: 0; display: grid; gap: 7px; }
+.cf-skc { width: 32px; height: 32px; border-radius: 50%; flex: none; }
+.cf-sks { height: 9px; opacity: 0.75; }
+.cf-skel-rows:not(.cf-sk-rows) { flex: 1; min-height: min(620px, 72vh); gap: 14px; padding: 0; align-content: stretch; grid-template-rows: auto auto minmax(0, 1fr); }
+.cf-sk-split, .cf-sk-main-side, .cf-sk-cards, .cf-sk-settings { grid-template-rows: auto minmax(0, 1fr) !important; }
+.cf-skh { display: grid; gap: 8px; padding-bottom: 2px; }
+.cf-skh .cf-skel:first-child { width: 190px; height: 22px; }
+.cf-skh .cf-sks { width: 380px; max-width: 70%; }
+.cf-skbox { border: 1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08); border-radius: 14px; padding: 14px 16px; display: grid; gap: 9px; align-content: start; min-height: 0; overflow: hidden; }
+.cf-skfigs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.cf-skfigs .cf-skbox { height: 92px; }
+.cf-sknum { width: 38%; height: 26px; }
+.cf-skgrid { display: grid; gap: 14px; min-height: 0; }
+.cf-sk-split .cf-skgrid { grid-template-columns: 300px minmax(0, 1fr); }
+.cf-sk-main-side .cf-skgrid, .cf-sk-figs-split .cf-skgrid { grid-template-columns: minmax(0, 1fr) 340px; }
+.cf-sk-settings .cf-skgrid { grid-template-columns: 220px minmax(0, 1fr); }
+.cf-sknav { border-right: 1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08); padding-right: 14px; align-content: start; display: grid; }
+.cf-sknav .cf-skr { border-top: 0; padding: 6px 0; }
+.cf-skcol { display: grid; align-content: start; max-width: 900px; }
+.cf-skblock { height: 58px; border-radius: 10px; }
+.cf-sktool { height: 34px; width: 46%; border-radius: 10px; margin-bottom: 6px; }
+.cf-skcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; align-content: start; }
+.cf-skcards .cf-skblock { height: 110px; }
+@media (max-width: 760px) { .cf-skfigs { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cf-skgrid { grid-template-columns: minmax(0, 1fr) !important; } }
 @keyframes cf-skel-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 @media (prefers-reduced-motion: reduce) { .cf-skel { animation: none; } }

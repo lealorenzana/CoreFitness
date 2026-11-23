@@ -69,7 +69,7 @@ export default function Support() {
     void (async () => { await show(shown[0]); })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shown, open]);
-  if (tickets === null) return <SkelRows label="Loading support…" />;
+  if (tickets === null) return <SkelRows shape="split" label="Loading support…" />;
 
   return (
     <>

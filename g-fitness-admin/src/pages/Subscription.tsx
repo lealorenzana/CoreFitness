@@ -88,7 +88,7 @@ export default function Subscription() {
     catch (e) { showToast(e instanceof Error ? e.message : 'Could not open the receipt', 'error'); }
   };
 
-  if (!loaded) return <div className="att"><SkelRows label="Loading…" /></div>;
+  if (!loaded) return <div className="att"><SkelRows shape="cards" label="Loading…" /></div>;
   if (sub === undefined) return <div className="att"><div className="a-card"><p className="a-sub">Your plan page needs migration 0138, which is not live on this database.</p></div></div>;
   if (sub === null) return <div className="att"><div className="a-card"><p className="a-sub">Only the gym's owner sees its Core Fitness plan.</p></div></div>;
 

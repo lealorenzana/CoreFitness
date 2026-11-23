@@ -338,7 +338,7 @@ export default function Payments() {
   const pendingCount = payments.filter((p) => p.status === 'pending').length;
 
   if (loading) {
-    return <SkelRows label="Loading payments…" />;
+    return <SkelRows shape="table" label="Loading payments…" />;
   }
 
   const openGroup = memberGroups.find((g) => g.memberId === expandedMember) ?? null;

@@ -88,7 +88,7 @@ export default function GymProfile() {
     try { await fn(); await loadNotes(); } catch (e) { setError(e instanceof Error ? e.message : 'That did not work'); }
   };
 
-  if (gym === undefined) return <SkelRows label="Loading the gym…" />;
+  if (gym === undefined) return <SkelRows shape="figs-split" label="Loading the gym…" />;
   if (gym === null) return <><Back /><p className="err">{error ?? 'That gym is not on the service.'}</p></>;
 
   const top = Math.max(1, ...weeks.map((w) => w.checkins));

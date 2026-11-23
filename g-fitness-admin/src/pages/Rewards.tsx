@@ -495,7 +495,7 @@ export default function Rewards() {
   const spentThisMonth = [...stats.values()].reduce((s, x) => s + x.this_month, 0);
 
   if (loading) {
-    return <SkelRows label="Loading rewards…" />;
+    return <SkelRows shape="table" label="Loading rewards…" />;
   }
 
   if (failed) {

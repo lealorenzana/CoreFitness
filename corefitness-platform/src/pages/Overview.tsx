@@ -104,7 +104,7 @@ export default function Overview() {
     return () => { alive = false; };
   }, []);
 
-  if (o === undefined) return <SkelRows label="Loading the service…" />;
+  if (o === undefined) return <SkelRows shape="figs-split" label="Loading the service…" />;
   if (!o) return <p className="err">{error ?? 'The overview could not load.'}</p>;
 
   // ---- series ----

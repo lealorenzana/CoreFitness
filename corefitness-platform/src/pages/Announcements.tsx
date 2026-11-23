@@ -42,7 +42,7 @@ export default function Announcements() {
     finally { setBusy(false); }
   };
 
-  if (items === null) return <SkelRows label="Loading…" />;
+  if (items === null) return <SkelRows shape="split" label="Loading…" />;
   const whoLabel = form.plan ? `Gyms on ${plans.find((p) => p.key === form.plan)?.name ?? form.plan}` : 'Every gym';
   return (
     <>

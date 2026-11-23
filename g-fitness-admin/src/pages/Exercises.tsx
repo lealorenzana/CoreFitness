@@ -132,7 +132,7 @@ export default function Exercises() {
     showToast(`${row.name} deleted`, 'success');
   };
 
-  if (state === 'loading') return <div className="att"><SkelRows label="Loading exercises…" /></div>;
+  if (state === 'loading') return <div className="att"><SkelRows shape="main-side" label="Loading exercises…" /></div>;
   if (state === 'failed') return <div className="att"><div className="a-card"><p className="a-sub">The exercise catalogue could not be loaded: a connection problem, not an empty catalogue. Reload to try again.</p></div></div>;
 
   const own = rows.filter(isOwn);

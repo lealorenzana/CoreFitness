@@ -34,7 +34,7 @@ export default function Feedback() {
     try { await fn(); await load(); } catch (e) { setError(e instanceof Error ? e.message : 'That did not work'); } finally { setBusy(false); }
   };
 
-  if (!data) return error ? <p className="err">{error}</p> : <SkelRows label="Loading…" />;
+  if (!data) return error ? <p className="err">{error}</p> : <SkelRows shape="table" label="Loading…" />;
   const current = data.ratings.filter((r) => r.current);
   const openIdeas = data.ideas.filter((i) => i.status === 'open');
   const waitingQuotes = data.testimonials.filter((t) => t.status === 'pending');

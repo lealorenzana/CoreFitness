@@ -123,7 +123,7 @@ export default function Equipment() {
   }, [exercises, exSearch]);
   const exName = (id: string) => exercises.find((e) => e.id === id)?.name ?? 'Exercise';
 
-  if (items === undefined) return <div className="att"><SkelRows label="Loading…" /></div>;
+  if (items === undefined) return <div className="att"><SkelRows shape="figs-split" label="Loading…" /></div>;
   const list = items ?? [];
   const areaOf = (i: Item) => i.location_note?.trim() || NOWHERE;
   const areas = [...new Set(list.map(areaOf))].sort((a, b) => (a === NOWHERE ? 1 : b === NOWHERE ? -1 : a.localeCompare(b)));

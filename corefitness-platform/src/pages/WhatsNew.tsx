@@ -44,7 +44,7 @@ export default function WhatsNew() {
   };
   const latest = (app: ReleaseApp) => items?.find((r) => r.app === app);
 
-  if (items === null) return <SkelRows label="Loading…" />;
+  if (items === null) return <SkelRows shape="split" label="Loading…" />;
   const forApp = APPS.find((a) => a.key === form.app)!;
   return (
     <>

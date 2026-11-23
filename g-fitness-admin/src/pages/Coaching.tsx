@@ -131,7 +131,7 @@ export default function Coaching({ embedded = false }: { embedded?: boolean } = 
   const memberHits = memberQ.trim().length >= 1 ? members.filter((m) => m.name.toLowerCase().includes(memberQ.trim().toLowerCase())).slice(0, 5) : [];
   const short = (n: string) => n.split(' ')[0];
 
-  if (settings === undefined) return <SkelRows label="Loading…" />;
+  if (settings === undefined) return <SkelRows shape="figs-split" label="Loading…" />;
   if (settings === null) {
     return (
       <div className="att">

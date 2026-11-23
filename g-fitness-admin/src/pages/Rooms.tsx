@@ -93,7 +93,7 @@ export default function Rooms() {
       .sort((a, b) => (b.lastPostAt ?? '').localeCompare(a.lastPostAt ?? '') || a.name.localeCompare(b.name));
   }, [rooms, q, kind, coach, showClosed, memberHit]);
 
-  if (rooms === null) return <div className="att"><SkelRows label="Loading rooms…" /></div>;
+  if (rooms === null) return <div className="att"><SkelRows shape="split" label="Loading rooms…" /></div>;
   if (rooms === undefined) return <div className="att"><div className="a-card"><p className="a-sub">Rooms are not switched on yet: migration 0128 is not live on this database.</p></div></div>;
   const count = (k: Kind) => rooms.filter((r) => (showClosed || !r.archived) && (k === 'all' || r.kind === k)).length;
 
