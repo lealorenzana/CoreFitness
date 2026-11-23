@@ -153,8 +153,10 @@ async (page) => {
   await page.locator('[data-pay-online]').waitFor({ timeout: 15000 });
   await page.getByRole('button', { name: /Pay 1 month/ }).waitFor({ timeout: 8000 });
   const t = (await page.locator('[data-pay-online]').innerText()).replace(/\s+/g, ' ');
-  out.push('Your plan offers to pay online at the plan\u2019s prices: ' + (/Pay 1 month · ₱1,499/.test(t) && /Pay a year · ₱14,990/.test(t) ? 'yes' : 'MISSING ' + t));
-  await page.getByRole('button', { name: /Pay a year/ }).click();
+  out.push('Your plan offers to pay online at the plan\u2019s prices: ' + (/Pay 1 month · ₱1,499/.test(t) && /Yearly[\s\S]*₱14,990/.test(t) ? 'yes' : 'MISSING ' + t));
+  // Since 2026-11-23 the periods are rows and one Pay button pays the chosen one.
+  await page.getByRole('radio', { name: /Yearly/ }).click();
+  await page.getByRole('button', { name: /Pay a year · ₱14,990/ }).click();
   await page.waitForURL('https://checkout.paymongo.test/**', { timeout: 8000 }).catch(() => {});
   const c = CALLS.find((x) => x[0] === 'checkout');
   out.push('only the purpose is sent — the price is the database\u2019s: ' + (c && c[1].purpose === 'gym_subscription' && c[1].details?.months === 12

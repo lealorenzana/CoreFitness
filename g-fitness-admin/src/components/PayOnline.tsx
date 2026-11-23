@@ -1,11 +1,9 @@
 import { useEffect, useState } from 'react';
 import { CreditCard } from 'lucide-react';
-import Card from './ui/Card';
 import { showToast } from '../utils/toast';
 import { payOnline, paymongoReady, waitForPayment, type CheckoutRow } from '../lib/api/paymongo';
 import { getGymBilling } from '../lib/api/subscription';
 
-const MUTED = 'var(--color-text-muted)';
 const peso = (n: string | number) => '₱' + Number(n).toLocaleString('en-PH', { maximumFractionDigits: 2 });
 
 /**
@@ -22,6 +20,8 @@ export default function PayOnline({ onPaid }: { onPaid: () => void }) {
   useEffect(() => { void getGymBilling().then((b) => setPrices({ m: b?.price_monthly ?? null, y: b?.price_yearly ?? null })); }, []);
   const priceMonthly = prices.m; const priceYearly = prices.y;
   const [busy, setBusy] = useState<number | null>(null);
+  /** Which period the one Pay button pays (2026-11-23: rows to pick from, then one button). */
+  const [period, setPeriod] = useState<1 | 12>(1);
   const back = new URLSearchParams(window.location.search);
   const paidId = back.get('paid');
   const [returned, setReturned] = useState<CheckoutRow | null | 'waiting'>(paidId ? 'waiting' : null);
@@ -45,37 +45,43 @@ export default function PayOnline({ onPaid }: { onPaid: () => void }) {
   if (on === null && !paidId) return null;
   if (!on && !paidId) {
     return (
-      <Card className="!p-5" data-pay-online-off>
-        <p className="text-sm font-semibold text-white flex items-center gap-2"><CreditCard size={15} /> Pay online</p>
-        <p className="text-xs mt-1" style={{ color: MUTED }}>
-          Paying the plan online opens here once Core Fitness switches it on. Until then, ask Core Fitness in Help how to pay this month.
-        </p>
-      </Card>
+      <div className="sp-pay-off" data-pay-online-off>
+        <b><CreditCard size={15} />Pay online</b>
+        <p className="a-sub">Paying the plan online opens here once Core Fitness switches it on. Until then, ask Core Fitness in Help how to pay this month.</p>
+      </div>
     );
   }
+  // Yearly saves only when the database's yearly price is below twelve months: said as the real percentage, never typed in.
+  const save = monthly && yearly && yearly < monthly * 12 ? Math.round((1 - yearly / (monthly * 12)) * 100) : 0;
+  const chosen = period === 12 && yearly ? 12 : monthly ? 1 : 12;
+  const rows: [1 | 12, string, number | null, string][] = [[1, 'Monthly', monthly, 'one month at a time'], [12, 'Yearly', yearly, 'twelve months, paid once']];
   return (
-    <Card className="!p-5" data-pay-online>
-      <p className="text-sm font-semibold text-white flex items-center gap-2"><CreditCard size={15} /> Pay online</p>
-      {returned === 'waiting' && <p className="text-xs mt-2" style={{ color: 'var(--color-text-primary)' }} data-pay-waiting>Thanks — waiting for PayMongo to confirm. This usually takes a few seconds…</p>}
+    <div className="sp-pay-in" data-pay-online>
+      {returned === 'waiting' && <p className="a-hint" data-pay-waiting>Thanks: waiting for PayMongo to confirm. This usually takes a few seconds…</p>}
       {returned && returned !== 'waiting' && returned.status === 'paid' && (
-        <p className="text-xs mt-2" style={{ color: 'var(--color-text-primary)' }} data-pay-confirmed>Paid {peso(returned.amount)}{returned.method ? ` by ${returned.method}` : ''}. Your receipt is below.</p>
+        <p className="a-hint" data-pay-confirmed>Paid {peso(returned.amount)}{returned.method ? ` by ${returned.method}` : ''}. Your receipt is below.</p>
       )}
       {returned && returned !== 'waiting' && returned.status !== 'paid' && (
-        <p className="text-xs mt-2" style={{ color: 'var(--color-secondary)' }}>PayMongo has not confirmed this payment yet. If you were charged, it appears here shortly — or ask in Help.</p>
+        <p className="a-hint" style={{ color: 'var(--a-a300)' }}>PayMongo has not confirmed this payment yet. If you were charged, it appears here shortly, or ask in Help.</p>
       )}
       {on && (monthly || yearly) ? (
         <>
-          <p className="text-xs mt-1" style={{ color: MUTED }}>GCash, Maya, card or online banking, through PayMongo. Recorded the moment it is paid — no screenshot needed.</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {monthly && <button type="button" disabled={busy !== null} onClick={() => void pay(1)}
-              className="rounded-lg px-3 py-2 text-xs font-semibold disabled:opacity-60" style={{ background: 'var(--color-secondary)', color: '#111' }}>
-              {busy === 1 ? 'Opening PayMongo…' : `Pay 1 month · ${peso(monthly)}`}</button>}
-            {yearly && <button type="button" disabled={busy !== null} onClick={() => void pay(12)}
-              className="rounded-lg px-3 py-2 text-xs font-semibold disabled:opacity-60" style={{ background: 'var(--color-surface-high)', color: '#fff' }}>
-              {busy === 12 ? 'Opening PayMongo…' : `Pay a year · ${peso(yearly)}`}</button>}
+          <div className="sp-periods" role="radiogroup" aria-label="How long to pay for">
+            {rows.filter(([, , price]) => price).map(([m, label, price, hint]) => (
+              <button key={m} type="button" role="radio" aria-checked={chosen === m} className={`sp-period ${chosen === m ? 'on' : ''}`} onClick={() => setPeriod(m)} data-period={m}>
+                <span className="sp-radio" aria-hidden />
+                <span className="sp-period-t"><b>{label}</b><small>{hint}</small></span>
+                {m === 12 && save > 0 && <span className="sp-save">Save {save}%</span>}
+                <b className="sp-price">{peso(price!)}</b>
+              </button>
+            ))}
           </div>
+          <button type="button" className="sp-paybtn" disabled={busy !== null} onClick={() => void pay(chosen)} data-pay-go>
+            <CreditCard size={16} />{busy !== null ? 'Opening PayMongo…' : chosen === 12 ? `Pay a year · ${peso(yearly!)}` : `Pay 1 month · ${peso(monthly!)}`}
+          </button>
+          <p className="a-sub sp-pay-note">GCash, Maya, card or online banking, through PayMongo. Recorded the moment it is paid: no screenshot needed.</p>
         </>
-      ) : on ? <p className="text-xs mt-1" style={{ color: MUTED }}>Your plan has no price to pay online yet.</p> : null}
-    </Card>
+      ) : on ? <p className="a-sub">Your plan has no price to pay online yet.</p> : null}
+    </div>
   );
 }

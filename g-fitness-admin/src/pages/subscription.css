@@ -1,0 +1,106 @@
+/* Your plan (owner, 2026-11-23, after a screen recording of a plan page that felt alive): the plan as a hero in the
+   gym's two colours beside how to pay it, the period as rows with one glowing Pay button, usage that fills in, what
+   the plan includes with its column outlined, then every payment, all in one scrolling column (the page never
+   scrolls). Only transform, opacity and colours move; reduced motion stills it; light keeps solid fills behind words. */
+.att.sp .sp-main { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column;
+  gap: 24px; padding: 2px 8px 32px 0; }
+
+.sp-top { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(330px, 1fr); gap: 18px; }
+
+.sp-hero { position: relative; isolation: isolate; overflow: hidden; border-radius: 20px; padding: 26px 28px; min-height: 300px;
+  display: flex; flex-direction: column; gap: 10px; background: var(--v3-art); color: #fff; }
+.sp-hero-glow { position: absolute; inset: -40%; z-index: -1; pointer-events: none;
+  background: radial-gradient(38% 38% at 72% 28%, color-mix(in srgb, var(--color-secondary) 50%, transparent), transparent 70%); }
+.sp-kicker { font-size: 12px; font-weight: 600; letter-spacing: 0.02em; color: rgb(255 255 255 / 0.82); }
+.sp-hero h2 { font-size: 40px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.05; color: #fff; }
+.sp-hero-price { color: #fff; font-size: 14px; }
+.sp-hero-price b { font-size: 26px; font-weight: 750; letter-spacing: -0.02em; }
+.sp-hero-price span { margin-left: 6px; color: rgb(255 255 255 / 0.82); }
+.sp-hero-price a { color: #fff; text-decoration: underline; }
+.sp-state { display: flex; gap: 12px; margin-top: 6px; padding: 12px 14px; border-radius: 14px; background: rgb(0 0 0 / 0.22); }
+.sp-state b { display: block; color: #fff; font-size: 14px; }
+.sp-state small { display: block; margin-top: 2px; color: rgb(255 255 255 / 0.85); font-size: 12.5px; line-height: 1.45; }
+.sp-state-ic { flex: none; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: rgb(255 255 255 / 0.16); color: #fff; }
+.sp-hero.warn .sp-state { background: color-mix(in srgb, var(--amber-solid, #b45309) 70%, black); }
+.sp-hero-foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 12.5px; color: rgb(255 255 255 / 0.88); }
+.sp-ghost { display: inline-flex; align-items: center; gap: 6px; flex: none; padding: 7px 12px; border-radius: 10px; border: 1px solid rgb(255 255 255 / 0.38);
+  color: #fff; font-weight: 600; font-size: 12.5px; transition: background-color 160ms, transform 180ms var(--v3-ease); }
+.sp-ghost:hover { background: rgb(255 255 255 / 0.12); transform: translateY(-1px); }
+
+.sp-pay { border: 1px solid var(--a-border); border-radius: 20px; padding: 20px; background: var(--a-surface); display: flex; flex-direction: column; gap: 12px; }
+.sp-pay h3, .sp-sec h3 { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; color: var(--a-ink); }
+.sp-pay h3 svg, .sp-sec h3 svg { color: var(--a-muted); }
+.sp-pay-in, .sp-pay-off { display: flex; flex-direction: column; gap: 12px; }
+.sp-pay-off b { display: flex; align-items: center; gap: 8px; color: var(--a-ink); }
+.sp-periods { display: grid; gap: 12px; padding-top: 6px; }
+.sp-period { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 16px; border-radius: 14px; text-align: left;
+  justify-content: flex-start; border: 1px solid var(--a-border); background: transparent;
+  transition: border-color 160ms, background-color 160ms, transform 180ms var(--v3-ease), box-shadow 180ms var(--v3-ease); }
+.sp-period:hover { border-color: rgb(var(--hair-rgb, 255 255 255) / 0.25); transform: translateY(-1px); }
+.sp-period.on { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 18%, transparent); }
+.sp-radio { flex: none; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center;
+  border: 2px solid rgb(var(--hair-rgb, 255 255 255) / 0.35); transition: border-color 160ms; }
+.sp-radio::after { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--color-primary); transform: scale(0); transition: transform 200ms var(--v3-ease); }
+.sp-period.on .sp-radio { border-color: var(--color-primary); }
+.sp-period.on .sp-radio::after { transform: scale(1); }
+.sp-period-t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.sp-period-t b { font-size: 14.5px; color: var(--a-ink); }
+.sp-period-t small { font-size: 12px; color: var(--a-muted); }
+.sp-price { font-size: 18px; font-weight: 750; color: var(--a-ink); font-variant-numeric: tabular-nums; }
+.sp-save { position: absolute; top: -9px; right: 14px; padding: 2px 9px; border-radius: 99px; font-size: 11px; font-weight: 700;
+  background: var(--fill-primary-gym, var(--color-primary)); color: #fff; }
+.sp-paybtn { position: relative; isolation: isolate; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
+  padding: 13px 16px; border-radius: 12px; font-size: 14.5px; font-weight: 700; background: var(--color-secondary); color: var(--on-secondary, #111);
+  box-shadow: 0 12px 30px -16px var(--color-secondary); transition: transform 180ms var(--v3-ease), filter 200ms; }
+.sp-paybtn::before { content: ''; position: absolute; inset: -3px; z-index: -1; border-radius: 15px; opacity: 0.55; filter: blur(10px);
+  background: linear-gradient(90deg, var(--color-primary), var(--color-secondary), var(--color-primary)); background-size: 200% 100%; }
+.sp-paybtn:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.06); }
+.sp-paybtn:disabled { opacity: 0.6; }
+.sp-pay-note { font-size: 12px; }
+
+.sp-meters { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.sp-meter { display: flex; flex-direction: column; gap: 6px; padding: 16px 18px; border-radius: 16px; border: 1px solid var(--a-border); background: var(--a-surface);
+  transition: transform 180ms var(--v3-ease), border-color 160ms, box-shadow 180ms var(--v3-ease); }
+.sp-meter:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--color-primary) 45%, var(--a-border, transparent));
+  box-shadow: 0 14px 30px -20px color-mix(in srgb, var(--color-primary) 70%, transparent); }
+.sp-meter > b { font-size: 26px; font-weight: 750; letter-spacing: -0.02em; color: var(--a-ink); }
+.sp-meter > b small { font-size: 13px; font-weight: 500; color: var(--a-muted); }
+.sp-bar { display: block; height: 8px; border-radius: 99px; overflow: hidden; background: rgb(var(--hair-rgb, 255 255 255) / 0.08); }
+.sp-bar i { display: block; height: 100%; border-radius: inherit; background: var(--color-primary); transform-origin: left; }
+
+.sp-sec { display: flex; flex-direction: column; gap: 12px; }
+.sp-cmp { border: 1px solid var(--a-border); border-radius: 16px; overflow: hidden; }
+.sp-cmp-row { display: grid; grid-template-columns: minmax(0, 1fr) 140px; border-top: 1px solid var(--a-border); transition: background-color 140ms; }
+.sp-cmp-row:first-child { border-top: 0; }
+.sp-cmp-row:hover { background: rgb(var(--hair-rgb, 255 255 255) / 0.03); }
+.sp-cmp-row > div:first-child { padding: 13px 18px; min-width: 0; }
+.sp-cmp-row b { display: block; font-size: 13.5px; color: var(--a-ink); }
+.sp-cmp-row small { display: block; margin-top: 2px; font-size: 12px; color: var(--a-muted); line-height: 1.45; }
+.sp-cmp-col { display: grid; place-items: center; color: var(--a-p300); background: color-mix(in srgb, var(--color-primary) 6%, transparent);
+  border-left: 2px solid color-mix(in srgb, var(--color-primary) 55%, transparent); }
+.sp-cmp-row.off b { color: var(--a-text2); }
+.sp-cmp-row.off .sp-cmp-col { color: var(--a-muted); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .sp-hero-glow { animation: sp-drift 14s ease-in-out infinite alternate; }
+  .sp-paybtn::before { animation: sp-glow 4s linear infinite; }
+  .sp-bar i { animation: sp-fill 900ms var(--v3-ease) both; }
+  .att.sp .sp-main > * { animation: v2-row-in 280ms var(--v3-ease) both; }
+  .att.sp .sp-main > :nth-child(2) { animation-delay: 60ms; }
+  .att.sp .sp-main > :nth-child(3) { animation-delay: 120ms; }
+  .att.sp .sp-main > :nth-child(n + 4) { animation-delay: 180ms; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sp-period:hover, .sp-meter:hover, .sp-ghost:hover, .sp-paybtn:hover:not(:disabled) { transform: none; }
+}
+@keyframes sp-drift { to { transform: translate(-12%, 10%) scale(1.15); } }
+@keyframes sp-glow { to { background-position: 200% 0; } }
+@keyframes sp-fill { from { transform: scaleX(0); } }
+
+/* Light keeps solid fills behind words: the hero is the gym's solid fill, with no drifting light or glow. */
+:root[data-mode="light"] .sp-hero-glow, :root[data-mode="light"] .sp-paybtn::before { display: none; }
+:root[data-mode="light"] .sp-state { background: rgb(0 0 0 / 0.18); }
+
+@media (max-width: 1200px) { .sp-top { grid-template-columns: minmax(0, 1fr); } }
+:root[data-mode="light"] .sp-hero.warn .sp-state { background: var(--amber-solid, #b45309); }

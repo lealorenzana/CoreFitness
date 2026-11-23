@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, ArrowUp, CalendarClock, Check, FileDown, FileText, ListChecks, Lock, Receipt, ShieldCheck, Wallet } from 'lucide-react';
 import './attendance/att.css';
+import './subscription.css';
 import GymReceiptSheet from '../components/GymReceiptSheet';
 import PayOnline from '../components/PayOnline';
 import ApplicationDocuments from '../components/ApplicationDocuments';
@@ -41,7 +42,7 @@ function explain(sub: GymSubscription): State {
   if (d < 0) return { tone: 'bad', title: `${-d} day${d === -1 ? '' : 's'} overdue`, lines: [`Covered until ${day(sub.paid_until)}; the grace runs ${sub.grace_days} days after the due date.`, `Read-only from ${sub.read_only_on ? day(sub.read_only_on) : 'the end of the grace days'} unless a payment is confirmed first.`] };
   return { tone: d <= 7 ? 'soon' : 'good', title: d === 0 ? 'Runs out today' : `Covered for ${d} more day${d === 1 ? '' : 's'}`, lines: [
     `Paid until ${day(sub.paid_until)}. You are reminded before then.`,
-    `If it is not paid, a ${sub.grace_days}-day grace follows; read-only from ${sub.read_only_on ? day(sub.read_only_on) : '—'}. Nothing is ever deleted.`] };
+    `If it is not paid, a ${sub.grace_days}-day grace follows; read-only from ${sub.read_only_on ? day(sub.read_only_on) : 'the end of the grace days'}. Nothing is ever deleted.`] };
 }
 
 /**
@@ -98,78 +99,92 @@ export default function Subscription() {
   const included = features.filter((f) => f.enabled);
   const notIncluded = features.filter((f) => !f.enabled);
   const warn = st.tone === 'bad' || st.tone === 'soon';
-  const toPay = () => document.getElementById('pay')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  const meter = (label: string, used: number, cap: number | null, unit: string) => (
-    <div className="a-card">
-      <div className="a-lbl">{label}</div>
-      <b style={{ fontSize: 22 }}>{used}{cap !== null ? <span className="a-sub" style={{ fontSize: 13 }}> of {cap}</span> : <span className="a-sub" style={{ fontSize: 13 }}> · no limit</span>}</b>
-      {cap !== null && cap > 0 && <div className="a-meter" style={{ marginTop: 8 }}><i style={{ width: `${Math.min(100, (used / cap) * 100)}%`, background: used >= cap ? 'var(--a-amber)' : undefined }} /></div>}
-      <div className="a-sub" style={{ marginTop: 6 }}>
-        {cap === null ? 'this plan has no ceiling' : used >= cap ? `full: ask Core Fitness for a bigger plan` : `${cap - used} more ${unit}${cap - used === 1 ? '' : 's'} on this plan`}
+  // Usage, filling in as the page opens (CSS only): the fraction is the real one, never a stand-in.
+  const meter = (label: string, used: number, cap: number | null, unit: string, key: string) => {
+    const pct = cap !== null && cap > 0 ? Math.min(100, (used / cap) * 100) : null;
+    return (
+      <div className="sp-meter" data-meter={key}>
+        <span className="a-lbl">{label}</span>
+        <b>{used}{cap !== null ? <small> of {cap}</small> : <small> · no limit</small>}</b>
+        {pct !== null && <span className="sp-bar"><i style={{ width: `${pct}%`, background: used >= cap! ? 'var(--a-amber)' : undefined }} /></span>}
+        <small className="a-sub">{cap === null ? 'this plan has no ceiling' : used >= cap ? 'full: ask Core Fitness for a bigger plan' : `${cap - used} more ${unit}${cap - used === 1 ? '' : 's'} on this plan`}</small>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
-    <div className="att" data-your-plan>
+    <div className="att sp" data-your-plan>
       {receipt && <GymReceiptSheet receipt={receipt} onClose={() => setReceipt(null)} />}
       <div className="a-head">
         <div className="min-w-0"><h1>Your plan</h1><p>What this gym pays Core Fitness, what it includes, and a receipt for every payment</p></div>
       </div>
 
-      <div className="a-card" data-plan-state
-        style={warn ? { borderColor: 'color-mix(in srgb, var(--a-amber) 32%, transparent)', background: 'var(--a-alight)', flex: 'none' } : { flex: 'none' }}>
-        <div className="a-row" style={{ padding: 0, alignItems: 'flex-start' }}>
-          <span className="a-ic" style={warn ? { background: 'var(--a-alight)', color: 'var(--a-a300)' } : undefined}>
-            {warn ? <AlertTriangle size={15} /> : billed ? <CalendarClock size={15} /> : <ShieldCheck size={15} />}
-          </span>
-          <div className="t">
-            <b style={{ whiteSpace: 'normal', color: st.tone === 'bad' ? 'var(--a-a300)' : undefined }}>{st.title}</b>
-            {st.lines.map((l) => <small key={l} style={{ whiteSpace: 'normal', display: 'block' }}>{l}</small>)}
-          </div>
-          {billed && warn && priced && (
-            <button type="button" className="a-btn amber" onClick={toPay}><Wallet size={15} />Pay {peso(sub.price_monthly ?? 0)} now</button>
-          )}
-        </div>
-      </div>
-
-      <div className="a-grid" style={{ gridTemplateColumns: `repeat(${store ? 4 : 3}, minmax(0, 1fr))`, flex: 'none' }}>
-        <div className="a-card">
-          <div className="a-lbl">Your plan</div>
-          <div className="flex gap-2 items-baseline">
-            <b style={{ fontSize: 22 }}>{sub.plan_name ?? 'Not set'}</b>
-            <span className="a-sub">{priced ? `${peso(sub.price_monthly ?? 0)} a month` : sub.price_monthly !== null ? 'Free' : ''}</span>
-          </div>
-          <div className="a-sub" style={{ marginTop: 6 }}>
-            {sub.price_monthly === null
-              ? <>Core Fitness has not put a price on this plan: ask in <Link to="/help" style={{ color: 'var(--a-p300)' }}>Help</Link>.</>
-              : sub.on_trial ? `Free trial until ${sub.paid_until ? day(sub.paid_until) : '—'}`
-              : billed ? `Covered until ${day(sub.paid_until!)}${payments[0]?.method ? ` · last paid by ${payments[0].method}` : ''}`
-              : 'No billing for this gym'}
-          </div>
-          <a href="https://corefitness-site.vercel.app/#pricing" target="_blank" rel="noreferrer" className="a-btn sm" style={{ marginTop: 10, alignSelf: 'flex-start' }}>
-            <ArrowUp size={13} />Compare plans
-          </a>
-        </div>
-        {meter('Active members', sub.members, sub.max_members, 'member')}
-        {meter('Owners and front desk', sub.staff, sub.max_staff, 'seat')}
-        {store && (
-          <div className="a-card" data-plan-storage>
-            <div className="a-lbl">Storage</div>
-            <b style={{ fontSize: 22 }}>{bytesWords(store.usedBytes)}{store.limitBytes !== null ? <span className="a-sub" style={{ fontSize: 13 }}> of {bytesWords(store.limitBytes)}</span> : <span className="a-sub" style={{ fontSize: 13 }}> · no limit</span>}</b>
-            {store.limitBytes !== null && store.limitBytes > 0 && <div className="a-meter" style={{ marginTop: 8 }}><i style={{ width: `${Math.min(100, (store.usedBytes / store.limitBytes) * 100)}%`, background: store.usedBytes >= store.limitBytes ? 'var(--a-amber)' : undefined }} /></div>}
-            <div className="a-sub" style={{ marginTop: 6 }}>
-              {store.limitBytes === null ? 'this plan has no ceiling'
-                : store.usedBytes >= store.limitBytes ? 'full: remove a video, or ask Core Fitness for a bigger plan'
-                : 'reel videos, chat photos and your gym’s pictures: links use none'}
+      {/* One scrolling column (owner, 2026-11-23, after a plan page that felt alive): the plan as a hero in the
+          gym's colours beside how to pay it, usage that fills in, what is included, then every payment. */}
+      <div className="sp-main">
+        <section className="sp-top">
+          <div className={`sp-hero ${warn ? 'warn' : ''}`} data-plan-state>
+            <span className="sp-hero-glow" aria-hidden />
+            <span className="sp-kicker">Your Core Fitness plan</span>
+            <h2>{sub.plan_name ?? 'Not set'}</h2>
+            <div className="sp-hero-price">
+              {priced ? <><b>{peso(sub.price_monthly ?? 0)}</b><span>a month</span></> : sub.price_monthly !== null ? <b>Free</b>
+                : <span>Core Fitness has not put a price on this plan: ask in <Link to="/help">Help</Link>.</span>}
+            </div>
+            <div className="sp-state">
+              <span className="sp-state-ic">{warn ? <AlertTriangle size={15} /> : billed ? <CalendarClock size={15} /> : <ShieldCheck size={15} />}</span>
+              <div><b>{st.title}</b>{st.lines.map((l) => <small key={l}>{l}</small>)}</div>
+            </div>
+            <div className="sp-hero-foot">
+              <span>{sub.on_trial ? `Free trial until ${sub.paid_until ? day(sub.paid_until) : 'its last day'}`
+                : billed ? `Covered until ${day(sub.paid_until!)}${payments[0]?.method ? ` · last paid by ${payments[0].method}` : ''}` : 'No billing for this gym'}</span>
+              <a href="https://corefitness-site.vercel.app/#pricing" target="_blank" rel="noreferrer" className="sp-ghost"><ArrowUp size={13} />Compare plans</a>
             </div>
           </div>
-        )}
-      </div>
 
-      <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) 360px', flex: 1 }}>
-        <div className="a-card a-scroll">
-          <div className="a-ct"><h3><Receipt size={16} />Payments to Core Fitness</h3></div>
+          <div className="sp-pay" id="pay">
+            <h3><Wallet size={16} />Pay for the plan</h3>
+            {billed ? <PayOnline onPaid={reloadAfterPay} />
+              : <p className="a-sub">Nothing to pay. If Core Fitness starts billing this gym, how to pay appears here with the amount.</p>}
+          </div>
+        </section>
+
+        <section className="sp-meters">
+          {meter('Active members', sub.members, sub.max_members, 'member', 'members')}
+          {meter('Owners and front desk', sub.staff, sub.max_staff, 'seat', 'staff')}
+          {store && (
+            <div className="sp-meter" data-plan-storage>
+              <span className="a-lbl">Storage</span>
+              <b>{bytesWords(store.usedBytes)}{store.limitBytes !== null ? <small> of {bytesWords(store.limitBytes)}</small> : <small> · no limit</small>}</b>
+              {store.limitBytes !== null && store.limitBytes > 0 && <span className="sp-bar"><i style={{ width: `${Math.min(100, (store.usedBytes / store.limitBytes) * 100)}%`, background: store.usedBytes >= store.limitBytes ? 'var(--a-amber)' : undefined }} /></span>}
+              <small className="a-sub">{store.limitBytes === null ? 'this plan has no ceiling'
+                : store.usedBytes >= store.limitBytes ? 'full: remove a video, or ask Core Fitness for a bigger plan'
+                : 'reel videos, chat photos and your gym’s pictures: links use none'}</small>
+            </div>
+          )}
+        </section>
+
+        <section className="sp-sec">
+          <h3><ListChecks size={16} />{sub.plan_name ?? 'Your plan'} includes</h3>
+          {features.length === 0 && <p className="a-sub">What the plan includes could not be loaded: a connection problem, not an empty plan.</p>}
+          <div className="sp-cmp" role="table" aria-label="What the plan includes">
+            {(sub.max_members !== null || sub.max_staff !== null) && (
+              <div className="sp-cmp-row" role="row"><div role="cell"><b>{sub.max_members !== null ? `Up to ${sub.max_members} members` : 'Any number of members'}, {sub.max_staff !== null ? `${sub.max_staff} staff` : 'any number of staff'}</b></div>
+                <div role="cell" className="sp-cmp-col"><Check size={16} /></div></div>
+            )}
+            {included.map((f) => (
+              <div key={f.feature_key} className="sp-cmp-row" role="row"><div role="cell"><b>{f.label}</b>{f.description ? <small>{f.description}</small> : null}</div>
+                <div role="cell" className="sp-cmp-col"><Check size={16} aria-label="included" /></div></div>
+            ))}
+            {notIncluded.map((f) => (
+              <div key={f.feature_key} className="sp-cmp-row off" role="row"><div role="cell"><b>{f.label}</b><small>Not on this plan: ask Core Fitness to change plans.</small></div>
+                <div role="cell" className="sp-cmp-col"><Lock size={15} aria-label="not included" /></div></div>
+            ))}
+          </div>
+        </section>
+
+        <section className="sp-sec">
+          <h3><Receipt size={16} />Payments to Core Fitness</h3>
           {payments.length === 0 ? <p className="a-sub">No payment has been recorded for this gym yet.</p> : (
             <table className="a-table">
               <thead><tr><th>Paid</th><th>Covers</th><th>How</th><th>Receipt</th><th style={{ textAlign: 'right' }}>Amount</th></tr></thead>
@@ -178,7 +193,7 @@ export default function Subscription() {
                   <tr key={p.id}>
                     <td><b>{day(p.paid_on)}</b></td>
                     <td>to {day(p.covers_until)}{p.plan_name ? <div className="a-sub">{p.plan_name}</div> : null}</td>
-                    <td>{p.method ? <span className="a-pill">{p.method}</span> : <span className="a-sub">—</span>}</td>
+                    <td>{p.method ? <span className="a-pill">{p.method}</span> : <span className="a-sub">not given</span>}</td>
                     <td className="a-sub">{p.receipt_no}</td>
                     <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                       <b>{peso(p.amount)}</b>{' '}
@@ -189,47 +204,15 @@ export default function Subscription() {
               </tbody>
             </table>
           )}
+        </section>
 
-          <div id="pay" style={{ marginTop: 16 }}>
-            <div className="a-ct"><h3><Wallet size={16} />Paying for the plan</h3></div>
-            {billed ? (
-              <div className="space-y-3">
-                {/* PayMongo only (owner, 2026-10-28): the manual QR-and-reference form is gone here —
-                    QR codes stay for what members pay the gym, and coaches paid directly. */}
-                <PayOnline onPaid={reloadAfterPay} />
-              </div>
-            ) : (
-              <div className="a-hint"><CalendarClock size={15} /><span>Nothing to pay. If Core Fitness starts billing this gym, how to pay appears here with the amount and every way to send it.</span></div>
-            )}
-          </div>
-
-          {application && (
-            <div id="documents" style={{ marginTop: 16 }}>
-              <div className="a-ct"><h3><FileText size={16} />Business documents</h3></div>
-              <p className="a-sub">
-                What Core Fitness verified when it let {application.gym_name} in. Send the renewed permit each January, and any document before it runs out: you are reminded.
-              </p>
-              <div style={{ marginTop: 10 }}><ApplicationDocuments applicationId={application.id} documents={application.documents} onChanged={loadApplication} renewing /></div>
-            </div>
-          )}
-        </div>
-
-        <div className="a-card glow a-scroll">
-          <div className="a-ct"><h3><ListChecks size={16} />{sub.plan_name ?? 'Your plan'} includes</h3></div>
-          {features.length === 0 && <p className="a-sub">What the plan includes could not be loaded: a connection problem, not an empty plan.</p>}
-          {sub.max_members !== null || sub.max_staff !== null ? (
-            <div className="a-row"><Check size={15} style={{ color: 'var(--a-p300)' }} />
-              <div className="t"><b>{sub.max_members !== null ? `Up to ${sub.max_members} members` : 'Any number of members'}, {sub.max_staff !== null ? `${sub.max_staff} staff` : 'any number of staff'}</b></div></div>
-          ) : null}
-          {included.map((f) => (
-            <div key={f.feature_key} className="a-row"><Check size={15} style={{ color: 'var(--a-p300)' }} />
-              <div className="t"><b style={{ whiteSpace: 'normal' }}>{f.label}</b>{f.description ? <small style={{ whiteSpace: 'normal' }}>{f.description}</small> : null}</div></div>
-          ))}
-          {notIncluded.map((f) => (
-            <div key={f.feature_key} className="a-row"><Lock size={15} style={{ color: 'var(--a-muted)' }} />
-              <div className="t"><b style={{ color: 'var(--a-text2)', whiteSpace: 'normal' }}>{f.label}</b><small style={{ whiteSpace: 'normal' }}>Not on this plan: ask Core Fitness to change plans.</small></div></div>
-          ))}
-        </div>
+        {application && (
+          <section className="sp-sec" id="documents">
+            <h3><FileText size={16} />Business documents</h3>
+            <p className="a-sub">What Core Fitness verified when it let {application.gym_name} in. Send the renewed permit each January, and any document before it runs out: you are reminded.</p>
+            <div style={{ marginTop: 10 }}><ApplicationDocuments applicationId={application.id} documents={application.documents} onChanged={loadApplication} renewing /></div>
+          </section>
+        )}
       </div>
     </div>
   );
