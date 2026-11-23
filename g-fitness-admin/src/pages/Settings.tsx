@@ -18,7 +18,7 @@ import { getGymContext } from '../lib/gymContext';
 import Avatar from '../components/ui/Avatar';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import TimePicker from '../components/ui/TimePicker';
-import { User, Shield, Building2, UserPlus, Eye, EyeOff, Camera, Trash2, Check, Banknote, FileSignature, ScrollText, Smartphone, CalendarCheck, Handshake, Footprints, Clock, DoorOpen, Tag, Tags, Search, ArrowUpRight, Palette, Phone, ListChecks, CircleCheck, CircleDashed, type LucideIcon } from 'lucide-react';
+import { Download, User, Shield, Building2, UserPlus, Eye, EyeOff, Camera, Trash2, Check, Banknote, FileSignature, ScrollText, Smartphone, CalendarCheck, Handshake, Footprints, Clock, DoorOpen, Tag, Tags, Search, ArrowUpRight, Palette, Phone, ListChecks, CircleCheck, CircleDashed, type LucideIcon } from 'lucide-react';
 import OnlinePaymentsTab from '../components/OnlinePaymentsTab';
 import { showToast } from '../utils/toast';
 import {
@@ -42,6 +42,7 @@ import PlacePicker from '../components/ui/PlacePicker';
 import GymStyles from '../components/GymStyles';
 import TimeSlotsSettings from '../components/TimeSlotsSettings';
 import BookingRulesSettings from '../components/BookingRulesSettings';
+import ExportData from '../components/ExportData';
 import SkelRows from '../components/ui/SkelRows';
 
 /**
@@ -66,7 +67,7 @@ import SkelRows from '../components/ui/SkelRows';
  * nothing. They are gone rather than left as buttons that appear to work.
  */
 
-type TabId = 'profile' | 'gym' | 'hours' | 'checkin' | 'bookings' | 'slots' | 'coaching' | 'walk-ins' | 'refunds' | 'payments' | 'waiver' | 'house-rules' | 'security' | 'staff';
+type TabId = 'export' | 'profile' | 'gym' | 'hours' | 'checkin' | 'bookings' | 'slots' | 'coaching' | 'walk-ins' | 'refunds' | 'payments' | 'waiver' | 'house-rules' | 'security' | 'staff';
 
 const VIOLET = 'var(--color-primary)';
 const TEXT_MUTED = 'var(--color-text-muted)';
@@ -97,6 +98,7 @@ const SECTIONS: Section[] = [
   { id: 'staff', label: 'Staff accounts', icon: UserPlus, words: ['desk', 'staff', 'account', 'suspend'] },
   { id: 'profile', label: 'My profile', icon: User, words: ['photo', 'name', 'profile'] },
   { id: 'security', label: 'Security', icon: Shield, words: ['password'] },
+  { id: 'export', label: 'Export your data', icon: Download, words: ['export', 'download', 'excel', 'csv', 'pdf', 'json', 'backup', 'data', 'spreadsheet'] },
 ];
 const TAB_IDS = SECTIONS.filter((s) => s.id).map((s) => s.id as TabId);
 
@@ -664,6 +666,11 @@ export default function Settings() {
                 </>
               )
               }</SectionGuard></section>
+              {/* Export your data (owner, 2026-11-23): choose the records and the file, then download them. */}
+              <section className="st-sec" data-ya-sec="export" id="st-export"><SectionGuard>{<>
+                {head('Export your data', 'Your gym’s records, in the file you choose: choose what goes, then download it')}
+                <ExportData />
+              </>}</SectionGuard></section>
             </>
           )}
         </div>
