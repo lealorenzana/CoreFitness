@@ -120,6 +120,25 @@ export async function saveMeasurement(
   return data;
 }
 
+/**
+ * The assistant's Save (2026-11-23): adds these values to the day's reading through the same
+ * writer as Progress → Body. The day's row is one upsert, so values already saved that day are
+ * kept rather than written over with nulls.
+ */
+export async function addToReading(
+  memberId: string, measuredOn: string,
+  values: Partial<Pick<BodyMeasurementRow, 'weight_kg' | 'height_cm' | 'body_fat_pct' | 'chest_cm' | 'waist_cm' | 'hips_cm'
+    | 'arms_cm' | 'thighs_cm' | 'neck_cm' | 'shoulders_cm' | 'forearm_cm' | 'calf_cm'>>,
+): Promise<BodyMeasurementRow & { queued?: boolean }> {
+  const same = (await listMeasurements(memberId)).find((r) => r.measured_on === measuredOn);
+  const base = {
+    weight_kg: null, height_cm: null, body_fat_pct: null, chest_cm: null, waist_cm: null, hips_cm: null, arms_cm: null,
+    thighs_cm: null, neck_cm: null, shoulders_cm: null, forearm_cm: null, calf_cm: null, notes: null,
+  };
+  const keep = same ? Object.fromEntries(Object.keys(base).map((k) => [k, same[k as keyof BodyMeasurementRow] ?? null])) : {};
+  return saveMeasurement({ ...base, ...keep, ...values, member_id: memberId, measured_on: measuredOn } as Omit<BodyMeasurementRow, 'id' | 'created_at'>);
+}
+
 export async function deleteMeasurement(id: string): Promise<void> {
   const { data: data, error: error } = await supabase
     .from('body_measurements').delete().eq('id', id)

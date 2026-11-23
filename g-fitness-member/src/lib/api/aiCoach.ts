@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient';
+import { readingFromValues, type Reading } from '../../data/memberAssistant';
 
 /**
  * The AI coach (0143 + the `ai-coach` Edge Function).
@@ -104,6 +105,7 @@ export async function askCoach(
   question: string, history: Turn[], onText: (chunk: string) => void,
   onProposal?: (p: ProposalFrame) => void,
   onStatus?: (text: string) => void,
+  onReading?: (r: Reading) => void,
 ): Promise<{ ok: true } | { ok: false; reason: string; message: string }> {
   const busy = { ok: false as const, reason: 'busy', message: 'The coach is busy. Try again in a minute.' };
   try {
@@ -138,7 +140,14 @@ export async function askCoach(
       const ev = JSON.parse(frame.slice(6)) as {
         type: string; text?: string; reason?: string; message?: string;
         id?: string; kind?: string; summary?: string; payload?: unknown;
+        measured_on?: string; values?: Record<string, unknown>;
       };
+      // propose_reading: checked again here against Progress's own fields and ranges; the card
+      // writes nothing until the member taps Save.
+      if (ev.type === 'reading' && ev.values) {
+        const r = readingFromValues(ev.values, ev.measured_on === 'yesterday' ? 'yesterday' : 'today');
+        if (r) onReading?.(r);
+      }
       if (ev.type === 'text' && ev.text) onText(ev.text);
       if (ev.type === 'status' && ev.text) onStatus?.(ev.text);
       if (ev.type === 'proposal' && ev.id && ev.kind) {

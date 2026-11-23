@@ -11,7 +11,8 @@ import { planAccess } from '../../utils/planAccess';
 import { getCurrentMembership } from '../../lib/api/memberships';
 import RichText from './RichText';
 import { GLASS, SCRIM } from './glass';
-import { answerFor, EMPTY_CONTEXT, toGymFacts, type AssistantContext } from '../../data/memberAssistant';
+import { answerFor, EMPTY_CONTEXT, readingFrom, toGymFacts, type AssistantContext } from '../../data/memberAssistant';
+import { useGymSetup } from '../../hooks/useGymSetup';
 import { ClockCounterClockwise, PaperPlaneRight, Sparkle, X } from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
 
@@ -57,6 +58,7 @@ interface ChatbotPopupProps {
 
 export default function ChatbotPopup({ isOpen, onClose }: ChatbotPopupProps) {
   const pointsOn = usePointsOn();
+  const setup = useGymSetup();
   const navigate = useNavigate();
   const [messages, setMessages] = useState<Message[]>([
     { id: '1', text: "Hi! I'm your gym's assistant. How can I help today?", sender: 'bot', timestamp: new Date() },
@@ -116,7 +118,10 @@ export default function ChatbotPopup({ isOpen, onClose }: ChatbotPopupProps) {
     setTimeout(() => {
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
-        text: answerFor(q, { ...ctx, pointsOff: !pointsOn }),
+        // The Save card lives on the Assistant page; this small window only points there.
+        text: readingFrom(q)
+          ? 'To save a reading from a message, open **More → Assistant** and tell it there. You can also log it on **You → Progress → Body**.'
+          : answerFor(q, { ...ctx, pointsOff: !pointsOn, setup }),
         sender: 'bot',
         timestamp: new Date(),
       }]);

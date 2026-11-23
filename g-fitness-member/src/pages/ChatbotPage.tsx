@@ -12,9 +12,11 @@ import { getGymSettings } from '../lib/api/settings';
 import { getCurrentPlan } from '../lib/api/workoutPlans';
 import { getBalance } from '../lib/api/points';
 import {
-  answerFor, suggestionsFor, EMPTY_CONTEXT, toGymFacts, isRuleFallback, RULE_FALLBACK,
-  type AssistantContext,
+  answerFor, suggestionsFor, EMPTY_CONTEXT, toGymFacts, isRuleFallback, RULE_FALLBACK, readingFrom,
+  type AssistantContext, type Reading,
 } from '../data/memberAssistant';
+import ReadingCard from '../components/ReadingCard';
+import { useGymSetup } from '../hooks/useGymSetup';
 import {
   listConversations, listMessages, createConversation, appendMessage,
   deleteConversation, titleFrom, type Conversation,
@@ -71,7 +73,11 @@ interface Message {
   sender: 'user' | 'bot';
   /** Who wrote a bot bubble. Only 'coach' text is ever sent back to the coach. */
   source?: 'rules' | 'coach';
+  /** A body reading waiting for Save under this reply (this visit only, never sent as history). */
+  reading?: Reading;
 }
+
+const READING_ASK = 'Save this to **You → Progress → Body**? Nothing is saved until you tap Save.';
 
 const GREETING_ID = 'greeting';
 // The coach is sent WELCOME_QUESTION, but the member never typed it: on screen and in
@@ -107,7 +113,9 @@ export default function ChatbotPage() {
 
 function Assistant() {
   const pointsOn = usePointsOn();
-  const [ctx, setCtx] = useState<AssistantContext>(EMPTY_CONTEXT);
+  const setup = useGymSetup();
+  const [baseCtx, setCtx] = useState<AssistantContext>(EMPTY_CONTEXT);
+  const ctx: AssistantContext = { ...baseCtx, setup };
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -325,6 +333,16 @@ function Assistant() {
       // form/eating tips go to the coach instead of a keyword's canned reply.
       // `coachRef`, not `coach`: this closure runs after a timeout, and right
       // after consent the state it captured is still the old one.
+      // A reading to save ("log my weight 72 kg") is answered here, free, with a Save card:
+      // the same card the coach's propose_reading shows, and the same writer as Progress → Body.
+      const reading = again?.coachOnly ? null : readingFrom(trimmed);
+      if (reading) {
+        setMessages((prev) => [...prev, { id: `${Date.now()}b`, text: READING_ASK, sender: 'bot', source: 'rules', reading }]);
+        setIsTyping(false);
+        try { await persist(shown, READING_ASK, 'rules', again?.title); setSaveError(again?.note ?? null); }
+        catch (err) { setSaveError(errorMessage(err, 'This conversation is not being saved.')); }
+        return;
+      }
       const live = again?.rulesOnly ? null : coachRef.current;
       const coachUsable = mayUseModel && !!live?.allowed;
       let answer = again?.coachOnly ? RULE_FALLBACK : answerFor(trimmed, { ...ctx, pointsOff: !pointsOn }, { coach: coachUsable });
@@ -369,7 +387,10 @@ function Assistant() {
         }, (proposal) => {
           proposed += 1;
           setCards((c) => ({ ...c, [botId]: [...(c[botId] ?? []), proposal] }));
-        }, (text) => setWorking((w) => ({ ...w, [botId]: text })));
+        }, (text) => setWorking((w) => ({ ...w, [botId]: text })), (r) => {
+          proposed += 1;
+          setMessages((prev) => prev.map((m) => (m.id === botId ? { ...m, reading: r } : m)));
+        });
         setWorking((w) => { const n = { ...w }; delete n[botId]; return n; });
         if ((result.ok && streamed.trim()) || proposed > 0) {
           // A reply that proposed a change is the coach's, even with no text or a
@@ -550,6 +571,7 @@ function Assistant() {
                     <ProposalCard key={p.id} id={p.id} kind={p.kind} summary={p.summary} payload={p.payload}
                       status={decided[p.id] ?? 'pending'} names={names} onStatus={onDecided} />
                   ))}
+                  {m.reading && <ReadingCard reading={m.reading} />}
                 </div>
               ) : (
                 <div className="max-w-[80%]" style={{

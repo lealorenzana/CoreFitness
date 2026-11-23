@@ -415,6 +415,26 @@ async (page) => {
     + (await page.getByRole('button', { name: 'Changes from the assistant' }).count() === 0 ? 'yes' : 'STILL SHOWN'));
   Object.assign(COACH, { allowed: true, reason: null, used_today: 3 });
 
+  // ── A reading from a message (2026-11-23): a Save card, free, through Progress's own writer ──
+  // A waist already saved today must survive the weight being added to the same day.
+  DB.body_measurements = [{ id: 'bm-today', member_id: ME.id, measured_on: dstr(0), waist_cm: 80, weight_kg: null, created_at: iso(0, 7, 0) }];
+  const postsBefore = COACH_POSTS.length;
+  await go('/member/chatbot');
+  await ask('log my weight 72.5 kg');
+  const rc = page.locator('[data-reading-card]').last();
+  const rcText = ((await rc.innerText().catch(() => '')) || '').replace(/\s+/g, ' ');
+  out.push('"log my weight 72.5 kg" shows a Save card with the reading: ' + (/Weight 72\.5 kg/.test(rcText) && /Save/.test(rcText) ? 'yes' : 'MISSING ' + rcText));
+  out.push('…without spending a coach message: ' + (COACH_POSTS.length === postsBefore ? 'yes' : 'NO, the coach was asked'));
+  out.push('…and nothing is saved before Save: ' + (DB.body_measurements.every((r) => r.weight_kg == null) ? 'yes' : 'NO'));
+  await shot('reading-card');
+  await rc.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.waitForTimeout(1500);
+  const savedRow = DB.body_measurements.find((r) => Number(r.weight_kg) === 72.5);
+  out.push('Save writes the reading for today: ' + (savedRow && savedRow.member_id === ME.id ? 'yes' : 'MISSING ' + JSON.stringify(DB.body_measurements)));
+  out.push('…keeping the waist already saved that day: ' + (savedRow && Number(savedRow.waist_cm) === 80 ? 'yes' : 'NO ' + JSON.stringify(savedRow)));
+  out.push('…and the card says Saved: ' + (/Saved/.test(((await rc.innerText().catch(() => '')) || '')) ? 'yes' : 'MISSING'));
+  await shot('reading-saved');
+
   // The Privacy page says what the coach may change.
   await go('/privacy');
   out.push('Privacy says nothing changes until Apply: ' + (/nothing changes until you tap Apply, and you can undo a change afterwards\./.test(await text()) ? 'yes' : 'MISSING'));

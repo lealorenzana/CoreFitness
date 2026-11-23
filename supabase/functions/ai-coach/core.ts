@@ -20,8 +20,26 @@ RULES YOU MUST NEVER BREAK
 5. Never claim to be a person, a doctor or a dietitian. You are the gym's AI coach.
 6. If the member's profile says has_injury is true, do not plan or change exercises around it. Say once, kindly, that a coach at the gym or a physiotherapist should look at it first, then help with everything else.
 
+HOW THIS GYM RUNS
+get_gym_info's how_this_gym_runs is the owner's own setup: what is switched on, whether the gym runs classes, who approves a session, a class and a package (instant = confirmed straight away; coach = the coach says yes; desk = the front desk confirms; coach_desk = the coach first, then the desk; off = booked at the front desk, not in the app), package lengths and who pays, time slots, cancel windows, closed days, day passes, freeze limits and the refund fee. When a member asks how something works here (sessions, bookings, packages, classes, freezing, refunds, day passes), call get_gym_info and explain it from that, in this gym's terms. Never describe a feature that is switched off.
+Words: a session is one 1-on-1 time with a coach; a package is coaching with one coach for some months (a chat, sessions with them, progress); a class is a group class on the timetable; a booking is the member's request for one session or class, which waits until approved.
+
+THE APP (tell members exactly where to tap, using these names only)
+Bottom bar: Today · Train · You · More, and the check-in block at the right end (shows their check-in code).
+- Today: the day, Book a time (only when the gym uses time slots), what arrived.
+- Train → Workout: their workouts, start one (or an empty one) and log sets, their week, the Library of gym workouts.
+- Train → Classes: group classes (only when the gym runs classes).
+- Train → Coach: Your package, Your sessions, Book a session, Find a coach, All your sessions (where they cancel).
+- You → Progress: Body (weight and measurements), Targets, Progress photos. You → Badges & records. You → Membership: plan and days left, Renew or change plan, Payments, Attendance, Waiver, Pause or cancel (freeze or end; the desk makes the change).
+- More: Inbox, Rewards (points, challenges), Assistant, Shop, Equipment, Reels, Gym chat, Invite a friend, Gyms, Profile, Settings (password, email, alerts), Help (tours, contact, Terms of service with the house rules and refunds, Privacy).
+Some of these exist only when the gym switched them on; check get_gym_info before sending a member to one.
+Their membership (plan, end date, days left) is shown under You → Membership; you cannot read it, so send them there.
+
+LOGGING A READING
+When the member gives you their weight or a body measurement to record, call propose_reading. It shows a card with Save; nothing is saved until they tap it. Only use numbers they told you, in kg, cm or percent; if they used pounds or inches, ask for kg or cm. Never log a reading they did not give.
+
 HOW YOU WRITE
-Warm, direct, short: a few sentences or a short list. Use the member's first name now and then if you know it. Philippine context. When the honest answer is "ask a coach at the gym", say so.
+Warm, direct, short: a few sentences or a short list. Use the member's first name now and then if you know it. Philippine context. When the honest answer is "ask a coach at the gym", say so. Do not use dashes as punctuation; write full sentences instead.
 
 HOW YOU CHANGE THINGS
 You can look up exercises this gym has, this gym's own facts (get_gym_info), the member's upcoming class bookings, and — if the member let you read their training — their routines, weekly schedule and progress (get_my_progress: workouts per week, records, readings, targets). When they ask how they are doing, call get_my_progress and explain in plain words what improved and what stalled, from those numbers only. You never change anything yourself: you propose a change with a propose tool, and the member decides on a card with Apply or Discard. Propose only after you know their goal, days and equipment (from their setup or by asking). Use exercises from find_exercises; use a custom name only when nothing fits. A routine you propose has no id until the member applies it — propose the routine first, and propose a schedule that uses it only after they have applied it. Keep routines to what fits their usual session. Write each summary as one short sentence the member will read on the card. After proposing, tell them briefly what you proposed and that nothing changes until they tap Apply. Never propose a change because of an injury or pain.
@@ -48,7 +66,12 @@ export const TOOL_STATUS: Record<string, string> = {
   propose_routine: 'Creating your routine',
   propose_schedule: 'Planning your week',
   propose_goal: 'Setting up your goal',
+  propose_reading: 'Writing down your reading',
 };
+
+/** The readings Progress → Body takes (body_measurements). The member app checks the ranges again. */
+export const READING_FIELDS = ['weight_kg', 'body_fat_pct', 'height_cm', 'waist_cm', 'chest_cm', 'hips_cm', 'arms_cm',
+  'thighs_cm', 'neck_cm', 'shoulders_cm', 'forearm_cm', 'calf_cm'] as const;
 
 const str = (description: string) => ({ type: 'string', description });
 // Nullable as anyOf with a null branch, never a type array: the shape strict tool use documents.
@@ -65,7 +88,7 @@ export const MAX_STRICT_UNIONS = 16;
  * request (2026-10-10 → 11; read from ai_coach_errors, 0196). Their inputs are still checked in
  * full by `mismatch()` before anything runs, and a bad one goes back to the model as an error.
  */
-export const LOOSE_TOOLS = ['propose_program', 'propose_log', 'propose_routine', 'propose_schedule'];
+export const LOOSE_TOOLS = ['propose_program', 'propose_log', 'propose_routine', 'propose_schedule', 'propose_reading'];
 const zeroNull = (v: unknown) => (typeof v === 'number' && v > 0 ? v : null);
 const blankNull = (v: unknown) => (typeof v === 'string' && v.trim() !== '' ? v : null);
 const obj = (properties: Record<string, unknown>) => ({
@@ -97,7 +120,7 @@ export const TOOLS = [
   },
   {
     name: 'get_gym_info',
-    description: "This gym's own facts: name, address, phone, opening and closing time, closed days, membership plans with prices in pesos, house rules, the next 7 days of classes (with class_id, coach and seats left) and the coaches with their specialties. The only source for any of these.",
+    description: "This gym's own facts: name, address, phone, opening and closing time, closed days, membership plans with prices in pesos, house rules, the next 7 days of classes (with class_id, coach and seats left), the coaches with their specialties, and how_this_gym_runs (what is switched on, who approves sessions, classes and packages, time slots, cancel windows, day passes, freeze limits, refunds). The only source for any of these.",
     strict: true,
     input_schema: obj({}),
   },
@@ -240,6 +263,22 @@ export const TOOLS = [
       target_date: strOrNull('A date YYYY-MM-DD between today and two years from now, or null.'),
     }),
   },
+  {
+    name: 'propose_reading',
+    description: 'Shows the member a card to save a body reading they told you (weight, body fat or a measurement) to Progress → Body. Nothing is saved until they tap Save. Use only numbers the member gave.',
+    strict: false,
+    input_schema: obj({
+      measured_on: { type: 'string', enum: ['today', 'yesterday'], description: 'The day it was measured.' },
+      readings: {
+        type: 'array',
+        description: '1 to 12 readings, each field at most once.',
+        items: obj({
+          field: { type: 'string', enum: [...READING_FIELDS], description: 'weight_kg in kg, body_fat_pct in percent, the rest in cm.' },
+          value: { type: 'number', description: 'The number the member gave.' },
+        }),
+      },
+    }),
+  },
 ] as const;
 
 type Obj = Record<string, unknown>;
@@ -293,7 +332,11 @@ function dropNulls(v: unknown): unknown {
   return v;
 }
 
-export type ToolCall = { rpc: string; args: Record<string, unknown> } | { error: string };
+export type ReadingCard = { type: 'reading'; measured_on: 'today' | 'yesterday'; values: Record<string, number> };
+// `card`: shown to the member as it is, no database call (a reading is saved by the member's own Save).
+export type ToolCall = { rpc: string; args: Record<string, unknown> } | { card: ReadingCard } | { error: string };
+
+export const READING_RESULT = JSON.stringify({ status: 'Shown to the member as a card with Save. Nothing is saved until they tap it.' });
 
 // One tool use → the SQL call that answers it, run as the member. Never runs anything itself.
 export function toolCall(name: string, input: unknown): ToolCall {
@@ -355,6 +398,15 @@ export function toolCall(name: string, input: unknown): ToolCall {
     case 'propose_goal': {
       const { summary: _s, ...rest } = input;
       return proposal('goal.create', rest);
+    }
+    case 'propose_reading': {
+      const values: Record<string, number> = {};
+      for (const r of input.readings as { field: string; value: number }[]) {
+        if (r.field in values) return { error: `${r.field} is given twice.` };
+        values[r.field] = r.value;
+      }
+      if (!Object.keys(values).length) return { error: 'readings is empty.' };
+      return { card: { type: 'reading', measured_on: input.measured_on as 'today' | 'yesterday', values } };
     }
   }
   return { error: `There is no tool called ${name}.` };
@@ -419,6 +471,7 @@ export function buildRequest(
 export function sse(event:
   | { type: 'text'; text: string }
   | { type: 'proposal'; id: string; kind: string; summary: string; payload: unknown }
+  | ReadingCard
   | { type: 'done' }
   | { type: 'error'; reason: string; message: string }): string {
   return `data: ${JSON.stringify(event)}\n\n`;

@@ -41,8 +41,8 @@ check('a 1001-character question is refused', !core.validQuestion('x'.repeat(100
 // ---- Phase 3: the tools ----
 const tools = core.TOOLS ?? [];
 const names = tools.map((t) => t.name).sort().join(',');
-check('the thirteen tools are defined',
-  names === 'find_exercises,get_gym_info,get_my_bookings,get_my_progress,get_my_routines,get_my_schedule,propose_booking,propose_cancel_booking,propose_goal,propose_log,propose_program,propose_routine,propose_schedule', names);
+check('the fourteen tools are defined',
+  names === 'find_exercises,get_gym_info,get_my_bookings,get_my_progress,get_my_routines,get_my_schedule,propose_booking,propose_cancel_booking,propose_goal,propose_log,propose_program,propose_reading,propose_routine,propose_schedule', names);
 // Every object in a strict schema must close its properties and require every one of them.
 const closed = (s) => {
   if (!s || typeof s !== 'object') return true;
@@ -55,8 +55,8 @@ const closed = (s) => {
   if (s.items) return closed(s.items);
   return true;
 };
-check('every tool is closed and requires every property; all but the four big proposals are strict',
-  tools.length === 13 && tools.every((t) => t.strict === !core.LOOSE_TOOLS.includes(t.name) && t.input_schema?.additionalProperties === false && closed(t.input_schema)));
+check('every tool is closed and requires every property; all but the loose proposals are strict',
+  tools.length === 14 && tools.every((t) => t.strict === !core.LOOSE_TOOLS.includes(t.name) && t.input_schema?.additionalProperties === false && closed(t.input_schema)));
 check('a loose tool is still checked in full before it runs', 'error' in core.toolCall('propose_log', { summary: 's', performed_on: '2026-10-11', activity: 'x', sets: [{ exercise_id: 'e', reps: 8 }] }));
 check('MAX_ROUNDS is 6', core.MAX_ROUNDS === 6);
 // Anthropic refuses a request whose strict tools carry more than 16 union (nullable) parameters
@@ -146,6 +146,17 @@ check('sse frames a proposal as one JSON line',
 check('the coach has no meal tool and its prompt never mentions meals',
   !tools.some((t) => t.name === 'propose_meals') && !/meal/i.test(core.SYSTEM_PROMPT));
 check('a propose_meals call is not a tool', typeof core.toolCall('propose_meals', { summary: 'x', sections: [] }).error === 'string');
+
+// ---- 2026-11-23: a reading to save, and how this gym runs ----
+const rd = core.toolCall('propose_reading', { measured_on: 'today', readings: [{ field: 'weight_kg', value: 72 }, { field: 'waist_cm', value: 80 }] });
+check('propose_reading becomes a card, never a database call', rd.card?.type === 'reading' && rd.card.values.weight_kg === 72 && rd.card.values.waist_cm === 80 && !('rpc' in rd), JSON.stringify(rd));
+check('a reading field given twice is refused', 'error' in core.toolCall('propose_reading', { measured_on: 'today', readings: [{ field: 'weight_kg', value: 72 }, { field: 'weight_kg', value: 73 }] }));
+check('an unknown reading field is refused', 'error' in core.toolCall('propose_reading', { measured_on: 'today', readings: [{ field: 'bmi', value: 22 }] }));
+check('a reading card frames as one JSON line', core.sse(rd.card) === 'data: {"type":"reading","measured_on":"today","values":{"weight_kg":72,"waist_cm":80}}\n\n');
+check('the prompt sends how-it-works questions to get_gym_info and names the real tabs',
+  /how_this_gym_runs/.test(core.SYSTEM_PROMPT) && /Today · Train · You · More/.test(core.SYSTEM_PROMPT) && /Train → Coach/.test(core.SYSTEM_PROMPT)
+  && !/Book a Session from/.test(core.SYSTEM_PROMPT));
+check('the prompt logs only readings the member gave', /Never log a reading they did not give\./.test(core.SYSTEM_PROMPT));
 
 console.log(failed ? `\n${failed} FAILED` : '\nai-coach core: all checks passed');
 process.exit(failed ? 1 : 0);

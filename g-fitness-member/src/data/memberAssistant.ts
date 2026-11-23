@@ -92,6 +92,173 @@ export interface AssistantContext {
   points: number | null;
   /** 0253: the gym switched Points off — nothing about earning or balances may be promised. */
   pointsOff?: boolean;
+  /** How this gym runs (its settings, switches and booking modes). Null when it could not be read. */
+  setup?: GymSetup | null;
+}
+
+/** 0180: who confirms a member's booking. `off` = the front desk books it, not the app. */
+export type BookingMode = 'instant' | 'coach' | 'desk' | 'coach_desk' | 'off';
+
+/**
+ * How this gym runs, read from `gym_settings`, its module switches and `my_booking_modes()`.
+ * Every answer about booking, packages, freezing, day passes and closed days is worded from
+ * this, so two gyms set up differently get two different, true answers.
+ */
+export interface GymSetup {
+  /** Train shows Classes (module on and classes not booked at the desk only). */
+  classesOn: boolean;
+  /** Train shows Coach (personal training). */
+  coachingOn: boolean;
+  classMode: BookingMode | null;
+  ptMode: BookingMode | null;
+  /** 0181: the ways a package starts (pick_pt, pick_group, desk_assigns, coach_invites). */
+  coachingModes: string[];
+  /** 0258: who approves a member's pick of a coach. */
+  packageApproval: string | null;
+  /** Package lengths in months. */
+  packageMonths: number[];
+  /** included · gym_priced · trainer_direct */
+  packageFee: string | null;
+  /** 0 Sunday … 6 Saturday. */
+  closedDays: number[];
+  dayPass: { price: number | null; pack5: number | null; pack10: number | null } | null;
+  freezePerYear: number | null;
+  freezeAtOnce: number | null;
+  refundFee: number | null;
+  refundFeeReason: string | null;
+  /** You → Membership → Pause or cancel exists (module `requests`). */
+  requestsOn: boolean;
+  equipmentOn: boolean;
+  /** Today → Book a time (0259). */
+  slotsOn: boolean;
+  ptCancelMinutes: number | null;
+  classCancelMinutes: number | null;
+}
+
+const num = (v: unknown): number | null => (v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v));
+
+/** Settings row + the gym's switches + booking modes → GymSetup. Null when the row could not be read. */
+export function toGymSetup(
+  row: Record<string, unknown> | null,
+  moduleOn: (key: string) => boolean,
+  modes: { classMode: BookingMode; ptMode: BookingMode } | null,
+): GymSetup | null {
+  if (!row) return null;
+  const arr = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
+  return {
+    classesOn: moduleOn('classes') && modes?.classMode !== 'off',
+    coachingOn: moduleOn('coaching'),
+    classMode: modes?.classMode ?? null,
+    ptMode: modes?.ptMode ?? null,
+    coachingModes: arr<string>(row.coaching_modes),
+    packageApproval: (row.coaching_approval as string) ?? null,
+    packageMonths: arr<number>(row.coaching_lengths),
+    packageFee: (row.coaching_fee_mode as string) ?? null,
+    closedDays: arr<number>(row.closed_days),
+    dayPass: row.day_pass_on ? { price: num(row.day_pass_price), pack5: num(row.pack5_price), pack10: num(row.pack10_price) } : null,
+    freezePerYear: num(row.max_freeze_days_per_year),
+    freezeAtOnce: num(row.max_freeze_days_at_once),
+    refundFee: num(row.refund_processing_fee),
+    refundFeeReason: (row.refund_fee_reason as string) || null,
+    requestsOn: moduleOn('requests'),
+    equipmentOn: moduleOn('equipment'),
+    slotsOn: moduleOn('slots'),
+    ptCancelMinutes: num(row.pt_cancel_minutes),
+    classCancelMinutes: num(row.class_cancel_minutes),
+  };
+}
+
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const peso = (n: number) => `₱${n.toLocaleString()}`;
+const listWords = (xs: string[], conj = 'or') => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} ${conj} ${xs[xs.length - 1]}`);
+
+/** Who confirms a booking, in one clause. */
+function approvalWords(mode: BookingMode | string | null): string {
+  switch (mode) {
+    case 'instant': return 'it is confirmed straight away';
+    case 'coach': return 'the coach says yes or no';
+    case 'desk': return 'the front desk confirms it';
+    case 'coach_desk': return 'the coach says yes first, then the front desk confirms it';
+    default: return 'the gym confirms it';
+  }
+}
+
+const cancelWords = (mins: number | null) =>
+  mins && mins > 0
+    ? `You can cancel up to ${mins >= 60 && mins % 60 === 0 ? `${mins / 60} hour${mins === 60 ? '' : 's'}` : `${mins} minutes`} before it starts.`
+    : 'You can cancel it there before it starts.';
+
+/**
+ * Sessions, packages, classes and bookings at THIS gym, from its own settings, naming the real
+ * screens (Train → Coach, Train → Classes). The screenshot that started this (2026-11-23): a
+ * fixed "Open Book a Session from the bottom bar · Pick a class" card, for screens that do not
+ * exist under those names.
+ */
+function bookingAnswer(ctx: AssistantContext): string {
+  const s = ctx.setup;
+  if (!s) {
+    return '**Booking**\n\nOpen **Train** in the bottom bar. **Coach** has your 1-on-1 sessions and **Book a session**; if your gym runs group classes, **Classes** is there too.\n\nEvery booking waits until the gym confirms it, and you get a notification when it does.';
+  }
+  const name = ctx.gym?.name ? ` at ${ctx.gym.name}` : '';
+  const lines: string[] = [`**How booking works${name}**`, ''];
+  if (s.coachingOn) {
+    lines.push(s.ptMode === 'off'
+      ? '• **A session** is one 1-on-1 time with a coach. Your gym books these at the front desk, not in the app.'
+      : `• **A session** is one 1-on-1 time with a coach. Book it on **Train → Coach → Book a session**; ${approvalWords(s.ptMode)}.`);
+    const ways = s.coachingModes;
+    if (ways.some((w) => ['pick_pt', 'pick_group', 'desk_assigns', 'coach_invites'].includes(w))) {
+      const months = s.packageMonths.length ? ` for ${listWords(s.packageMonths.map(String))} month${s.packageMonths.length === 1 && s.packageMonths[0] === 1 ? '' : 's'}` : '';
+      const start: string[] = [];
+      if (ways.includes('pick_pt')) start.push(`pick a coach on **Train → Coach → Find a coach**${s.packageApproval ? ` (${approvalWords(s.packageApproval)})` : ''}`);
+      if (ways.includes('coach_invites')) start.push('a coach can invite you');
+      if (ways.includes('desk_assigns')) start.push('the front desk can assign you one');
+      const fee = s.packageFee === 'included' ? ' It comes with your plan, with nothing extra to pay.'
+        : s.packageFee === 'gym_priced' ? ' The gym sets its price, and you pay the gym.'
+        : s.packageFee === 'trainer_direct' ? ' You pay the coach directly.' : '';
+      lines.push(`• **A package** is coaching with one coach${months}: a chat with them, your sessions with them, and how far through you are. ${start.length ? `To start one, ${listWords(start)}.` : ''}${fee} It shows on **Train → Coach** under Your package.`);
+    }
+  } else {
+    lines.push('• Your gym does not run personal training in the app. The front desk can tell you about coaching.');
+  }
+  if (s.classesOn) {
+    lines.push(`• **A class** is a group class on the gym's timetable. Join one on **Train → Classes**; ${approvalWords(s.classMode)}.`);
+  }
+  lines.push(`• **A booking** is your request for one ${s.classesOn ? 'session or class' : 'session'}. It says *waiting for them to say yes* until it is approved, then *confirmed*, and you get a notification. All of them are on **Train → Coach → All your sessions**. ${cancelWords(s.ptCancelMinutes)}`);
+  if (s.slotsOn) lines.push('• To keep a place on the gym floor, use **Book a time** on **Today**.');
+  return lines.join('\n');
+}
+
+/** Pausing or ending a membership: the gym's limits, and the screen that asks. */
+function freezeAnswer(ctx: AssistantContext): string {
+  const s = ctx.setup;
+  const where = s?.requestsOn
+    ? 'Open **You → Membership → Pause or cancel**. You pick a reason and the dates; the front desk makes the change, and the days you paid for are not lost while it is frozen.'
+    : 'Ask the front desk. They make the change, and the days you paid for are not lost while it is frozen.';
+  const limits: string[] = [];
+  if (s?.freezeAtOnce) limits.push(`up to **${s.freezeAtOnce} days** at a time`);
+  if (s?.freezePerYear) limits.push(`about **${s.freezePerYear} days** a year`);
+  const freeze = limits.length ? `\n\nYour gym's guideline for freezing: ${limits.join(', ')}.` : '';
+  return `**Pausing or cancelling your membership**\n\n${where}${freeze}\n\nWhile frozen you cannot check in or book. Refunds when you cancel are explained in **More → Help → Terms of service**.`;
+}
+
+function refundAnswer(ctx: AssistantContext): string {
+  const s = ctx.setup;
+  const fee = s?.refundFee && s.refundFee > 0
+    ? ` The gym takes a fee of **${peso(s.refundFee)}**${s.refundFeeReason ? ` (${s.refundFeeReason})` : ''}.`
+    : '';
+  const ask = s?.requestsOn ? '**You → Membership → Pause or cancel** shows what you would get back before you ask.' : 'The front desk can tell you what you would get back.';
+  return `**Refunds**\n\nIf you cancel, you get back at least the unused part of what you paid.${fee} ${ask} The full rules are in **More → Help → Terms of service**.\n\nYour payments are under **You → Membership → Payments**.`;
+}
+
+function dayPassAnswer(ctx: AssistantContext): string {
+  const d = ctx.setup?.dayPass;
+  if (ctx.setup && !d) return `Your gym does not sell day passes in the app. ${ASK_DESK}`;
+  if (!d) return `Guest and walk-in visits are the gym's call. ${ASK_DESK}`;
+  const bits: string[] = [];
+  if (d.price != null) bits.push(`• One day: **${peso(d.price)}**`);
+  if (d.pack5 != null) bits.push(`• 5 days: **${peso(d.pack5)}**`);
+  if (d.pack10 != null) bits.push(`• 10 days: **${peso(d.pack10)}**`);
+  return ['**Day passes**', '', ...(bits.length ? bits : ['Your gym sells day passes; the front desk has the price.']), '', 'Bought and paid at the front desk.'].join('\n');
 }
 
 export const EMPTY_CONTEXT: AssistantContext = {
@@ -108,6 +275,7 @@ export const EMPTY_CONTEXT: AssistantContext = {
   access: null,
   points: null,
   gym: null,
+  setup: null,
 };
 
 /**
@@ -186,7 +354,7 @@ function accessLines(ctx: AssistantContext): string {
 function visitsAnswer(ctx: AssistantContext): string {
   if (ctx.checkInsThisMonth == null) return NO_CONTEXT;
   if (ctx.checkInsThisMonth === 0) return 'No gym visits recorded this month yet. A visit is logged when the front desk scans you in.';
-  return `You've been in **${ctx.checkInsThisMonth} ${ctx.checkInsThisMonth === 1 ? 'time' : 'times'}** this month. Your full history is under Profile → Attendance.`;
+  return `You've been in **${ctx.checkInsThisMonth} ${ctx.checkInsThisMonth === 1 ? 'time' : 'times'}** this month. Your full history is under **You → Membership → Attendance**.`;
 }
 
 function membershipAnswer(ctx: AssistantContext): string {
@@ -201,12 +369,12 @@ function membershipAnswer(ctx: AssistantContext): string {
     return `You're on **${ctx.planName}**, and it doesn't expire. Nothing to renew.${accessLines(ctx)}`;
   }
   if (term.kind === 'expired') {
-    return `Your **${ctx.planName}** membership has run out. Pay at the front desk and it extends the moment they record it.`;
+    return `Your **${ctx.planName}** membership has run out. Open **You → Membership → Renew membership**, then pay at the front desk; it extends the moment they record it.`;
   }
   if (!ctx.expiryDate) {
     return `You're on **${ctx.planName}**. It hasn't been activated yet — that happens when the front desk records your payment.`;
   }
-  return `You're on **${ctx.planName}**, valid until **${dateLabel(`${ctx.expiryDate}T00:00:00`)}** — ${term.value} ${term.unit} ${term.caption}.${accessLines(ctx)}`;
+  return `You're on **${ctx.planName}**, valid until **${dateLabel(`${ctx.expiryDate}T00:00:00`)}**: ${term.value} ${term.unit} ${term.caption}.${accessLines(ctx)}\n\nTo renew or change plan: **You → Membership → Renew or change plan**.${ctx.setup?.requestsOn ? ' To freeze or end it: **You → Membership → Pause or cancel**.' : ''}`;
 }
 
 function hoursAnswer(ctx: AssistantContext): string {
@@ -217,7 +385,10 @@ function hoursAnswer(ctx: AssistantContext): string {
     // hours, saying so is the only honest answer available.
     return `The opening hours aren't recorded in the app yet. ${ASK_DESK}`;
   }
-  return `**Opening hours**\n\nThe gym is open **${open} – ${close}**.`;
+  const closed = ctx.setup?.closedDays.length
+    ? `\n\nClosed on ${listWords(ctx.setup.closedDays.filter((d) => d >= 0 && d <= 6).map((d) => `**${DAY_NAMES[d]}**`), 'and')}.`
+    : '';
+  return `**Opening hours**\n\nThe gym is open **${open} to ${close}**.${closed}`;
 }
 
 function locationAnswer(ctx: AssistantContext): string {
@@ -269,12 +440,12 @@ function contactAnswer(ctx: AssistantContext): string {
 function planAnswer(ctx: AssistantContext, wantToday: boolean): string {
   const spec = ctx.plan;
   if (!spec) {
-    return 'You have not built a training plan yet.\n\nOpen **Profile → Training plan** — five questions and it builds a week around your days and your goal.';
+    return 'You have not built a training plan yet.\n\nOpen **Train → Workout**: your workouts, your week and the library are there.';
   }
 
   const days = spec.days;
   if (days.length === 0) {
-    return 'Your saved plan has no training days in it. Rebuild it from **Profile → Training plan**.';
+    return 'Your saved plan has no training days in it. Open **Train → Workout** to set your week again.';
   }
 
   // "Today" is which planned day, not which calendar day: the plan is a week
@@ -288,7 +459,7 @@ function planAnswer(ctx: AssistantContext, wantToday: boolean): string {
       '',
       ...days.map((d) => `• **${d.label}** — ${d.focus} (${d.exercises.length} exercise${d.exercises.length === 1 ? '' : 's'})`),
       '',
-      'Tap **Profile → Training plan** for the full sets and reps, or **Track sets** to record it as you go.',
+      'Open **Train → Workout** to start one and record each set as you go.',
     ].join('\n');
   }
 
@@ -321,9 +492,9 @@ function pointsAnswer(ctx: AssistantContext): string {
     return 'CORE Points are not part of your current plan.\n\nOn a plan that includes them you earn points for checking in, logging workouts and finishing challenges, then spend them on gym rewards. The front desk can tell you which plan adds it.';
   }
   const bal = ctx.points == null
-    ? "I couldn't read your balance just now — open **Profile → CORE Points** to see it."
+    ? "I couldn't read your balance just now — open **More → Rewards** to see it."
     : `You have **${ctx.points.toLocaleString()} CORE Points**.`;
-  return `**CORE Points**\n\n${bal}\n\nYou earn them by checking in, logging a workout, attending a class or session, reaching a goal and finishing a challenge — the exact amounts are listed in **Profile → CORE Points**, because the gym can change them. Rewards are claimed there and handed over at the desk once the gym approves.`;
+  return `**CORE Points**\n\n${bal}\n\nYou earn them by checking in, logging a workout, attending a class or session, reaching a goal and finishing a challenge — the exact amounts are listed in **More → Rewards**, because the gym can change them. Rewards are claimed there and handed over at the desk once the gym approves.`;
 }
 
 /** Challenges (0052). Progress is counted, so say so — that is the selling point. */
@@ -332,21 +503,21 @@ function challengesAnswer(ctx: AssistantContext): string {
   if (gated) {
     return 'Challenges are not part of your current plan. The front desk can tell you which plan includes them.';
   }
-  return '**Challenges**\n\nOpen **Profile → Challenges** to see what the gym is running and join one. Your progress is counted automatically from your check-ins and logged workouts — there is nothing to tick off, and nothing you can accidentally forget to record. Finish one and the points are added for you.';
+  return '**Challenges**\n\nOpen **More → Rewards → Challenges** to see what the gym is running and join one. Your progress is counted automatically from your check-ins and logged workouts — there is nothing to tick off, and nothing you can accidentally forget to record. Finish one and the points are added for you.';
 }
 
 /** The set-by-set tracker (0050), as distinct from the quick log that predates it. */
 function trackerAnswer(ctx: AssistantContext): string {
   const gated = ctx.access?.excluded.some((e) => /tracker/i.test(e)) ?? false;
   if (gated) {
-    return 'Recording exercises set by set is not part of your current plan — but you can still log a session with **Progress → Workouts → Quick log** ("Weights, 45 minutes"), and that has not changed.\n\nThe front desk can tell you which plan adds the full tracker.';
+    return 'Recording exercises set by set is not part of your current plan — but you can still start an empty workout on **Train → Workout** and save it, and that has not changed.\n\nThe front desk can tell you which plan adds the full tracker.';
   }
-  return '**Tracking a workout**\n\nOpen **Progress → Workouts → Track sets**. Pick an exercise, then add each set as you finish it — reps and weight, or minutes for things like the treadmill and planks. Every set saves as you enter it, so locking your phone between sets loses nothing.\n\nFor a quick note instead of set-by-set detail, **Quick log** on the same screen still works.';
+  return '**Tracking a workout**\n\nOpen **Train → Workout** and start one of your workouts, or an empty one. Add each set as you finish it: reps and weight, or time for things like planks. Every set saves as you enter it, so locking your phone between sets loses nothing.';
 }
 
 /** Preset goals (0055) — the five that track themselves. */
 function goalsAnswer(): string {
-  return '**Goals**\n\nOpen **Progress → Goals**. Alongside number goals like "get to 70 kg", there are ready-made ones that track themselves from your check-ins and logged workouts — build consistency, stay active, improve fitness, increase strength, improve endurance.\n\nEach one says exactly how it is counted, and the gym marks it reached for you; you never have to claim it.';
+  return '**Goals**\n\nOpen **You → Progress → Targets**. Alongside number goals like "get to 70 kg", there are ready-made ones that track themselves from your check-ins and logged workouts — build consistency, stay active, improve fitness, increase strength, improve endurance.\n\nEach one says exactly how it is counted, and the gym marks it reached for you; you never have to claim it.';
 }
 
 /**
@@ -358,7 +529,7 @@ function goalsAnswer(): string {
 function lockedAnswer(ctx: AssistantContext): string {
   const a = ctx.access;
   if (!a) {
-    return "I couldn't read what your plan includes just now. Open **Profile → Membership** and it is listed there.";
+    return "I couldn't read what your plan includes just now. Open **You → Membership** and it is listed there.";
   }
   if (a.isFullAccess) {
     return 'Your plan includes everything the app offers, so nothing should be locked. If a screen still shows a lock, tell the front desk — that is a bug, not your membership.';
@@ -368,7 +539,7 @@ function lockedAnswer(ctx: AssistantContext): string {
 
 /** Trainer certificates (0054) — members never see the file, so be honest about it. */
 function credentialsAnswer(): string {
-  return "Coaches can upload their certificates for the gym to check, and the gym marks them verified once it has seen the document.\n\nThe certificates themselves aren't shown in the app — you'll see what a coach lists on their profile in **Book → Trainers**. Ask the front desk if you want to know more about a coach's qualifications.";
+  return "Coaches can upload their certificates for the gym to check, and the gym marks them verified once it has seen the document.\n\nThe certificates themselves aren't shown in the app — you'll see what a coach lists on their profile in **Train → Coach → Find a coach**. Ask the front desk if you want to know more about a coach's qualifications.";
 }
 
 /**
@@ -440,12 +611,15 @@ const RULES: { match: RegExp; reply: (ctx: AssistantContext) => string; kind?: R
     // worse than not answering.
     match: /\b(?:cancel\w*|kansel\w*)\b.*\b(?:booking|book\w*|session|class(?:es)?|reservation|schedule)\b|\b(?:booking|session|class)\b.*\bcancel\w*\b/,
     reply: () =>
-      '**Cancelling a session**\n\nOpen **Profile → My bookings**, find the session and cancel it there. If it is close to the start time, tell the front desk or your coach as well so the slot can be reused.',
+      '**Cancelling a session**\n\nOpen **Train → Coach → All your sessions**, find it and cancel it there. If it is close to the start time, tell the front desk or your coach as well so the slot can be reused.',
+  },
+  {
+    match: /\b(?:refund|reimburs\w*|money back|sauli)\b/,
+    reply: refundAnswer,
   },
   {
     match: /\b(?:freeze|frozen|paus\w*|cancel\w*|hinto|tigil)\b/,
-    reply: () =>
-      'Freezing or cancelling your membership is a front-desk request — they can pause it so the days you already paid for are not lost.',
+    reply: freezeAnswer,
   },
   {
     // `when does` deliberately absent: "when does the gym open" would have been
@@ -463,7 +637,7 @@ const RULES: { match: RegExp; reply: (ctx: AssistantContext) => string; kind?: R
     match: /\b(?:my code|check ?-?in code|qr|scan|check(?:ed)? ?-?in|code ko)\b/,
     reply: (ctx) =>
       ctx.memberId
-        ? `Your check-in code is **${formatCheckInCode(ctx.memberId)}**.\n\nTap the QR button in the middle of the bottom bar to show your code at the desk. If the scanner won't read it, read those six characters out instead.`
+        ? `Your check-in code is **${formatCheckInCode(ctx.memberId)}**.\n\nTap the check-in block at the right end of the bottom bar to show your code at the desk. If the scanner won't read it, read those six characters out instead.`
         : NO_CONTEXT,
   },
   {
@@ -471,7 +645,7 @@ const RULES: { match: RegExp; reply: (ctx: AssistantContext) => string; kind?: R
     reply: (ctx) =>
       ctx.nextBooking && ctx.nextBooking.startsAt
         ? `Your next session is **${ctx.nextBooking.title}** on ${dateLabel(ctx.nextBooking.startsAt)} at ${timeLabel(ctx.nextBooking.startsAt)}.\n\n${ctx.nextBooking.subtitle}`
-        : "You've got nothing booked at the moment. Open **Book a Session** to pick a class or a 1-on-1.",
+        : `You have nothing booked at the moment. ${ctx.setup?.classesOn ? 'Book a 1-on-1 on **Train → Coach**, or a class on **Train → Classes**.' : 'Book a 1-on-1 on **Train → Coach → Book a session**.'}`,
   },
   {
     // NOT a bare `how many`: it swallowed "how many times a week should I train
@@ -485,7 +659,7 @@ const RULES: { match: RegExp; reply: (ctx: AssistantContext) => string; kind?: R
     // redirection to the desk.
     match: /\b(?:password|passwor\w*|forgot my|reset|change my email|update my email|log ?in again)\b/,
     reply: () =>
-      '**Your account**\n\n• Change your password: **Profile → Settings → Change password**\n• Change your email: **Profile → Settings → Change email**\n\nIf you cannot sign in at all, the front desk can reset it for you.',
+      '**Your account**\n\n• Change your password or email: **More → Settings**\n\nIf you cannot sign in at all, the front desk can reset it for you.',
   },
   {
     match: /\b(?:delete my account|close my account|deactivat\w*)\b/,
@@ -501,10 +675,21 @@ const RULES: { match: RegExp; reply: (ctx: AssistantContext) => string; kind?: R
     reply: contactAnswer,
   },
   {
+    // Before prices: "how much is a package" and "the difference between a session and a
+    // package" are about how this gym runs coaching, not the membership price list.
+    match: /\b(?:packages?|pakete|differen\w*|pagkakaiba)\b/,
+    reply: bookingAnswer,
+  },
+  {
+    // Before prices too: "how much is a day pass" is not a membership plan.
+    match: /\b(?:day ?pass\w*|walk ?-?ins?|drop ?-?ins?)\b/,
+    reply: dayPassAnswer,
+  },
+  {
     match: /\b(?:price|pricing|cost|fee|how much|plan|tier|magkano|presyo|bayad)s?\b/,
     reply: (ctx) =>
       ctx.plans.length === 0
-        ? 'I could not load the current plans. Ask at the front desk, or open Membership from your profile.'
+        ? 'I could not load the current plans. Ask at the front desk, or open **You → Membership**.'
         : ['**Current plans:**']
             .concat(
               ctx.plans.map(
@@ -514,7 +699,7 @@ const RULES: { match: RegExp; reply: (ctx: AssistantContext) => string; kind?: R
                   }`
               )
             )
-            .concat(['', 'Cash at the front desk — nothing is charged through the app.'])
+            .concat(['', 'To renew or change plan: **You → Membership → Renew or change plan**.'])
             .join('\n'),
   },
   {
@@ -526,25 +711,25 @@ const RULES: { match: RegExp; reply: (ctx: AssistantContext) => string; kind?: R
     // at the screen that lists what the gym actually runs, rather than claiming
     // the gym does or does not offer it.
     match: /\b(?:zumba|yoga|spin\w*|crossfit|boxing|pilates|aerobic\w*|muay ?thai)\b/,
-    reply: () =>
-      'Open **Book a Session** — it lists every class the gym is actually running this week, with the coach and the times. If you do not see it there, the front desk can tell you whether it is planned.',
+    reply: (ctx) =>
+      ctx.setup && !ctx.setup.classesOn
+        ? `Your gym does not run group classes in the app. ${ASK_DESK}`
+        : 'Open **Train → Classes**. It lists every class the gym is actually running, with the coach and the times. If you do not see it there, the front desk can tell you whether it is planned.',
   },
   {
     match: /\b(?:book\w*|class(?:es)?|schedul\w*|sessions?|reserv\w*|paano mag)\b/,
-    reply: () =>
-      '**Booking a session**\n\n• Open **Book a Session** from the bottom bar\n• Pick a class, or a 1-on-1 with a trainer\n• Your request goes to the gym for approval\n\nYou will get a notification when it is approved.',
+    reply: bookingAnswer,
   },
   {
     match: /\b(?:my trainer|my coach|who is my|assigned|sino.*(?:trainer|coach))\b/,
     reply: (ctx) =>
       ctx.nextBooking
-        ? `Your next session is with **${ctx.nextBooking.subtitle}**. The full list of coaches is under **Trainers**, where you can see what each one specialises in.`
-        : 'You do not have a coach assigned by default — you pick one when you book. Open **Trainers** to see who is available and what they specialise in.',
+        ? `Your next session is with **${ctx.nextBooking.subtitle}**. Every coach is on **Train → Coach → Find a coach**, with what each one specialises in.`
+        : 'You do not have a coach yet. **Train → Coach → Find a coach** lists every coach and what they specialise in.',
   },
   {
     match: /\b(?:trainers?|coach(?:es)?|pt|personal train\w*)\b/,
-    reply: () =>
-      'Personal training depends on your plan. Open **Book a Session** — it shows what yours includes — and **Trainers** lists every coach with their background and rating.',
+    reply: bookingAnswer,
   },
   {
     // Safety first, and consistent with planBuilder.ts: a stated injury gets a
@@ -558,7 +743,7 @@ const RULES: { match: RegExp; reply: (ctx: AssistantContext) => string; kind?: R
     match: /\b(?:how do i do|form|technique|proper way|posture|squat|deadlift|bench|push ?-?up)\b/,
     kind: 'general',
     reply: () =>
-      '**Learning a movement**\n\n• **Profile → Free workouts** has routines and videos the gym recommends\n• A 1-on-1 session is the fastest way to have your form watched — book one under **Book a Session**\n\nHaving the main lifts checked once is worth more than reading about them.',
+      '**Learning a movement**\n\n• **Train → Workout → Library** has workouts and videos the gym recommends\n• A 1-on-1 session is the fastest way to have your form watched: **Train → Coach**\n\nHaving the main lifts checked once is worth more than reading about them.',
   },
   {
     match: /\b(?:eat|diet|nutrition|food|protein|meal|calorie|kain|pagkain)s?\b/,
@@ -568,23 +753,20 @@ const RULES: { match: RegExp; reply: (ctx: AssistantContext) => string; kind?: R
   },
   {
     match: /\b(?:amenit\w*|facilit\w*|equipment|shower|locker|parking|wifi|wi-?fi|aircon|banyo)s?\b/,
-    reply: () =>
-      '**On site**\n\n• Free weights and cardio machines\n• Locker rooms and showers\n• Group classes and personal training\n\nFor anything else — parking, wifi, and the like — the front desk can confirm what is available.',
+    // Never a list typed here: it once promised lockers, showers and classes at every gym.
+    reply: (ctx) =>
+      ctx.setup?.equipmentOn
+        ? '**More → Equipment** lists what your gym has and where it is. For parking, wifi and the like, the front desk can tell you.'
+        : `What the gym has on site is not listed in the app. ${ASK_DESK}`,
   },
   {
-    match: /\b(?:guest|friend|bring\w*|walk ?-?in|trial|kasama|isama)\b/,
-    reply: () =>
-      `Guest and trial visits are a gym policy rather than something the app decides. ${ASK_DESK}`,
+    match: /\b(?:guest|friend|bring\w*|walk ?-?in|trial|day ?pass\w*|drop ?-?ins?|kasama|isama)\b/,
+    reply: dayPassAnswer,
   },
   {
     match: /\b(?:dress code|attire|wear|shoes|age limit|minor|rules?|policy|policies|bawal|pwede ba)\b/,
     reply: () =>
-      `That is a gym policy and is not stored in the app, so I would rather not guess. ${ASK_DESK}`,
-  },
-  {
-    match: /\b(?:refund|reimburs\w*|money back|sauli)\b/,
-    reply: () =>
-      'Refunds are handled case by case by the gym, so please ask at the front desk. Your payment history is under **Profile → Payments** if you need the dates and amounts.',
+      `Your gym's house rules are in **More → Help → Terms of service**. For anything not written there, the front desk can tell you.`,
   },
   {
     // An honest "we do not measure that" beats a confident guess about how busy
@@ -596,18 +778,18 @@ const RULES: { match: RegExp; reply: (ctx: AssistantContext) => string; kind?: R
   {
     match: /\b(?:pay\w*|paid|cash|gcash|card|receipt|invoice)s?\b/,
     reply: () =>
-      'Your gym takes **cash at the front desk**. Your membership extends the moment staff record the payment, and the receipt appears under Profile → Payments.',
+      'Your gym takes **cash at the front desk**. Your membership extends the moment staff record the payment, and the receipt appears under **You → Membership → Payments**.',
   },
   {
     // NOT a bare `weights`: "should I do cardio before or after weights" is a
     // programming question, not a request to open the logging screen.
     match: /\b(?:progress|my weight|weigh ?-?ins?|measurement|body ?map|log my|goals?)s?\b/,
     reply: () =>
-      '**Tracking progress**\n\n• Log measurements, workouts and goals under **Progress**\n• Build a training week under **Profile → Training plan**\n• Your trainer can leave recommendations there too\n\nCharts fill in as you add entries.',
+      '**Tracking progress**\n\n• Weight and measurements: **You → Progress → Body**\n• Targets: **You → Progress → Targets**\n• Workouts: **Train → Workout**\n\nYou can also just tell me, for example *log my weight 72 kg*, and I will save it after you tap Save.',
   },
   {
     match: /\b(?:event|announce\w*)s?\b/,
-    reply: () => 'Anything the gym has coming up shows under **Book**, and in full under **Events**.',
+    reply: () => 'Anything the gym has coming up is in **More → Inbox → From the gym**.',
   },
   { match: /\b(?:thanks?|thank you|salamat)\b/, reply: () => 'Anytime. Enjoy your session.' },
   {
@@ -617,7 +799,7 @@ const RULES: { match: RegExp; reply: (ctx: AssistantContext) => string; kind?: R
 ];
 
 const FALLBACK =
-  "I don't have an answer for that one. I can help with:\n\n• Your membership, days left and payments\n• Your check-in code and visits\n• Booking classes and trainers\n• Prices, opening hours and where the gym is\n• Tracking your progress\n\nFor anything else, the front desk is the fastest route.";
+  "I don't have an answer for that one. I can help with:\n\n• Your membership, days left and payments\n• Your check-in code and visits\n• How sessions, packages and bookings work here\n• Prices, opening hours, day passes and where the gym is\n• Freezing, cancelling and refunds\n• Logging your weight and measurements\n\nFor anything else, the front desk is the fastest route.";
 
 /**
  * True when `answerFor` had nothing and returned the catch-all.
@@ -643,6 +825,14 @@ const COACH_REQUEST =
   /\b(?:propose|suggest|recommend|make|create|build|design|plan|set(?: up)?|change|update|adjust|swap|give me|help me|can you|could you|write|add)\b.*?\b(?:routines?|workouts?|programs?|programmes?|(?<!(?:premium|free|membership|trial|gym) )plans?|schedules?|weeks?|days|split|goals?|meals?|diet|food|eating|nutrition|exercises?|training|reminders?)\b/;
 
 /**
+ * A question that wants an explanation, not a fact or a screen: "what's the difference between
+ * a session, a booking and a package", "explain how freezing works". A keyword card answers one
+ * word of it (the 2026-11-23 screenshot answered "session" with a booking card); the coach reads
+ * the gym's own setup (get_gym_info) and explains the whole question.
+ */
+const EXPLAIN = /\b(?:differen\w*|pagkakaiba|explain\w*|ipaliwanag|compare|versus|vs\.?|how does (?:it|this|the|a|an|booking|freezing|coaching)\b.*\bwork|what(?:'s| is| are) (?:a |an |the )?(?:package|session|booking|class)e?s?\b(?! today))\b/;
+
+/**
  * `opts.coach`: the AI coach can take this message. Only then does a request
  * to make or change something, or a general form/eating/goals question, fall
  * through to the coach — every fact stays the rules'. Without it (the popup,
@@ -659,7 +849,7 @@ export function answerFor(
     for (const rule of RULES) {
       if (rule.kind === 'injury' && rule.match.test(q)) return rule.reply(ctx);
     }
-    if (COACH_REQUEST.test(q)) return FALLBACK;
+    if (COACH_REQUEST.test(q) || EXPLAIN.test(q)) return FALLBACK;
     for (const rule of RULES) {
       if (rule.kind === 'general' || rule.kind === 'injury') continue;
       if (rule.match.test(q)) return rule.reply(ctx);
@@ -686,5 +876,66 @@ export function suggestionsFor(ctx: AssistantContext): string[] {
   if (includes(/point/i)) extras.push('How do I earn CORE Points?');
   if (includes(/challenge/i)) extras.push('What challenges are running?');
   if (ctx.plan) extras.push('What is my workout today?');
-  return [...personal, ...extras, 'How do I book a class?', 'Opening hours', 'Prices'].slice(0, 5);
+  const book = ctx.setup?.classesOn === false ? 'How do I book a session?' : 'How do I book a class?';
+  return [...personal, ...extras, book, 'Opening hours', 'Prices'].slice(0, 5);
+}
+
+/** Every reading the Progress → Body screen takes (`body_measurements`), with the words members use. */
+export const READING_FIELDS = [
+  { key: 'weight_kg', label: 'Weight', unit: 'kg', words: 'weight|weigh|weighed|timbang', min: 20, max: 400 },
+  { key: 'body_fat_pct', label: 'Body fat', unit: '%', words: 'body ?fat|bf', min: 2, max: 75 },
+  { key: 'height_cm', label: 'Height', unit: 'cm', words: 'height|tangkad', min: 50, max: 250 },
+  { key: 'waist_cm', label: 'Waist', unit: 'cm', words: 'waist|baywang', min: 30, max: 250 },
+  { key: 'chest_cm', label: 'Chest', unit: 'cm', words: 'chest|dibdib', min: 40, max: 250 },
+  { key: 'hips_cm', label: 'Hips', unit: 'cm', words: 'hips?|balakang', min: 40, max: 250 },
+  { key: 'arms_cm', label: 'Arms', unit: 'cm', words: 'arms?|biceps?|braso', min: 10, max: 100 },
+  { key: 'thighs_cm', label: 'Thighs', unit: 'cm', words: 'thighs?|hita', min: 20, max: 150 },
+  { key: 'neck_cm', label: 'Neck', unit: 'cm', words: 'neck|leeg', min: 20, max: 80 },
+  { key: 'shoulders_cm', label: 'Shoulders', unit: 'cm', words: 'shoulders?|balikat', min: 60, max: 200 },
+  { key: 'forearm_cm', label: 'Forearms', unit: 'cm', words: 'forearms?', min: 10, max: 80 },
+  { key: 'calf_cm', label: 'Calves', unit: 'cm', words: 'calf|calves|binti', min: 15, max: 80 },
+] as const;
+export type ReadingKey = typeof READING_FIELDS[number]['key'];
+export interface Reading { measuredOn: 'today' | 'yesterday'; values: Partial<Record<ReadingKey, number>> }
+
+/** The card's lines, e.g. "Weight 72 kg". */
+export function readingLines(r: Reading): string[] {
+  return READING_FIELDS.filter((f) => r.values[f.key] != null).map((f) => `${f.label} ${r.values[f.key]}${f.unit === '%' ? '%' : ` ${f.unit}`}`);
+}
+
+/** The coach's propose_reading values → a Reading, keeping only known fields inside Progress's ranges. */
+export function readingFromValues(raw: Record<string, unknown>, measuredOn: Reading['measuredOn']): Reading | null {
+  const values: Reading['values'] = {};
+  for (const f of READING_FIELDS) {
+    const v = raw[f.key];
+    if (typeof v === 'number' && Number.isFinite(v) && v >= f.min && v <= f.max) values[f.key] = v;
+  }
+  return Object.keys(values).length ? { measuredOn, values } : null;
+}
+
+const LOG_INTENT = /\b(?:log|record|save|add|update|put|enter|i-?log|ilagay|i weigh|weighed|i'?m|i am|my [a-z ]{2,20} (?:is|was|are|were|now))\b/;
+
+/**
+ * "Log my weight 72 kg", "waist 80 cm and chest 100", "I weigh 68.5 today" → a reading to confirm,
+ * or null. Needs a logging intent and a number beside a known reading; a question about how to
+ * log ("how do I log my weight") has no number and stays a question. Out-of-range values are
+ * dropped (Progress refuses them too), and pounds or inches are never converted: a guess at a unit
+ * would be a made-up reading.
+ */
+export function readingFrom(question: string): Reading | null {
+  const q = question.toLowerCase();
+  if (!LOG_INTENT.test(q) || /\b(?:lbs?|pounds?|inch\w*|in\.)\b/.test(q)) return null;
+  const values: Reading['values'] = {};
+  // Longest words first, so "forearm" is not read as "arm" and "body fat" not as nothing.
+  const fields = [...READING_FIELDS].sort((a, b) => b.words.length - a.words.length);
+  let rest = q;
+  for (const f of fields) {
+    const m = new RegExp(`\\b(?:${f.words})\\b[^\\d]{0,20}?(\\d{1,3}(?:[.,]\\d{1,2})?)(?![\\d.]|\\s*(?:mins?|minutes?|reps?|sets?|times?|days?|weeks?|secs?|seconds?|hours?|hrs?|x)\\b)`).exec(rest);
+    if (!m) continue;
+    const v = Number(m[1].replace(',', '.'));
+    if (v >= f.min && v <= f.max) values[f.key] = v;
+    rest = rest.slice(0, m.index) + ' '.repeat(m[0].length) + rest.slice(m.index + m[0].length);
+  }
+  if (Object.keys(values).length === 0) return null;
+  return { measuredOn: /\b(?:yesterday|kahapon)\b/.test(q) ? 'yesterday' : 'today', values };
 }
