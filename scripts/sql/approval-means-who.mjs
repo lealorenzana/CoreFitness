@@ -96,6 +96,30 @@ b = await book(await newClass());
 await owner();
 check('a sweep with no user may still settle a request', (await tryExec(`update bookings set status = 'rejected' where id = '${b}'`)) === null && (await status(b)) === 'rejected');
 
+// ---- 0268: the owner's page-load sweep expires stale requests at every mode ----
+for (const mode of ['coach_desk', 'coach']) {
+  await setModes(mode, mode);
+  await owner();
+  const pastClass = (await one(`insert into classes (gym_id, name, trainer_id, capacity, scheduled_at, duration_minutes)
+    values ('${GYM}', 'Past ${mode}', '${T}', 10, now() - interval '${mode === 'coach' ? 30 : 50} hours', 60) returning id`)).id;
+  const pb = (await one(`insert into bookings (gym_id, member_id, class_id, status) values ('${GYM}', '${M}', '${pastClass}', 'pending') returning id`)).id;
+  const ps = (await one(`insert into pt_sessions (gym_id, member_id, trainer_id, starts_at, duration_minutes, status)
+    values ('${GYM}', '${M}', '${T}', now() - interval '${mode === 'coach' ? 35 : 55} hours', 60, 'pending') returning id`)).id;
+  for (const who of [['owner', AD], ['desk', ST]]) {
+    await as(who[1]);
+    err = await tryExec(`select sweep_stale_requests()`);
+    check(`${mode}: the ${who[0]}'s sweep runs`, err === null, err ?? '');
+  }
+  await owner();
+  check(`${mode}: …and expires the past class request`, (await status(pb)) === 'rejected');
+  check(`${mode}: …and the past 1-on-1 request`, (await one(`select status::text s from pt_sessions where id = '${ps}'`)).s === 'rejected');
+}
+// The sweep's pass is transaction-local: the owner still cannot decline in the coach's place.
+await setModes('coach_desk', 'coach_desk');
+b = await book(await newClass());
+await as(AD); await tryExec(`select sweep_stale_requests()`);
+check('after a sweep the owner still cannot decline before the coach', (await decideAs(AD, b, 'rejected')) !== null && (await status(b)) === 'pending');
+
 check('the helper is not callable from the app', !(await one(`select has_function_privilege('authenticated', 'booking_coach_can_decide(uuid, uuid)', 'execute') x`)).x);
 check('marker', (await one(`select migration_0203_applied() ok`)).ok === true);
 console.log(failures ? `\n${failures} FAILED` : '\nall 0203 checks passed');
