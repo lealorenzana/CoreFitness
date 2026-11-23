@@ -767,3 +767,10 @@ button.v2-railrow:hover, .v2-railbtn:hover { background: rgb(var(--hair-rgb, 255
 .att .ya-sec { padding-bottom: 48px; }
 .att .ya-sec + .ya-sec { padding-top: 40px; }
 .att .ya-h { margin-bottom: 10px; }
+
+/* Help's conversation (owner, 2026-11-23: "too long when there's a conversation"): a chat that scrolls in place. */
+.att .help-thread { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 10px; padding: 2px 4px 2px 0; }
+.att .help-thread .a-msg { width: fit-content; max-width: min(72%, 640px); margin: 0; }
+.att .help-thread .a-msg.me { align-self: flex-end; }
+.att .help-thread .a-msg:not(.me) { align-self: flex-start; }
+.att .a-card.a-scroll:has(> .help-thread) { overflow: hidden; display: flex; flex-direction: column; }

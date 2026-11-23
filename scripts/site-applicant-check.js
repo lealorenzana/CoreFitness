@@ -180,7 +180,7 @@ async (page) => {
   await page.evaluate(() => localStorage.clear());
 
   // ---- 0190: applying with Google — filled in, no password, one step at a time ----
-  const GUSER = { ...USER, id: 'u-g', email: 'gabby.owner@gmail.com', app_metadata: { provider: 'google' }, user_metadata: { full_name: 'Gabby Owner' } };
+  const GUSER = { ...USER, id: 'u-g', email: 'gabby.owner@gmail.com', app_metadata: { provider: 'email', providers: ['email', 'google'] }, user_metadata: { full_name: 'Gabby Owner' } };
   const GSESSION = { access_token: JWT, token_type: 'bearer', expires_in: 3600, expires_at: exp, refresh_token: 'r2', user: GUSER };
   CALLS.length = 0;
   await page.setViewportSize({ width: 1280, height: 900 });

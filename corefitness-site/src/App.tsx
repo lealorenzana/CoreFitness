@@ -554,7 +554,10 @@ function ApplySection({ tiers, chosen, siteAccount, title, closed }: {
     if (!supabase) return;
     void supabase.auth.getSession().then(({ data }) => {
       const u = data.session?.user;
-      if (!u || !u.email || u.app_metadata?.provider !== 'google') return;
+      // `provider` is only the FIRST way the account signed in: an account made with email and later linked to Google
+      // reads 'email' there, and its Google sign-in was ignored (2026-11-23). Google among its methods is what counts.
+      const methods: string[] = u?.app_metadata?.providers ?? (u?.app_metadata?.provider ? [u.app_metadata.provider] : []);
+      if (!u || !u.email || !methods.includes('google')) return;
       const name = String(u.user_metadata?.full_name ?? u.user_metadata?.name ?? '');
       setGoogle({ email: u.email, name });
       setForm((f) => ({ ...f, email: u.email!, owner_name: f.owner_name || name }));

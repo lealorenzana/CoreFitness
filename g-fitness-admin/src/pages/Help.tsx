@@ -355,7 +355,9 @@ function Questions({ tickets, extras, owner, gymId, composing, setComposing, rel
                 <div><b>What was fixed</b><div className="a-sub" style={{ marginTop: 2, whiteSpace: 'pre-wrap' }}>{access.resolution}</div></div>
               </div>
             )}
-            <div className="flex flex-col gap-2">
+            {/* A chat, not a stack of full-width bars (owner, 2026-11-23): bubbles sized to their words, yours on the
+                right; the thread scrolls in its own box and opens at the newest message; the reply stays at the foot. */}
+            <div className="help-thread" key={msgs.length} ref={(el) => { if (el) el.scrollTop = el.scrollHeight; }} data-help-thread>
               {msgs.map((m) => (
                 <div key={m.id} className={`a-msg ${m.fromPlatform ? '' : 'me'}`}>
                   <b style={{ color: m.fromPlatform ? 'var(--a-p300)' : undefined }}>{m.authorName}</b> <span className="a-sub">· {when(m.createdAt)}</span>{'\n'}{m.body}
