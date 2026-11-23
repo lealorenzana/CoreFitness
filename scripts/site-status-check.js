@@ -46,8 +46,17 @@ async (page) => {
   // ---- the place picker -------------------------------------------------------------------------------
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('http://localhost:5176/#apply', { waitUntil: 'domcontentloaded' });
+  // The form is five steps (site redesign 2026-11-24): Next walks to the step holding `sel`, choosing a plan on the first.
+  const stepTo = async (sel) => {
+    await page.locator('.v2-wizard-actions').waitFor();
+    for (let i = 0; i < 5 && !(await page.locator(sel).first().isVisible()); i++) {
+      const opt = page.locator('.plan-opt').first();
+      if (await opt.isVisible() && (await opt.getAttribute('aria-pressed')) !== 'true') await opt.click();
+      await page.locator('.v2-wizard-actions').getByRole('button', { name: /^Next/ }).click();
+    }
+  };
   const province = page.locator('#province');
-  await province.waitFor();
+  await stepTo('#province');
   await page.waitForFunction(() => document.querySelectorAll('#province option').length > 50, null, { timeout: 10000 });
   const provinces = await province.locator('option').count();
   out.push('provinces listed: ' + (provinces >= 80 ? provinces - 1 : 'MISSING ' + provinces));

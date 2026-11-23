@@ -84,7 +84,16 @@ async (page) => {
   // ---- the apply form makes an account -------------------------------------------------------------------
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('http://localhost:5176/#apply', { waitUntil: 'domcontentloaded' });
-  await page.locator('#gym_name').waitFor();
+  // The form is five steps (site redesign 2026-11-24): Next walks to the step holding `sel`, choosing a plan on the first.
+  const stepTo = async (sel) => {
+    await page.locator('.v2-wizard-actions').waitFor();
+    for (let i = 0; i < 5 && !(await page.locator(sel).first().isVisible()); i++) {
+      const opt = page.locator('.plan-opt').first();
+      if (await opt.isVisible() && (await opt.getAttribute('aria-pressed')) !== 'true') await opt.click();
+      await page.locator('.v2-wizard-actions').getByRole('button', { name: /^Next/ }).click();
+    }
+  };
+  await stepTo('#gym_name');
   await page.locator('#voices').waitFor({ timeout: 8000 }).catch(() => {});
   out.push('approved owners\' words are on the page: ' + (/Core Fitness changed how we run the desk\./.test(await page.locator('main').innerText()) && /Owner, G Fitness/.test(await page.locator('main').innerText()) ? 'yes' : 'MISSING'));
   out.push('the form asks for a password: ' + ((await page.locator('#password').count()) === 1 && (await page.locator('#password2').count()) === 1 ? 'yes' : 'MISSING'));
@@ -92,12 +101,14 @@ async (page) => {
   await page.locator('#owner_name').fill('Ana Maria Cruz');
   await page.locator('#email').fill('ana@ironden.ph');
   await page.locator('#phone').fill('09171234567');
+  await stepTo('#password');
   await page.locator('#password').fill('correct-horse');
   await page.locator('#password2').fill('different');
-  await page.locator('form.apply button[type=submit]').click();
+  await page.locator('.v2-wizard-actions').getByRole('button', { name: /^Next/ }).click();
   await page.waitForTimeout(300);
-  out.push('mismatched passwords are caught first: ' + ((await page.getByText('The two passwords do not match.').count()) === 1 && !CALLS.some((c) => c[0] === 'submit') ? 'yes' : 'MISSING'));
+  out.push('mismatched passwords are caught first: ' + ((await page.getByText(/passwords do not match\./).count()) === 1 && !CALLS.some((c) => c[0] === 'submit') ? 'yes' : 'MISSING'));
   await page.locator('#password2').fill('correct-horse');
+  await stepTo('form.apply button[type=submit]');
   await page.locator('form.apply button[type=submit]').click();
   await page.locator('[data-account-made]').waitFor({ timeout: 8000 });
   const su = CALLS.find((c) => c[0] === 'signup');

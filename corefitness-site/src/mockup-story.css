@@ -1,0 +1,19 @@
+/* Discord-inspired framing; original chapters, scenes and scroll interactions are retained. */
+@media(max-width:720px){.v2-story .story-stage .story-visual{align-content:start}.v2-story .story-stage .story-visual .device{transform:scale(.55)}}
+.v2-story{background:#0e0d12}
+.v2-story .story-stage{display:grid;grid-template-columns:1fr;max-width:none;gap:0;padding:calc(var(--header-h) + 75px) 40px 25px;place-items:center}
+.v2-story-panel{position:relative;display:grid;grid-template-columns:minmax(0,1.85fr) minmax(0,1fr);gap:46px;width:min(1240px,100%);padding:28px 50px 28px 28px;border-radius:114px;background:linear-gradient(115deg,#7856bc,#493079 57%,#30223f);box-shadow:inset 0 1px 0 #ffffff14;color:#fff}
+.v2-story .story-copy{grid-column:2;grid-row:1;align-self:center;min-width:0;padding:15px 0}
+.v2-story .story-head{font-size:13px;color:#ded0ee}
+.v2-story .story-time{margin-top:12px;gap:8px}.v2-story .story-time b{font-size:68px;color:#fff}.v2-story .story-time span{font-size:16px;color:#e7dbf5}
+.v2-story .chapters{margin-top:24px;min-height:218px}
+.v2-story .chapter .who{color:#dfc6ff;font-size:12px}
+.v2-story .chapter h2{font-size:31px;line-height:1.02;font-weight:900;letter-spacing:-.035em;text-transform:uppercase;color:#fff;margin:12px 0}
+.v2-story .chapter p{font-size:16px;line-height:1.5;color:#f2eaf9;margin:0}
+.v2-story .story-steps{margin-top:16px;gap:6px;grid-template-columns:repeat(5,minmax(0,1fr))}
+.v2-story .story-steps button{font-size:10px;color:#d1bee5}.v2-story .story-steps li.on button{color:#fff}.v2-story .story-steps button i{background:#ffffff25}.v2-story .story-steps button i::after{background:#f5a524}
+.v2-story .story-visual{grid-column:1;grid-row:1;align-content:center;min-height:530px;border-radius:86px;padding:30px 23px 42px;overflow:hidden;background:radial-gradient(ellipse at 50% 90%,#7641b7,transparent 70%),#211330;isolation:isolate}
+.v2-story .device.phone-d{max-width:250px}.v2-story .device.phone-d .screen{min-height:435px}.v2-story .device.desk{max-width:100%}.v2-story .device.desk .screen{min-height:360px}.v2-story .illus-note{color:#d5bfe7;font-size:10px;margin:16px 0 0}
+.v2-story-dumbbells{position:absolute;width:195px;right:15px;top:-130px;z-index:2;pointer-events:none;transform:translateY(calc(14px - var(--pin,0) * 35px)) rotate(calc(-15deg + var(--pin,0) * 35deg));filter:drop-shadow(0 15px 10px #0004)}
+@media(max-width:1100px){.v2-story .story-stage{padding-inline:28px}.v2-story-panel{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:28px;padding:22px 30px 22px 22px;border-radius:80px}.v2-story .story-visual{border-radius:58px}.v2-story .chapter h2{font-size:27px}.v2-story .chapter p{font-size:14px}.v2-story .story-time b{font-size:56px}}
+@media(max-width:720px){.v2-story .story-stage{padding:calc(var(--header-h) + 50px) 16px 18px;min-height:100svh;height:auto}.v2-story-panel{grid-template-columns:1fr;gap:0;padding:13px;border-radius:40px}.v2-story .story-visual{grid-column:1;grid-row:1;min-height:0;height:240px;border-radius:28px;padding:18px 15px 25px}.v2-story .device.phone-d{max-width:160px}.v2-story .device.phone-d .screen{min-height:435px}.v2-story .story-visual .device{transform:scale(.66);transform-origin:top center;max-width:300px;width:300px}.v2-story .story-visual .illus-note{position:absolute;bottom:8px;font-size:7px;margin:0}.v2-story .story-copy{grid-column:1;grid-row:2;padding:19px 13px 12px}.v2-story .story-head{font-size:11px}.v2-story .story-time{margin-top:7px}.v2-story .story-time b{font-size:42px}.v2-story .chapters{margin-top:13px;min-height:166px}.v2-story .chapter h2{font-size:24px;margin:9px 0}.v2-story .chapter p{font-size:13px}.v2-story .story-steps{margin-top:4px}.v2-story-dumbbells{width:118px;top:-87px;right:10px}}

@@ -1,0 +1,13 @@
+.v2-ribbon{position:relative;width:100%;overflow:hidden;background:linear-gradient(100deg,#382352,#583b80 50%,#342147);color:#fff;margin:65px 0 72px;border-block:1px solid #c4a2ff18;isolation:isolate;scroll-margin-top:calc(var(--header-h) + 30px)}
+.v2-ribbon-track{display:flex;width:max-content;animation:v2-ribbon-scroll 29s linear infinite;will-change:transform}
+.v2-ribbon-group{display:flex;flex-shrink:0;align-items:center}
+.v2-ribbon-item{display:flex;align-items:center;gap:50px;padding:29px 25px;white-space:nowrap}
+.v2-ribbon-item b{font-size:clamp(43px,4.4vw,72px);line-height:1.1;letter-spacing:-.025em;font-weight:900}
+.v2-ribbon-item img{width:54px;height:54px;object-fit:contain;flex-shrink:0}
+.v2-ribbon-pause{position:absolute;right:12px;top:8px;display:grid;place-items:center;width:25px;height:25px;padding:0;background:#130b2480;border:1px solid #ffffff24;border-radius:50%;color:#fff;font-size:11px;opacity:.6;cursor:pointer;transition:opacity .2s}
+.v2-ribbon-pause:hover,.v2-ribbon-pause:focus-visible{opacity:1}.v2-ribbon-pause:focus-visible{outline:2px solid #f5a524;outline-offset:3px}
+.v2-ribbon.is-paused .v2-ribbon-track{animation-play-state:paused}
+@keyframes v2-ribbon-scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media(max-width:720px){.v2-ribbon{margin:40px 0 48px}.v2-ribbon-item{gap:27px;padding:25px 15px}.v2-ribbon-item b{font-size:42px}.v2-ribbon-item img{width:36px;height:36px}.v2-ribbon-track{animation-duration:24s}}
+@media(prefers-reduced-motion:reduce){.v2-ribbon-track{animation:none;will-change:auto}.v2-ribbon-pause{display:none}}
+.v2-ribbon{padding:0}

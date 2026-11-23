@@ -6,7 +6,11 @@ import Account from './Account';
 import { GoogleButton } from './google';
 import Icon, { type IconName } from './Icon';
 import Story from './Story';
-import HeroPlan from './HeroPlan';
+import MockupHero from './MockupHero';
+import MockupRoles from './MockupRoles';
+import MockupRibbon from './MockupRibbon';
+import MockupBackdrop from './MockupBackdrop';
+import MockupDemoMedia from './MockupDemoMedia';
 import { Catalogue, Manifesto, Phone3D, Scrub } from './Showcase';
 import PlacePicker from './PlacePicker';
 import Legal, { parseLegalHash } from './Legal';
@@ -74,15 +78,6 @@ const FAQ: [string, string][] = [
 ];
 
 const NAV: [string, string][] = [['inside', 'Features'], ['day', 'A day'], ['pricing', 'Pricing'], ['faq', 'Questions']];
-
-/** Splits a line into words that rise one after another (CSS staggers by --w). */
-const Words = ({ text, from = 0 }: { text: string; from?: number }) => (
-  <>
-    {text.split(' ').map((w, i) => (
-      <span key={i}><span className="word"><span style={{ ['--w' as string]: i + from }}>{w}</span></span>{' '}</span>
-    ))}
-  </>
-);
 
 /** Light or dark (2026-10-21) — index.html picked one before paint; this flips it and remembers. */
 function ThemeToggle() {
@@ -169,7 +164,14 @@ function CoachDemo() {
 function SiteFooter() {
   const siteAccount = useSiteAccount();
   return (
-    <footer>
+    <>
+    <section className="v2-finale" id="community" aria-labelledby="v2-finale-heading">
+      <div className="v2-finale-stars" aria-hidden="true">✦ <span>✧</span> ✦</div>
+      <h2 id="v2-finale-heading">YOUR GYM.<br />YOUR PEOPLE.<br />ALL CONNECTED.</h2>
+      <a className="cta" href="#apply">Register your gym <Icon name="arrow" /></a>
+      <div className="v2-finale-art"><img src="/mockup-art/footer-gym-community.webp" alt="A community of cartoon gym members, coaches, and Core Fitness gym mascots" loading="lazy" /></div>
+    </section>
+    <footer className="v2-footer" id="site-footer">
       <div className="wrap foot-row">
         <a className="brand" href="#top">
           <img src="/logo-320.webp" alt="" width={26} height={26} />
@@ -200,7 +202,10 @@ function SiteFooter() {
         </div>
       </div>
       <p className="wrap foot-small">Core Fitness · gym software for Philippine gyms</p>
+      <div className="v2-footer-wordmark" aria-hidden="true">Core Fitness</div>
+      <a className="v2-footer-top" href="#top">Back to top ↑</a>
     </footer>
+    </>
   );
 }
 
@@ -211,7 +216,6 @@ export default function App() {
   const tx = useSiteTexts();
   /** 0261: sections the platform hid. An id the site does not know is ignored; nothing hidden is the default. */
   const hidden = new Set((tx.hidden_sections ?? '').split(',').map((s) => s.trim()).filter(Boolean));
-  const title1 = tx.hero_title_1 ?? 'Run your gym,';
   const [gyms, setGyms] = useState<Gym[] | null>(null);
   const [gymsFailed, setGymsFailed] = useState(false);
   const [token, setToken] = useState(statusToken);
@@ -220,6 +224,10 @@ export default function App() {
   const [chosen, setChosen] = useState<string | null>(null);
   const [scrolled, setScrolled] = useState(false);
   const [yearly, setYearly] = useState(false);
+  const [previewPlan, setPreviewPlan] = useState<string | null>(null);
+  const [gymQuery, setGymQuery] = useState('');
+  const [gymFilter, setGymFilter] = useState<'all' | 'live' | 'demo'>('all');
+  const [gymPage, setGymPage] = useState(0);
   const [section, setSection] = useState('top');
   /** `#legal/<doc>[/<section>]`: one of the gym documents instead of the page. */
   const [legal, setLegal] = useState(() => parseLegalHash(window.location.hash));
@@ -276,9 +284,14 @@ export default function App() {
   const trial = tiers?.find((t) => t.trialDays)?.trialDays ?? null;
   const anyYearly = !!tiers?.some((t) => t.yearly !== null && t.yearly > 0);
 
+  const directoryMatches = (gyms ?? []).filter(g => g.name.toLowerCase().includes(gymQuery.trim().toLowerCase()) && (gymFilter === 'all' || (gymFilter === 'demo' ? g.is_demo : !g.is_demo)));
+  const directoryPages = Math.max(1, Math.ceil(directoryMatches.length / 6));
+  const directoryPage = Math.min(gymPage, directoryPages - 1);
+  const activePreviewPlan = tiers?.some(t => t.key === previewPlan) ? previewPlan : tiers?.[0]?.key;
   return (
     <>
       <div className="progress" aria-hidden="true"><span /></div>
+      <MockupBackdrop />
 
       <header className={`top${scrolled ? ' scrolled' : ''}`}>
         {tx.notice && <div className="site-notice" role="status" data-site-notice>{tx.notice}</div>}
@@ -305,54 +318,15 @@ export default function App() {
         : token ? <><div className="wrap status-wrap"><StatusPage token={token} /></div><SiteFooter /></>
         : account ? <><div className="wrap status-wrap"><Account /></div><SiteFooter /></> : <>
 
-        <section className="hero" data-scroll data-hero>
-          <div className="wrap hero-inner">
-            <div className="hero-copy">
-              <p className="hero-where"><Icon name="globe" /> {tx.hero_eyebrow ?? 'Gym software, made in Occidental Mindoro'}</p>
-              <h1>
-                <Words text={title1} />
-                <br />
-                <em><Words text={tx.hero_title_2 ?? 'give your members an app.'} from={title1.split(/\s+/).length} /></em>
-              </h1>
-              <p className="lede">
-                {tx.hero_lede ?? <>Memberships, payments in cash or in the app, QR check-in, personal training, coaches and an AI assistant,
-                with a phone app your members actually install. Built for a real gym in Mamburao, and open to yours.</>}
-              </p>
-              <div className="cta-row">
-                <a className="cta" href="#apply">Register your gym <Icon name="arrow" className="arrow" /></a>
-                <a className="tlink" href="#day">See a day at a gym <Icon name="arrow" /></a>
-              </div>
-              <ul className="hero-facts">
-                <li><Icon name="cash" /> Cash, GCash or Maya</li>
-                <li><Icon name="phone" /> Android and iPhone</li>
-                <li><Icon name="globe" /> English and Filipino</li>
-              </ul>
-            </div>
-            <HeroPlan />
-          </div>
-        </section>
+        <MockupHero />
 
-        <section className="roles" aria-labelledby="roles-h" hidden={hidden.has('roles') || undefined}>
-          <div className="wrap">
-            <div className="sec-head">
-              <h2 id="roles-h" data-reveal>{tx.roles_title ?? 'Four people use it every day.'}</h2>
-              <p className="section-lede" data-reveal style={{ ['--d' as string]: 1 }}>The owner, the desk, the coaches and the members. Each has their own screen, all on one system, so nothing is typed twice.</p>
-            </div>
-            <div className="role-grid">
-              {ROLES.map((r, i) => (
-                <div className="role" key={r.who} data-reveal style={{ ['--d' as string]: i }}>
-                  <h3><Icon name={r.icon} /> {r.who}</h3>
-                  <span className="where">{r.where}</span>
-                  <ul>{r.does.map((d) => <li key={d}>{d}</li>)}</ul>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+        <MockupRoles roles={ROLES} hidden={hidden.has('roles')} title={tx.roles_title} />
 
         <Manifesto />
 
         <Story />
+
+        <MockupRibbon />
 
         <Catalogue />
 
@@ -361,7 +335,7 @@ export default function App() {
         <Scrub />
 
         <section className="photo-band" id="floor" data-scroll hidden={hidden.has('floor') || undefined}>
-          <div className="wrap pb-inner">
+          <div className="wrap pb-inner"><img className="v2-section-buddy coach-buddy" src="/mockup-art/bottle-mascot.webp" alt="" aria-hidden="true" />
             <div className="pb-copy">
             <h2 data-reveal>{tx.coaches_title ?? <>Coaches carry <br />the app too.</>}</h2>
             <p className="lede" data-reveal style={{ ['--d' as string]: 1 }}>
@@ -376,7 +350,9 @@ export default function App() {
             </div>
             <div className="pb-visual">
               <div className="pb-img" aria-hidden="true"><img src="/band-lifter.webp" alt="" loading="lazy" /></div>
-              <CoachDemo />
+              <MockupDemoMedia name="coach" label="Coach dashboard demo" />
+              <p className="illus-note">Actual Core Fitness UI · demo records</p>
+              <details className="v2-coach-example"><summary>Try the booking flow · interactive example</summary><CoachDemo /></details>
             </div>
           </div>
         </section>
@@ -387,7 +363,7 @@ export default function App() {
               <h2 data-reveal>{tx.how_title ?? 'From this page to your first member.'}</h2>
               <p className="section-lede" data-reveal style={{ ['--d' as string]: 1 }}>No card and no commitment to apply. We talk it through with you before anything is paid.</p>
             </div>
-            <div className="how-path">
+            <div className="v2-section-buddy setup-buddy" aria-hidden="true"><img src="/mockup-art/gym-foreground.webp" alt="" /></div><div className="how-path">
               <span className="how-line" aria-hidden="true"><i /></span>
               <ol className="steps">
                 <li data-reveal style={{ ['--d' as string]: 0 }}>
@@ -412,7 +388,7 @@ export default function App() {
 
         <section id="pricing" hidden={hidden.has('pricing') || undefined}>
           <div className="wrap">
-            <div className="price-head">
+            <div className="v2-section-buddy pricing-buddy" aria-hidden="true"><div className="v2-lifting-sprite" /></div><div className="price-head">
               <h2 data-reveal>
                 {tiers === null ? 'What it costs'
                   : tiers.length === 0 ? 'Ask us what it costs'
@@ -433,12 +409,16 @@ export default function App() {
                 <Icon name="alert" /> Our price list is not loading right now. Send the form below and we will answer with it.
               </p>
             )}
-            <div className="tiers" style={{ ['--cols' as string]: Math.max(1, Math.min(4, tiers?.length || 3)) }} aria-busy={tiers === null}>
+            <div className="v2-plan-picker" role="group" aria-label="Preview a membership plan">
+              {tiers?.map(plan => <button key={plan.key} type="button" aria-pressed={activePreviewPlan===plan.key} onClick={()=>setPreviewPlan(plan.key)}>{plan.name}</button>)}
+              {tiers && tiers.length>1 && <button className="v2-plan-next" type="button" onClick={()=>setPreviewPlan(tiers[(tiers.findIndex(t=>t.key===activePreviewPlan)+1)%tiers.length].key)}>Next plan <Icon name="arrow" /></button>}
+            </div>
+            <div className="tiers v2-one-plan" style={{ ['--cols' as string]: Math.max(1, Math.min(4, tiers?.length || 3)) }} aria-busy={tiers === null}>
               {tiers === null && [0, 1, 2].map((i) => <div className="skeleton" key={i} aria-hidden="true" />)}
               {tiers?.map((t, i) => {
                 const showYear = yearly && t.yearly !== null && t.yearly > 0;
                 return (
-                  <div className={`tier${t.trialDays ? ' has-trial' : ''}`} key={t.key} data-reveal style={{ ['--d' as string]: i }}>
+                  <div className={`tier${t.trialDays ? ' has-trial' : ''}`} key={t.key} hidden={activePreviewPlan !== t.key} data-reveal style={{ ['--d' as string]: i }}>
                     <span className={`badge${t.trialDays ? '' : ' none'}`}>{t.trialDays ? `${t.trialDays} days free` : ''}</span>
                     <h3>{t.name}</h3>
                     <div className="price" key={showYear ? 'y' : 'm'}>
@@ -456,9 +436,10 @@ export default function App() {
                           {t.maxStaff !== null ? `, ${t.maxStaff} staff accounts` : t.maxMembers === null ? ' and staff' : ''}</span></li>
                         {t.storageMb !== undefined && <li data-plan-storage><Icon name="check" /> <span>{t.storageMb === null ? 'No limit on storage for your videos and photos' : `${storageWords(t.storageMb)} for your videos and photos`}</span></li>}
                         {t.aiMonthly !== null && <li><Icon name="check" /> <span>{t.aiMonthly.toLocaleString('en-PH')} AI assistant messages a month, more as you need them</span></li>}
-                        {t.includes.map((line) => <li key={line}><Icon name="check" /> <span>{line}</span></li>)}
+                        {t.includes.slice(0, 3).map((line) => <li key={line}><Icon name="check" /> <span>{line}</span></li>)}
                       </ul>
                     )}
+                    {t.includes.length > 3 && <details className="v2-plan-full"><summary>See all {t.includes.length} included features</summary><ul>{t.includes.slice(3).map(line=><li key={line}><Icon name="check" /><span>{line}</span></li>)}</ul></details>}
                     <div className="choose-wrap">
                       <a className={`cta${t.trialDays ? '' : ' ghost'} choose`} href="#apply"
                         onClick={() => setChosen(t.key)}>Choose {t.name}</a>
@@ -474,7 +455,7 @@ export default function App() {
           <div className="wrap faq-grid">
             <div>
               <h2 data-reveal>{tx.faq_title ?? 'Questions owners ask first.'}</h2>
-              <p className="section-lede" data-reveal style={{ ['--d' as string]: 1 }}>Something else? Ask in the form below. We answer every application ourselves.</p>
+              <p className="section-lede" data-reveal style={{ ['--d' as string]: 1 }}>Something else? Ask in the form below. We answer every application ourselves.</p><div className="v2-faq-buddy" aria-hidden="true"><img src="/mockup-art/phone-journey-mascot.webp" alt="" /><span className="faq-speech">?</span><span className="faq-spark">✦</span></div>
             </div>
             <div className="faq-list">
               {FAQ.map(([q, a], i) => (
@@ -494,8 +475,12 @@ export default function App() {
             <p className="section-lede">
               {gymsFailed ? 'The list of gyms is not loading right now.' : 'Members of these gyms sign in with the same app. Tap one to join it.'}
             </p>
-            <div className="gyms">
-              {gyms?.map((g, i) => (
+            <div className="v2-directory-tools">
+              <label className="v2-gym-search"><Icon name="globe" /><span className="sr-only">Search gyms</span><input type="search" value={gymQuery} onChange={event=>{setGymQuery(event.target.value);setGymPage(0);}} placeholder="Find your gym by name or city" aria-label="Search gyms" /></label>
+              <div className="v2-gym-filters" role="group" aria-label="Filter gyms">{(['all','live','demo'] as const).map(filter=><button type="button" key={filter} aria-pressed={gymFilter===filter} onClick={()=>{setGymFilter(filter);setGymPage(0);}}>{filter==='all'?'All locations':filter==='live'?'Live gyms':'Demo gyms'}</button>)}</div>
+            </div>
+            <div className="gyms v2-directory-grid">
+              {directoryMatches.slice(directoryPage*6, directoryPage*6+6).map((g, i) => (
                 <a className="gym" key={g.id} href={`${MEMBER_APP}/join/${g.slug}`} data-reveal style={{ ['--d' as string]: Math.min(i, 6) }}>
                   <span className="mono" aria-hidden="true">{initials(g.name)}</span>
                   <span>{g.name}</span>
@@ -505,6 +490,7 @@ export default function App() {
                 </a>
               ))}
             </div>
+            {gyms !== null && <div className="v2-directory-pagination"><span aria-live="polite">{directoryMatches.length ? `${directoryPage*6+1}–${Math.min((directoryPage+1)*6,directoryMatches.length)} of ${directoryMatches.length} gyms` : 'No gyms match your search.'}</span><div><button type="button" disabled={directoryPage===0} onClick={()=>setGymPage(directoryPage-1)}>← Previous</button><span>{directoryPage+1} / {directoryPages}</span><button type="button" disabled={directoryPage+1>=directoryPages} onClick={()=>setGymPage(directoryPage+1)}>Next →</button></div></div>}
           </div>
         </section>
 
@@ -550,6 +536,7 @@ function ApplySection({ tiers, chosen, siteAccount, title, closed }: {
    */
   const [google, setGoogle] = useState<{ email: string; name: string } | null>(null);
   const [gstep, setGstep] = useState(1);
+  const [formStep, setFormStep] = useState(0);
   useEffect(() => {
     if (!supabase) return;
     void supabase.auth.getSession().then(({ data }) => {
@@ -749,9 +736,16 @@ function ApplySection({ tiers, chosen, siteAccount, title, closed }: {
         ) : (
           <GoogleButton hash="#apply" label="Apply with Google" hint="Fills in your name and email, then asks the rest one step at a time." divider="or fill it in yourself" />
         )}
-        <form className="apply" onSubmit={submit}>
+        {!google && <div className="v2-apply-steps" role="group" aria-label="Application steps">{['Plan','Your gym','Account','Contact','Review'].map((label,i)=><button type="button" key={label} disabled={i>formStep} aria-current={i===formStep?'step':undefined} onClick={()=>{setFormStep(i);setError(null);}}><span>{i+1}</span>{label}</button>)}</div>}
+        <form className={`apply${!google?' v2-apply-wizard':''}`} noValidate={!google} onSubmit={event=>{
+          if (!google) {
+            const invalid = [...event.currentTarget.querySelectorAll<HTMLInputElement>('input,select,textarea')].find(input=>!input.checkValidity());
+            if(invalid){event.preventDefault();setFormStep(Number(invalid.closest('fieldset')?.getAttribute('data-form-step')??4));requestAnimationFrame(()=>invalid.reportValidity());return;}
+          }
+          void submit(event);
+        }}>
           {tiers.length > 0 && shows(1) && (
-            <fieldset>
+            <fieldset data-form-step="0" hidden={!google && formStep!==0}>
               <legend><span className="num">1</span> Which plan?</legend>
               <div className="full">
                 <div className="plan-pick">
@@ -775,7 +769,7 @@ function ApplySection({ tiers, chosen, siteAccount, title, closed }: {
             </fieldset>
           )}
 
-          {shows(2) && <fieldset>
+          {shows(2) && <fieldset data-form-step="1" hidden={!google && formStep!==1}>
             <legend><span className="num">{tiers.length > 0 ? 2 : 1}</span> About your gym</legend>
             <div className="field">
               <label htmlFor="gym_name">Gym name</label>
@@ -803,7 +797,7 @@ function ApplySection({ tiers, chosen, siteAccount, title, closed }: {
             </div>
           </fieldset>}
 
-          {(!google || shows(3)) && <fieldset>
+          {(!google || shows(3)) && <fieldset data-form-step="2" hidden={!google && formStep!==2}>
             <legend><span className="num">{tiers.length > 0 ? 3 : 2}</span> Your account</legend>
             <p className="full note" style={{ marginTop: 0 }}>{google
               ? 'You can sign in with Google. Choose a password as well, so you can also sign in with your email and password.'
@@ -818,7 +812,7 @@ function ApplySection({ tiers, chosen, siteAccount, title, closed }: {
             </div>
           </fieldset>}
 
-          {shows(3) && <fieldset>
+          {shows(3) && <fieldset data-form-step="3" hidden={!google && formStep!==3}>
             <legend><span className="num">{google ? (tiers.length > 0 ? 3 : 2) : tiers.length > 0 ? 4 : 3}</span> How we stay in touch</legend>
             <div className="field">
               <label htmlFor="heard_from">How did you hear about Core Fitness?</label>
@@ -852,6 +846,15 @@ function ApplySection({ tiers, chosen, siteAccount, title, closed }: {
             </div>
           </fieldset>}
 
+          {!google && formStep===4 && <div className="v2-apply-review"><h3>Ready to review.</h3><dl><div><dt>Plan</dt><dd>{plan?.name??'Not selected'} · {form.billing}</dd></div><div><dt>Gym</dt><dd>{form.gym_name}</dd></div><div><dt>Your name</dt><dd>{form.owner_name}</dd></div><div><dt>Email</dt><dd>{form.email}</dd></div><div><dt>Mobile</dt><dd>{form.phone}</dd></div><div><dt>Location</dt><dd>{form.address}</dd></div><div><dt>Contact preference</dt><dd>{CONTACT.find(([key])=>key===form.contact_pref)?.[1]}</dd></div></dl><p className="note">Your details stay here when you go back to make changes.</p></div>}
+          {!google && <div className="v2-wizard-actions">{formStep>0 && <button type="button" className="cta ghost" onClick={()=>{setFormStep(formStep-1);setError(null);}}>Back</button>}{formStep<4 && <button type="button" className="cta" onClick={event=>{
+            if(formStep===0 && tiers.length>0 && !form.plan){setError('Choose a plan to continue.');return;}
+            const fields=event.currentTarget.form?.querySelectorAll<HTMLInputElement>(`fieldset[data-form-step="${formStep}"] input,fieldset[data-form-step="${formStep}"] select,fieldset[data-form-step="${formStep}"] textarea`);
+            if(fields && [...fields].some(field=>!field.reportValidity())) return;
+            if(formStep===2 && form.password!==form.password2){setError('The passwords do not match.');return;}
+            setError(null);setFormStep(formStep+1);
+          }}>Next <Icon name="arrow" /></button>}<span>Step {formStep+1} of 5</span></div>}
+          {!google && error && formStep<4 && <p className="note bad" role="alert">{error}</p>}
           {google && gstep < gSteps && (
             <div className="submit-row">
               {gstep > 1 && <button className="cta ghost" type="button" onClick={() => { setError(null); setGstep(gstep - 1); }}>Back</button>}
@@ -860,7 +863,7 @@ function ApplySection({ tiers, chosen, siteAccount, title, closed }: {
             </div>
           )}
 
-          {(!google || gstep === gSteps) && <>
+          {((!google && formStep === 4) || (google && gstep === gSteps)) && <>
           {google && gstep > 1 && <button className="cta ghost" type="button" onClick={() => { setError(null); setGstep(gstep - 1); }}>Back</button>}
           <div className="hp" aria-hidden="true">
             <label htmlFor="website">Leave this empty</label>

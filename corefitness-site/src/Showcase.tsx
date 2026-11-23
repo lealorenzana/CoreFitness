@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { CATALOGUE, FEATURE_COUNT, WHERE, WHERE_LABEL } from './catalogue';
 import { DETAIL } from './catalogueDetail';
-import { pinProgress, reducedMotion, useChapter } from './motion';
+import { reducedMotion, useChapter } from './motion';
+import MockupDemoMedia, { type DemoName } from './MockupDemoMedia';
 
 /**
  * The scroll-told sections added 2026-10-11 — each one a different scroll
@@ -26,14 +27,30 @@ const MANIFESTO = 'Most gym software stops at the counter. Core Fitness goes hom
 
 export function Manifesto() {
   const words = MANIFESTO.split(' ');
+  const [journeyRef, journeyStep] = useChapter<HTMLElement>(5);
+  const journeyScreens = ['member-qr.png', 'workout-player.png', 'member-coach-chat.png', 'member-progress.png', 'member-renewal.png'];
+  const journeyCaptions = ['Their code. Ready at the door.', 'Every set, in their pocket.', 'Their coach stays connected.', 'Their progress travels with them.', 'Their next month starts here.'];
   return (
-    <section className="manifesto" data-pin aria-label="Why Core Fitness">
+    <section className="manifesto v2-manifesto" id="why-core" ref={journeyRef} data-pin aria-label="Why Core Fitness">
       <div className="manifesto-stage">
+        <div className="v2-manifesto-panel">
         <p className="manifesto-text" style={{ ['--n' as string]: words.length }}>
           {words.map((w, i) => (
             <span key={i} className={/check-in|workouts,|coach,|streak|renewals\./.test(w) ? 'mw hl-word' : 'mw'} style={{ ['--i' as string]: i }}>{w} </span>
           ))}
         </p>
+        <div className="v2-journey v2-screen-story" aria-label="Real Core Fitness member screens">
+          <div className="v2-screen-story-title"><span>0{journeyStep+1} / 05</span><b>{journeyCaptions[journeyStep]}</b></div>
+          <div className="v2-screen-stack">
+            <img className="v2-stack-side stack-left" src={`/mockup-art/${journeyScreens[(journeyStep+4)%5]}`} alt="" aria-hidden="true" />
+            <img className="v2-stack-side stack-right" src={`/mockup-art/${journeyScreens[(journeyStep+1)%5]}`} alt="" aria-hidden="true" />
+            <img key={journeyStep} className="v2-stack-main" src={`/mockup-art/${journeyScreens[journeyStep]}`} alt={`Actual Core Fitness UI: ${journeyCaptions[journeyStep]} Demo records.`} />
+          </div>
+          <p className="v2-stack-caption">Actual Core Fitness UI · demo records</p>
+          <div className="v2-story-dots" aria-hidden="true">{journeyScreens.map((_,i)=><i key={i} className={i===journeyStep?'active':''} />)}</div>
+        </div>
+        <div className="v2-manifesto-progress" aria-hidden="true"><i /></div>
+        </div>
       </div>
     </section>
   );
@@ -61,61 +78,32 @@ export function jumpToChapter(el: HTMLElement | null, i: number, n: number) {
   window.scrollTo({ top: top + span * ((i + 0.5) / n), behavior: reducedMotion() ? 'auto' : 'smooth' });
 }
 
-const MiniQr = () => (
-  <svg viewBox="0 0 7 7" className="mini-qr" aria-hidden="true">
-    {[[0, 0], [4, 0], [0, 4]].map(([x, y]) => <rect key={`${x}${y}`} x={x + .35} y={y + .35} width="2.3" height="2.3" rx=".4" fill="none" stroke="currentColor" strokeWidth=".7" />)}
-    {[[1.2, 1.2], [5.2, 1.2], [1.2, 5.2], [4.2, 4.2], [5.6, 5.6], [4.2, 5.8], [5.8, 4.2]].map(([x, y]) => <rect key={`${x}${y}`} x={x} y={y} width=".7" height=".7" />)}
-  </svg>
-);
-
 export function Phone3D() {
-  const [ref, step] = useChapter<HTMLElement>(PIECES.length);
-  const at = reducedMotion() ? PIECES.length - 1 : step;
-  const cls = (i: number) => `as-piece${i <= at ? ' in' : ''}${i === at ? ' now' : ''}`;
+  const [at, setAt] = useState(0);
+  const captures: DemoName[] = ['checkin','bookings','progress','assistant'];
   return (
-    <section className="assemble" ref={ref} data-pin style={{ ['--n' as string]: PIECES.length }} aria-label="The member app, piece by piece">
+    <section className="assemble v3-video-section" id="member-preview" aria-label="The member app, piece by piece">
       <div className="as-stage">
+        <div className="v2-assemble-panel">
         <div className="as-copy">
           <h2>One phone. Everything that brings them back.</h2>
-          <p className="section-lede">The screen a member opens every day, built here piece by piece. Tap a line to see its part.</p>
+          <p className="section-lede">Explore the real screens your members use. Tap a feature to see its screen.</p>
           <ol className="as-key">
             {PIECES.map((p, i) => (
               <li key={p.key}>
                 <button type="button" className={i === at ? 'on' : i < at ? 'done' : ''} aria-current={i === at ? 'step' : undefined}
-                  onClick={() => jumpToChapter(ref.current, i, PIECES.length)}>
+                  onClick={() => setAt(i)}>
                   <span className="n">{String(i + 1).padStart(2, '0')}</span>
                   <span><b>{p.title}</b><span>{p.body}</span></span>
                 </button>
               </li>
             ))}
           </ol>
-          <p className="illus-note">Illustration with sample data</p>
+          <p className="illus-note">Actual Core Fitness UI · demo records</p>
         </div>
-        <div className="as-visual" aria-hidden="true">
-          <div className="as-phone phone">
-            <div className="phone-screen">
-              <span className="phone-notch" />
-              <span className="p-gym"><i />Your gym</span>
-              <div className="p-card"><small>Premium membership</small><div className="p-days"><b>Until Dec 14</b><strong>23</strong></div><div className="p-bar"><i /></div></div>
-              <div className={cls(0)} data-piece="code">
-                <div className="as-code"><MiniQr /><span><b>Not checked in yet</b><small>Open until 9:00 PM</small></span></div>
-                <div className="p-btn">Show my code</div>
-              </div>
-              <div className={cls(1)} data-piece="next">
-                <div className="p-card as-next"><small>Next session</small><b>Thu · 6:00 PM</b><span>Coach Ana · <em>Accepted</em></span></div>
-              </div>
-              <div className={cls(2)} data-piece="streak">
-                <div className="p-card"><div className="as-streak"><b>4 weeks in a row</b><small>2 days left</small></div>
-                  <div className="p-week"><i className="on" /><i /><i className="on" /><i className="today" /><i /><i /><i /></div></div>
-              </div>
-              <div className={cls(3)} data-piece="ai">
-                <div className="p-card as-ai"><small>Assistant</small><b>Add 2.5 kg to your squat next week?</b>
-                  <div className="as-ai-btns"><span>Not now</span><span className="yes">Apply</span></div></div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <div className="as-visual"><MockupDemoMedia name={captures[at]} label={PIECES[at].title + ' demo'} /></div>
       </div>
+        </div>
     </section>
   );
 }
@@ -147,45 +135,33 @@ const dayWords = (d: number) => {
 };
 
 export function Scrub() {
-  const ref = useRef<HTMLElement>(null);
-  const [lit, setLit] = useState(() => (reducedMotion() ? DAYS : 0));
+  const [week, setWeek] = useState(0);
+  const lit = (week + 1) * 7;
   const [pick, setPick] = useState<number | null>(null);
-  useEffect(() => {
-    if (reducedMotion()) return;
-    let raf = 0;
-    const read = () => {
-      raf = 0;
-      if (!ref.current) return;
-      const n = Math.min(DAYS, Math.round(pinProgress(ref.current) * (DAYS + 2)));
-      setLit((v) => (v === n ? v : n));
-    };
-    const on = () => { if (!raf) raf = requestAnimationFrame(read); };
-    read();
-    window.addEventListener('scroll', on, { passive: true });
-    window.addEventListener('resize', on);
-    return () => { window.removeEventListener('scroll', on); window.removeEventListener('resize', on); if (raf) cancelAnimationFrame(raf); };
-  }, []);
+  const monthMedia: DemoName[] = ['checkin','progress','workout','renewal'];
   const visits = [...VISIT].filter((d) => d < lit).length;
   const points = visits * 10 + (lit > RECORD ? 25 : 0);
   const weeks = [0, 1, 2, 3].filter((w) => lit >= (w + 1) * 7 && [...VISIT].filter((d) => d >= w * 7 && d < (w + 1) * 7).length >= 2).length;
   const shown = pick ?? (lit > 0 ? lit - 1 : null);
   const info = shown !== null ? dayWords(shown) : null;
-  const week = Math.min(3, Math.floor(Math.max(0, lit - 1) / 7));
   return (
-    <section className="month" ref={ref} data-pin data-lit={lit} aria-label="A member's first month">
+    <section className="month v3-video-section" id="first-month" data-lit={lit} aria-label="A member's first month">
       <div className="month-stage">
         <div className="wrap month-grid">
           <div className="month-copy">
-            <h2>A member’s first month, as you scroll.</h2>
+            <h2>A member’s first month, together.</h2>
             <ol className="month-steps">
               {MONTH_STEPS.map((c, i) => (
                 <li key={c.title} className={lit === 0 ? '' : i === week ? 'on' : i < week ? 'done' : ''}>
-                  <b>{c.title}</b><span>{c.body}</span>
+                  <button type="button" aria-pressed={i===week} onClick={()=>{setWeek(i);setPick(null);}}><b>{c.title}</b><span>{c.body}</span></button>
                 </li>
               ))}
             </ol>
-            <p className="illus-note">Illustration with sample data · tap any day that has passed</p>
+            <p className="illus-note">Choose a week to explore the real app</p>
           </div>
+          <div className="v2-month-ui">
+            <MockupDemoMedia name={monthMedia[week]} label="Member month demo" />
+            <details className="v2-month-exploration"><summary>Explore a month · interactive example</summary>
           <div className="month-card">
             <div className="month-counts">
               <div><b className="num">{visits}</b><small>visits</small></div>
@@ -211,6 +187,8 @@ export function Scrub() {
               {info ? <><small>{info.when}</small><b>{info.what}</b><span>{info.more}</span></>
                 : <><small>Day 1</small><b>Scroll to start the month</b><span>Each day fills in as you go.</span></>}
             </div>
+          </div>
+            </details>
           </div>
         </div>
       </div>
@@ -250,33 +228,14 @@ export function Catalogue() {
   const groups = CATALOGUE.map((g) => ({ ...g, shown: g.items.filter(([t, b]) => hit(t, b)) }));
   const found = groups.reduce((n, g) => n + g.shown.length, 0);
 
-  // Which group is on screen (state, only on change); each group's progress line and count (CSS var + text).
   useEffect(() => {
-    let raf = 0;
-    const read = () => {
-      raf = 0;
-      const line = window.innerHeight * 0.45;
-      let cur = CATALOGUE[0].id;
-      for (const g of CATALOGUE) {
-        const el = document.getElementById(`cat-${g.id}`);
-        if (!el) continue;
-        const r = el.getBoundingClientRect();
-        if (r.top < line) cur = g.id;
-        const rows = el.querySelectorAll<HTMLElement>('.cat-item');
-        let passed = 0;
-        rows.forEach((row) => { if (row.getBoundingClientRect().top < line) passed++; });
-        el.style.setProperty('--gp', rows.length ? (passed / rows.length).toFixed(3) : '0');
-        const count = el.querySelector<HTMLElement>('[data-gcount]');
-        if (count) count.textContent = `${passed} of ${rows.length}`;
-      }
-      setOpen((o) => (o === cur ? o : cur));
+    const followHash = () => {
+      const id = window.location.hash.replace('#cat-', '');
+      if (CATALOGUE.some(group => group.id === id)) { setOpen(id); setExpanded(null); }
     };
-    const on = () => { if (!raf) raf = requestAnimationFrame(read); };
-    read();
-    window.addEventListener('scroll', on, { passive: true });
-    window.addEventListener('resize', on);
-    return () => { window.removeEventListener('scroll', on); window.removeEventListener('resize', on); if (raf) cancelAnimationFrame(raf); };
-  }, [query]);
+    followHash(); window.addEventListener('hashchange', followHash);
+    return () => window.removeEventListener('hashchange', followHash);
+  }, []);
 
   // The tab highlight slides to the open group, and the tab row scrolls so it is in view.
   useEffect(() => {
@@ -305,6 +264,7 @@ export function Catalogue() {
   return (
     <section className="catalogue" id="inside">
       <div className="wrap">
+        <img className="v2-catalogue-mascot" src="/mockup-art/bottle-mascot.webp" alt="" aria-hidden="true" loading="lazy" />
         <div className="sec-head">
           <h2 data-reveal>{FEATURE_COUNT} things it does, all live today.</h2>
           <p className="section-lede" data-reveal style={{ ['--d' as string]: 1 }}>The desk, the coaches, the members and an AI assistant, in one system for one price. Search it, or read it by who it serves. Tap a feature to see where it lives.</p>
@@ -327,7 +287,7 @@ export function Catalogue() {
           <span className="cat-pill" ref={pill} aria-hidden="true" />
           {groups.map((g) => (
             <a key={g.id} data-g={g.id} href={`#cat-${g.id}`} className={`${open === g.id ? 'on' : ''}${g.shown.length === 0 ? ' none' : ''}`}
-              aria-current={open === g.id ? 'true' : undefined}>
+              aria-current={open === g.id ? 'true' : undefined} onClick={(event) => { event.preventDefault(); setOpen(g.id); setExpanded(null); window.history.replaceState(null, '', `#cat-${g.id}`); }}>
               {g.title}{terms.length > 0 && <small>{g.shown.length}</small>}
             </a>
           ))}
@@ -338,14 +298,13 @@ export function Catalogue() {
             <p className="cat-none" data-cat-none>Nothing matches “{query.trim()}”. Try fewer words, or <button type="button" onClick={() => setQuery('')}>show everything</button>.</p>
           )}
           {groups.map((g, gi) => (
-            <div className={`cat-group${g.shown.length === 0 ? ' folded' : ''}`} id={`cat-${g.id}`} key={g.id} aria-hidden={g.shown.length === 0 || undefined}>
+            <div className={`cat-group${g.shown.length === 0 ? ' folded' : ''}`} id={`cat-${g.id}`} key={g.id} hidden={(terms.length === 0 ? open !== g.id : g.shown.length === 0) || undefined} aria-hidden={g.shown.length === 0 || undefined}>
               <div className="cat-fold">
                 <header className="cat-head">
                   <span className="n">{String(gi + 1).padStart(2, '0')} / {String(CATALOGUE.length).padStart(2, '0')}</span>
                   <h3>{g.title}</h3>
                   <p>{g.lede}</p>
-                  <div className="cat-prog" aria-hidden="true"><i /></div>
-                  <small><span data-gcount>0 of {g.shown.length}</span> read</small>
+                  <small>{g.shown.length} features · select one to explore</small>
                 </header>
                 <ul className="cat-items">
                   {g.shown.map(([title, body], i) => {
