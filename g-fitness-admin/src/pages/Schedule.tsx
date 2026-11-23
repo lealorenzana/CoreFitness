@@ -420,7 +420,7 @@ export default function Schedule() {
             <div className="a-ct" style={{ marginBottom: 8 }}>
               <div className="a-legendc">
                 {trainers.filter((t) => sessions.some((s) => s.trainerId === t.profile.id)).map((t) => (
-                  <span key={t.profile.id}><i style={{ background: ['#a78bfa', '#5eead4', '#fbbf24', '#f0abfc', '#93c5fd', '#bef264'][colourOf(t.profile.id)] }} />{t.profile.first_name} {t.profile.last_name}</span>
+                  <span key={t.profile.id}><i style={{ background: ['var(--color-primary-400, #a78bfa)', '#5eead4', '#fbbf24', '#f0abfc', '#93c5fd', '#bef264'][colourOf(t.profile.id)] }} />{t.profile.first_name} {t.profile.last_name}</span>
                 ))}
                 {conflicts.length > 0 && <span><i style={{ boxShadow: 'inset 0 0 0 1.5px #f59e0b' }} />Clash</span>}
               </div>

@@ -13,7 +13,7 @@ import {
 const SECOND = 'var(--color-text-secondary)';
 const MUTED = 'var(--color-text-muted)';
 const LINE = '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.06)';
-const RING: Record<AchievementTier, string> = { bronze: '#d97745', silver: '#b8c2d6', gold: '#f5b82e', platinum: '#a78bfa' };
+const RING: Record<AchievementTier, string> = { bronze: '#d97745', silver: '#b8c2d6', gold: '#f5b82e', platinum: 'var(--color-primary-400, #a78bfa)' };
 
 /**
  * Give a badge by hand, and see (and take back) who holds one. Moved out of

@@ -20,5 +20,5 @@ export const ATTENDANCE_TABS = [
 ];
 
 /** The kit's text input (rd.tsx RdField wraps it). */
-export const RD_INPUT = 'w-full h-11 px-3.5 rounded-xl text-[14.5px] text-white outline-none focus:ring-2 focus:ring-violet-500/40';
+export const RD_INPUT = 'w-full h-11 px-3.5 rounded-xl text-[14.5px] text-white outline-none focus:ring-2 focus:ring-[color:color-mix(in_srgb,var(--color-primary)_40%,transparent)]';
 export const RD_INPUT_STYLE = { background: 'var(--rd-input-bg, rgba(255,255,255,0.03))', border: '1px solid var(--rd-input-line, rgba(255,255,255,0.1))' } as const;

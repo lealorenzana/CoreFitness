@@ -144,11 +144,11 @@ export default function ShopSell({ products, today, owner, busy, onRecord, onRec
                     <button key={p.id} type="button" disabled={out} onClick={() => bump(p, 1)} aria-label={`Add ${p.name}`}
                       className="relative text-left rounded-2xl overflow-hidden flex flex-col transition-transform active:scale-[0.98] hover:-translate-y-0.5"
                       style={{ background: 'var(--color-surface)', border: `1px solid ${inCart ? 'rgba(139,92,246,0.8)' : 'rgba(255,255,255,0.07)'}`,
-                        boxShadow: inCart ? '0 0 0 3px rgba(124,58,237,0.18)' : undefined, opacity: out ? 0.45 : 1 }}>
+                        boxShadow: inCart ? '0 0 0 3px color-mix(in srgb, var(--color-primary) 18%, transparent)' : undefined, opacity: out ? 0.45 : 1 }}>
                       <span className="relative block w-full" style={{ aspectRatio: '4 / 3' }}>
                         <ProductArt p={p} />
                         {inCart > 0 && (
-                          <span className="absolute top-2 right-2 min-w-[28px] h-7 px-2 rounded-full grid place-items-center text-[13px] font-bold" style={{ background: '#7C3AED', color: '#fff' }}>{inCart}</span>
+                          <span className="absolute top-2 right-2 min-w-[28px] h-7 px-2 rounded-full grid place-items-center text-[13px] font-bold" style={{ background: 'var(--color-primary)', color: '#fff' }}>{inCart}</span>
                         )}
                       </span>
                       <span className="p-2.5 flex flex-col gap-1">
@@ -221,7 +221,7 @@ export default function ShopSell({ products, today, owner, busy, onRecord, onRec
         <div className="rd-fit-scroll px-4 py-3 flex flex-col gap-3">
           {lines.length === 0 ? (
             <div className="py-8 text-center rounded-xl" style={{ ...FIELD, borderStyle: 'dashed' }}>
-              <ShoppingCart size={26} className="mx-auto" style={{ color: 'rgba(196,181,253,0.55)' }} />
+              <ShoppingCart size={26} className="mx-auto" style={{ color: 'color-mix(in srgb, var(--color-primary-300, #C4B5FD) 55%, transparent)' }} />
               <p className="text-[13px] mt-2" style={{ color: MUTED }}>Tap a product to start a sale.</p>
             </div>
           ) : (

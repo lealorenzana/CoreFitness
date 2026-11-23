@@ -7,7 +7,7 @@ import { downloadReceiptPng, peso, type ReceiptDoc } from '../lib/receipt';
 /** The receipt as paper: white, narrow, the same lines the PNG draws. */
 export function ReceiptPaper({ doc }: { doc: ReceiptDoc }) {
   const muted = '#6B7280';
-  const tone = doc.status?.tone === 'done' ? '#5B21B6' : doc.status?.tone === 'void' ? muted : '#92400E';
+  const tone = doc.status?.tone === 'done' ? (getComputedStyle(document.documentElement).getPropertyValue('--color-primary-800').trim() || '#5B21B6') : doc.status?.tone === 'void' ? muted : '#92400E';
   const change = doc.tendered != null && doc.tendered >= doc.total ? doc.tendered - doc.total : null;
   return (
     <div role="document" aria-label={`${doc.title} ${doc.number}`} className="receipt-paper"

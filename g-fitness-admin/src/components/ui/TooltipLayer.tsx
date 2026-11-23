@@ -138,7 +138,7 @@ export default function TooltipLayer() {
         padding: '7px 10px',
         borderRadius: 9,
         background: 'var(--color-surface-high)',
-        border: '1px solid rgba(124,58,237,0.35)',
+        border: '1px solid color-mix(in srgb, var(--color-primary) 35%, transparent)',
         boxShadow: '0 10px 28px rgba(0,0,0,0.6)',
         color: 'var(--color-text-primary, #fff)',
         fontSize: 11.5,

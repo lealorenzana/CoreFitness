@@ -440,7 +440,7 @@ export default function Bookings({ scope, embedded = false }: { scope?: 'pt' | '
           {selectablePending.length > 0 && (
             <div className="flex items-center gap-3 py-2" style={{ borderBottom: '1px solid var(--a-border)' }} data-bulk>
               <label className="flex items-center gap-2 a-sub cursor-pointer">
-                <input type="checkbox" className="accent-violet-500" checked={allSelected} onChange={() => setSelected(allSelected ? new Set() : new Set(selectablePending.map((r) => r.id)))} />
+                <input type="checkbox" className="accent-[var(--color-primary)]" checked={allSelected} onChange={() => setSelected(allSelected ? new Set() : new Set(selectablePending.map((r) => r.id)))} />
                 Select all {selectablePending.length} pending
               </label>
               {selectedPending.length > 0 && (
@@ -469,7 +469,7 @@ export default function Bookings({ scope, embedded = false }: { scope?: 'pt' | '
                         <tr key={`${row.kind}-${row.id}`} data-booking-row>
                           <td>
                             {row.status === 'pending' && gymMayApprove(row) && (
-                              <input type="checkbox" className="accent-violet-500" checked={selected.has(row.id)} onChange={() => toggle(row.id)} aria-label={`Select ${row.memberName}'s booking`} />
+                              <input type="checkbox" className="accent-[var(--color-primary)]" checked={selected.has(row.id)} onChange={() => toggle(row.id)} aria-label={`Select ${row.memberName}'s booking`} />
                             )}
                           </td>
                           <td><div className="a-who"><Av name={row.memberName} small /><div className="min-w-0"><b className="block truncate">{row.memberName}</b>

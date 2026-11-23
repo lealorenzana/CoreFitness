@@ -23,7 +23,7 @@ interface PaymentLite { id: string; amount: number; status: 'completed' | 'pendi
   plan_name: string | null; plan_id: string | null; notes: string | null; member_profiles: { profiles: { first_name: string; last_name: string } | null } | null }
 interface PassLite { id: string; visit_day: string; visited_at: string; kind: string; amount: number; method: string; guests: { name: string } | null }
 
-const COLOR: Record<Kind, string> = { membership: '#7c3aed', shop: '#5eead4', pass: '#f59e0b' };
+const COLOR: Record<Kind, string> = { membership: 'var(--color-primary)', shop: '#5eead4', pass: '#f59e0b' };
 const KIND_WORD: Record<Kind, string> = { membership: 'Memberships', shop: 'Shop', pass: 'Day passes' };
 const PASS_WORD: Record<string, string> = { day: 'Day pass', pack5: '5-visit pack', pack10: '10-visit pack' };
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

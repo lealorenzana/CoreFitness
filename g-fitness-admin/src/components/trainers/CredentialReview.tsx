@@ -342,7 +342,7 @@ function Viewer({ row, signed, broken, busy, position, startRejecting,
       style={{ background: 'rgba(0,0,0,0.8)' }} onClick={onClose}>
       <div role="dialog" aria-modal="true" aria-label={row.title}
         className="w-full max-w-6xl h-full max-h-[90vh] rounded-3xl overflow-hidden flex"
-        style={{ background: 'radial-gradient(120% 80% at 100% 0%, rgba(124,58,237,0.14), transparent 50%), var(--color-surface)', border: '1px solid rgba(139,92,246,0.3)' }}
+        style={{ background: 'radial-gradient(120% 80% at 100% 0%, color-mix(in srgb, var(--color-primary) 14%, transparent), transparent 50%), var(--color-surface)', border: '1px solid color-mix(in srgb, var(--color-primary) 30%, transparent)' }}
         onClick={(e) => e.stopPropagation()}>
         <div className="flex-1 min-w-0 relative" style={{ background: 'var(--color-bg)' }}>
           <Preview row={row} signed={signed} broken={broken} large onRetry={onRetry} onBroken={onBroken} />

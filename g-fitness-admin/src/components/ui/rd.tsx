@@ -105,8 +105,8 @@ export function Ring({ value, label, sub, size = 132, tone = 'violet' }: {
       <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }} aria-hidden>
         <defs>
           <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor={tone === 'amber' ? '#F59E0B' : '#6D28D9'} />
-            <stop offset="100%" stopColor={tone === 'amber' ? '#FBBF24' : '#A78BFA'} />
+            <stop offset="0%" stopColor={tone === 'amber' ? '#F59E0B' : undefined} style={tone === 'amber' ? undefined : { stopColor: 'var(--color-primary-700, #6D28D9)' }} />
+            <stop offset="100%" stopColor={tone === 'amber' ? '#FBBF24' : undefined} style={tone === 'amber' ? undefined : { stopColor: 'var(--color-primary-400, #A78BFA)' }} />
           </linearGradient>
         </defs>
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={stroke} />
@@ -535,7 +535,7 @@ export function WithRail({ children, rail }: { children: React.ReactNode; rail: 
 }
 
 /** A colourful initials circle (photos still win), as in the mock-ups. */
-const AVATAR_TONES = ['#8B5CF6', '#F59E0B', '#7C3AED', '#F59E0B', '#A855F7'];
+const AVATAR_TONES = ['var(--color-primary)', '#F59E0B', 'var(--color-primary-700, #7C3AED)', '#F59E0B', 'var(--color-primary-400, #A855F7)'];
 export function Initials({ name, photo, size = 44, tone }: { name: string; photo?: string | null; size?: number; tone?: 'violet' | 'amber' }) {
   const [broken, setBroken] = useState(false);
   const init = name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase() || '?';

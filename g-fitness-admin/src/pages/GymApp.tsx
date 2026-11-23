@@ -26,7 +26,8 @@ import PayTab from '../components/yourapp/PayTab';
 import TvTab from '../components/yourapp/TvTab';
 import CelebrationsTab from '../components/yourapp/CelebrationsTab';
 import { YaStage } from '../components/yourapp/stage';
-import { StageCtx } from '../components/yourapp/stageCtx';
+import { StageCtx, SaveCtx, type SaveEntry } from '../components/yourapp/stageCtx';
+import { previewGymLook, loadGymLook } from '../lib/gymLook';
 
 /** Sections that hand a preview to the fixed column. */
 const STAGED: string[] = ['look', 'words', 'runs', 'join', 'coach', 'pay', 'tv', 'moments'];
@@ -156,7 +157,7 @@ export default function GymApp() {
     } catch (e) { showToast(e instanceof Error ? e.message : 'That could not be saved', 'error'); }
   };
 
-  const saveWords = async () => {
+  const saveWords = async (quiet = false): Promise<boolean> => {
     setSaving(true);
     try {
       await saveGymWords({
@@ -168,26 +169,29 @@ export default function GymApp() {
       if (vocab) await saveGymVocabulary(vocab);
       await load();
       refreshGymWords(); // the sidebar's nouns repaint now, not on the next reload
-      showToast('Saved. Your members see this next time they open the app.', 'success');
-    } catch (e) { showToast(e instanceof Error ? e.message : 'That could not be saved', 'error'); }
+      if (!quiet) showToast('Saved. Your members see this next time they open the app.', 'success');
+      return true;
+    } catch (e) { showToast(e instanceof Error ? e.message : 'That could not be saved', 'error'); return false; }
     finally { setSaving(false); }
   };
 
-  const saveLook = async () => {
+  const saveLook = async (quiet = false): Promise<boolean> => {
     setSaving(true);
     try {
       // '' clears the logo, a URL sets it; this form always knows which it means.
       await saveGymLook({ accent: look.accent, accentAction: look.action || null, logoUrl: look.logo_url });
+      await loadGymLook(); // the saved look becomes this dashboard's own
       await load();
-      showToast('Published: this dashboard shows it now; members and coaches see it next time they open the app.', 'success');
-    } catch (e) { showToast(e instanceof Error ? e.message : 'That could not be saved', 'error'); }
+      if (!quiet) showToast('Saved: this dashboard shows it now; members and coaches see it next time they open the app.', 'success');
+      return true;
+    } catch (e) { showToast(e instanceof Error ? e.message : 'That could not be saved', 'error'); return false; }
     finally { setSaving(false); }
   };
 
-  const saveSlug = async () => {
-    if (slug === null) return;
-    try { await setGymSlug(slug.trim()); await load(); showToast('Your link has moved. Share the new one.', 'success'); }
-    catch (e) { showToast(e instanceof Error ? e.message : 'That could not be saved', 'error'); }
+  const saveSlug = async (): Promise<boolean> => {
+    if (slug === null) return true;
+    try { await setGymSlug(slug.trim()); await load(); showToast('Your link has moved. Share the new one.', 'success'); return true; }
+    catch (e) { showToast(e instanceof Error ? e.message : 'That could not be saved', 'error'); return false; }
   };
 
   const changeDoor = async (policy: JoinPolicy, newCode = false) => {
@@ -204,6 +208,37 @@ export default function GymApp() {
     try { await setJoinSettings(app.join_policy, next); }
     catch (e) { showToast(e instanceof Error ? e.message : 'That could not be saved', 'error'); await load(); }
   };
+
+  /* One Save for the whole page (owner, 2026-11-23, after Discord's "unsaved changes" bar): every section with
+     changes registers here and the bar at the foot saves them all. Switches still act on tap. */
+  const entries = useRef(new Map<string, SaveEntry>());
+  const [unsaved, setUnsaved] = useState<string[]>([]);
+  const register = useCallback((key: string, e: SaveEntry | null) => {
+    if (e) entries.current.set(key, e); else entries.current.delete(key);
+    const next = [...entries.current.values()].filter((x) => x.dirty).map((x) => x.label);
+    setUnsaved((prev) => (prev.join('|') === next.join('|') ? prev : next));
+  }, []);
+  const lookDirty = !!app && (look.accent !== (app.accent || 'violet') || look.action !== (app.accent_action ?? '') || look.logo_url !== (app.logo_url ?? ''));
+  const wordsDirty = !!app && (words.points_name !== app.points_name || (words.points_name_short ?? '') !== (app.points_name_short ?? '')
+    || words.welcome_message !== (app.welcome_message ?? '') || JSON.stringify(vocab ?? null) !== JSON.stringify(app.vocabulary ?? null));
+  const slugDirty = !!app && slug !== null && slug.trim() !== app.slug;
+  const resetPage = () => { void load(); };
+  useEffect(() => { register('look', { label: 'Look', dirty: lookDirty, save: saveLook, reset: resetPage }); });
+  useEffect(() => { register('words', { label: 'Words', dirty: wordsDirty, save: saveWords, reset: resetPage }); });
+  useEffect(() => { register('slug', { label: 'Your link', dirty: slugDirty, save: () => saveSlug(), reset: () => setSlug(null) }); });
+  const [savingAll, setSavingAll] = useState(false);
+  const saveAll = async () => {
+    const todo = [...entries.current.values()].filter((x) => x.dirty);
+    setSavingAll(true);
+    let ok = true;
+    for (const e of todo) ok = (await e.save(true)) && ok;
+    setSavingAll(false);
+    if (ok) showToast('Saved. This dashboard shows it now; members and coaches see it next time they open the app.', 'success');
+  };
+  const discardAll = () => { for (const e of entries.current.values()) if (e.dirty) e.reset(); };
+  // Colours being picked paint this dashboard at once; leaving without saving puts the saved look back.
+  useEffect(() => { if (app) previewGymLook({ accent: look.accent, action: look.action || null }); }, [app, look.accent, look.action]);
+  useEffect(() => () => previewGymLook(null), []);
 
   if (!ready) return <div className="att"><SkelRows label="Loading…" /></div>;
   if (!app) {
@@ -241,6 +276,7 @@ export default function GymApp() {
 
       {/* Settings-app layout (owner, 2026-11-23, after Discord's): the sections down the left, the open one's
           steps under it with a line beside the current; the content in one column; the phone on the right. */}
+      <SaveCtx.Provider value={register}>
       <StageCtx.Provider value={{ el: stageEl, sec: stageSec }}>
       <div className="ya-shell ya-has-stage">
       <nav className="ya-nav" role="tablist" aria-label="Your app sections" aria-orientation="vertical">
@@ -354,12 +390,7 @@ export default function GymApp() {
           </div>
 
           {/* The look is the members' and coaches' app AND this dashboard (owner, 2026-11-07) — not members alone. */}
-          <div style={{ marginTop: 'auto', alignSelf: 'flex-end', display: 'flex', alignItems: 'center', gap: 12 }}>
-            <p className="a-sub" data-publish-scope>Changes your members’ and coaches’ app, and this dashboard.</p>
-            <button type="button" className="a-btn violet" onClick={() => void saveLook()} disabled={saving || uploading}>
-              <Check size={15} />{saving ? 'Publishing…' : 'Publish'}
-            </button>
-          </div>
+          <p className="a-sub" data-publish-scope style={{ marginTop: 12 }}>Colours show on this dashboard as you pick them; Save at the foot of the page changes your members’ and coaches’ app too.</p>
         </Split>
       )}
 
@@ -411,9 +442,6 @@ export default function GymApp() {
             <input id="wm" className="a-in" maxLength={280} value={words.welcome_message} placeholder="Open 5am–10pm. Ask the desk about the new squat racks."
               onChange={(e) => setWords({ ...words, welcome_message: e.target.value })} />
           </div>
-          <button type="button" className="a-btn violet" style={{ marginTop: 'auto', alignSelf: 'flex-end' }} onClick={() => void saveWords()} disabled={saving}>
-            <Check size={15} />{saving ? 'Saving…' : 'Save words'}
-          </button>
         </Split>
       )}
 
@@ -502,14 +530,14 @@ export default function GymApp() {
                     <b style={{ wordBreak: 'break-all' }}>{MEMBER_APP.replace('https://', '')}/join/<span style={{ color: 'var(--a-p300)' }}>{app.slug}</span>
                       <button type="button" className="a-link" style={{ marginLeft: 8 }} onClick={() => setSlug(app.slug)}>Change</button></b>
                   ) : (
-                    <form onSubmit={(e) => { e.preventDefault(); void saveSlug(); }}>
+                    <form onSubmit={(e) => { e.preventDefault(); void saveAll(); }}>
                       <div className="a-fld"><label htmlFor="slug">{MEMBER_APP}/join/</label>
                         <input id="slug" className="a-in" value={slug} autoFocus maxLength={40} placeholder="your-gym" onChange={(e) => setSlug(e.target.value.toLowerCase())} /></div>
                       <p className="a-sub" style={{ marginTop: 6, color: 'var(--a-a300)' }}>
                         Every /join/{app.slug} link already printed, posted or sent stops working the moment you save this. Nobody is locked out: they just cannot use the old link.
                       </p>
                       <div className="flex gap-2" style={{ marginTop: 8 }}>
-                        <button type="submit" className="a-btn violet sm" disabled={slug.trim() === app.slug}>Move my link</button>
+                        <span className="a-sub" style={{ alignSelf: 'center' }}>Save at the foot of the page moves it.</span>
                         <button type="button" className="a-btn ghost sm" onClick={() => setSlug(null)}>Cancel</button>
                       </div>
                     </form>
@@ -544,10 +572,19 @@ export default function GymApp() {
       <section className="ya-sec ya-full" data-ya-sec="pay" id="ya-pay"><PayTab /></section>
       <section className="ya-sec ya-full" data-ya-sec="tv" id="ya-tv"><TvTab /></section>
       <section className="ya-sec ya-full" data-ya-sec="moments" id="ya-moments"><CelebrationsTab /></section>
+      {unsaved.length > 0 && (
+        <div className="ya-savebar" role="status" data-save-bar>
+          <span><b>Unsaved changes</b> in {unsaved.join(', ')}</span>
+          <button type="button" className="a-btn ghost" onClick={discardAll} disabled={savingAll}>Discard</button>
+          <button type="button" className="a-btn violet" onClick={() => void saveAll()} disabled={savingAll || saving || uploading} data-save-all>
+            <Check size={15} />{savingAll ? 'Saving…' : 'Save changes'}</button>
+        </div>
+      )}
       </div>
       <aside className="ya-stage-col" ref={setStageEl} aria-label="Live preview" />
       </div>
       </StageCtx.Provider>
+      </SaveCtx.Provider>
 
       {poster && (
         <JoinPoster

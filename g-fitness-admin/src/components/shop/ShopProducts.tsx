@@ -203,8 +203,8 @@ export default function ShopProducts({ products, owner, busy, form, setForm, sto
                 </div>
               )}
               <div className="flex flex-col gap-2 text-[13.5px] text-white pt-1">
-                <label className="flex items-center gap-2" data-tip="Off for things you never run out of — towel rental, locker for the day."><input type="checkbox" className="accent-violet-500" checked={form.trackStock} onChange={(e) => setForm({ ...form, trackStock: e.target.checked })} /> Count stock <span style={{ color: MUTED }}>(untick for services like towel rental)</span></label>
-                <label className="flex items-center gap-2" data-tip="Members see the name, photo, price and whether it is available — never how many you have."><input type="checkbox" className="accent-violet-500" checked={form.shownInApp} onChange={(e) => setForm({ ...form, shownInApp: e.target.checked })} /> Show in members&rsquo; app</label>
+                <label className="flex items-center gap-2" data-tip="Off for things you never run out of — towel rental, locker for the day."><input type="checkbox" className="accent-[var(--color-primary)]" checked={form.trackStock} onChange={(e) => setForm({ ...form, trackStock: e.target.checked })} /> Count stock <span style={{ color: MUTED }}>(untick for services like towel rental)</span></label>
+                <label className="flex items-center gap-2" data-tip="Members see the name, photo, price and whether it is available — never how many you have."><input type="checkbox" className="accent-[var(--color-primary)]" checked={form.shownInApp} onChange={(e) => setForm({ ...form, shownInApp: e.target.checked })} /> Show in members&rsquo; app</label>
               </div>
             </div>
           </div>

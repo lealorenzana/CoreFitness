@@ -1,7 +1,8 @@
 import PageGuide from '../guides/PageGuide';
 import { useEffect, useRef, useState } from 'react';
 import { YaStage } from './stage';
-import { Check, ExternalLink, ImagePlus, Lock, Monitor, Tv } from 'lucide-react';
+import { useYaSave } from './stageCtx';
+import { ExternalLink, ImagePlus, Lock, Monitor, Tv } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import TvBoard from '../tv/TvBoard';
 import { showToast } from '../../utils/toast';
@@ -23,11 +24,18 @@ const THEMES: { key: TvTheme; label: string }[] = [
  * scaled down, so what is set here is what the TV shows. Owner only; a plan
  * without the TV locks the tab and says so (gates lock and explain).
  */
+/** The TV design as it is stored, to tell whether the form holds unsaved changes. */
+function asSavedOf(x: ReturnType<typeof withDefaults>): string {
+  return JSON.stringify({ theme: x.theme, panels: x.panels, seconds: x.seconds, show_clock: x.show_clock, show_count: x.show_count, show_qr: x.show_qr,
+    ...(x.headline?.trim() ? { headline: x.headline.trim() } : {}), background_url: x.background_url ?? null });
+}
+
 export default function TvTab() {
   const [gate, setGate] = useState<{ allowed: boolean; sold: boolean; design: TvDesign } | null | undefined>(undefined);
   const [data, setData] = useState<TvData | null>(null);
   const [d, setD] = useState<ReturnType<typeof withDefaults>>(withDefaults(null));
-  const [saving, setSaving] = useState(false);
+  const [, setSaving] = useState(false);
+  const [savedD, setSavedD] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.3);
@@ -36,7 +44,7 @@ export default function TvTab() {
     void (async () => {
       const [g, tv] = await Promise.all([loadTvDesign(), loadTv()]);
       setGate(g); setData(tv);
-      if (g) setD(withDefaults(g.design));
+      if (g) { const w = withDefaults(g.design); setD(w); setSavedD(asSavedOf(w)); }
     })();
   }, []);
   useEffect(() => {
@@ -49,16 +57,21 @@ export default function TvTab() {
     return () => ro.disconnect();
   }, [gate]);
 
-  const save = async () => {
+  const save = async (quiet = false): Promise<boolean> => {
     setSaving(true);
     try {
       const out: TvDesign = { theme: d.theme, panels: d.panels, seconds: d.seconds, show_clock: d.show_clock, show_count: d.show_count, show_qr: d.show_qr,
         ...(d.headline?.trim() ? { headline: d.headline.trim() } : {}), background_url: d.background_url ?? null };
       await saveTvDesign(out);
-      showToast('Saved. The TV picks it up within a minute.', 'success');
-    } catch (e) { showToast(e instanceof Error ? e.message : 'That could not be saved', 'error'); }
+      setSavedD(JSON.stringify(out));
+      if (!quiet) showToast('Saved. The TV picks it up within a minute.', 'success');
+      return true;
+    } catch (e) { showToast(e instanceof Error ? e.message : 'That could not be saved', 'error'); return false; }
     finally { setSaving(false); }
   };
+  // One Save for Your app (2026-11-23): the TV design joins the page's save bar.
+  const tvDirty = !!gate?.allowed && savedD !== null && asSavedOf(d) !== savedD && d.panels.length > 0;
+  useYaSave('tv', 'Lobby TV', tvDirty, save, () => { if (gate) setD(withDefaults(gate.design)); });
   const togglePanel = (k: TvPanel) => setD((x) => ({ ...x, panels: x.panels.includes(k) ? x.panels.filter((p) => p !== k) : TV_PANELS.map((p) => p.key).filter((p) => p === k || x.panels.includes(p)) }));
 
   if (gate === undefined && !data) return <SkelRows label="Loading…" />;
@@ -144,9 +157,6 @@ export default function TvTab() {
         ))}
         <div className="flex gap-2 items-center" style={{ marginTop: 14, justifyContent: 'flex-end' }}>
           <a href="/tv" target="_blank" rel="noreferrer" className="a-btn ghost"><ExternalLink size={14} />Open the TV</a>
-          <button type="button" className="a-btn violet" disabled={saving || uploading || !gate.allowed || d.panels.length === 0} onClick={() => void save()}>
-            <Check size={15} />{saving ? 'Saving…' : 'Save the design'}
-          </button>
         </div>
         {d.panels.length === 0 && <p className="a-sub" style={{ textAlign: 'right', marginTop: 4, color: 'var(--a-a300)' }}>Pick at least one panel.</p>}
       </div>

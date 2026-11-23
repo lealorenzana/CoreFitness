@@ -24,7 +24,7 @@ const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLI
       }}
       onFocus={(e) => {
         e.currentTarget.style.borderColor = PRIMARY;
-        e.currentTarget.style.boxShadow = '0 0 0 3px rgba(124,58,237,0.18)';
+        e.currentTarget.style.boxShadow = '0 0 0 3px color-mix(in srgb, var(--color-primary) 18%, transparent)';
         onFocus?.(e);
       }}
       onBlur={(e) => {

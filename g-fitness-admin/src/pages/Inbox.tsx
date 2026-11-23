@@ -216,7 +216,7 @@ export default function Inbox() {
             <>
               <div className="ib2-bar">
                 {shown.length > 0 && (
-                  <input type="checkbox" checked={allOnPage} aria-label="Select this page" className="accent-violet-500"
+                  <input type="checkbox" checked={allOnPage} aria-label="Select this page" className="accent-[var(--color-primary)]"
                     onChange={(e) => setPicked(e.target.checked ? new Set([...picked, ...paged.visible.map((n) => n.id)]) : new Set([...picked].filter((x) => !paged.visible.some((n) => n.id === x))))} />
                 )}
                 <div className="flex-1 min-w-0"><SearchField value={q} onChange={setQ} placeholder="Search messages" label="Search messages" /></div>
@@ -257,7 +257,7 @@ export default function Inbox() {
                           <div key={n.id}>
                             {head && <p className="ib2-day">{head}</p>}
                             <div className={`ib2-msg${on ? ' on' : ''}`} data-inbox-row data-unread={!n.read || undefined}>
-                              <input type="checkbox" className="accent-violet-500" checked={picked.has(n.id)} aria-label={`Select ${n.title}`}
+                              <input type="checkbox" className="accent-[var(--color-primary)]" checked={picked.has(n.id)} aria-label={`Select ${n.title}`}
                                 onChange={(e) => { const s = new Set(picked); if (e.target.checked) s.add(n.id); else s.delete(n.id); setPicked(s); }} />
                               <span className={`ib2-dot ${n.read ? '' : 'on'}`} aria-label={n.read ? undefined : 'Unread'} />
                               <button type="button" onClick={() => read(n)} className="ib2-t" aria-current={on || undefined}>

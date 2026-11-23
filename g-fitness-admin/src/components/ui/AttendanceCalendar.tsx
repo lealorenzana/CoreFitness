@@ -34,7 +34,7 @@ export interface AttendanceCalendarProps {
 }
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const DOTS = ['rgba(139,92,246,0.35)', 'rgba(139,92,246,0.55)', 'rgba(139,92,246,0.75)', '#8B5CF6', '#A78BFA'];
+const DOTS = ['color-mix(in srgb, var(--color-primary) 35%, transparent)', 'color-mix(in srgb, var(--color-primary) 55%, transparent)', 'color-mix(in srgb, var(--color-primary) 75%, transparent)', 'var(--color-primary)', 'var(--color-primary-400, #A78BFA)'];
 
 function shiftMonth(month: string, by: number): string {
   const [y, m] = month.split('-').map(Number);
@@ -141,7 +141,7 @@ export default function AttendanceCalendar({
                 style={{
                   width: 34, height: 34, color: isSelected ? '#fff' : 'var(--color-text-primary)',
                   background: isSelected ? 'var(--fill-primary, var(--color-primary))' : 'transparent',
-                  boxShadow: isSelected ? '0 6px 18px -6px rgba(124,58,237,0.9)' : undefined,
+                  boxShadow: isSelected ? '0 6px 18px -6px color-mix(in srgb, var(--color-primary) 90%, transparent)' : undefined,
                 }}>
                 {c.day}
               </span>

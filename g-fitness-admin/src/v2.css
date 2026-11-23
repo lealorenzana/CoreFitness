@@ -621,3 +621,36 @@ button.v2-railrow:hover, .v2-railbtn:hover { background: rgb(var(--hair-rgb, 255
 /* Inside the scrolling Challenges column a grid row sized for a fixed height page collapsed to nothing. */
 .att .v3-main .a-grid { grid-template-rows: none !important; }
 .att .v3-main .a-card { min-height: auto; }
+
+/* Your app's one Save (owner, 2026-11-23): Discord's "unsaved changes" bar, kept in view at the foot of the page. */
+.att .ya-savebar { position: sticky; bottom: 12px; z-index: 6; margin: 20px auto 4px; max-width: 760px; display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px 10px 18px; border-radius: 12px; background: var(--a-raised-solid, #222120); border: 1px solid var(--a-border);
+  box-shadow: 0 18px 40px -18px rgb(0 0 0 / 0.6); }
+.att .ya-savebar > span { flex: 1; min-width: 0; font-size: 13px; color: var(--a-text2); }
+.att .ya-savebar > span b { color: var(--a-ink); margin-right: 4px; }
+@media (prefers-reduced-motion: no-preference) { .att .ya-savebar { animation: v3-bar-in 260ms var(--v3-ease) both; } }
+@keyframes v3-bar-in { from { opacity: 0; transform: translateY(16px); } }
+
+/* ══ No fixed violet inside a gym (owner, 2026-11-23: "my theme is green and there is still violet") ══════════
+   Older pages write Core Fitness violet inline. light.css already redraws those in the gym's deep shade for
+   light; this does the same in dark, from the gym's ramp (lib/gymLook.ts sets --color-primary-200…900). */
+:root:not([data-mode="light"]) :is([style^="color: rgb(196, 181, 253)"], [style*="; color: rgb(196, 181, 253)"],
+  [style^="color: rgb(167, 139, 250)"], [style*="; color: rgb(167, 139, 250)"], [style^="color: rgb(221, 214, 254)"], [style*="; color: rgb(221, 214, 254)"],
+  [style^="color: rgb(237, 233, 254)"], [style*="; color: rgb(237, 233, 254)"], [style^="color: rgb(233, 227, 255)"], [style*="; color: rgb(233, 227, 255)"],
+  [style^="color: rgb(139, 92, 246)"], [style*="; color: rgb(139, 92, 246)"]) { color: var(--color-primary-300, #C4B5FD) !important; }
+:root:not([data-mode="light"]) [style*="background: rgba(124, 58, 237, 0.0"] { background: color-mix(in srgb, var(--color-primary) 9%, transparent) !important; }
+:root:not([data-mode="light"]) [style*="background: rgba(124, 58, 237, 0.1"] { background: color-mix(in srgb, var(--color-primary) 15%, transparent) !important; }
+:root:not([data-mode="light"]) [style*="background: rgba(124, 58, 237, 0.2"] { background: color-mix(in srgb, var(--color-primary) 22%, transparent) !important; }
+:root:not([data-mode="light"]) [style*="background: rgba(124, 58, 237, 0.3"] { background: color-mix(in srgb, var(--color-primary) 30%, transparent) !important; }
+:root:not([data-mode="light"]) :is([style*="background: rgb(124, 58, 237)"], [style*="background: rgb(139, 92, 246)"]) { background: var(--color-primary) !important; }
+:root:not([data-mode="light"]) :is([style*="background: rgba(139, 92, 246, 0.3"], [style*="background: rgba(139, 92, 246, 0.5"], [style*="background: rgba(139, 92, 246, 0.7"]) { background: color-mix(in srgb, var(--color-primary) 55%, transparent) !important; }
+:root:not([data-mode="light"]) :is([style*="rgba(139, 92, 246, 0."], [style*="rgba(167, 139, 250, 0."], [style*="border-color: rgb(124, 58, 237)"]) { border-color: color-mix(in srgb, var(--color-primary) 70%, transparent) !important; }
+
+/* No dead space in the scrolling columns (owner, 2026-11-23, with screenshots): Your app capped every panel at
+   820px, which left the Challenges list stopping short and its form floating far right; panels now fill. */
+:root .att .ya-main.v3-main > .a-grid > .a-card, :root .att .ya-has-stage .ya-main > .a-grid > .a-card { max-width: none; }
+.att .ya-has-stage .ya-body, .att .v3-sec { max-width: none; }
+/* A table's sticky header stuck to the scrolling column and sat on top of the rows under it. */
+.att .ya-main .a-table thead th { position: static; }
+/* The heat and stack shades (Attendance, History) in dark, from the gym's ramp; light.css sets its own. */
+:root { --hx-1: var(--color-primary-400, #9578fb); --hx-2: var(--color-primary-600, #6447c7); --hx-3: color-mix(in srgb, var(--color-primary) 35%, #121211); }

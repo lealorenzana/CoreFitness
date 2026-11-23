@@ -31,8 +31,8 @@ export default function WhatsNew() {
   return createPortal(
     <div role="dialog" aria-label={r.title} data-whats-new
       className="fixed z-[60] rounded-2xl border p-4 wn-rise"
-      style={{ top: 76, right: 20, width: 'min(400px, calc(100vw - 40px))', borderColor: 'rgba(139,92,246,0.45)',
-        background: 'radial-gradient(120% 140% at 0% 0%, rgba(124,58,237,0.32), transparent 60%), #15131F',
+      style={{ top: 76, right: 20, width: 'min(400px, calc(100vw - 40px))', borderColor: 'color-mix(in srgb, var(--color-primary) 45%, transparent)',
+        background: 'radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--color-primary) 32%, transparent), transparent 60%), var(--a-raised-solid, #15131F)',
         boxShadow: '0 28px 70px -18px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.03)' }}>
       <style>{'@keyframes wnRise{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}.wn-rise{animation:wnRise .25s ease both}@media (prefers-reduced-motion: reduce){.wn-rise{animation:none}}'}</style>
       <div className="flex items-start gap-3">

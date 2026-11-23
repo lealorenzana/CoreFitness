@@ -49,7 +49,7 @@ export default function GymLocationPicker() {
     const m = map.current;
     if (!m) return;
     pin.current?.remove();
-    pin.current = at ? L.circleMarker([at.lat, at.lng], { radius: 10, color: '#fff', weight: 2, fillColor: '#7C3AED', fillOpacity: 1 }).addTo(m) : null;
+    pin.current = at ? L.circleMarker([at.lat, at.lng], { radius: 10, color: '#fff', weight: 2, fillColor: getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim() || '#7C3AED', fillOpacity: 1 }).addTo(m) : null;
   }, [at]);
 
   if (!ready) return null;

@@ -87,7 +87,7 @@ export async function receiptPng(doc: ReceiptDoc): Promise<Blob> {
     text(doc.date, W - PAD, 14, 500, '#374151', 'right');
     y += 28; text(doc.number, PAD, 20, 700, '#111827');
     if (doc.status) {
-      const color = doc.status.tone === 'done' ? '#5B21B6' : doc.status.tone === 'void' ? '#6B7280' : '#92400E';
+      const color = doc.status.tone === 'done' ? (getComputedStyle(document.documentElement).getPropertyValue('--color-primary-800').trim() || '#5B21B6') : doc.status.tone === 'void' ? '#6B7280' : '#92400E';
       text(doc.status.text.toUpperCase(), W - PAD, 13, 700, color, 'right');
     }
     y += 22; rule(true);

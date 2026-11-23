@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Bolt, Bot, Coins, Smartphone } from 'lucide-react';
 import { YaStage } from './stage';
+import { useYaSave } from './stageCtx';
 import { Link } from 'react-router-dom';
 import { showToast } from '../../utils/toast';
 import { shrinkImage } from '../../utils/shrinkImage';
@@ -34,7 +35,7 @@ export default function CoachTab({ enabled, sold, onToggle }: { enabled: boolean
   const [owner, setOwner] = useState(false);
   const [daily, setDaily] = useState('');
   const [monthly, setMonthly] = useState('');
-  const [saving, setSaving] = useState(false);
+  const [, setSaving] = useState(false);
   /** The owner's allowance from Core Fitness (0189): null for the desk, or before 0189. */
   const [allow, setAllow] = useState<AiAllowance | null>(null);
 
@@ -47,17 +48,20 @@ export default function CoachTab({ enabled, sold, onToggle }: { enabled: boolean
   }, []);
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
-  const save = async () => {
+  const save = async (quiet = false): Promise<boolean> => {
     const d = Number(daily), m = Number(monthly);
     const maxD = (res?.ok ? res.usage.plan_daily_cap : null) ?? 500;
     const maxM = (res?.ok ? res.usage.plan_monthly_cap : null) ?? 100000;
-    if (!Number.isInteger(d) || d < 1 || d > maxD) { showToast(`A daily limit is 1 to ${maxD} messages${maxD < 500 ? ' on your plan' : ''}.`, 'error'); return; }
-    if (!Number.isInteger(m) || m < 1 || m > maxM) { showToast(`A monthly limit is 1 to ${maxM.toLocaleString('en-PH')} messages${maxM < 100000 ? ' on your plan' : ''}.`, 'error'); return; }
+    if (!Number.isInteger(d) || d < 1 || d > maxD) { showToast(`A daily limit is 1 to ${maxD} messages${maxD < 500 ? ' on your plan' : ''}.`, 'error'); return false; }
+    if (!Number.isInteger(m) || m < 1 || m > maxM) { showToast(`A monthly limit is 1 to ${maxM.toLocaleString('en-PH')} messages${maxM < 100000 ? ' on your plan' : ''}.`, 'error'); return false; }
     setSaving(true);
-    try { await setAiLimits(d, m); await load(); showToast('Saved. The new limits apply to the next message.', 'success'); }
-    catch (e) { showToast(e instanceof Error ? e.message : 'That could not be saved', 'error'); }
+    try { await setAiLimits(d, m); await load(); if (!quiet) showToast('Saved. The new limits apply to the next message.', 'success'); return true; }
+    catch (e) { showToast(e instanceof Error ? e.message : 'That could not be saved', 'error'); return false; }
     finally { setSaving(false); }
   };
+  // One Save for Your app (2026-11-23): the AI limits join the page's save bar.
+  const limitsDirty = owner && !!res?.ok && (daily !== String(res.usage.daily_limit) || monthly !== String(res.usage.monthly_limit));
+  useYaSave('ai', 'AI assistant', limitsDirty, save, () => { if (res?.ok) { setDaily(String(res.usage.daily_limit)); setMonthly(String(res.usage.monthly_limit)); } });
 
   const u = res?.ok ? res.usage : null;
   const capD = u?.plan_daily_cap ?? null;
@@ -138,10 +142,7 @@ export default function CoachTab({ enabled, sold, onToggle }: { enabled: boolean
                   <Link to="/subscription" style={{ color: 'var(--a-p300)' }}>See plans →</Link></span>
               </div>
             )}
-            {owner ? (
-              <button type="button" className="a-btn violet" style={{ alignSelf: 'flex-end', marginTop: 10 }}
-                onClick={() => void save()} disabled={saving || !daily || !monthly}>{saving ? 'Saving…' : 'Save'}</button>
-            ) : <p className="a-sub" style={{ marginTop: 8 }}>Only the gym's owner can change these.</p>}
+            {!owner && <p className="a-sub" style={{ marginTop: 8 }}>Only the gym's owner can change these.</p>}
           </>
         )}
         <TopUps />

@@ -39,7 +39,7 @@
   --tone-gray-fg: #4A4D5E; --tone-gray-bg: rgba(20, 20, 32, 0.05); --tone-gray-line: rgba(20, 20, 32, 0.12);
   --rd-input-bg: #FFFFFF; --rd-input-line: rgba(20, 20, 32, 0.14); --rd-soft-bg: #FFFFFF;
   --rd-tab-on: #5B21B6;
-  --rd-card-line: #E6E6ED; --glow-from: #EFE8FD; --glow-line: #DDD3F8;
+  --rd-card-line: #E6E6ED; --glow-from: color-mix(in srgb, var(--color-primary) 11%, #FFFFFF); --glow-line: color-mix(in srgb, var(--color-primary) 22%, #FFFFFF);
 }
 :root[data-mode="light"] body { background: var(--color-bg); color: var(--color-text-primary); }
 
@@ -69,24 +69,24 @@
   --a-text2: #4A4D5E; --a-muted: #6B6E80;
   --a-ink: #15151C; --a-well: #F7F7FA;
 }
-:root[data-mode="light"] .att .a-card.glow { background: radial-gradient(120% 90% at 0% 0%, var(--a-plight) 0%, var(--a-surface) 70%); border-color: #DDD3F8; }
+:root[data-mode="light"] .att .a-card.glow { background: radial-gradient(120% 90% at 0% 0%, var(--a-plight) 0%, var(--a-surface) 70%); border-color: color-mix(in srgb, var(--color-primary) 22%, #FFFFFF); }
 :root[data-mode="light"] .att .a-door,
-:root[data-mode="light"] .att .a-prev { background: linear-gradient(160deg, #FAF8FF, #F1EEF9); border-color: var(--a-line); }
+:root[data-mode="light"] .att .a-prev { background: linear-gradient(160deg, color-mix(in srgb, var(--color-primary) 4%, #FFFFFF), color-mix(in srgb, var(--color-primary) 10%, #FFFFFF)); border-color: var(--a-line); }
 :root[data-mode="light"] .att .a-screen { background: #F3F3F7; border-color: var(--a-line); }
-:root[data-mode="light"] .att .a-tv span { background: #E2DCF5; }
-:root[data-mode="light"] .att .a-toast { background: linear-gradient(90deg, #F1EAFE, #FFFFFF); border-color: #DDD3F8; }
+:root[data-mode="light"] .att .a-tv span { background: color-mix(in srgb, var(--color-primary) 20%, #FFFFFF); }
+:root[data-mode="light"] .att .a-toast { background: linear-gradient(90deg, color-mix(in srgb, var(--color-primary) 10%, #FFFFFF), #FFFFFF); border-color: color-mix(in srgb, var(--color-primary) 22%, #FFFFFF); }
 :root[data-mode="light"] .att .a-toast.amber { background: linear-gradient(90deg, #FDF3E2, #FFFFFF); border-color: #F2DDB4; }
-:root[data-mode="light"] .att .a-spark i { background: #DDD3F8; }
-:root[data-mode="light"] .att .a-stage { background: radial-gradient(70% 60% at 50% 40%, #EFE8FD, #F6F6F9); }
-:root[data-mode="light"] .att .a-thumb { background: linear-gradient(135deg, #E7DFFB, #DCEFF1); }
+:root[data-mode="light"] .att .a-spark i { background: color-mix(in srgb, var(--color-primary) 22%, #FFFFFF); }
+:root[data-mode="light"] .att .a-stage { background: radial-gradient(70% 60% at 50% 40%, color-mix(in srgb, var(--color-primary) 11%, #FFFFFF), #F6F6F9); }
+:root[data-mode="light"] .att .a-thumb { background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 16%, #FFFFFF), #DCEFF1); }
 :root[data-mode="light"] .att .a-phcard { background: #FFFFFF; border-color: var(--a-line); }
 :root[data-mode="light"] .att .a-sn button.on { background: var(--a-plight); }
 :root[data-mode="light"] .att .a-wk .dh.today { background: var(--a-plight); }
-:root[data-mode="light"] .att .a-av.v { background: #EDE7FD; } :root[data-mode="light"] .att .a-av.a { background: #FCEFD8; }
+:root[data-mode="light"] .att .a-av.v { background: color-mix(in srgb, var(--color-primary) 11%, #FFFFFF); } :root[data-mode="light"] .att .a-av.a { background: #FCEFD8; }
 :root[data-mode="light"] .att .a-av.g { background: #DDF5F0; color: #0F766E; } :root[data-mode="light"] .att .a-av.p { background: #F8E3F3; color: #9D174D; }
 :root[data-mode="light"] .att .a-table tbody tr:hover td { background: #00000005; }
 :root[data-mode="light"] .att .a-chip.on { border-color: #F2DDB4; }
-:root[data-mode="light"] .att .a-chip.v { border-color: #DDD3F8; }
+:root[data-mode="light"] .att .a-chip.v { border-color: color-mix(in srgb, var(--color-primary) 22%, #FFFFFF); }
 
 /* The sign-in page stays dark in both modes: its own dark roles, whatever <html> says. */
 :root[data-mode="light"] .keep-dark {
@@ -96,7 +96,7 @@
   --rd-input-bg: rgba(255,255,255,0.03); --rd-input-line: rgba(255,255,255,0.1);
 }
 
-:root[data-mode="light"] .att .a-hint { background: #F7F5FD; border-color: #DDD3F8; }
+:root[data-mode="light"] .att .a-hint { background: color-mix(in srgb, var(--color-primary) 5%, #FFFFFF); border-color: color-mix(in srgb, var(--color-primary) 22%, #FFFFFF); }
 
 /* ── Polish (2026-11-03): what makes light mode feel designed, not inverted ────────────────────
    Depth comes from a slightly grey page and white cards on soft, layered shadows — not from
@@ -117,31 +117,31 @@
 :root[data-mode="light"] .att .a-what.on,
 :root[data-mode="light"] .att .a-door2.on { background: var(--a-plight); border-color: var(--a-p400); box-shadow: 0 0 0 3px color-mix(in srgb, var(--a-p400) 14%, transparent); }
 :root[data-mode="light"] .att .a-opt.on { background: var(--a-alight); border-color: var(--a-amber); box-shadow: 0 0 0 3px color-mix(in srgb, var(--a-amber) 14%, transparent); }
-:root[data-mode="light"] .att .a-card.press:hover, :root[data-mode="light"] .att .a-opt:hover { border-color: #CFC6EE; }
+:root[data-mode="light"] .att .a-card.press:hover, :root[data-mode="light"] .att .a-opt:hover { border-color: color-mix(in srgb, var(--color-primary) 32%, #FFFFFF); }
 :root[data-mode="light"] .att .a-card.press.on { border-color: #E9A23B; background: var(--a-alight); box-shadow: 0 0 0 3px rgba(233, 162, 59, 0.16); }
 :root[data-mode="light"] .att .a-tile.on, :root[data-mode="light"] .att .a-badge.on { border-color: var(--a-p400); box-shadow: 0 0 0 3px color-mix(in srgb, var(--a-p400) 14%, transparent); }
 :root[data-mode="light"] .att .a-in:focus { border-color: var(--a-p400); box-shadow: 0 0 0 3px color-mix(in srgb, var(--a-p400) 16%, transparent); }
 /* Buttons: flat fills with a light shadow — glows belong to the dark. */
 :root[data-mode="light"] .att .a-btn { box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06); }
-:root[data-mode="light"] .att .a-btn.violet { box-shadow: 0 2px 8px -2px color-mix(in srgb, #7C3AED 45%, transparent); }
+:root[data-mode="light"] .att .a-btn.violet { box-shadow: 0 2px 8px -2px color-mix(in srgb, var(--color-primary) 45%, transparent); }
 :root[data-mode="light"] .att .a-btn.amber { box-shadow: 0 2px 8px -2px rgba(217, 119, 6, 0.4); }
 /* Heat cells, weeks, events and chat in pale tints of their own colours. */
 /* An empty day in range is still a day you can open: muted, but 4.3:1, not 2.3:1 (#9A9DB0, 2026-11-14).
    The two strongest steps are solid fills, so they carry white words; l3 is deep enough for them (4.2:1). */
 :root[data-mode="light"] .att .l0 { background: #EEEEF3; color: #6B6E85 !important; }
-:root[data-mode="light"] .att .l1 { background: #E4DCFB; } :root[data-mode="light"] .att .l2 { background: #C5B3F6; }
-:root[data-mode="light"] .att .l3 { background: #8B5CF6; color: #FFFFFF; } :root[data-mode="light"] .att .l4 { background: #7C3AED; color: #FFFFFF; }
+:root[data-mode="light"] .att .l1 { background: color-mix(in srgb, var(--color-primary) 17%, #FFFFFF); } :root[data-mode="light"] .att .l2 { background: color-mix(in srgb, var(--color-primary) 37%, #FFFFFF); }
+:root[data-mode="light"] .att .l3 { background: var(--color-primary-600, color-mix(in srgb, var(--color-primary) 75%, #FFFFFF)); color: #FFFFFF; } :root[data-mode="light"] .att .l4 { background: var(--color-primary-700, color-mix(in srgb, var(--color-primary) 94%, #FFFFFF)); color: #FFFFFF; }
 :root[data-mode="light"] .att .a-wkg .d.rest { background: #F1F1F5; }
-:root[data-mode="light"] .att .a-wkg .d.t0, :root[data-mode="light"] .att .a-ev.c0 { background: #EFE8FD; color: #5B21B6; }
+:root[data-mode="light"] .att .a-wkg .d.t0, :root[data-mode="light"] .att .a-ev.c0 { background: color-mix(in srgb, var(--color-primary) 13%, #FFFFFF); color: var(--color-primary-800, color-mix(in srgb, var(--color-primary) 73%, #121211)); }
 :root[data-mode="light"] .att .a-wkg .d.t1, :root[data-mode="light"] .att .a-ev.c1 { background: #DDF5F0; color: #0F766E; }
 :root[data-mode="light"] .att .a-wkg .d.t2, :root[data-mode="light"] .att .a-ev.c2 { background: #FDF0D8; color: #92400E; }
 :root[data-mode="light"] .att .a-wkg .d.t3, :root[data-mode="light"] .att .a-ev.c3 { background: #FBE4F7; color: #9D174D; }
 :root[data-mode="light"] .att .a-wkg .d.t4, :root[data-mode="light"] .att .a-ev.c4 { background: #E1ECFD; color: #1D4ED8; }
 :root[data-mode="light"] .att .a-wkg .d.t5, :root[data-mode="light"] .att .a-ev.c5 { background: #ECF6D6; color: #3F6212; }
 :root[data-mode="light"] .att .a-ev small { color: inherit; opacity: .8; }
-:root[data-mode="light"] .att .a-wk .col.today { background: repeating-linear-gradient(180deg, #F7F4FE 0 35px, #EDE7FB 35px 36px); }
-:root[data-mode="light"] .att .a-bubble { background: #F3EFFD; border-color: #E1D8F8; color: var(--color-text-primary); }
-:root[data-mode="light"] .att .a-msg.me { background: #EFE8FD; }
+:root[data-mode="light"] .att .a-wk .col.today { background: repeating-linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 5%, #FFFFFF) 0 35px, color-mix(in srgb, var(--color-primary) 12%, #FFFFFF) 35px 36px); }
+:root[data-mode="light"] .att .a-bubble { background: color-mix(in srgb, var(--color-primary) 8%, #FFFFFF); border-color: color-mix(in srgb, var(--color-primary) 20%, #FFFFFF); color: var(--color-text-primary); }
+:root[data-mode="light"] .att .a-msg.me { background: color-mix(in srgb, var(--color-primary) 11%, #FFFFFF); }
 :root[data-mode="light"] .att .a-medal.locked { border-color: #D9D9E3; color: #9A9DB0; }
 :root[data-mode="light"] .att .a-av.v, :root[data-mode="light"] .att .a-av.a { color: inherit; }
 /* The phone preview keeps a dark frame — it is a picture of a phone — with a light screen inside. */
@@ -169,7 +169,7 @@
    Dark mode keeps its glow and gradients; light gets flat fills strong enough for white words, and every
    tinted panel is one even colour. --fill-action / --fill-primary are the gym's deep shades (lib/gymLook.ts),
    falling back to Core Fitness amber and violet. */
-:root[data-mode="light"] { --fill-action: var(--fill-action-gym, #B45309); --fill-primary: var(--fill-primary-gym, #6D28D9); }
+:root[data-mode="light"] { --fill-action: var(--fill-action-gym, #B45309); --fill-primary: var(--fill-primary-gym, color-mix(in srgb, var(--color-primary) 90%, #121211)); }
 :root[data-mode="light"] .att .a-btn.amber { background: var(--fill-action); color: #FFFFFF; border-color: var(--fill-action); box-shadow: 0 6px 14px -8px color-mix(in srgb, var(--fill-action) 70%, transparent); }
 :root[data-mode="light"] .att .a-btn.violet { background: var(--fill-primary); color: #FFFFFF; border-color: var(--fill-primary); box-shadow: 0 6px 14px -8px color-mix(in srgb, var(--fill-primary) 70%, transparent); }
 :root[data-mode="light"] .att .a-btn.amber *, :root[data-mode="light"] .att .a-btn.violet * { color: inherit; }
@@ -372,10 +372,10 @@
 :root[data-mode="light"] [style^="color: rgb(240, 168, 224)"], :root[data-mode="light"] [style*="; color: rgb(240, 168, 224)"] { color: #A21CAF !important; }
 :root[data-mode="light"] [style^="color: rgb(147, 197, 253)"], :root[data-mode="light"] [style*="; color: rgb(147, 197, 253)"] { color: #1D4ED8 !important; }
 :root[data-mode="light"] [style^="color: rgb(217, 249, 157)"], :root[data-mode="light"] [style*="; color: rgb(217, 249, 157)"] { color: #3F6212 !important; }
-:root[data-mode="light"] [style^="color: rgb(196, 181, 253)"], :root[data-mode="light"] [style*="; color: rgb(196, 181, 253)"] { color: var(--color-primary-700, #6D28D9) !important; }
-:root[data-mode="light"] [style^="color: rgb(167, 139, 250)"], :root[data-mode="light"] [style*="; color: rgb(167, 139, 250)"] { color: var(--color-primary-700, #6D28D9) !important; }
-:root[data-mode="light"] [style^="color: rgb(221, 214, 254)"], :root[data-mode="light"] [style*="; color: rgb(221, 214, 254)"] { color: var(--color-primary-700, #6D28D9) !important; }
-:root[data-mode="light"] [style^="color: rgb(233, 213, 255)"], :root[data-mode="light"] [style*="; color: rgb(233, 213, 255)"] { color: var(--color-primary-700, #6D28D9) !important; }
+:root[data-mode="light"] [style^="color: rgb(196, 181, 253)"], :root[data-mode="light"] [style*="; color: rgb(196, 181, 253)"] { color: var(--color-primary-700, color-mix(in srgb, var(--color-primary) 90%, #121211)) !important; }
+:root[data-mode="light"] [style^="color: rgb(167, 139, 250)"], :root[data-mode="light"] [style*="; color: rgb(167, 139, 250)"] { color: var(--color-primary-700, color-mix(in srgb, var(--color-primary) 90%, #121211)) !important; }
+:root[data-mode="light"] [style^="color: rgb(221, 214, 254)"], :root[data-mode="light"] [style*="; color: rgb(221, 214, 254)"] { color: var(--color-primary-700, color-mix(in srgb, var(--color-primary) 90%, #121211)) !important; }
+:root[data-mode="light"] [style^="color: rgb(233, 213, 255)"], :root[data-mode="light"] [style*="; color: rgb(233, 213, 255)"] { color: var(--color-primary-700, color-mix(in srgb, var(--color-primary) 90%, #121211)) !important; }
 :root[data-mode="light"] [style^="color: rgb(252, 211, 77)"], :root[data-mode="light"] [style*="; color: rgb(252, 211, 77)"] { color: #92400E !important; }
 :root[data-mode="light"] [style^="color: rgb(251, 191, 36)"], :root[data-mode="light"] [style*="; color: rgb(251, 191, 36)"] { color: #92400E !important; }
 :root[data-mode="light"] [style^="color: rgb(74, 222, 128)"], :root[data-mode="light"] [style*="; color: rgb(74, 222, 128)"] { color: #15803D !important; }
@@ -383,7 +383,7 @@
 :root[data-mode="light"] [style^="color: rgb(248, 113, 113)"], :root[data-mode="light"] [style*="; color: rgb(248, 113, 113)"] { color: #B91C1C !important; }
 :root[data-mode="light"] [style^="color: rgb(252, 165, 165)"], :root[data-mode="light"] [style*="; color: rgb(252, 165, 165)"] { color: #B91C1C !important; }
 /* The redesign stylesheet's own pastel words. */
-:root[data-mode="light"] .att .a-wkg-name.t0 { color: var(--color-primary-700, #5B21B6); }
+:root[data-mode="light"] .att .a-wkg-name.t0 { color: var(--color-primary-700, color-mix(in srgb, var(--color-primary) 73%, #121211)); }
 :root[data-mode="light"] .att .a-wkg-name.t1 { color: #0F766E; }
 :root[data-mode="light"] .att .a-wkg-name.t2 { color: #92400E; }
 :root[data-mode="light"] .att .a-wkg-name.t3 { color: #9D174D; }
@@ -394,7 +394,7 @@
 :root[data-mode="light"] .att .a-av.p { background: #F8DDF1; color: #9D174D; }
 :root[data-mode="light"] .att .a-status { background: #D5F2EC; color: #0F766E; }
 :root[data-mode="light"] .att .a-medal.gold { color: #92400E; }
-:root[data-mode="light"] .att .a-medal.platinum { color: var(--color-primary-700, #5B21B6); }
+:root[data-mode="light"] .att .a-medal.platinum { color: var(--color-primary-700, color-mix(in srgb, var(--color-primary) 73%, #121211)); }
 /* Words written straight on the page (titles, their subtitles) sit on the colour behind the glass: in light
    that colour is quieter, and the subtitles a step darker. */
 :root[data-mode="light"] { --amb-strength: 0.5; }
@@ -427,8 +427,8 @@ select:not([multiple]):not([size]) {
 .cf-asel__opt { width: 100%; min-height: 36px; padding: 0 10px; border-radius: 9px; display: flex; align-items: center; justify-content: space-between; gap: 8px;
   text-align: left; font-size: 13.5px; color: var(--color-text-primary); }
 .cf-asel__opt.is-active { background: color-mix(in srgb, var(--color-primary) 12%, transparent); }
-.cf-asel__opt.is-on { background: color-mix(in srgb, var(--color-primary) 20%, transparent); color: var(--color-primary-300, #C4B5FD); font-weight: 600; }
-:root[data-mode="light"] .cf-asel__opt.is-on { background: var(--color-primary-700, #6D28D9); color: #FFFFFF; }
+.cf-asel__opt.is-on { background: color-mix(in srgb, var(--color-primary) 20%, transparent); color: var(--color-primary-300, color-mix(in srgb, var(--color-primary) 33%, #FFFFFF)); font-weight: 600; }
+:root[data-mode="light"] .cf-asel__opt.is-on { background: var(--color-primary-700, color-mix(in srgb, var(--color-primary) 90%, #121211)); color: #FFFFFF; }
 :root[data-mode="light"] .cf-asel__panel { box-shadow: 0 22px 50px -18px rgba(40, 30, 90, 0.35), 0 2px 8px rgba(40, 30, 90, 0.08); }
 .cf-asel__opt:disabled { opacity: 0.4; }
 .cf-asel__none { font-size: 13px; color: var(--color-text-muted); padding: 12px 10px; }

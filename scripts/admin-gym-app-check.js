@@ -158,7 +158,8 @@ async (page) => {
   // Pick an action colour and a noun, then save. The assertion is on what was
   // sent: a swatch that highlights and sends nothing is the exact failure.
   await page.getByRole('button', { name: 'Red' }).nth(1).click();
-  await page.getByRole('button', { name: 'Publish to members' }).click();
+  // One Save for Your app since 2026-11-23: the bar at the foot saves every changed section.
+  await page.locator('[data-save-all]').click();
   await page.waitForTimeout(1200);
   out.push('action colour sent: ' + (CALLS.save_gym_look?.p_accent_action ?? 'MISSING')
     + ' (kept accent ' + (CALLS.save_gym_look?.p_accent ?? 'MISSING') + ')');
@@ -178,7 +179,7 @@ async (page) => {
   await page.waitForTimeout(400);
   await page.getByLabel('All of them', { exact: true }).first().fill('PTs');
   await page.getByLabel('All of your people', { exact: true }).fill('Athletes');
-  await page.getByRole('button', { name: 'Save words' }).click();
+  await page.locator('[data-save-all]').click();
   await page.waitForTimeout(1500);
   out.push('noun sent: ' + (CALLS.save_gym_vocabulary?.p_words?.trainers ?? 'MISSING'));
 
@@ -200,7 +201,7 @@ async (page) => {
   t = await text();
   out.push('link warning: ' + (/stops working the moment you save/.test(t) ? 'shown' : 'MISSING'));
   await page.getByLabel(/join\/$/).fill('harbour-strength-mamburao');
-  await page.getByRole('button', { name: 'Move my link' }).click();
+  await page.locator('[data-save-all]').click();
   await page.waitForTimeout(1200);
   out.push('slug sent: ' + (CALLS.set_gym_slug?.p_slug ?? 'MISSING'));
   await page.screenshot({ path: 'shots/admin-gym-app-link.png', fullPage: true });

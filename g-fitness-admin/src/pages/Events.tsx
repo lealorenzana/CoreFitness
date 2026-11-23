@@ -352,7 +352,7 @@ export default function Events() {
                   opacity: evt.cancelled ? 0.6 : 1, background: picked.has(evt.id) ? 'rgba(124,58,237,0.08)' : undefined }}>
                   {selecting && (
                     <Td className="w-10">
-                      <input type="checkbox" className="accent-violet-500" checked={picked.has(evt.id)} onChange={() => togglePick(evt.id)} aria-label={`Select ${evt.title}`} />
+                      <input type="checkbox" className="accent-[var(--color-primary)]" checked={picked.has(evt.id)} onChange={() => togglePick(evt.id)} aria-label={`Select ${evt.title}`} />
                     </Td>
                   )}
                   <Td>
@@ -530,7 +530,7 @@ export default function Events() {
             <ImageField value={form.imageUrl} onChange={(imageUrl) => setForm({ ...form, imageUrl })} kind="events"
               label="Event picture" hint="A poster or photo, shown with the event in the member app." />
             <label className="flex items-start gap-2.5 cursor-pointer">
-              <input type="checkbox" checked={form.isFeatured} className="mt-1 accent-violet-500" onChange={(e) => setForm({ ...form, isFeatured: e.target.checked })} />
+              <input type="checkbox" checked={form.isFeatured} className="mt-1 accent-[var(--color-primary)]" onChange={(e) => setForm({ ...form, isFeatured: e.target.checked })} />
               <span className="text-[13px] leading-relaxed" style={{ color: SECOND }}>
                 <strong className="text-white">Feature this event.</strong> Pins it to the top of members&rsquo; Events. Use it sparingly: if everything is featured, nothing is.
               </span>

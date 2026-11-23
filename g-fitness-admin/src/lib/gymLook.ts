@@ -16,9 +16,18 @@ import { PREMIUM_THEMES } from './premiumThemes';
  */
 const ID = 'gym-look';
 let last: { accent: string | null; action: string | null; theme: string | null } | null = null;
+/** Colours being picked on Your app, painted on this dashboard before they are saved (owner, 2026-11-23). */
+let preview: { accent: string | null; action: string | null } | null = null;
+
+/** Paint the dashboard in colours not saved yet; null goes back to the saved look. */
+export function previewGymLook(p: { accent: string | null; action: string | null } | null): void {
+  preview = p;
+  renderGymLook();
+}
 
 export function clearGymLook(): void {
   last = null;
+  preview = null;
   document.getElementById(ID)?.remove();
 }
 
@@ -34,11 +43,12 @@ function wordsOn(hex: string): string {
 
 /** Draw the last-read look in the current mode (lib/colorMode.ts calls this when the mode changes). */
 export function renderGymLook(): void {
-  if (!last) return;
+  const cur = preview ? { theme: last?.theme ?? null, ...preview } : last;
+  if (!cur) return;
   const light = document.documentElement.dataset.mode === 'light';
-  const p = rampFor(last.accent, 'violet');
-  const a = rampFor(last.action, 'amber');
-  const pt = PREMIUM_THEMES.find((x) => x.key === last!.theme);
+  const p = rampFor(cur.accent, 'violet');
+  const a = rampFor(cur.action, 'amber');
+  const pt = PREMIUM_THEMES.find((x) => x.key === cur.theme);
   const t = pt ? (light ? pt.light : pt.dark) : undefined;
   const ground = t ? `
   --color-bg: ${t.bg}; --surface-solid: ${t.surface}; --raised-solid: ${t.raised}; --color-surface-high: ${t.high};
@@ -56,6 +66,9 @@ export function renderGymLook(): void {
   --color-secondary: ${aBase}; --color-secondary-hover: ${light ? a.c800 : a.hover}; --color-secondary-light: ${aLight};${ground}${light ? `
   --fill-action-gym: ${a.c700}; --fill-primary-gym: ${p.c700};` : ''}
   --on-secondary: ${light ? '#FFFFFF' : wordsOn(a.base)};
+  --color-primary-200: ${p.c200}; --color-primary-300: ${p.c300}; --color-primary-400: ${p.c400}; --color-primary-600: ${p.c600};
+  --color-primary-700: ${p.c700}; --color-primary-800: ${p.c800}; --color-primary-900: ${p.c900};
+  --tone-violet-fg: ${light ? p.c700 : p.c300};${light ? ` --rd-tab-on: ${p.c800};` : ''}
 }
 body { background: var(--color-bg); }
 .att, :root[data-mode] .att {

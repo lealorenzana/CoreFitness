@@ -376,7 +376,7 @@ export default function Notifications() {
       <p className="text-center text-[22px] font-semibold text-white mt-2 tabular-nums">9:41</p>
       <p className="text-center text-[11.5px]" style={{ color: MUTED }}>On their lock screen</p>
       <div className="rounded-2xl p-2.5 mt-3 flex items-start gap-2.5" style={{ background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(8px)' }}>
-        <span className="w-7 h-7 rounded-lg grid place-items-center flex-none" style={{ background: '#7C3AED' }}><Smartphone size={13} style={{ color: '#fff' }} /></span>
+        <span className="w-7 h-7 rounded-lg grid place-items-center flex-none" style={{ background: 'var(--color-primary)' }}><Smartphone size={13} style={{ color: '#fff' }} /></span>
         <div className="min-w-0">
           <p className="text-[12px] font-semibold text-white truncate">{form.title || 'Your title'}</p>
           <p className="text-[11.5px] line-clamp-2" style={{ color: SECOND }}>{form.message || 'Your message'}</p>
@@ -474,7 +474,7 @@ export default function Notifications() {
                 <Tr key={notif.key} style={{ height: visibleHistory.length > paged.perPage ? fit.rowHeight : undefined, background: picked.has(notif.key) ? 'rgba(124,58,237,0.08)' : undefined }} data-sent-row>
                   {selecting && (
                     <Td className="w-10">
-                      <input type="checkbox" className="accent-violet-500" checked={picked.has(notif.key)} onChange={() => togglePick(notif.key)} aria-label={`Select ${notif.title}`} />
+                      <input type="checkbox" className="accent-[var(--color-primary)]" checked={picked.has(notif.key)} onChange={() => togglePick(notif.key)} aria-label={`Select ${notif.title}`} />
                     </Td>
                   )}
                   <Td>
@@ -624,7 +624,7 @@ export default function Notifications() {
                       const checked = form.specificUsers.includes(p.id);
                       return (
                         <label key={p.id} className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-white/5">
-                          <input type="checkbox" className="accent-violet-500" checked={checked}
+                          <input type="checkbox" className="accent-[var(--color-primary)]" checked={checked}
                             onChange={() => setForm({ ...form, specificUsers: checked ? form.specificUsers.filter((id) => id !== p.id) : [...form.specificUsers, p.id] })} />
                           <Initials name={p.name} size={26} />
                           <span className="text-[13px] text-white flex-1 truncate">{p.name}</span>

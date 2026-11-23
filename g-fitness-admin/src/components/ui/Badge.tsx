@@ -27,7 +27,7 @@ interface BadgeProps extends React.HTMLAttributes<HTMLDivElement> {
 const VIOLET = {
   background: 'var(--color-primary-light)',
   color:      'var(--color-primary)',
-  border:     'rgba(124,58,237,0.25)',
+  border:     'color-mix(in srgb, var(--color-primary) 25%, transparent)',
 };
 
 const YELLOW = {
