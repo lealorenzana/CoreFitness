@@ -349,9 +349,7 @@ export default function App() {
             </ul>
             </div>
             <div className="pb-visual">
-              <div className="pb-img" aria-hidden="true"><img src="/band-lifter.webp" alt="" loading="lazy" /></div>
               <MockupDemoMedia name="coach" label="Coach dashboard demo" />
-              <p className="illus-note">Actual Core Fitness UI · demo records</p>
               <details className="v2-coach-example"><summary>Try the booking flow · interactive example</summary><CoachDemo /></details>
             </div>
           </div>
@@ -477,7 +475,7 @@ export default function App() {
             </p>
             <div className="v2-directory-tools">
               <label className="v2-gym-search"><Icon name="globe" /><span className="sr-only">Search gyms</span><input type="search" value={gymQuery} onChange={event=>{setGymQuery(event.target.value);setGymPage(0);}} placeholder="Find your gym by name or city" aria-label="Search gyms" /></label>
-              <div className="v2-gym-filters" role="group" aria-label="Filter gyms">{(['all','live','demo'] as const).map(filter=><button type="button" key={filter} aria-pressed={gymFilter===filter} onClick={()=>{setGymFilter(filter);setGymPage(0);}}>{filter==='all'?'All locations':filter==='live'?'Live gyms':'Demo gyms'}</button>)}</div>
+              {gyms?.some(g => g.is_demo) && <div className="v2-gym-filters" role="group" aria-label="Filter gyms">{(['all','live','demo'] as const).map(filter=><button type="button" key={filter} aria-pressed={gymFilter===filter} onClick={()=>{setGymFilter(filter);setGymPage(0);}}>{filter==='all'?'All locations':filter==='live'?'Live gyms':'Demo gyms'}</button>)}</div>}
             </div>
             <div className="gyms v2-directory-grid">
               {directoryMatches.slice(directoryPage*6, directoryPage*6+6).map((g, i) => (

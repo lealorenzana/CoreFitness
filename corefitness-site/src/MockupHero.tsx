@@ -51,7 +51,6 @@ export default function MockupHero() {
           <div className="v2-character character-mascot" aria-hidden="true"><img src="/mockup-art/gym-characters-clean.webp" alt="" /></div>
           <img className="v2-foreground" src="/mockup-art/gym-foreground.webp" alt="" aria-hidden="true" />
           <img className="v2-bottle" src="/mockup-art/bottle-mascot.webp" alt="" aria-hidden="true" />
-          <p className="v2-screen-caption">Actual Core Fitness UI · Lab demo records</p>
         </div>
       </div>
       <div className="v2-actions">

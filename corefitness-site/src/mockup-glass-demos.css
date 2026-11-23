@@ -12,7 +12,7 @@
 .v3-demo-bar button{border:1px solid #b695df55;background:#ffffff0c;border-radius:8px;color:#fff;padding:5px 9px;cursor:pointer;white-space:nowrap}
 .v3-day-copy{min-height:235px;margin-top:20px}.v3-day-copy .who{display:flex;gap:8px;align-items:center;color:#d4b7ff;font-size:12px}.v3-day-copy h2{font-size:30px;line-height:1.05;text-transform:uppercase;letter-spacing:-.035em;margin:14px 0}.v3-day-copy p{font-size:15px;line-height:1.5;color:#e4daef}
 .month-steps button{text-align:left;background:transparent;border:0;color:inherit;width:100%;cursor:pointer;padding:8px 0}.month-steps button b,.month-steps button span{display:block}.month-steps button span{margin-top:7px}.month-steps button[aria-pressed=true]{color:#d9bcff}
-.photo-band .v3-demo-media{height:450px}.photo-band .pb-visual{transform:none!important}
+.photo-band .v3-demo-media{height:450px}.photo-band .pb-visual{transform:none!important;min-height:0}
 @keyframes demo-breathe{0%,100%{scale:1}50%{scale:1.025}}
 @media(max-width:720px){.v3-video-section{padding:35px 0!important}.v3-video-section .story-stage,.v3-video-section .as-stage,.v3-video-section .month-stage{padding:20px 16px!important}.v3-video-section .story-visual,.v3-video-section .as-visual{height:310px!important;padding:8px!important}.v3-demo-media{height:290px;border-radius:22px}.v3-day-copy{min-height:205px}.v3-day-copy h2{font-size:25px}.v3-day-copy p{font-size:13px}.photo-band .v3-demo-media{height:290px}.v3-demo-bar{font-size:8px;padding:7px}.v3-demo-bar button{font-size:10px}}
 @media(prefers-reduced-motion:reduce){.v3-demo-screen .v3-capture-motion{animation:none!important}}

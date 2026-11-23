@@ -18,7 +18,7 @@
 .v2-monitor-brand{font-size:7px;letter-spacing:.13em;font-weight:650}
 .v2-device-controls{display:flex;gap:7px}.v2-device-controls i{display:block;width:10px;height:10px;border-radius:50%;background:#7c3aed;box-shadow:2px 2px 0 #241136}.v2-device-controls i:last-child{background:#f5a524}
 .v2-monitor-foot{display:none}
-.v2-phone{position:absolute;top:46%;left:70%;width:19.5%;aspect-ratio:430/960;border:5px solid #7c3aed;border-right:7px solid #3b1b61;border-radius:22px;background:#09080e;transform:rotate(-5deg);padding:5px;box-shadow:4px 5px 0 #110c16,8px 9px 18px #0005;z-index:4}
+.v2-phone{position:absolute;bottom:3%;left:70%;width:19.5%;aspect-ratio:430/960;border:5px solid #7c3aed;border-right:7px solid #3b1b61;border-radius:22px;background:#09080e;transform:rotate(-5deg);padding:5px;box-shadow:4px 5px 0 #110c16,8px 9px 18px #0005;z-index:4}
 .v2-phone img{width:100%;height:100%;object-fit:contain;display:block;border-radius:14px}
 .v2-phone-camera{position:absolute;top:7px;left:39%;width:24%;height:3px;background:#020106;border-radius:5px;z-index:1}
 .v2-character{position:absolute;inset:0;pointer-events:none;z-index:5}
