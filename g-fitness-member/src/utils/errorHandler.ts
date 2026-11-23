@@ -85,11 +85,21 @@ export const showErrorToast = (error: AppError) => {
     <svg class="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
     </svg>
-    <div class="min-w-0">
-      <p class="font-semibold leading-tight">${error.message}</p>
-      ${error.details ? `<p class="text-xs opacity-90 mt-0.5">${error.details}</p>` : ''}
-    </div>
+    <div class="min-w-0"></div>
   `;
+  // The words go in as TEXT, never as HTML (audit, 2026-11-15): an error message can carry what a server, a
+  // sign-in provider or the address bar said, and none of that may become markup on the sign-in pages.
+  const words = toast.querySelector('div') as HTMLDivElement;
+  const head = document.createElement('p');
+  head.className = 'font-semibold leading-tight';
+  head.textContent = error.message;
+  words.appendChild(head);
+  if (error.details) {
+    const more = document.createElement('p');
+    more.className = 'text-xs opacity-90 mt-0.5';
+    more.textContent = error.details;
+    words.appendChild(more);
+  }
 
   appendToast(toast);
 };
@@ -103,8 +113,9 @@ export const showSuccessToast = (message: string) => {
     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
     </svg>
-    <p class="font-semibold leading-tight">${message}</p>
+    <p class="font-semibold leading-tight"></p>
   `;
+  (toast.querySelector('p') as HTMLParagraphElement).textContent = message;   // text, never HTML
 
   appendToast(toast);
 };

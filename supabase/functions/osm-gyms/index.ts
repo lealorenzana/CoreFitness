@@ -88,7 +88,16 @@ Deno.serve(async (req: Request) => {
     // At most three stale tiles per call, so one request never hammers Overpass;
     // the rest refresh on the next look.
     const problems: string[] = [];
-    for (const tile of tiles.filter((t) => !fresh.has(t)).slice(0, 3)) {
+    // Audit, 2026-11-15: this door is open to anyone (the gym finder works signed out), so the work it can cause
+    // is bounded twice. Only the Philippines is ever fetched and cached — the service runs there, and a caller
+    // walking the globe would otherwise fill the cache and hammer Overpass in our name. And at most 40 tiles an
+    // hour from everyone together; past that, the answer comes from what is already cached.
+    const inPh = lat >= 4 && lat <= 22 && lng >= 116 && lng <= 127.5;
+    const hourAgo = new Date(Date.now() - 3600_000).toISOString();
+    const { count: fetchedThisHour } = await db.from("osm_tiles").select("tile", { count: "exact", head: true }).gte("fetched_at", hourAgo);
+    const budget = inPh ? Math.max(0, Math.min(3, 40 - (fetchedThisHour ?? 40))) : 0;
+    if (!inPh) problems.push("Outside the Philippines: nothing is looked up there.");
+    for (const tile of tiles.filter((t) => !fresh.has(t)).slice(0, budget)) {
       try {
         const rows = await fetchTile(tile);
         await db.from("osm_gyms").delete().eq("tile", tile);

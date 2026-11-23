@@ -50,7 +50,9 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const target = (event.notification.data && event.notification.data.url) || '/member/home';
+  const asked = (event.notification.data && event.notification.data.url) || '/member/home';
+  // Only a page of this app: a push payload must never be able to open another site (audit, 2026-11-15).
+  const target = /^\/(?!\/)/.test(asked) ? asked : '/member/home';
 
   // Focus an already-open window instead of opening a second copy of the app.
   event.waitUntil(

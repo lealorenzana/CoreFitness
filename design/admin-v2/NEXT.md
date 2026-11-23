@@ -48,7 +48,7 @@ Still to do, the owner's screenshots in that chat:
 - **The layout to copy is Discord's settings** (owner's reference): a left list of sections with sub-items under the
   open one (a line marks the current), one centred content column (~720px) of headings and rows: label and help on the
   left, the control (toggle, select) on the right, hairline between rows, no boxes inside boxes. First on
-  **Your app** (`/gym-app`: Look, Words, What you run, Joining, AI assistant, Payments, Lobby TV, Celebrations; keep the
+  **Your app** (DONE 2026-11-23, `.ya-*` in att.css: reuse that pattern; was: Look, Words, What you run, Joining, AI assistant, Payments, Lobby TV, Celebrations; keep the
   live phone preview on the right), then **Settings** (same pattern; it already has a left list).
 - **Plans** (Money → Plans): too many boxes; the "New plan" form shows on the right AND a New plan button AND a dashed
   New plan card. Keep one way in. Dashes in copy ("if everyone renews —").
@@ -59,3 +59,4 @@ Still to do, the owner's screenshots in that chat:
 - **Library → Programs** (program editor, Workouts list + editor with a big empty area).
 - Rule from the owner: remove buttons that do nothing because their content is already on the page; never remove a
   feature; smooth CSS transitions; no dashes; check one screen quickly, full checks only before shipping.
+- Sidebar: light mode wears the gym colour (white words), dark stays plain near-black (owner, 2026-11-23).

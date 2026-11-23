@@ -119,7 +119,8 @@ Deno.serve(async (req: Request) => {
       try {
         const iu = new URL(image);
         if (iu.protocol === "https:" && IMAGE_HOSTS.test(iu.hostname)) {
-          const res = await fetch(iu, { headers: { "User-Agent": PREVIEW_UA }, signal: AbortSignal.timeout(8000) });
+          // redirect: "error" — the picture must come from the allowed host itself, never from wherever it points (audit).
+          const res = await fetch(iu, { redirect: "error", headers: { "User-Agent": PREVIEW_UA }, signal: AbortSignal.timeout(8000) });
           const type = (res.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
           if (res.ok && (type === "image/jpeg" || type === "image/webp")) {
             const bytes = new Uint8Array(await res.arrayBuffer());

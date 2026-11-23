@@ -6,9 +6,8 @@
 //     itself says who, what and where, and claim_notification_push() takes it
 //     once, while fresh. That is why the function is deployed --no-verify-jwt:
 //     the trigger can only present the project's publishable key, not a JWT.
-//   * { userId, title, ... } — the older direct call. Still requires a signed-in
-//     owner, desk or trainer of the caller's current gym (gym_roles, not the
-//     legacy profiles.role). The apps no longer use it.
+//   * { chatMessageId } — a gym chat message (0246), claimed once the same way.
+// There is no direct { userId, title } call any more (audit, 2026-11-15): see below.
 //
 // Server-side because the VAPID *private* key signs every request and must never
 // reach a browser. It lives only as an Edge Function secret, like the
@@ -49,7 +48,6 @@ Deno.serve(async (req: Request) => {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     const vapidPublic = Deno.env.get("VAPID_PUBLIC_KEY");
@@ -109,21 +107,14 @@ Deno.serve(async (req: Request) => {
       type = row.type ?? "system";
       url = row.action_url ?? "/member/home";
     } else {
-      // The older direct call: a signed-in owner, desk or trainer of their gym.
-      const authHeader = req.headers.get("Authorization");
-      if (!authHeader) return json({ error: "Missing Authorization header" }, 401);
-      const caller = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
-      const { data: userData, error: userErr } = await caller.auth.getUser();
-      if (userErr || !userData.user) return json({ error: "Invalid session" }, 401);
-      const { data: ctx } = await caller.rpc("my_gym_context");
-      const role = (Array.isArray(ctx) ? ctx[0] : ctx)?.role;
-      if (!["admin", "staff", "trainer"].includes(role)) return json({ error: "Not allowed" }, 403);
-      userId = body?.userId;
-      title = body?.title;
-      message = body?.body;
-      type = body?.type ?? "system";
-      url = body?.url ?? "/member/home";
+      // The older direct call ({ userId, title, body, url }) is gone (audit, 2026-11-15). It let any owner, desk
+      // or coach of ANY gym push any text and any link to any user of any gym — it checked the caller's role, never
+      // that the target was theirs — and no app had used it since 0170. A push now exists only for a row the
+      // database wrote: a notification or a gym chat message.
+      return json({ error: "Send a notification id or a chat message id." }, 400);
     }
+    // A tapped alert opens a page of the app, never another site.
+    if (!/^\/(?!\/)/.test(url)) url = "/member/home";
 
     if (!userId || !title) return json({ error: "userId and title are required" }, 400);
 
