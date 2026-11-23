@@ -5,7 +5,7 @@ import './mockup-roles.css';
 interface Role { icon: IconName; who: string; where: string; does: string[] }
 const MEDIA = [
   { name: 'owner', poster: 'dashboard.png', mobile: false, caption: 'Your gym, at a glance.' },
-  { name: 'desk', poster: 'roles-desk.png', mobile: false, caption: 'The desk keeps moving.' },
+  { name: 'desk', poster: 'dashboard.png', mobile: false, caption: 'The desk keeps moving.' },
   { name: 'coach', poster: 'roles-coach.png', mobile: true, caption: 'A place for every trainee.' },
   { name: 'member', poster: 'member.png', mobile: true, caption: 'Their gym, in their pocket.' },
 ];
@@ -55,7 +55,7 @@ export default function MockupRoles({ roles, hidden, title }: { roles: Role[]; h
                   <source src={`/mockup-art/roles-${media.name}.mp4`} type="video/mp4" />
                 </video>}
             </div>
-            <span className="v2-role-media-note">Actual Core Fitness UI · demo records</span>
+            <span className="v2-role-media-note">Core Fitness screens, animated · demo records</span>
             <button type="button" className="v2-role-pause" onClick={() => setPaused(!paused)} aria-pressed={paused} disabled={reduced} aria-label={paused ? 'Play section animations' : 'Pause section animations'}>
               <span aria-hidden="true">{still ? '▶' : 'Ⅱ'}</span> {still ? 'Play' : 'Pause'}
             </button>

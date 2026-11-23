@@ -77,7 +77,7 @@ export default function Story() {
           </article>
           <ol className="story-steps" aria-label="Choose a time of day">{CHAPTERS.map((ch,i)=><li key={ch.time} className={i===chapter?'on':''}><button type="button" aria-current={i===chapter?'step':undefined} onClick={()=>setChapter(i)}><i aria-hidden="true"/><span>{ch.time}</span></button></li>)}</ol>
         </div>
-        <div className="story-visual"><MockupDemoMedia name={CHAPTER_MEDIA[chapter]} label={c.who + ' demo'} /></div>
+        <div className="story-visual"><MockupDemoMedia name={CHAPTER_MEDIA[chapter]} label={c.who + ' demo'} onEnded={() => setChapter((chapter + 1) % CHAPTERS.length)} /></div>
       </div>
     </div>
   </section>;

@@ -99,9 +99,9 @@ export function Phone3D() {
               </li>
             ))}
           </ol>
-          <p className="illus-note">Actual Core Fitness UI · demo records</p>
+          <p className="illus-note">Core Fitness screens, animated · demo records</p>
         </div>
-        <div className="as-visual"><MockupDemoMedia name={captures[at]} label={PIECES[at].title + ' demo'} /></div>
+        <div className="as-visual"><MockupDemoMedia name={captures[at]} label={PIECES[at].title + ' demo'} onEnded={() => setAt((at + 1) % captures.length)} /></div>
       </div>
         </div>
     </section>
@@ -160,7 +160,7 @@ export function Scrub() {
             <p className="illus-note">Choose a week to explore the real app</p>
           </div>
           <div className="v2-month-ui">
-            <MockupDemoMedia name={monthMedia[week]} label="Member month demo" />
+            <MockupDemoMedia name={monthMedia[week]} label="Member month demo" onEnded={() => { setWeek((week + 1) % monthMedia.length); setPick(null); }} />
             <details className="v2-month-exploration"><summary>Explore a month · interactive example</summary>
           <div className="month-card">
             <div className="month-counts">

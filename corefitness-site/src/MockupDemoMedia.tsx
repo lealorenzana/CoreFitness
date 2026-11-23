@@ -1,21 +1,22 @@
 import { useEffect, useRef, useState } from 'react';
 
 const DEMOS = {
-  checkin: { poster: 'member-qr.png', clip: '' },
-  payments: { poster: 'roles-desk.png', clip: 'roles-desk' },
+  checkin: { poster: 'member-qr.png', clip: 'demo-checkin' },
+  payments: { poster: 'dashboard.png', clip: 'roles-desk' },
   coach: { poster: 'roles-coach.png', clip: 'roles-coach' },
-  workout: { poster: 'workout-player.png', clip: '' },
+  workout: { poster: 'workout-player.png', clip: 'demo-workout' },
   overview: { poster: 'dashboard.png', clip: 'roles-owner' },
-  progress: { poster: 'member-progress.png', clip: '' },
-  bookings: { poster: 'member-bookings.png', clip: '' },
-  assistant: { poster: 'member-assistant.png', clip: '' },
-  renewal: { poster: 'member-renewal.png', clip: '' },
+  progress: { poster: 'member-progress.png', clip: 'demo-progress' },
+  bookings: { poster: 'member-bookings.png', clip: 'demo-bookings' },
+  assistant: { poster: 'member-assistant.png', clip: 'demo-assistant' },
+  renewal: { poster: 'member-renewal.png', clip: 'demo-renewal' },
   member: { poster: 'member.png', clip: 'roles-member' },
 } as const;
 export type DemoName = keyof typeof DEMOS;
 
-/** Existing local clips or lightweight motion over actual captures. No generated product UI. */
-export default function MockupDemoMedia({ name, label }: { name: DemoName; label: string }) {
+/** Motion videos over actual captures (design/role-videos): the real screen, its pieces rebuilt and animated.
+ *  With onEnded the clip plays once and hands over, so a list of steps moves on with its video. */
+export default function MockupDemoMedia({ name, label, onEnded }: { name: DemoName; label: string; onEnded?: () => void }) {
   const [paused, setPaused] = useState(false);
   const [reduced, setReduced] = useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches);
   const frame = useRef<HTMLDivElement>(null);
@@ -36,11 +37,11 @@ export default function MockupDemoMedia({ name, label }: { name: DemoName; label
   }, [paused, reduced, visible, name]);
   return <div className={`v3-demo-media${paused || reduced || !visible ? ' is-paused' : ''}`} ref={frame}>
     <div className="v3-demo-screen" key={name}>
-      {media.clip && !reduced ? <video ref={player} muted loop playsInline preload="metadata" poster={`/mockup-art/${media.poster}`} aria-label={label}>
+      {media.clip && !reduced ? <video ref={player} muted loop={!onEnded} onEnded={onEnded} playsInline preload="metadata" poster={`/mockup-art/${media.poster}`} aria-label={label}>
         <source src={`/mockup-art/${media.clip}.webm`} type="video/webm" />
         <source src={`/mockup-art/${media.clip}.mp4`} type="video/mp4" />
       </video> : <img src={`/mockup-art/${media.poster}`} alt={label} className="v3-capture-motion" />}
     </div>
-    <div className="v3-demo-bar"><span>Actual Core Fitness UI · demo records</span><button type="button" disabled={reduced} aria-label={`${paused?'Play':'Pause'} ${label}`} aria-pressed={paused} onClick={()=>setPaused(!paused)}>{paused?'▶ Play':'Ⅱ Pause'}</button></div>
+    <div className="v3-demo-bar"><span>Core Fitness screens, animated · demo records</span><button type="button" disabled={reduced} aria-label={`${paused?'Play':'Pause'} ${label}`} aria-pressed={paused} onClick={()=>setPaused(!paused)}>{paused?'▶ Play':'Ⅱ Pause'}</button></div>
   </div>;
 }
