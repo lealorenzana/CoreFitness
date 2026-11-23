@@ -19,7 +19,7 @@ export const TOURS: TourDef[] = [
   { id: 'train', app: 'member', name: 'Train', path: '/member/book-class', steps: [
     { target: '[data-your-plan]', title: 'Your plan', text: 'Your training days, today’s workout with one Start, and your saved workouts.' },
     { target: '[data-library]', title: 'The library', text: 'Free workouts anyone can do, and programs to follow week by week.' },
-    { target: '[role="tablist"]', title: 'Your coach is one tab away', text: 'Coach has your package, your sessions and Book a session.' },
+    { target: '[role="tablist"]', title: 'Your coach is one tab away', text: 'Coach has your package and your sessions. Ask a coach for a session there.' },
   ] },
   { id: 'coach', app: 'member', name: 'Coach', path: '/member/book-class?tab=coach', steps: [
     { target: '[data-my-package]', title: 'Your package', text: 'Its chat, how far through you are, and paying for it.' },

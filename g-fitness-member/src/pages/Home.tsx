@@ -303,8 +303,8 @@ export default function Home() {
     entries.push({
       key: 'end', gutter: 'Later',
       title: 'Nothing coming up',
-      meta: ptOff ? 'Your gym books sessions at the front desk.' : 'Book a session with a coach on Train.',
-      action: home.frozen || home.expired || ptOff ? undefined : 'Book',
+      meta: ptOff ? 'Your gym sets sessions at the front desk.' : 'Ask a coach for a session on Train → Coach.',
+      action: home.frozen || home.expired || ptOff ? undefined : 'Ask',
       onClick: home.frozen || home.expired || ptOff ? undefined : () => navigate('/member/book-session'),
     });
   } else {

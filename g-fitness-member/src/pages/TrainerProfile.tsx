@@ -243,7 +243,7 @@ export default function TrainerProfile() {
 
           {!ptOff && (
             <NocButton variant="action" icon={<CalendarPlus size={16} />} onClick={bookWith}>
-              Book with {trainer.first_name}
+              Ask {trainer.first_name} for a session
             </NocButton>
           )}
           {/* A coaching term with them (0181), when the gym lets members pick. */}

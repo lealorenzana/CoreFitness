@@ -173,7 +173,7 @@ const peso = (n: number) => `₱${n.toLocaleString()}`;
 const listWords = (xs: string[], conj = 'or') => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} ${conj} ${xs[xs.length - 1]}`);
 
 /** Who confirms a booking, in one clause. */
-function approvalWords(mode: BookingMode | string | null): string {
+export function approvalWords(mode: BookingMode | string | null): string {
   switch (mode) {
     case 'instant': return 'it is confirmed straight away';
     case 'coach': return 'the coach says yes or no';
@@ -197,14 +197,14 @@ const cancelWords = (mins: number | null) =>
 function bookingAnswer(ctx: AssistantContext): string {
   const s = ctx.setup;
   if (!s) {
-    return '**Booking**\n\nOpen **Train** in the bottom bar. **Coach** has your 1-on-1 sessions and **Book a session**; if your gym runs group classes, **Classes** is there too.\n\nEvery booking waits until the gym confirms it, and you get a notification when it does.';
+    return '**Booking**\n\nOpen **Train** in the bottom bar. **Coach** has your package, your sessions and **Ask for a session**; if your gym runs group classes, **Classes** is there too.\n\nEvery session is asked for first, and you get a notification when it is confirmed.';
   }
   const name = ctx.gym?.name ? ` at ${ctx.gym.name}` : '';
   const lines: string[] = [`**How booking works${name}**`, ''];
   if (s.coachingOn) {
     lines.push(s.ptMode === 'off'
       ? '• **A session** is one 1-on-1 time with a coach. Your gym books these at the front desk, not in the app.'
-      : `• **A session** is one 1-on-1 time with a coach. Book it on **Train → Coach → Book a session**; ${approvalWords(s.ptMode)}.`);
+      : `• **A session** is one 1-on-1 time with a coach. Ask for one on **Train → Coach** (with a package, the button **Ask your coach for a session** is on your package card); ${approvalWords(s.ptMode)}.`);
     const ways = s.coachingModes;
     if (ways.some((w) => ['pick_pt', 'pick_group', 'desk_assigns', 'coach_invites'].includes(w))) {
       const months = s.packageMonths.length ? ` for ${listWords(s.packageMonths.map(String))} month${s.packageMonths.length === 1 && s.packageMonths[0] === 1 ? '' : 's'}` : '';
@@ -223,7 +223,7 @@ function bookingAnswer(ctx: AssistantContext): string {
   if (s.classesOn) {
     lines.push(`• **A class** is a group class on the gym's timetable. Join one on **Train → Classes**; ${approvalWords(s.classMode)}.`);
   }
-  lines.push(`• **A booking** is your request for one ${s.classesOn ? 'session or class' : 'session'}. It says *waiting for them to say yes* until it is approved, then *confirmed*, and you get a notification. All of them are on **Train → Coach → All your sessions**. ${cancelWords(s.ptCancelMinutes)}`);
+  lines.push(`• **A booking** is your request for one ${s.classesOn ? 'session or class' : 'session'}. The app does not use the word: a session shows *Asked* until it is approved, then *Confirmed*, and you get a notification. All of them are on **Train → Coach → All your sessions**. ${cancelWords(s.ptCancelMinutes)}`);
   if (s.slotsOn) lines.push('• To keep a place on the gym floor, use **Book a time** on **Today**.');
   return lines.join('\n');
 }
@@ -645,7 +645,7 @@ const RULES: { match: RegExp; reply: (ctx: AssistantContext) => string; kind?: R
     reply: (ctx) =>
       ctx.nextBooking && ctx.nextBooking.startsAt
         ? `Your next session is **${ctx.nextBooking.title}** on ${dateLabel(ctx.nextBooking.startsAt)} at ${timeLabel(ctx.nextBooking.startsAt)}.\n\n${ctx.nextBooking.subtitle}`
-        : `You have nothing booked at the moment. ${ctx.setup?.classesOn ? 'Book a 1-on-1 on **Train → Coach**, or a class on **Train → Classes**.' : 'Book a 1-on-1 on **Train → Coach → Book a session**.'}`,
+        : `You have nothing booked at the moment. ${ctx.setup?.classesOn ? 'Ask for a 1-on-1 on **Train → Coach**, or join a class on **Train → Classes**.' : 'Ask for a 1-on-1 on **Train → Coach**.'}`,
   },
   {
     // NOT a bare `how many`: it swallowed "how many times a week should I train

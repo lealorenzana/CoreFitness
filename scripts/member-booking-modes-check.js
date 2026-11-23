@@ -268,7 +268,7 @@ async (page) => {
   // Classes tab holds only the gym's events, and 1-on-1 is the Coach tab.
   await go('/member/book-class?tab=classes');
   let t = await text();
-  out.push('classes switched off: no class booking, only events: ' + (!/classes? booked this week|of \d+ classes this week/.test(t)
+  out.push('classes switched off: no class booking, only events: ' + (!/classes? (?:booked|joined) this week|of \d+ classes this week/.test(t)
     && (await page.locator('[data-train-events]').count()) === 1 ? 'yes' : 'STILL SHOWN'));
   // Since the simplify (2026-10-28) booking a 1-on-1 is Coach's Book a session, its own page.
   await go('/member/book-session');
@@ -279,7 +279,7 @@ async (page) => {
   RPC.my_booking_modes = [{ class_mode: 'instant', pt_mode: 'coach' }];
   await go('/member/book-class?tab=classes');
   t = await text();
-  out.push('classes back on: the class booking returns: ' + (/classes? booked this week|of \d+ classes this week|Sunrise HIIT/.test(t) ? 'yes' : 'MISSING'));
+  out.push('classes back on: the class booking returns: ' + (/classes? (?:booked|joined) this week|of \d+ classes this week|Sunrise HIIT/.test(t) ? 'yes' : 'MISSING'));
   const row = page.getByText('Sunrise HIIT').first();
   const seen = await row.isVisible().catch(() => false);
   if (!seen) {
@@ -291,8 +291,8 @@ async (page) => {
   await page.getByText('Sunrise HIIT').first().click();
   await page.waitForTimeout(900);
   t = await text();
-  out.push('instant: the confirm says it is confirmed at once: ' + (/Confirmed the moment you book/.test(t) ? 'yes' : 'MISSING'));
-  out.push('…and the button says Book, not Request: ' + ((await page.getByRole('button', { name: /^Book$/ }).count()) > 0 && !/Request booking/.test(t) ? 'yes' : 'MISSING'));
+  out.push('instant: the confirm says it is confirmed at once: ' + (/Your place is kept the moment you join/.test(t) ? 'yes' : 'MISSING'));
+  out.push('…and the button says Join, not Ask to join: ' + ((await page.getByRole('button', { name: /^Join$/ }).count()) > 0 && !/Ask to join/.test(t) ? 'yes' : 'MISSING'));
   await shot('booking-modes-instant');
   return out.join('\n');
 }

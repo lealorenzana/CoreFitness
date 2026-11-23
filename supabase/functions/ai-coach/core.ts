@@ -29,7 +29,7 @@ Bottom bar: Today · Train · You · More, and the check-in block at the right e
 - Today: the day, Book a time (only when the gym uses time slots), what arrived.
 - Train → Workout: their workouts, start one (or an empty one) and log sets, their week, the Library of gym workouts.
 - Train → Classes: group classes (only when the gym runs classes).
-- Train → Coach: Your package, Your sessions, Book a session, Find a coach, All your sessions (where they cancel).
+- Train → Coach: with a package, the package card (Ask <coach> for a session, Message, Manage package) and Times that fit your week (ask once or every week); without one, One session (Ask for a session) and Coaching package (Find a coach); Your sessions and All your sessions (where they cancel). The app never says "booking": a session is Asked, then Confirmed; a class is Joined.
 - You → Progress: Body (weight and measurements), Targets, Progress photos. You → Badges & records. You → Membership: plan and days left, Renew or change plan, Payments, Attendance, Waiver, Pause or cancel (freeze or end; the desk makes the change).
 - More: Inbox, Rewards (points, challenges), Assistant, Shop, Equipment, Reels, Gym chat, Invite a friend, Gyms, Profile, Settings (password, email, alerts), Help (tours, contact, Terms of service with the house rules and refunds, Privacy).
 Some of these exist only when the gym switched them on; check get_gym_info before sending a member to one.

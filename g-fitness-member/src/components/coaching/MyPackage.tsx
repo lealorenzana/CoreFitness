@@ -23,6 +23,9 @@ import {
   type Coaching, type CoachingApproval, type CoachingSettings, type TrainerPaymentMethod,
 } from '../../lib/api/coaching';
 import { coachingPauses, type CoachingPause } from '../../lib/api/coachingRules';
+import { useBookingModes, type BookingMode } from '../../hooks/useBookingModes';
+import { approvalWords } from '../../data/memberAssistant';
+import { useT } from '../../lib/i18n';
 
 /** Where a package's chat is: its room, or — no room yet — the plain chat with the coach (CoachChat finds a room later). */
 const chatPath = (c: Coaching) => (c.roomId ? `/member/rooms/${c.roomId}` : `/member/chat/${c.trainerId}`);
@@ -70,6 +73,8 @@ export default function MyPackage({ next, onCurrent }: {
   /** Unread messages from the package's coach, for the chat row. */
   const [unread, setUnread] = useState(0);
 
+  const ptMode = useBookingModes()?.ptMode ?? null;
+  const ptOff = ptMode === 'off';
   const [pause, setPause] = useState<CoachingPause | null>(null);
   const load = useCallback(async () => {
     await coachingSweep();
@@ -118,7 +123,7 @@ export default function MyPackage({ next, onCurrent }: {
   if (settings === null) {
     return (
       <section aria-label="Your package" data-my-package>
-        <p style={{ fontSize: 13.5, color: 'var(--color-text-secondary)' }}>Your gym has not set up packages yet. You can still book single sessions with any coach.</p>
+        <TrainingChoices settings={null} ptMode={ptMode} />
       </section>
     );
   }
@@ -240,24 +245,37 @@ export default function MyPackage({ next, onCurrent }: {
                     {first} is {coach.presence === 'on_leave' ? 'on leave' : 'away'} right now — you can pick a stand-in in Manage package.
                   </p>
                 )}
-                {/* Always: a package with no room yet still has its chat with the coach (2026-11-14 — the coach's side
-                    had it, the member's did not). The room when there is one, else the coach's own chat. */}
-                {(
-                  <div data-message-coach style={{ marginTop: 12 }}>
-                    <NocButton className="w-full" onClick={() => navigate(chatPath(current))}>
-                      Message {first}{unread > 0 ? ` · ${unread > 99 ? '99+' : unread} new` : ''}
+                {/* One card, one main action (owner, 2026-11-24: "I have a package with Gabby but still there's a
+                    Book with Gabby"). The package does not book anything by itself: each session is asked for. */}
+                {next !== undefined && (
+                  <p data-next-session style={{ fontSize: 13, marginTop: 12, color: 'var(--color-text-secondary)' }}>
+                    {next ? <>Next session: <b style={{ color: 'var(--color-text-primary)' }}>{next}</b></> : 'No session asked for yet.'}
+                  </p>
+                )}
+                {ptOff ? (
+                  <p data-pt-booking-off style={{ fontSize: 13, marginTop: 10, lineHeight: 1.5, color: 'var(--color-text-secondary)' }}>
+                    Your gym sets sessions at the front desk. Message {first} or ask at the desk.
+                  </p>
+                ) : (
+                  <div data-ask-coach style={{ marginTop: 12 }}>
+                    <NocButton variant="fill" className="w-full"
+                      onClick={() => navigate('/member/book-session', { state: { trainerId: current.standin ? undefined : current.trainerId, onlyTrainers: [current.trainerId, ...(current.standin ? [current.standin.trainerId] : [])] } })}>
+                      Ask {first} for a session
                     </NocButton>
                   </div>
                 )}
-                {next !== undefined && (
-                  <p data-next-session style={{ fontSize: 13, marginTop: 10, color: 'var(--color-text-secondary)' }}>
-                    {next ? <>Next session: <b style={{ color: 'var(--color-text-primary)' }}>{next}</b></> : 'No session booked yet.'}
-                  </p>
-                )}
-                <div data-manage-package style={{ marginTop: 10 }}>
-                  <NocButton variant="ghost" className="w-full" onClick={() => setManageOpen(true)}>
-                    Manage package
-                  </NocButton>
+                {/* A package with no room yet still has its chat with the coach (2026-11-14). */}
+                <div className="grid grid-cols-2" style={{ gap: 8, marginTop: 8 }}>
+                  <div data-message-coach>
+                    <NocButton variant="ghost" className="w-full" onClick={() => navigate(chatPath(current))}>
+                      Message {first}{unread > 0 ? ` · ${unread > 99 ? '99+' : unread}` : ''}
+                    </NocButton>
+                  </div>
+                  <div data-manage-package>
+                    <NocButton variant="ghost" className="w-full" onClick={() => setManageOpen(true)}>
+                      Manage package
+                    </NocButton>
+                  </div>
                 </div>
               </Panel></div>
             );
@@ -267,14 +285,12 @@ export default function MyPackage({ next, onCurrent }: {
 
       {!current && (
         <div data-no-coach>
-          <Panel>
-            <p style={{ fontSize: 13.5, color: 'var(--color-text-secondary)' }}>
-              {settings.modes.includes('pick_pt')
-                ? 'You have no package yet. Open a coach’s profile and tap Train with them.'
-                : 'Your gym assigns coaches at the front desk. Ask there.'}
-            </p>
-          </Panel>
+          <TrainingChoices settings={settings} ptMode={ptMode} />
         </div>
+      )}
+      {/* Waiting on a package (asked, offered, paying): a single session is still open meanwhile. */}
+      {current && current.status !== 'active' && !ptOff && (
+        <TrainingChoices settings={null} ptMode={ptMode} />
       )}
 
       {past.length > 0 && (
@@ -344,5 +360,64 @@ function StandinSheet({ open, onClose, coaches, busy, onPick }: {
         <DateField mode="future" label="To" value={to} min={from} max={addDays(from, 90)} onChange={setTo} />
       </div>
     </GlassSheet>
+  );
+}
+
+/**
+ * No package yet (owner, 2026-11-24): the two ways to train with a coach, each said once, from the gym's own
+ * settings. A way the owner switched off is not drawn; `settings` null draws the single session only.
+ */
+function TrainingChoices({ settings, ptMode }: { settings: CoachingSettings | null; ptMode: BookingMode | null }) {
+  const navigate = useNavigate();
+  const t = useT();
+  const one = ptMode !== 'off';
+  const ways = settings?.modes ?? [];
+  const pkg = ways.some((w) => w === 'pick_pt' || w === 'pick_group' || w === 'desk_assigns' || w === 'coach_invites');
+  const months = settings?.lengths.length ? settings.lengths.join(', ').replace(/, (\d+)$/, ' or $1') : null;
+  const start = [
+    ...(ways.includes('desk_assigns') ? ['the front desk can assign you one'] : []),
+    ...(ways.includes('coach_invites') ? ['a coach can invite you'] : []),
+  ];
+  const pick = ways.includes('pick_pt') || ways.includes('pick_group');
+  const joined = start.join(', or ');
+  const startLine = !joined ? '' : pick ? ` Or ${joined}.` : ` ${joined[0].toUpperCase()}${joined.slice(1)}.`;
+  const fee = settings?.feeMode === 'included' ? ' It comes with your plan.'
+    : settings?.feeMode === 'gym_priced' ? ' The gym sets the price.'
+    : settings?.feeMode === 'trainer_direct' ? ' You pay the coach.' : '';
+  if (!one && !pkg) {
+    return <p style={{ fontSize: 13.5, color: 'var(--color-text-secondary)' }}>Your gym sets up coaching at the front desk. Ask there.</p>;
+  }
+  return (
+    <div className="flex flex-col" style={{ gap: 10 }} data-training-choices>
+      {one && (
+        <Panel>
+          <div data-choice="session">
+            <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text-primary)' }}>{t('One session')}</p>
+            <p style={{ fontSize: 13, marginTop: 4, lineHeight: 1.5, color: 'var(--color-text-secondary)' }}>
+              One time with any coach. Pick a coach and a time; {approvalWords(ptMode)}.
+            </p>
+            <NocButton variant={pkg ? 'ghost' : 'fill'} className="w-full" style={{ marginTop: 10 }} onClick={() => navigate('/member/book-session')}>
+              {t('Ask for a session')}
+            </NocButton>
+          </div>
+        </Panel>
+      )}
+      {pkg && (
+        <Panel>
+          <div data-choice="package">
+            <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text-primary)' }}>{t('Coaching package')}</p>
+            <p style={{ fontSize: 13, marginTop: 4, lineHeight: 1.5, color: 'var(--color-text-secondary)' }}>
+              One coach{months ? ` for ${months} months` : ''}: a chat with them, your sessions with them, and your progress.{fee}
+              {startLine}
+            </p>
+            {pick && (
+              <NocButton variant="fill" className="w-full" style={{ marginTop: 10 }} onClick={() => navigate('/member/trainers')}>
+                {t('Find a coach')}
+              </NocButton>
+            )}
+          </div>
+        </Panel>
+      )}
+    </div>
   );
 }

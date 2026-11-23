@@ -119,7 +119,7 @@ async (page) => {
   });
   const tick = (label, ok) => out.push(`${label}: ${ok ? 'yes' : 'NO'}`);
   tick('coach on, "difference of session, bookings and packages" goes to the coach', g.diffCoach === g.fallback);
-  tick('coach off, the difference is answered from the gym, on the real tabs', /Train → Coach → Book a session/.test(g.diffLab)
+  tick('coach off, the difference is answered from the gym, on the real tabs', /Ask your coach for a session/.test(g.diffLab)
     && /A package/.test(g.diffLab) && /A booking/.test(g.diffLab) && /coach says yes first, then the front desk/.test(g.diffLab)
     && /1, 3 or 6 months/.test(g.diffLab) && /Train → Classes/.test(g.diffLab) && !/Book a Session|bottom bar/.test(g.diffLab));
   tick('a personal-training-only gym is never sent to classes', !/class/i.test(g.diffPt.replace(/classes/g, '')) && !/Train → Classes/.test(g.diffPt) && !/Train → Classes/.test(g.bookPt));

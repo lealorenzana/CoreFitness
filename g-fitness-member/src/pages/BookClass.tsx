@@ -255,7 +255,7 @@ function classAction(c: BookableClass, blocked: boolean) {
   }
   if (blocked) return { word: 'Locked', tone: 'muted' as const, bookable: false, mine: false };
   if (c.conflict !== null) return { word: 'Busy', tone: 'muted' as const, bookable: false, mine: false };
-  return { word: 'Book', tone: 'action' as const, bookable: true, mine: false };
+  return { word: 'Join', tone: 'action' as const, bookable: true, mine: false };
 }
 
 function classMeta(c: BookableClass) {
@@ -301,7 +301,7 @@ function coachMeta(t: PublicTrainer, workDays: Map<string, number[]> | null): st
   const spec = t.specialization ?? 'General training';
   if (!workDays) return spec;
   const days = workDays.get(t.id);
-  if (!days || days.length === 0) return `${spec} · no bookable hours yet`;
+  if (!days || days.length === 0) return `${spec} · no open hours yet`;
   // Monday first — a working week does not start on Sunday.
   const order = [1, 2, 3, 4, 5, 6, 0];
   return `${spec} · ${order.filter((d) => days.includes(d)).map((d) => WEEKDAY_SHORT[d]).join(', ')}`;
@@ -461,14 +461,14 @@ export default function BookClass({ mode }: { mode?: 'classes' | 'pt' } = {}) {
     try {
       const became = await bookClass(memberId, confirmClass.id);
       setConfirmClass(null);
-      toast.success(became === 'approved' ? 'Booked — your seat is yours' : 'Requested — you will be told when it is confirmed');
+      toast.success(became === 'approved' ? 'Joined. Your place is kept.' : 'Asked. You will be told when it is confirmed.');
       // Refresh the allowance alongside the list — "0 of 1 booked" still
       // showing after booking is worse than showing no allowance.
       const [refreshed, ent] = await Promise.all([listBookableClasses(memberId), getEntitlement(memberId)]);
       setClasses(refreshed);
       setEntitlement(ent);
     } catch (err) {
-      toast.error(errorMessage(err, 'Could not book that class'));
+      toast.error(errorMessage(err, 'Could not join that class'));
     } finally {
       setBusy(false);
     }
@@ -508,7 +508,7 @@ export default function BookClass({ mode }: { mode?: 'classes' | 'pt' } = {}) {
       });
       setConfirmSlot(null);
       setNotes('');
-      toast.success(became === 'approved' ? 'Booked — it is in your schedule' : 'Requested — you will be told when it is confirmed');
+      toast.success(became === 'approved' ? 'Confirmed. It is in your sessions.' : 'Asked. You will be told when it is confirmed.');
       // The slot just taken must disappear for everyone, including us.
       setSlots(await listOpenPtSlots(selectedTrainer.id, 14, memberId ?? undefined));
     } catch (err) {
@@ -572,7 +572,7 @@ export default function BookClass({ mode }: { mode?: 'classes' | 'pt' } = {}) {
       : !entitlement.canBookClasses
         ? `${entitlement.planName ?? 'Your plan'} doesn't include group classes. Ask the front desk about upgrading.`
       : quotaReached
-        ? `${entitlement.planName} includes ${entitlement.classesPerWeek} class${entitlement.classesPerWeek === 1 ? '' : 'es'} a week, and you've booked this week's. You can book next week.`
+        ? `${entitlement.planName} includes ${entitlement.classesPerWeek} class${entitlement.classesPerWeek === 1 ? '' : 'es'} a week, and you have joined this week's. You can join more next week.`
         : null;
   const ptBlock: string | null =
     entitlement == null ? null
@@ -599,7 +599,7 @@ export default function BookClass({ mode }: { mode?: 'classes' | 'pt' } = {}) {
     <Page>
       <PauseNotice />
       {!mode && <TextTabs<Filter>
-        label="What to book"
+        label="What to show"
         tabs={[
           { id: 'classes' as Filter, label: 'Group classes', icon: <UsersThree size={15} weight="bold" /> },
           { id: 'pt' as Filter, label: '1-on-1', icon: <User size={15} weight="bold" /> },
@@ -619,7 +619,7 @@ export default function BookClass({ mode }: { mode?: 'classes' | 'pt' } = {}) {
               <div className="flex justify-between" style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
                 <span>
                   {entitlement.classesPerWeek == null
-                    ? `${entitlement.classesUsedThisWeek} ${entitlement.classesUsedThisWeek === 1 ? 'class' : 'classes'} booked this week`
+                    ? `${entitlement.classesUsedThisWeek} ${entitlement.classesUsedThisWeek === 1 ? 'class' : 'classes'} joined this week`
                     : `${entitlement.classesUsedThisWeek} of ${entitlement.classesPerWeek} classes this week`}
                 </span>
                 {entitlement.planName && <span style={{ color: 'var(--color-text-muted)' }}>{entitlement.planName}</span>}
@@ -791,7 +791,7 @@ export default function BookClass({ mode }: { mode?: 'classes' | 'pt' } = {}) {
                 daySlots.length === 0 ? (
                   <p style={{ padding: '14px 0', fontSize: 13, color: 'var(--color-text-muted)' }}>
                     {slots.length === 0
-                      ? `${trainerName(selectedTrainer)} has no bookable hours in the next two weeks. Try another coach.`
+                      ? `${trainerName(selectedTrainer)} has no open hours in the next two weeks. Try another coach.`
                       : 'No open times on this day. Pick another in the week above.'}
                   </p>
                 ) : (
@@ -808,7 +808,7 @@ export default function BookClass({ mode }: { mode?: 'classes' | 'pt' } = {}) {
                           title={`${s.durationMinutes} min with ${selectedTrainer.first_name}`}
                           dim={off}
                           meta={s.conflict !== null ? `Clashes with ${s.conflict}` : undefined}
-                          action={s.conflict !== null ? 'Busy' : ptBlock ? 'Locked' : ptInstant ? 'Book' : 'Request'}
+                          action={s.conflict !== null ? 'Busy' : ptBlock ? 'Locked' : 'Ask'}
                           actionTone={off ? 'muted' : 'action'}
                           onClick={off ? undefined : () => setConfirmSlot(s)}
                           last={i === daySlots.length - 1}
@@ -860,9 +860,9 @@ export default function BookClass({ mode }: { mode?: 'classes' | 'pt' } = {}) {
       <Modal
         isOpen={confirmClass !== null}
         onClose={() => !busy && setConfirmClass(null)}
-        title="Confirm your booking"
-        subtitle={classInstant ? 'Confirmed the moment you book' : 'Requested now, confirmed before your seat is held'}
-        confirmLabel={busy ? 'Sending…' : classInstant ? 'Book' : 'Request booking'}
+        title="Join this class"
+        subtitle={classInstant ? 'Your place is kept the moment you join' : 'Asked now; your place is kept once it is confirmed'}
+        confirmLabel={busy ? 'Sending…' : classInstant ? 'Join' : 'Ask to join'}
         cancelLabel="Cancel"
         confirmDisabled={busy}
         onConfirm={submitClassBooking}>
@@ -881,7 +881,7 @@ export default function BookClass({ mode }: { mode?: 'classes' | 'pt' } = {}) {
               </div>
             ))}
             <p className="text-center" style={{ fontSize: 12.5, marginTop: 12, color: 'var(--color-text-muted)' }}>
-              {classInstant ? 'Your seat is held as soon as you book.' : 'Your seat is held once the booking is confirmed.'}
+              {classInstant ? 'Your place is kept as soon as you join.' : 'Your place is kept once it is confirmed.'}
             </p>
           </div>
         )}
@@ -911,9 +911,9 @@ export default function BookClass({ mode }: { mode?: 'classes' | 'pt' } = {}) {
       <Modal
         isOpen={confirmSlot !== null}
         onClose={() => !busy && setConfirmSlot(null)}
-        title={ptInstant ? 'Book this session' : 'Request this session'}
-        subtitle={ptInstant ? 'Confirmed the moment you book' : 'Requested now, confirmed before it is booked'}
-        confirmLabel={busy ? 'Sending…' : ptInstant ? 'Book session' : 'Request session'}
+        title="Ask for this session"
+        subtitle={ptInstant ? 'Confirmed the moment you ask' : 'Asked now; the coach confirms it'}
+        confirmLabel={busy ? 'Sending…' : 'Ask for it'}
         cancelLabel="Cancel"
         confirmDisabled={busy}
         onConfirm={submitPtRequest}>

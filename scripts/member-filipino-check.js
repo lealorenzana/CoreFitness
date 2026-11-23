@@ -221,7 +221,7 @@ async (page) => {
   const SCREENS = [
     ['the tab bar', '/member/home', ['Ngayon', 'Training', 'Ikaw', 'Iba pa'], ['Today', 'You', 'More'], 'nav[aria-label="Main"]'],
     ['Train → Workout', '/member/book-class', ['Plan mo', 'Library', 'Workouts mo', 'Libreng workouts'], ['Your plan', 'Your workouts', 'Free workouts', 'No plan needed']],
-    ['Train → Coach', '/member/book-class?tab=coach', ['Package mo', 'Sessions mo', 'Mag-book ng session', 'Maghanap ng coach'], ['Your package', 'Your sessions', 'Find a coach']],
+    ['Train → Coach', '/member/book-class?tab=coach', ['Mag-train kasama ang coach', 'Sessions mo', 'Humingi ng session'], ['Train with a coach', 'Your sessions', 'Find a coach', 'Ask for a session']],
     ['You', '/member/membership', ['Katawan', 'Timbang at sukat'], ['Weight and measurements', 'What you are working towards']],
     ['Settings', '/member/settings', ['Ano ang nakikita ng coach mo', 'Wika'], ['What your trainer sees', 'Your data']],
   ];

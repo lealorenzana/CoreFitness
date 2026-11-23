@@ -12,7 +12,7 @@ export default function BookSession() {
   if (ptOff) {
     return (
       <Page>
-        <PageTitle back fallback="/member/book-class?tab=coach" title="Book a session" />
+        <PageTitle back fallback="/member/book-class?tab=coach" title="Ask for a session" />
         <p data-pt-booking-off style={{ fontSize: 14, lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>
           Your gym books 1-on-1 sessions at the front desk, not in the app. Ask at the desk, or message your coach.
         </p>
@@ -21,7 +21,7 @@ export default function BookSession() {
   }
   return (
     <div className="flex flex-col">
-      <Page><PageTitle back fallback="/member/book-class?tab=coach" title="Book a session" /></Page>
+      <Page><PageTitle back fallback="/member/book-class?tab=coach" title="Ask for a session" /></Page>
       <BookClass mode="pt" />
     </div>
   );

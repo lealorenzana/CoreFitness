@@ -337,9 +337,12 @@ async (page) => {
   say('…the next session with this coach (not one with another coach)', /^Next session: /.test(nextLine), nextLine);
   say('…no session list and no Find a coach', (await page.locator('[data-coach-sessions]').count()) === 0
     && (await page.getByRole('button', { name: 'Find a coach', exact: true }).count()) === 0
-    && (await page.getByRole('button', { name: 'Book a session', exact: true }).count()) === 0, m.slice(0, 300));
+    && (await page.getByRole('button', { name: 'Ask for a session', exact: true }).count()) === 0, m.slice(0, 300));
   say('…every session is still one tap away', /All your sessions/.test(m));
-  say('…Book with Rae', (await page.locator('[data-book-with-coach]').innerText().catch(() => '')).trim() === 'Book with Rae');
+  // 2026-11-24 (owner: "a package with Gabby but still a Book with Gabby"): one main action, inside the card.
+  say('…Ask Rae for a session, inside the package card, and no second Book button', (await page.locator('[data-coach-card] [data-ask-coach]').innerText().catch(() => '')).trim() === 'Ask Rae for a session'
+    && (await page.locator('[data-book-with-coach]').count()) === 0 && !/Book with/.test(m), m.slice(0, 300));
+  say('…Message Rae and Manage package side by side in the card', (await page.locator('[data-coach-card] [data-message-coach]').count()) === 1 && (await page.locator('[data-coach-card] [data-manage-package]').count()) === 1);
   say('…no word "booking" on the tab', !/booking/i.test(m), m.slice(0, 300));
   await page.screenshot({ path: 'shots/member-train-coach.png', fullPage: true });
 
@@ -352,12 +355,12 @@ async (page) => {
     && /Bring water/.test(await main()), `${page.url()} ${(await main()).slice(0, 200)}`);
   await page.screenshot({ path: 'shots/member-coach-chat.png' });
 
-  // Book with Rae: their hours only — never the gym's whole list.
+  // Ask Rae for a session: their hours only — never the gym's whole list.
   await go('/member/book-class?tab=coach');
-  await page.locator('[data-book-with-coach]').click();
+  await page.locator('[data-ask-coach] button').click();
   await page.waitForTimeout(1800);
   const bookText = await main();
-  say('Book with Rae opens Book a session on Rae, with no way to every coach', /\/member\/book-session$/.test(page.url()) && /Rae Santos/.test(bookText)
+  say('Ask Rae opens Ask for a session on Rae, with no way to every coach', /\/member\/book-session$/.test(page.url()) && /Rae Santos/.test(bookText)
     && !/All coaches/.test(bookText), `${page.url()} ${bookText.slice(0, 200)}`);
   await go('/member/sessions');
   m = await main();
@@ -381,11 +384,11 @@ async (page) => {
   }
   await page.evaluate(() => history.pushState({ trainerId: 't1' }, '', '/member/trainer/t1'));
   await go('/member/trainer/t1');
-  const book = page.getByRole('button', { name: /^Book/ }).first();
+  const book = page.getByRole('button', { name: /^Ask .* for a session$/ }).first();
   if (await book.count()) {
     await book.click();
     await page.waitForTimeout(1500);
-    say("a coach's Book opens Book a session", /\/member\/book-session/.test(page.url()), page.url());
+    say("a coach's Ask opens Ask for a session", /\/member\/book-session/.test(page.url()), page.url());
   }
   say('nothing scrolls sideways', await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
 
@@ -418,12 +421,60 @@ async (page) => {
   say('class booking at the desk: no Classes tab, even with Classes on', JSON.stringify((await tabsNow()).map(([n]) => n)) === JSON.stringify(['Workout', 'Coach']), JSON.stringify(await tabsNow()));
   STATE.modules = { classes: false };
   await go('/member/book-class?tab=coach');
-  say('1-on-1 at the desk: the Coach tab says so, with no Book button', (await page.locator('[data-pt-booking-off]').count()) === 1
-    && (await page.locator('[data-book-with-coach]').count()) === 0 && (await page.getByRole('button', { name: 'Book a session', exact: true }).count()) === 0);
+  say('1-on-1 at the desk: the Coach tab says so, with no Ask button', (await page.locator('[data-pt-booking-off]').count()) === 1
+    && (await page.locator('[data-ask-coach]').count()) === 0 && (await page.locator('[data-suggested-times]').count()) === 0
+    && (await page.getByRole('button', { name: 'Ask for a session', exact: true }).count()) === 0);
   await go('/member/book-session');
-  say('…and Book a session says where to book instead', (await page.locator('[data-pt-booking-off]').count()) === 1 && /front desk/.test(await main()));
+  say('…and Ask for a session says where to go instead', (await page.locator('[data-pt-booking-off]').count()) === 1 && /front desk/.test(await main()));
   await go('/member/trainer/t1');
-  say("…and a coach's profile has no Book button", (await page.getByRole('button', { name: /^Book with/ }).count()) === 0);
+  say("…and a coach's profile has no Ask button", (await page.getByRole('button', { name: /^Ask .* for a session$/ }).count()) === 0);
   RPC.my_booking_modes = [{ class_mode: 'instant', pt_mode: 'instant' }];
+
+  // ── No package (2026-11-24): the gym's two ways in, each said once, from its own settings ──
+  const hadStatus = STATE.status;
+  STATE.status = null;
+  RPC.my_booking_modes = [{ class_mode: 'instant', pt_mode: 'coach' }];
+  await go('/member/book-class?tab=coach');
+  const ch = await page.locator('[data-training-choices]').innerText().catch(() => '');
+  say('no package: One session and Coaching package', /One session/.test(ch) && /Coaching package/.test(ch)
+    && /the coach says yes or no/.test(ch) && /for 1, 3 or 6 months/.test(ch) && /You pay the coach/.test(ch)
+    && /Or the front desk can assign you one, or a coach can invite you\./.test(ch), ch.replace(/\s+/g, ' '));
+  say('…each with its one button', (await page.getByRole('button', { name: 'Ask for a session', exact: true }).count()) === 1
+    && (await page.getByRole('button', { name: 'Find a coach', exact: true }).count()) === 1);
+  say('…and no word "booking"', !/booking|Book /i.test(await main()), (await main()).slice(0, 300));
+  await page.screenshot({ path: 'shots/member-train-no-package.png', fullPage: true });
+  RPC.my_booking_modes = [{ class_mode: 'instant', pt_mode: 'off' }];
+  await go('/member/book-class?tab=coach');
+  say('…1-on-1 at the desk: only the package choice', (await page.locator('[data-choice="session"]').count()) === 0 && (await page.locator('[data-choice="package"]').count()) === 1);
+  RPC.my_booking_modes = [{ class_mode: 'instant', pt_mode: 'instant' }];
+  STATE.status = hadStatus;
+
+  // ── Times that fit both schedules (2026-11-24): the coach's open slots on the member's training days ──
+  const sg = await page.evaluate(async () => {
+    const { suggestTimes } = await import('/src/lib/suggestTimes.ts');
+    const at = (y, mo, d, h, mi = 0) => new Date(y, mo, d, h, mi).toISOString();
+    // Mon 1 Dec 2025 … Sun 14 Dec 2025, local time.
+    const slots = [
+      { startsAt: at(2025, 11, 1, 7), durationMinutes: 60, conflict: null },   // Mon 7am
+      { startsAt: at(2025, 11, 1, 17), durationMinutes: 60, conflict: null },  // Mon 5pm (nearest 17:30)
+      { startsAt: at(2025, 11, 2, 17), durationMinutes: 60, conflict: null },  // Tue (not a training day)
+      { startsAt: at(2025, 11, 3, 18), durationMinutes: 60, conflict: 'Yoga' }, // Wed, clashes
+      { startsAt: at(2025, 11, 3, 6), durationMinutes: 60, conflict: null },   // Wed 6am
+      { startsAt: at(2025, 11, 8, 17), durationMinutes: 60, conflict: null },  // next Mon 5pm (a later week)
+    ];
+    const plan = [{ day: 1, at: '17:30' }, { day: 3, at: '18:00' }];
+    const fit = suggestTimes(slots, plan);
+    const none = suggestTimes(slots, []);
+    return {
+      fit: fit.map((s) => [new Date(s.startsAt).getDay(), new Date(s.startsAt).getHours(), new Date(s.startsAt).getDate(), s.fitsPlan]),
+      none: none.map((s) => [new Date(s.startsAt).getDay(), s.fitsPlan]),
+      empty: suggestTimes([], plan).length,
+    };
+  });
+  say('suggested times: only the member\'s training days, nearest their time, this week first', JSON.stringify(sg.fit) === JSON.stringify([[1, 17, 1, true], [3, 6, 3, true]]), JSON.stringify(sg.fit));
+  say('…never a slot that clashes with something they have', !sg.fit.some(([d, h]) => d === 3 && h === 18));
+  say('…no training days set: the earliest open times, one a day, marked as not fitted', sg.none.length === 3 && sg.none.every(([, f]) => f === false)
+    && new Set(sg.none.map(([d]) => d)).size === 3, JSON.stringify(sg.none));
+  say('…no open slots: nothing suggested', sg.empty === 0);
   return out.join('\n');
 }

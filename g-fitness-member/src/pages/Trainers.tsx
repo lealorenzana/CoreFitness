@@ -73,8 +73,8 @@ function CoachRow({ c, goal, onOpen, onBook, last }: {
         color: 'var(--color-secondary)',
         background: 'color-mix(in srgb, var(--color-secondary) 12%, transparent)',
         border: '1px solid color-mix(in srgb, var(--color-secondary) 35%, transparent)',
-      }} aria-label={`Book a 1-on-1 with ${c.name}`}>
-        Book
+      }} aria-label={`Ask ${c.name} for a session`}>
+        Ask
       </button>}
     </div>
   );
