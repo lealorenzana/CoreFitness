@@ -196,6 +196,8 @@ export default function AdminLogin() {
       </header>
 
       <main className="al-main">
+        {/* The website's title face, loaded only on this page (React hoists it into <head>). */}
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" precedence="default" />
         <div className="al-col">
           <p className="al-hello">{greeting}.</p>
           <h1>Sign in to your gym</h1>

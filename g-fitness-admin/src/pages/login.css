@@ -162,3 +162,31 @@
   .al-foot { flex-direction: column; gap: 4px; padding-bottom: 20px; }
 }
 @media (prefers-reduced-motion: reduce) { .al-col, .al-col > *, .al-spin, .al-form.shake, .al-tick path { animation: none; } .al-btn, .al-quiet a svg, .al-who a svg { transition: none; } }
+
+/* Mock-up 02 (2026-11-24): the website's "Gym sign in" lands here, so the page wears the website's look: its header
+   brand, the glass pill panel around the form, the hero's Archivo Black title, amber pill buttons and the same phone
+   mascot as My application. The floor plan stays behind until the illustrated top-down gym replaces it
+   (design/admin-login-gym/PROMPTS.md). */
+.al-edge { padding: 22px 40px; }
+.al-brand { gap: 12px; font-size: 22px; font-weight: 800; letter-spacing: -0.04em; }
+.al .al-brand { font-weight: 800; }
+.al-brand img { width: 32px; height: 32px; }
+.al-col { position: relative; max-width: 470px; padding: 40px 44px 36px; border-radius: 48px; border: 1px solid rgb(166 129 226 / .23);
+  background: linear-gradient(120deg, rgb(51 33 67 / .94), rgb(32 22 45 / .94) 72%); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.al-col::after { content: ''; position: absolute; right: 30px; top: -78px; width: 104px; height: 104px; pointer-events: none;
+  background: url(/mockup-art/phone-journey-mascot.webp) center / contain no-repeat; }
+.al-col h1 { font-family: 'Archivo Black', Inter, system-ui, sans-serif; font-weight: 900; font-size: 34px; text-transform: uppercase; letter-spacing: -0.035em; line-height: .98; margin-top: 4px; }
+.al-btn { border-radius: 16px; }
+.al-input { border-radius: 14px; background: rgb(14 13 18 / .7); }
+@media (prefers-reduced-motion: no-preference) { .al-col::after { animation: al-float 4s ease-in-out infinite alternate; } }
+@keyframes al-float { to { transform: translateY(-8px) rotate(-4deg); } }
+@media (max-width: 640px) {
+  .al-edge { padding: 12px 16px; }
+  .al-brand { font-size: 19px; } .al-brand img { width: 28px; height: 28px; }
+  .al-main { padding-top: 70px; }
+  .al-col { padding: 30px 20px 26px; border-radius: 34px; }
+  .al-col::after { width: 76px; height: 76px; top: -58px; right: 18px; }
+  .al-col h1 { font-size: 28px; }
+}
+/* light.css gives every header a light hairline; this page is dark in both modes, so it showed as a white line. */
+:root .al header.al-edge { box-shadow: none; }
