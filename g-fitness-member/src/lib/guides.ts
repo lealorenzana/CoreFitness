@@ -176,7 +176,7 @@ export const GUIDES: Guide[] = [
         text: { en: 'A strip on their Today screen and a full Reels page, with likes.', fil: 'May hanay sa Today screen nila at buong Reels page, may likes.' } },
       { scene: { k: 'done', text: 'Hidden' },
         title: { en: 'Edit, hide or remove', fil: 'I-edit, itago o burahin' },
-        text: { en: 'You can edit, hide or remove any reel; the desk and coaches manage their own.', fil: 'Puwede mong i-edit, itago o burahin ang kahit anong reel; sariling post lang ang sa desk at coaches.' } },
+        text: { en: 'You can edit, hide or remove any reel; the desk and coaches manage their own. Turn Coaches post reels off to keep coaches from posting new ones.', fil: 'Puwede mong i-edit, itago o burahin ang kahit anong reel; sariling post lang ang sa desk at coaches. I-off ang Coaches post reels para hindi na makapag-post ng bago ang coaches.' } },
     ],
   },
   {

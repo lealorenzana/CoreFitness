@@ -216,6 +216,23 @@ check('the owner can', (await one(`select count(*)::int n from storage.objects w
 const b = await one(`select public, file_size_limit, allowed_mime_types from storage.buckets where id = 'reels'`);
 check('the bucket is public, 15 MB (0248), video and cover images only', b.public === true && Number(b.file_size_limit) === 15728640 && b.allowed_mime_types.includes('video/mp4') && !b.allowed_mime_types.includes('text/html'));
 
+// ---- 0269: the owner decides whether coaches post ----
+await as(ST);
+check('the desk cannot turn coaches off', (await all(`update gym_settings set coaches_post_reels = false where gym_id = '${GYM}' returning gym_id`)).length === 0);
+await as(AD);
+await db.exec(`update gym_settings set coaches_post_reels = false where gym_id = '${GYM}'`);
+await as(T);
+check('coaches off: a coach may not post', (await one(`select may_post_reels() ok`)).ok === false && (await tryExec(post('Coach off', YT))) !== null);
+check('…but still edits their own reel', (await tryExec(`select edit_reel('${r3}', 'Coach drill, edited', 'cap', false)`)) === null);
+await as(ST);
+check('…and the desk still posts', !!(await one(post('Desk while coaches off', YT))).id);
+await as(AD);
+await db.exec(`update gym_settings set coaches_post_reels = true where gym_id = '${GYM}'`);
+await as(T);
+check('coaches on again: a coach posts', !!(await one(post('Coach back', YT))).id);
+await owner();
+check('0269 is marked applied', (await one(`select migration_0269_applied() ok`)).ok === true);
+
 // ---- switched off again ----
 await as(AD);
 await db.exec(`select set_gym_module('reels', false)`);

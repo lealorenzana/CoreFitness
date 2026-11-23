@@ -6,6 +6,8 @@ export interface GymSettingsRow {
   id: boolean;
   /** 0243: a member switching plans online while a paid plan runs. Absent before 0243. */
   plan_switch_mode?: 'keep_days' | 'start_now' | 'desk';
+  /** 0269: coaches may post reels. Absent before 0269. */
+  coaches_post_reels?: boolean;
   gym_name: string;
   address: string | null;
   phone: string | null;

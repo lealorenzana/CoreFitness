@@ -34,7 +34,8 @@ async (page) => {
   const iso = (d) => { const x = new Date(now); x.setDate(now.getDate() + d); return x.toISOString(); };
   const admin = { id: 'u1', role: 'admin', status: 'active', first_name: 'Gabrielle', last_name: 'Facalarin',
     email: 'admin@corefitness.test', phone: null, photo_url: null, created_at: iso(-400) };
-  const TABLES = { profiles: [admin], notifications: [] };
+  const TABLES = { profiles: [admin], notifications: [], gym_settings: [{ id: true, gym_name: 'G Fitness', coaches_post_reels: true }] };
+  const SETTINGS_WRITES = [];
 
   // gym_reels_feed's own columns (0245).
   const FEED = [
@@ -75,6 +76,11 @@ async (page) => {
     }
     if (pathname.startsWith('/rest/v1/')) {
       const t = pathname.split('/rest/v1/')[1].replace('gym_people', 'profiles');
+      if (t === 'gym_settings' && req.method() === 'PATCH') {
+        const patch = JSON.parse(req.postData() || '{}');
+        SETTINGS_WRITES.push(patch);
+        Object.assign(TABLES.gym_settings[0], patch);
+      }
       const rows = (TABLES[t] ?? []).map((r) => (t === 'profiles' ? { ...r, role: ROLE } : r));
       return json(one ? (rows[0] ?? null) : rows);
     }
@@ -168,12 +174,23 @@ async (page) => {
   say('…and the page does not scroll in light either', lightScroll <= 0, `(scrolls ${lightScroll}px)`);
   await page.screenshot({ path: 'shots/admin-reels-light.png' });
 
+  // 0269: the owner decides whether coaches post.
+  await go('/reels');
+  const sw = page.locator('[data-coaches-post-reels]');
+  say('the owner sees Coaches post reels, on', (await sw.getAttribute('aria-checked').catch(() => null)) === 'true');
+  await sw.click();
+  await page.waitForTimeout(800);
+  say('…turning it off saves coaches_post_reels = false', SETTINGS_WRITES.some((w) => w.coaches_post_reels === false)
+    && (await sw.getAttribute('aria-checked')) === 'false', JSON.stringify(SETTINGS_WRITES));
+  await page.screenshot({ path: 'shots/admin-reels-coaches-off.png' });
+
   // A front-desk account sees the row and the page.
   ROLE = 'staff';
   await page.emulateMedia({ colorScheme: 'dark' });
   await go('/reels');
   say('a front-desk account sees the Reels row', (await page.locator('a[href="/reels"]').count()) >= 1);
   say('…and the page with its reels', (await page.locator('[data-reel]').count()) === 3);
+  say('…but not the coaches switch, which is for the owner only', (await page.locator('[data-coaches-post-reels]').count()) === 0);
 
   // Switched off: a note, no list.
   ROLE = 'admin';

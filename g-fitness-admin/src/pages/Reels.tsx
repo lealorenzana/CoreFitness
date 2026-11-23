@@ -13,6 +13,8 @@ import {
 } from '../lib/api/reels';
 import { INSTAGRAM_CROP, reelLinkSource, reelEmbedUrl, reelOutsideWhy, REEL_SOURCE_WORDS, REEL_LINK_HINT } from '../lib/reelEmbed';
 import SkelRows from '../components/ui/SkelRows';
+import { getGymSettings, updateGymSettings } from '../lib/api/settings';
+import { getGymContext } from '../lib/gymContext';
 
 /**
  * Reels (0245) — short videos the gym puts up for its members: a pasted link
@@ -73,6 +75,23 @@ export default function Reels() {
   const [toDelete, setToDelete] = useState<Reel | null>(null);
   const videoInput = useRef<HTMLInputElement>(null);
   const coverInput = useRef<HTMLInputElement>(null);
+  /** 0269: whether coaches post reels. Null for the desk, or before 0269: the switch is the owner's alone. */
+  const [coachesPost, setCoachesPost] = useState<boolean | null>(null);
+  useEffect(() => {
+    void (async () => {
+      const [ctx, s] = await Promise.all([getGymContext(), getGymSettings().catch(() => null)]);
+      if (ctx?.role === 'admin' && typeof s?.coaches_post_reels === 'boolean') setCoachesPost(s.coaches_post_reels);
+    })();
+  }, []);
+  const flipCoaches = async () => {
+    if (coachesPost === null) return;
+    const next = !coachesPost;
+    try {
+      await updateGymSettings({ coaches_post_reels: next });
+      setCoachesPost(next);
+      showToast(next ? 'Coaches can post reels' : 'Coaches can no longer post reels', 'success');
+    } catch (err) { showToast(err instanceof Error ? err.message : 'That could not be saved', 'error'); }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -200,6 +219,11 @@ export default function Reels() {
         <button type="button" className={`a-chip ${filter === 'links' ? 'v' : ''}`} onClick={() => setFilter('links')} data-chip="links">Links <em>{links}</em></button>
         <button type="button" className={`a-chip ${filter === 'uploads' ? 'v' : ''}`} onClick={() => setFilter('uploads')} data-chip="uploads">Uploads <em>{uploads}</em></button>
         <button type="button" className={`a-chip ${filter === 'hidden' ? 'v' : ''}`} onClick={() => setFilter('hidden')} data-chip="hidden">Hidden <em>{hidden}</em></button>
+        {coachesPost !== null && (
+          <button type="button" role="switch" aria-checked={coachesPost} className={`a-chip ${coachesPost ? 'on' : ''}`} onClick={() => void flipCoaches()} data-coaches-post-reels
+            data-tip="Off: only you and the front desk post. Coaches still edit or remove reels they already posted.">
+            Coaches post reels <em>{coachesPost ? 'On' : 'Off'}</em></button>
+        )}
         {storage && <span className="a-pill" data-reel-storage data-tip="Videos, covers and photos your gym has uploaded, against what your Core Fitness plan includes. Links use none.">Storage {storage}</span>}
         <label className="a-input" style={{ padding: '7px 11px', fontSize: 12, width: 190, marginLeft: 'auto' }}><Search size={14} />
           <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search title or who posted…" aria-label="Search reels" /></label>

@@ -49,6 +49,12 @@ export async function listReels(): Promise<Reel[]> {
   }));
 }
 
+/** Whether the caller may post a reel here now (0245, 0269: the owner can keep coaches from posting). False on any error. */
+export async function mayPostReels(): Promise<boolean> {
+  const { data, error } = await supabase.rpc('may_post_reels');
+  return !error && data === true;
+}
+
 /** What the gym has uploaded against what its plan allows (0247). `limitBytes` null = no limit. */
 export interface GymStorage { planName: string | null; limitBytes: number | null; usedBytes: number }
 

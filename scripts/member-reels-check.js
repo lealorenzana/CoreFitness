@@ -52,6 +52,8 @@ async (page) => {
       cover_path: null, hidden: false, created_at: iso(-3, 9), created_by: COACH, author: 'Gabby Coach', likes: 5, liked: true, mine: false, can_manage: false },
   ];
   let modules = { reels: true };
+  let role = 'member';
+  let mayPost = false; // 0269: the owner keeps coaches from posting
   const CALLS = [];
   const match = (rows, params) => rows.filter((r) => params.every(([k, v]) => {
     if (['select', 'order', 'limit', 'offset', 'columns'].includes(k) || !(k in r)) return true;
@@ -82,13 +84,14 @@ async (page) => {
       const fn = path.split('/rest/v1/rpc/')[1];
       let body = {}; try { body = JSON.parse(req.postData() || '{}'); } catch { /* none */ }
       CALLS.push([fn, body]);
-      if (fn === 'my_gym_context') return json([{ gym_id: 'gym-1', gym_name: 'Core Fitness Lab', slug: 'lab', role: 'member', status: 'active',
+      if (fn === 'my_gym_context') return json([{ gym_id: 'gym-1', gym_name: 'Core Fitness Lab', slug: 'lab', role, status: 'active',
         lock_reason: null, short_name: null, logo_url: null, accent: 'violet', gym_count: 1 }]);
       if (fn === 'my_gym_app') return json([{ gym_id: 'gym-1', gym_name: 'Core Fitness Lab', slug: 'lab', short_name: null, logo_url: null, accent: 'violet',
         points_name: null, points_name_short: null, welcome_message: null, tagline: null, vocabulary: null, modules }]);
       // The real feed is empty while the switch is off (0245); here it answers anyway, so the screens' own switch is what is tested.
       if (fn === 'gym_reels_feed') return json(FEED);
       if (fn === 'toggle_reel_like') return json(true);
+      if (fn === 'may_post_reels') return json(mayPost);
       if (fn === 'my_features') return json(['workout_tracker'].map((key) => ({ key, label: key, description: key, enabled: true })));
       if (fn === 'my_rooms' || fn === 'my_conversations' || fn === 'review_queue' || fn === 'my_room_photos' || fn === 'room_badges') return json([]);
       return json(null);
@@ -180,6 +183,17 @@ async (page) => {
   say('…and no Reels row in More', moreRows.length > 0 && !moreRows.some((r) => /Reels/.test(r)), moreRows.join(' | ').slice(0, 200));
   await go('/member/reels');
   say('…and /member/reels shows the "Not at this gym" gate', /Not at this gym/.test(await page.locator('main').innerText()));
+
+  // ── A coach, when the owner keeps coaches from posting (0269) ──
+  modules = { reels: true }; role = 'trainer';
+  await go('/trainer/reels');
+  const lockText = await page.locator('[data-reels-locked]').innerText().catch(() => '');
+  say('coaches off: the coach sees why, with no Post button', /turned off posting reels for coaches/.test(lockText)
+    && (await page.getByRole('button', { name: 'Post a reel' }).count()) === 0, lockText || (await page.locator('main').innerText()).slice(0, 200));
+  await page.screenshot({ path: 'shots/member-reels-coach-off.png' });
+  mayPost = true;
+  await go('/trainer/reels');
+  say('coaches on: Post a reel is there', (await page.getByRole('button', { name: 'Post a reel' }).count()) === 1 && (await page.locator('[data-reels-locked]').count()) === 0);
   say('no page errors', errs.length === 0, errs.join(' | '));
   return out.join('\n');
 }

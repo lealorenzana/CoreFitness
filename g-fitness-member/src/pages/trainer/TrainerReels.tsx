@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DotsThree, Heart, Plus } from '@phosphor-icons/react';
+import { DotsThree, Heart, LockSimple, Plus } from '@phosphor-icons/react';
 import { Page, PageTitle } from '../../components/ui/page';
 import { NocButton, StatusPill, TextTabs } from '../../components/ui/noc';
 import { Field, FieldError, TextArea, TextInput } from '../../components/ui/Field';
@@ -10,7 +10,7 @@ import ErrorState from '../../components/ui/ErrorState';
 import { toast } from '../../components/ui/Toast';
 import { ReelCover } from '../../components/reels/ReelPlayer';
 import {
-  editReel, listReels, postLinkReel, postUploadedReel, reelFileProblem, gymStorage, storageWords, removeReel, REEL_VIDEO_TYPES, type Reel,
+  editReel, listReels, mayPostReels, postLinkReel, postUploadedReel, reelFileProblem, gymStorage, storageWords, removeReel, REEL_VIDEO_TYPES, type Reel,
 } from '../../lib/api/reels';
 import { reelEmbedUrl, reelLinkSource, REEL_LINK_HINT, REEL_SOURCE_WORDS } from '../../lib/reelEmbed';
 import { useT } from '../../lib/i18n';
@@ -31,6 +31,9 @@ export default function TrainerReels() {
   const [failed, setFailed] = useState<string | null>(null);
   const [posting, setPosting] = useState(false);
   const [managing, setManaging] = useState<Reel | null>(null);
+  /** Null while asking; false when the owner keeps coaches from posting (0269). */
+  const [canPost, setCanPost] = useState<boolean | null>(null);
+  useEffect(() => { void (async () => { setCanPost(await mayPostReels()); })(); }, []);
 
   const load = useCallback(async () => {
     try {
@@ -45,7 +48,14 @@ export default function TrainerReels() {
   return (
     <Page>
       <PageTitle back fallback="/trainer/home" title={t('Reels')} subtitle={t('Short videos for the gym’s members. Members watch and like them.')} />
-      <NocButton icon={<Plus size={16} />} onClick={() => setPosting(true)} className="w-full">{t('Post a reel')}</NocButton>
+      {canPost === false ? (
+        <p data-reels-locked className="flex items-start" style={{ gap: 8, fontSize: 13.5, color: 'var(--color-text-secondary)' }}>
+          <LockSimple size={16} aria-hidden style={{ flex: 'none', marginTop: 2 }} />
+          <span>{t('Your gym’s owner has turned off posting reels for coaches. You can still edit or remove the reels you already posted.')}</span>
+        </p>
+      ) : (
+        <NocButton icon={<Plus size={16} />} onClick={() => setPosting(true)} className="w-full" disabled={canPost === null}>{t('Post a reel')}</NocButton>
+      )}
 
       {failed && !reels ? (
         <ErrorState message={failed} onRetry={() => { setFailed(null); void load(); }} />
@@ -53,7 +63,7 @@ export default function TrainerReels() {
         <SkeletonList count={4} />
       ) : reels.length === 0 ? (
         <p data-reels-empty style={{ fontSize: 13.5, color: 'var(--color-text-secondary)' }}>
-          {t('The gym has no reels yet. Post the first one.')}
+          {canPost === false ? t('The gym has no reels yet.') : t('The gym has no reels yet. Post the first one.')}
         </p>
       ) : (
         <section aria-label={t('The gym’s reels')} data-trainer-reels>
