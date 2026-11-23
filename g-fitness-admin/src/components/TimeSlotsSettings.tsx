@@ -135,7 +135,7 @@ export default function TimeSlotsSettings() {
         <div className="mt-3 grid gap-2 sm:grid-cols-2" data-slot-grid>
           {ORDER.map((d) => {
             const day = slots.filter((s) => s.day_of_week === d);
-            const closed = rules.closed_days.includes(d);
+            const closed = (rules.closed_days ?? []).includes(d);
             return (
               <div key={d} className="rounded-lg border px-3 py-2.5" style={{ borderColor: 'var(--color-border)' }} data-slot-day={d}>
                 <div className="flex items-center justify-between">

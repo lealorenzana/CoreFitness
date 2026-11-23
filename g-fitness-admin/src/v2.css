@@ -489,3 +489,52 @@ button.v2-railrow:hover, .v2-railbtn:hover { background: rgb(var(--hair-rgb, 255
 :root[data-mode="light"] .rail-item[data-active="true"] { background: rgb(255 255 255 / 0.2); color: #fff; }
 :root[data-mode="light"] .rail-item[data-active="true"] svg { color: #fff; }
 :root[data-mode="light"] .rail-item[data-active="true"]::before { background: #fff; }
+
+/* ══ Design V3: alive (owner, 2026-11-23, after Discord's desktop app) ═════════════════════════════════════════
+   The page's lead figure is an art tile in the gym's own two colours (dark: an OKLCH gradient with a soft light
+   in its corner; light keeps its rule of solid fills, so it is the gym's solid fill there), panels answer the
+   pointer, rows light under it, buttons lift. Only transform, opacity and colours move; reduced motion stills it. */
+:root {
+  --v3-art: radial-gradient(130% 150% at 100% 0%, rgb(255 255 255 / 0.16), transparent 55%),
+    linear-gradient(in oklch 135deg, color-mix(in oklch, var(--color-primary) 70%, black) 0%, var(--color-primary) 55%,
+      color-mix(in oklch, var(--color-secondary) 55%, var(--color-primary)) 100%);
+  --v3-ease: cubic-bezier(.2, .7, .2, 1);
+}
+:root[data-mode="light"] { --v3-art: color-mix(in srgb, var(--color-primary) 84%, black); }
+
+:is(.att .a-figstrip > .a-card:first-child, .att [data-stats-strip] > .a-card:first-child, .dv2-figs > .dv2-fig:first-child,
+  .att .a-grid:has(> .a-card + .a-card + .a-card):not(:has(> .a-card:not(:has(> .a-lbl:first-child)))):not(:has(> :not(.a-card))) > .a-card:first-child) {
+  background: var(--v3-art) !important; color: #fff; position: relative; overflow: hidden; }
+.dv2-figs > .dv2-fig:first-child { padding: 14px 18px; border-radius: 12px; }
+:is(.att .a-figstrip > .a-card:first-child, .att [data-stats-strip] > .a-card:first-child,
+    .att .a-grid:has(> .a-card + .a-card + .a-card):not(:has(> .a-card:not(:has(> .a-lbl:first-child)))):not(:has(> :not(.a-card))) > .a-card:first-child,
+    .dv2-figs > .dv2-fig:first-child) :is(.a-lbl, .a-sub, .l, .s, small, span, .a-up, .a-dn) { color: rgb(255 255 255 / 0.85) !important; }
+:is(.att .a-figstrip > .a-card:first-child, .att [data-stats-strip] > .a-card:first-child,
+    .att .a-grid:has(> .a-card + .a-card + .a-card):not(:has(> .a-card:not(:has(> .a-lbl:first-child)))):not(:has(> :not(.a-card))) > .a-card:first-child,
+    .dv2-figs > .dv2-fig:first-child) :is(.a-num, .n, b) { color: #fff !important; }
+:is(.att .a-figstrip > .a-card:first-child, .att [data-stats-strip] > .a-card:first-child) .v2-spark .cur { stroke: #fff !important; }
+:is(.att .a-figstrip > .a-card:first-child, .att [data-stats-strip] > .a-card:first-child) .v2-spark .cmp { stroke: rgb(255 255 255 / 0.45) !important; }
+
+/* Panels and rows answer the pointer. */
+.att .a-card, .att .a-row, .att .a-chip, .att .a-btn, .dv2-fig, .dv2-row, .att .a-table tbody tr {
+  transition: background-color 160ms var(--v3-ease), border-color 160ms var(--v3-ease), transform 180ms var(--v3-ease), box-shadow 180ms var(--v3-ease), color 120ms; }
+.att button.a-card:hover, .att .a-card.press:hover, .att a.a-card:hover, .dv2-fig.as-btn:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 45%, var(--a-border, transparent)); transform: translateY(-2px);
+  box-shadow: 0 14px 30px -20px color-mix(in srgb, var(--color-primary) 70%, transparent); }
+.att .a-table tbody tr:hover > td { background: rgb(var(--hair-rgb, 255 255 255) / 0.035); }
+.att button.a-row:hover, .att a.a-row:hover { background: rgb(var(--hair-rgb, 255 255 255) / 0.04); }
+.att .a-chip:hover:not(:disabled) { border-color: rgb(var(--hair-rgb, 255 255 255) / 0.3); color: var(--a-ink); }
+.att .a-btn:hover:not(:disabled), .dv2-btn:hover, .dv2-act:hover { transform: translateY(-1px); }
+.att .a-btn.amber:hover:not(:disabled), .att .a-btn.violet:hover:not(:disabled) {
+  box-shadow: 0 10px 22px -14px color-mix(in srgb, var(--v2-act, var(--color-secondary)) 90%, transparent); filter: brightness(1.06); }
+/* A row's icon tile wakes up under the pointer. */
+.att .a-row:hover .a-ic, .att .a-row:hover .a-av { transform: scale(1.06); }
+.att .a-ic, .att .a-av { transition: transform 180ms var(--v3-ease); }
+/* Section headings arrive softly when a page opens. */
+@media (prefers-reduced-motion: no-preference) {
+  .att > .a-head, .att .a-v2 > *, .att > .a-grid, .att > .a-card { animation: v2-row-in 260ms var(--v3-ease) both; }
+  .att .a-v2 > :nth-child(2), .att > .a-grid:nth-of-type(2) { animation-delay: 60ms; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .att button.a-card:hover, .att .a-card.press:hover, .att .a-btn:hover, .dv2-fig.as-btn:hover { transform: none; }
+}

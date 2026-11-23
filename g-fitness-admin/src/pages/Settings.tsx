@@ -2,7 +2,7 @@ import PageGuide from '../components/guides/PageGuide';
 import StaffAccounts from '../components/staff/StaffAccounts';
 import DeleteAccount from '../components/DeleteAccount';
 import { setAccountStatus } from '../lib/api/accountEvents';
-import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
+import { Component, useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import './attendance/att.css';
 import { Link } from 'react-router-dom';
 import WaiverTab from '../components/WaiverTab';
@@ -128,6 +128,21 @@ async function loadSetup(): Promise<{ pinned: boolean | null; waiver: boolean | 
     waiver: w.error ? null : (w.data ?? []).length > 0,
     plans: p.error ? null : (p.data ?? []).length > 0,
   };
+}
+
+/**
+ * Every section is on the page at once (one scrolling page, 2026-11-23): one that fails says so in its own place
+ * and the rest of Settings stays usable, as when each section was a tab of its own.
+ */
+class SectionGuard extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  componentDidCatch(err: unknown) { console.error('Settings section failed', err instanceof Error ? err.stack : err); }
+  render() {
+    return this.state.failed
+      ? <p className="a-sub" role="alert" style={{ padding: '12px 0' }}>This section could not be shown. Reload the page to try again; nothing you saved is lost.</p>
+      : this.props.children;
+  }
 }
 
 export default function Settings() {
@@ -447,7 +462,7 @@ export default function Settings() {
         <div className="a-card a-scroll st-main" ref={mainRef}>
           {loading ? <SkelRows label="Loading…" /> : (
             <>
-              <section className="st-sec" data-ya-sec="gym" id="st-gym">{(
+              <section className="st-sec" data-ya-sec="gym" id="st-gym"><SectionGuard>{(
                 <>
                   {head('Gym information', 'Shown on the sign-up page, receipts, the legal pages and the gym map',
                     infoMissing.length > 0 ? <span className="a-pill a">{infoMissing.length} to fill</span> : <span className="a-pill v">complete</span>)}
@@ -485,8 +500,8 @@ export default function Settings() {
                   </button>
                 </>
               )
-              }</section>
-              <section className="st-sec" data-ya-sec="hours" id="st-hours">{(
+              }</SectionGuard></section>
+              <section className="st-sec" data-ya-sec="hours" id="st-hours"><SectionGuard>{(
                 <>
                   {head('Hours and closed days', 'Members see whether you are open now; classes outside these hours are flagged on Schedule')}
                   <div className="a-setting">
@@ -521,8 +536,8 @@ export default function Settings() {
                   </button>
                 </>
               )
-              }</section>
-              <section className="st-sec" data-ya-sec="checkin" id="st-checkin">{(
+              }</SectionGuard></section>
+              <section className="st-sec" data-ya-sec="checkin" id="st-checkin"><SectionGuard>{(
                 <>
                   {head('Checking in', 'How members and coaches get in, and what a check-in can be tagged with')}
                   <div style={{ margin: '0 0 10px' }}><PageGuide id="door-checkin" /> <PageGuide id="kiosk" label="Set up the kiosk" /></div>
@@ -548,10 +563,10 @@ export default function Settings() {
                   </button>
                 </>
               )
-              }</section>
-              <section className="st-sec" data-ya-sec="slots" id="st-slots">{<>{head('Time slots', 'Members book a time to come in, and you cap how many train at once: every rule is yours')}<TimeSlotsSettings /></>
-              }</section>
-              <section className="st-sec" data-ya-sec="bookings" id="st-bookings">{<>
+              }</SectionGuard></section>
+              <section className="st-sec" data-ya-sec="slots" id="st-slots"><SectionGuard>{<>{head('Time slots', 'Members book a time to come in, and you cap how many train at once: every rule is yours')}<TimeSlotsSettings /></>
+              }</SectionGuard></section>
+              <section className="st-sec" data-ya-sec="bookings" id="st-bookings"><SectionGuard>{<>
                 {head('How your gym works', 'Your gym’s style sets the booking and coaching settings below: you can still change each one')}
                 <GymStyles onApplied={() => setStyleTick((n) => n + 1)} />
                 <div style={{ height: 22 }} />
@@ -559,10 +574,10 @@ export default function Settings() {
                 <div style={{ height: 22 }} />
                 {head('Repeats, late cancels and no-shows', 'Your rules for weekly bookings, cancelling close to the start, and members who do not come')}<BookingRulesSettings />
               </>
-              }</section>
-              <section className="st-sec" data-ya-sec="coaching" id="st-coaching">{<>{head('Personal training', 'How members get a coach, for how long, and who is paid')}<CoachingSettings /></>
-              }</section>
-              <section className="st-sec" data-ya-sec="walk-ins" id="st-walk-ins">{(
+              }</SectionGuard></section>
+              <section className="st-sec" data-ya-sec="coaching" id="st-coaching"><SectionGuard>{<>{head('Personal training', 'How members get a coach, for how long, and who is paid')}<CoachingSettings /></>
+              }</SectionGuard></section>
+              <section className="st-sec" data-ya-sec="walk-ins" id="st-walk-ins"><SectionGuard>{(
                 <>
                   {head('Walk-ins', 'For people without a membership: paid in cash at the desk (Attendance → Walk-ins) or, if you take payments in the app, bought by the member themselves')}
                   <div style={{ margin: '0 0 10px' }}><PageGuide id="day-pass" /></div>
@@ -570,20 +585,20 @@ export default function Settings() {
                   <DayPassSettings />
                 </>
               )
-              }</section>
-              <section className="st-sec" data-ya-sec="refunds" id="st-refunds">{<RefundPolicyTab />
-              }</section>
-              <section className="st-sec" data-ya-sec="payments" id="st-payments">{<OnlinePaymentsTab />
-              }</section>
-              <section className="st-sec" data-ya-sec="waiver" id="st-waiver">{<><div style={{ margin: '0 0 10px' }}><PageGuide id="waiver" /></div><WaiverTab /></>
-              }</section>
-              <section className="st-sec" data-ya-sec="house-rules" id="st-house-rules">{<HouseRulesTab />
-              }</section>
-              <section className="st-sec" data-ya-sec="staff" id="st-staff">{(
+              }</SectionGuard></section>
+              <section className="st-sec" data-ya-sec="refunds" id="st-refunds"><SectionGuard>{<RefundPolicyTab />
+              }</SectionGuard></section>
+              <section className="st-sec" data-ya-sec="payments" id="st-payments"><SectionGuard>{<OnlinePaymentsTab />
+              }</SectionGuard></section>
+              <section className="st-sec" data-ya-sec="waiver" id="st-waiver"><SectionGuard>{<><div style={{ margin: '0 0 10px' }}><PageGuide id="waiver" /></div><WaiverTab /></>
+              }</SectionGuard></section>
+              <section className="st-sec" data-ya-sec="house-rules" id="st-house-rules"><SectionGuard>{<HouseRulesTab />
+              }</SectionGuard></section>
+              <section className="st-sec" data-ya-sec="staff" id="st-staff"><SectionGuard>{(
                 <StaffAccounts accounts={accounts} meId={me?.id ?? null} onStatus={(account, next) => setStaffAction({ account, next })} onChanged={load} />
               )
-              }</section>
-              <section className="st-sec" data-ya-sec="profile" id="st-profile">{(
+              }</SectionGuard></section>
+              <section className="st-sec" data-ya-sec="profile" id="st-profile"><SectionGuard>{(
                 <>
                   {head('My profile', `Signed in as ${realEmail(me?.email) ?? (me?.username ? `@${me.username}` : '')} · ${me?.role ?? ''}`)}
                   <div className="flex items-center gap-4" style={{ marginBottom: 12 }}>
@@ -615,8 +630,8 @@ export default function Settings() {
                   <DeleteAccount />
                 </>
               )
-              }</section>
-              <section className="st-sec" data-ya-sec="security" id="st-security">{(
+              }</SectionGuard></section>
+              <section className="st-sec" data-ya-sec="security" id="st-security"><SectionGuard>{(
                 <>
                   {head('Security', 'Changes your real sign-in password')}
                   <div className="a-grid" style={{ gap: 10, maxWidth: 420 }}>
@@ -648,7 +663,7 @@ export default function Settings() {
                   </button>
                 </>
               )
-              }</section>
+              }</SectionGuard></section>
             </>
           )}
         </div>
