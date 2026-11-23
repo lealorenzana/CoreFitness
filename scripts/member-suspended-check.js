@@ -42,6 +42,7 @@ async (page) => {
     if (path.startsWith('/rest/v1/rpc/')) {
       const fn = path.split('/rest/v1/rpc/')[1];
       if (fn === 'my_platform_suspension') return json(SUS);
+      if (fn === 'appeal_my_suspension') { CALLS.push(['appeal', JSON.parse(req.postData() || '{}')]); return json('ap-1'); }
       if (fn === 'my_account_deletion') return json({ pending: DEL.pending, blocked: DEL.blocked });
       if (fn === 'request_account_deletion') { CALLS.push(['request']); DEL.pending = { requested_at: new Date().toISOString(), erase_after: ERASE }; return json(ERASE); }
       if (fn === 'cancel_account_deletion') { CALLS.push(['cancel']); DEL.pending = null; return json(true); }
@@ -69,7 +70,24 @@ async (page) => {
   out.push('a suspended member sees only the suspension, with the reason: ' + ((await scr.count()) === 1
     && /Payments reported as fraudulent by two gyms\./.test(await scr.innerText()) && (await page.locator('nav').count()) === 0 ? 'yes' : 'MISSING'));
   out.push('…and that their gym cannot lift it: ' + (/Your gym cannot lift it/.test(await scr.innerText()) ? 'yes' : 'MISSING'));
+  // 0265: they can appeal once, from here.
+  out.push('they can appeal from here: ' + ((await page.locator('[data-appeal-form]').count()) === 1 ? 'yes' : 'MISSING'));
+  await page.locator('#appeal-text').fill('Too short');
+  await page.locator('[data-appeal-send]').click();
+  out.push('…a few words are refused before sending: ' + (/at least 20 characters/.test(await page.locator('[data-appeal-error]').innerText().catch(() => '')) && !CALLS.some(([c]) => c === 'appeal') ? 'yes' : 'MISSING'));
+  await page.locator('#appeal-text').fill('I paid in cash at the desk and have the receipt; it was another member.');
   await page.screenshot({ path: 'shots/member-suspended.png' });
+  await page.locator('[data-appeal-send]').click();
+  await page.locator('[data-appeal-pending]').waitFor({ timeout: 5000 }).catch(() => {});
+  const sent = CALLS.find(([c]) => c === 'appeal')?.[1];
+  out.push('…sent with their words, and shown as with Core Fitness: ' + (sent && /paid in cash/.test(sent.p_statement) && sent.p_attachment === null
+    && (await page.locator('[data-appeal-pending]').count()) === 1 ? 'yes' : 'MISSING ' + JSON.stringify(sent)));
+  await page.screenshot({ path: 'shots/member-suspended-appealed.png' });
+  SUS = { ...SUS, appeal: { status: 'upheld', sent_at: new Date().toISOString(), decision_note: 'Two gyms sent the same report; the suspension stays.', decided_at: new Date().toISOString() } };
+  await go('/member/home');
+  out.push('turned down: they read why, and cannot appeal again: ' + (/the suspension stays/.test(await page.locator('[data-appeal-upheld]').innerText().catch(() => ''))
+    && (await page.locator('[data-appeal-form]').count()) === 0 ? 'yes' : 'MISSING'));
+  SUS = { reason: SUS.reason, suspended_at: SUS.suspended_at };
   ROLE = 'trainer';
   await go('/trainer');
   out.push('a suspended coach too: ' + ((await page.locator('[data-platform-suspended]').count()) === 1 ? 'yes' : 'MISSING'));

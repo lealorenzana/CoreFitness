@@ -139,8 +139,14 @@ async (page) => {
     platform_suspended_people: () => PEOPLE.filter((p) => p.suspended_reason).map((p) => ({ id: p.id, name: p.name, email: p.email, reason: p.suspended_reason, suspended_at: p.suspended_at, gyms: p.gyms.map((g) => g.gym) })),
     platform_suspend: (b) => { CALLS.push(['suspend', b]); const p = PEOPLE.find((x) => x.id === b.p_person); p.suspended_reason = b.p_reason; p.suspended_at = iso(0); return null; },
     platform_lift_suspension: (b) => { CALLS.push(['lift', b]); const p = PEOPLE.find((x) => x.id === b.p_person); p.suspended_reason = null; p.suspended_at = null; return null; },
+    // 0265: one appeal waiting.
+    platform_appeals_list: () => APPEALS,
+    platform_decide_appeal: (b) => { CALLS.push(['decide', b]); const a = APPEALS.find((x) => x.id === b.p_appeal); a.status = b.p_lift ? 'lifted' : 'upheld'; a.decision_note = b.p_note; a.decided_at = iso(0); return null; },
   });
 
+  const APPEALS = [{ id: 'ap1', person: 'p9', name: 'Rey Lim', email: 'rey@example.test', reason: 'Shared their login with three people.',
+    suspended_at: iso(-3), statement: 'My brother used my phone once; I changed my password the same day.', attachment: null,
+    status: 'pending', decision_note: null, decided_at: null, created_at: iso(-1) }];
   await page.route(`**://${REF}.supabase.co/**`, async (route) => {
     const req = route.request();
     const after = req.url().replace(/^https?:\/\/[^/]+/, '');
@@ -198,5 +204,19 @@ async (page) => {
   await page.waitForTimeout(1200);
   out.push('lifting it: called, emailed, off the list: ' + (CALLS.some((c) => c[0] === 'lift' && c[1].p_person === 'p1')
     && CALLS.filter((c) => c[0] === 'email').some((c) => /active again/.test(c[1].subject)) && (await row.count()) === 0 ? 'yes' : 'MISSING'));
+  // 0265: the appeal queue.
+  const ap = page.locator('[data-appeal="rey@example.test"]');
+  out.push('an appeal waits, with the reason and their words: ' + ((await ap.count()) === 1 && /Shared their login/.test(await ap.innerText())
+    && /changed my password/.test(await ap.innerText()) && /1 waiting/.test(await page.locator('[data-people-appeals]').innerText()) ? 'yes' : 'MISSING'));
+  await ap.locator('[data-appeal-keep]').click();
+  const d2 = page.getByRole('dialog');
+  out.push('keeping it asks for a note they read: ' + (/They read your note/.test(await d2.innerText()) ? 'yes' : 'MISSING'));
+  await d2.getByRole('textbox').fill('Three people used the same login for a month.');
+  await d2.getByRole('button', { name: 'Keep it' }).click();
+  await page.waitForTimeout(1000);
+  const dec = CALLS.find((c) => c[0] === 'decide');
+  out.push('…decided, kept, with the note: ' + (dec && dec[1].p_appeal === 'ap1' && dec[1].p_lift === false && /same login/.test(dec[1].p_note)
+    && /Kept/.test(await ap.innerText()) && (await ap.locator('[data-appeal-keep]').count()) === 0 ? 'yes' : 'MISSING ' + JSON.stringify(dec)));
+  await page.screenshot({ path: 'shots/platform-people-appeals.png' });
   return out.join('\n');
 }

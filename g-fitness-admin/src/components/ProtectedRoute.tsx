@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabaseClient';
 import { getGymContext } from '../lib/gymContext';
 import { DeletionPending } from './DeleteAccount';
 import Suspended from './Suspended';
+import type { Appeal } from './account/SuspensionAppeal';
 import SkelRows from './ui/SkelRows';
 
 interface ProtectedRouteProps {
@@ -30,7 +31,7 @@ export default function ProtectedRoute({ children, adminOnly = false }: Protecte
   /** 0225: the account asked to be deleted — when it is erased; keeping it re-runs the check. */
   const [eraseAfter, setEraseAfter] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
-  const [suspension, setSuspension] = useState<{ reason: string; suspended_at: string } | null>(null);
+  const [suspension, setSuspension] = useState<{ reason: string; suspended_at: string; appeal?: Appeal } | null>(null);
   const [inviteToken, setInviteToken] = useState('');
   const { pathname } = useLocation();
 
@@ -60,7 +61,7 @@ export default function ProtectedRoute({ children, adminOnly = false }: Protecte
       const { data: sus } = await supabase.rpc('my_platform_suspension');
       // Only a real answer counts: a reason, as text. Anything else (null, an empty reply) is not a suspension.
       if (sus && typeof (sus as { reason?: unknown }).reason === 'string') {
-        if (active) { setSuspension(sus as { reason: string; suspended_at: string }); setStatus('suspended'); }
+        if (active) { setSuspension(sus as { reason: string; suspended_at: string; appeal?: Appeal }); setStatus('suspended'); }
         return;
       }
       // Asked to delete the account (0225): nothing opens until they keep it or leave.
@@ -107,7 +108,7 @@ export default function ProtectedRoute({ children, adminOnly = false }: Protecte
 
   if (status === 'invite') return <Navigate to={`/admin/invite/${inviteToken}`} replace />;
   if (status === 'set-up') return <Navigate to="/admin/set-up-login" replace />;
-  if (status === 'suspended' && suspension) return <Suspended reason={suspension.reason} since={suspension.suspended_at} />;
+  if (status === 'suspended' && suspension) return <Suspended reason={suspension.reason} since={suspension.suspended_at} appeal={suspension.appeal} />;
   if (status === 'deleting' && eraseAfter) return <DeletionPending eraseAfter={eraseAfter} onKept={() => setTick((n) => n + 1)} />;
   if (status === 'checking') {
     return (

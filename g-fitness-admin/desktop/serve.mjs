@@ -36,12 +36,15 @@ import { spawn } from 'node:child_process';
 import { readFile, access } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname, join, extname, normalize, sep } from 'node:path';
+import { dirname, join, extname, normalize, sep, resolve, basename } from 'node:path';
 import { tmpdir } from 'node:os';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const ROOT = join(HERE, '..', 'dist');
-const PORT = 5174;
+// The platform app's icon reuses this server (corefitness-platform/desktop/launch.vbs): it hands over its own
+// dist, port and name. The admin icon sets none of these and gets the admin dashboard as before.
+const ROOT = process.env.CF_ROOT ? resolve(process.env.CF_ROOT) : join(HERE, '..', 'dist');
+const PORT = Number(process.env.CF_PORT) || 5174;
+const NAME = process.env.CF_NAME || 'Core Fitness Admin';
 const URL_ = `http://localhost:${PORT}/`;
 
 const TYPES = {
@@ -63,7 +66,7 @@ const TYPES = {
 };
 
 /** Where the app's own browser profile lives. Survives restarts, so the desk stays signed in. */
-const PROFILE = join(tmpdir(), 'corefitness-admin-profile');
+const PROFILE = join(tmpdir(), PORT === 5174 ? 'corefitness-admin-profile' : `corefitness-${PORT}-profile`);
 
 /**
  * Forward slashes, deliberately. Windows accepts them everywhere Node passes a
@@ -154,8 +157,8 @@ async function main() {
       // `\\n` and not a real newline: this string is JavaScript *source* handed
       // to mshta, and a literal line break inside a JS string is a syntax error
       // — the dialog would simply never appear.
-      'javascript:alert("Core Fitness Admin has not been built yet.\\n\\n'
-      + 'Open a terminal in g-fitness-admin and run:\\n\\n    npm run build\\n\\n'
+      `javascript:alert("${NAME} has not been built yet.\\n\\n`
+      + `Open a terminal in ${basename(dirname(ROOT))} and run:\\n\\n    npm run build\\n\\n`
       + 'Then use the shortcut again.");close();',
     ], { detached: true, stdio: 'ignore' }).unref();
     process.exit(1);

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Ban, Search, ShieldCheck, Users } from 'lucide-react';
+import { Ban, FileText, Gavel, Search, ShieldCheck, Users } from 'lucide-react';
 import {
-  emailSuspension, explain, liftSuspension, searchPeople, suspendPerson, suspendedPeople,
-  type PersonRow, type SuspendedRow,
+  appealFileUrl, appealsList, decideAppeal, emailSuspension, explain, liftSuspension, searchPeople, suspendPerson, suspendedPeople,
+  type AppealRow, type PersonRow, type SuspendedRow,
 } from '../lib/platform';
 import Modal from '../components/Modal';
 import Ask from '../components/Ask';
@@ -11,7 +11,8 @@ import SkelRows from '../components/ui/SkelRows';
 const when = (iso: string) => new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
 const ROLE: Record<string, string> = { admin: 'Owner', staff: 'Front desk', trainer: 'Coach', member: 'Member' };
 
-type Dialog = { kind: 'suspend' | 'lift'; person: { id: string; name: string | null; email: string } };
+type Dialog = { kind: 'suspend' | 'lift'; person: { id: string; name: string | null; email: string } }
+  | { kind: 'appeal'; appeal: AppealRow; lift: boolean };
 
 /**
  * People (0226): anyone with a Core Fitness account, across every gym — found
@@ -27,9 +28,13 @@ export default function People() {
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [dialog, setDialog] = useState<Dialog | null>(null);
+  const [appeals, setAppeals] = useState<AppealRow[] | null>(null);
+  const [appealsError, setAppealsError] = useState<string | null>(null);
 
   const loadSuspended = useCallback(async () => {
     try { setSuspended(await suspendedPeople()); setError(null); } catch (e) { setError(explain(e, '0226')); setSuspended([]); }
+    // 0265: appeals. Before it is pasted the section says so, and the rest of the page works as before.
+    try { setAppeals(await appealsList()); setAppealsError(null); } catch (e) { setAppealsError(explain(e, '0265')); setAppeals([]); }
   }, []);
   useEffect(() => { void (async () => { await loadSuspended(); })(); }, [loadSuspended]);
 
@@ -83,6 +88,39 @@ export default function People() {
             ))}
         </section>
 
+        {/* Appeals (0265, owner 2026-11-23): once per suspension; any platform admin decides, with a note the person
+            reads. Their gyms are not told an appeal exists, only the outcome (a lift tells them as 0226 does). */}
+        <section className="card" data-people-appeals>
+          <h2 className="section-title"><Gavel size={14} /> Appeals{appeals ? `, ${appeals.filter((a) => a.status === 'pending').length} waiting` : ''}</h2>
+          {appealsError && <p className="err">{appealsError}</p>}
+          {appeals === null ? <SkelRows label="Loading…" /> : appeals.length === 0 ? <p className="empty">No appeals. A suspended person can appeal once, from the app.</p>
+            : appeals.map((a) => (
+              <div key={a.id} className="fb-row" data-appeal={a.email ?? a.id} style={{ alignItems: 'flex-start' }}>
+                <span className="grow">
+                  <span className="name">{a.name ?? a.email}
+                    <span className={`pill ${a.status === 'pending' ? 'warn' : ''}`} style={{ marginLeft: 8 }}>
+                      {a.status === 'pending' ? 'Waiting' : a.status === 'lifted' ? 'Lifted' : 'Kept'}</span>
+                  </span>
+                  <span className="meta" style={{ display: 'block' }}>{a.email} · sent {when(a.created_at)}</span>
+                  <span className="meta" style={{ display: 'block', marginTop: 6 }}>Suspended {when(a.suspended_at)}: {a.reason}</span>
+                  <span style={{ display: 'block', marginTop: 8, whiteSpace: 'pre-wrap', lineHeight: 1.55 }} data-appeal-statement>{a.statement}</span>
+                  {a.attachment && (
+                    <button type="button" className="btn ghost" style={{ marginTop: 8 }}
+                      onClick={() => void appealFileUrl(a.attachment!).then((u) => (u ? window.open(u, '_blank', 'noopener') : setNote('The file could not be opened.')))}>
+                      <FileText size={13} /> Open their file</button>
+                  )}
+                  {a.decision_note && <span className="meta" style={{ display: 'block', marginTop: 8 }}>Decided {a.decided_at ? when(a.decided_at) : ''}: {a.decision_note}</span>}
+                </span>
+                {a.status === 'pending' && (
+                  <span className="actions" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+                    <button type="button" className="btn" onClick={() => setDialog({ kind: 'appeal', appeal: a, lift: true })} data-appeal-lift>Lift it</button>
+                    <button type="button" className="btn ghost" onClick={() => setDialog({ kind: 'appeal', appeal: a, lift: false })} data-appeal-keep>Keep suspended</button>
+                  </span>
+                )}
+              </div>
+            ))}
+        </section>
+
         <section className="card" data-people-suspended>
           <h2 className="section-title"><Ban size={14} /> Suspended{suspended ? `, ${suspended.length}` : ''}</h2>
           {suspended === null ? <SkelRows label="Loading…" /> : suspended.length === 0 ? <p className="empty">Nobody is suspended.</p>
@@ -116,6 +154,27 @@ export default function People() {
               setDialog(null);
               await refresh();
               setNote(await emailSuspension(person, false, v.reason.trim()));
+            }}
+          />
+        )}
+      </Modal>
+      <Modal open={dialog?.kind === 'appeal'} onClose={close} size="sm" label="Decide the appeal">
+        {dialog?.kind === 'appeal' && (
+          <Ask
+            title={dialog.lift ? `Lift ${dialog.appeal.name ?? dialog.appeal.email}'s suspension?` : `Keep ${dialog.appeal.name ?? dialog.appeal.email} suspended?`}
+            blurb={dialog.lift
+              ? 'Their appeal is accepted: they can sign in to every app again, and their gyms are told the suspension was lifted.'
+              : 'Their appeal is turned down and the suspension stays. They read your note on their suspended screen. Each suspension is appealed once.'}
+            fields={[{ key: 'note', label: 'Your decision, they read this', required: true,
+              placeholder: dialog.lift ? 'A one-off, and the password was changed.' : 'Three gyms reported the same messages.' }]}
+            confirmLabel={dialog.lift ? 'Lift the suspension' : 'Keep it'}
+            onCancel={close}
+            onConfirm={async (v) => {
+              const { appeal, lift } = dialog;
+              await decideAppeal(appeal.id, lift, v.note.trim());
+              setDialog(null);
+              await refresh();
+              if (lift && appeal.email) setNote(await emailSuspension({ email: appeal.email, name: appeal.name }, true));
             }}
           />
         )}

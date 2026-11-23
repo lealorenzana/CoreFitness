@@ -741,3 +741,29 @@ button.v2-railrow:hover, .v2-railbtn:hover { background: rgb(var(--hair-rgb, 255
 .rv:hover .rv-art > :not(img), .rv:focus-within .rv-art > :not(img) { transform: translateY(-18px) scale(0.92); opacity: 0.22; }
 @media (hover: none) { .rv-art > :not(img) { opacity: 0.22; } }
 .a-grid:has(> .rv) { padding: 5px 3px 8px; }
+
+/* ══ Room to breathe on Your app and Settings (owner, 2026-11-23: "too much text squeezing to each other") ═════
+   One vertical rhythm for both scrolling columns: a label sits 7px over its field, fields 18px apart, setting rows
+   taller with readable small text, a sub-heading 28px below what came before, a hint line apart from the box above
+   it, sections 48px apart. Inline gaps on these grids are overridden on purpose: they were sized for a fit page. */
+:is(.att .ya-main, .att .st-main) .a-fld { gap: 7px; }
+:is(.att .ya-main, .att .st-main) .a-fld > :is(label, span.l) { font-size: 12.5px; }
+:is(.att .ya-main, .att .st-main) .a-grid:has(> .a-fld) { row-gap: 18px !important; column-gap: 16px !important; }
+:is(.att .ya-main, .att .st-main) .a-grid:has(> .a-what, > button) { gap: 12px !important; }
+:is(.att .ya-main, .att .st-main) .a-sub, :is(.att .ya-main, .att .st-main) small { line-height: 1.55; }
+:is(.att .ya-main, .att .st-main) .a-sub { font-size: 12px; }
+:is(.att .ya-main, .att .st-main) .a-setting { padding: 15px 0; gap: 18px; }
+:is(.att .ya-main, .att .st-main) .a-setting small { margin-top: 3px; font-size: 12px; }
+:is(.att .ya-main, .att .st-main) .a-ct { margin-bottom: 16px; }
+:is(.att .ya-main, .att .st-main) .a-ct:not(:first-child) { margin-top: 30px; }
+:is(.att .ya-main, .att .st-main) .a-ct small { line-height: 1.5; }
+:is(.att .ya-main, .att .st-main) .a-what { padding: 15px 16px; gap: 12px; }
+:is(.att .ya-main, .att .st-main) .a-what p { margin-top: 4px; line-height: 1.5; }
+:is(.att .ya-main, .att .st-main) .a-hint { padding: 12px 14px; font-size: 12.5px; line-height: 1.55; }
+:is(.att .ya-main, .att .st-main) :is(.a-grid, .a-what, .a-setting, .a-hint, table, .a-card) + :is(p, .a-sub, .a-hint) { margin-top: 12px !important; }
+:is(.att .ya-main, .att .st-main) :is(p, .a-sub, .a-hint, .a-grid) + :is(.a-grid, .a-fld, .a-setting:first-of-type) { margin-top: 14px; }
+.att .st-sec { padding: 8px 0 48px; }
+.att .st-sec + .st-sec { padding-top: 36px; }
+.att .ya-sec { padding-bottom: 48px; }
+.att .ya-sec + .ya-sec { padding-top: 40px; }
+.att .ya-h { margin-bottom: 10px; }

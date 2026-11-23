@@ -918,6 +918,20 @@ export const suspendedPeople = () => call<SuspendedRow[]>('platform_suspended_pe
 export const suspendPerson = (id: string, reason: string) => call<void>('platform_suspend', { p_person: id, p_reason: reason });
 export const liftSuspension = (id: string) => call<void>('platform_lift_suspension', { p_person: id });
 
+// ---- 0265: appeals against a suspension — once each; any platform admin decides, with a note the person reads ----
+export interface AppealRow {
+  id: string; person: string; name: string | null; email: string | null; reason: string; suspended_at: string;
+  statement: string; attachment: string | null; status: 'pending' | 'upheld' | 'lifted';
+  decision_note: string | null; decided_at: string | null; created_at: string;
+}
+export const appealsList = () => call<AppealRow[]>('platform_appeals_list', { p_status: 'all' });
+export const decideAppeal = (id: string, lift: boolean, note: string) => call<void>('platform_decide_appeal', { p_appeal: id, p_lift: lift, p_note: note });
+/** The appeal's file, from the private 'appeals' bucket, for five minutes. */
+export async function appealFileUrl(path: string): Promise<string | null> {
+  const { data } = await supabase.storage.from('appeals').createSignedUrl(path, 300);
+  return data?.signedUrl ?? null;
+}
+
 /** Tells the person themself — the only place the reason goes. Says plainly when no mail went. */
 export async function emailSuspension(p: { email: string; name: string | null }, lifted: boolean, reason?: string): Promise<string> {
   const first = (p.name ?? '').split(' ')[0] || 'there';
@@ -927,7 +941,7 @@ export async function emailSuspension(p: { email: string; name: string | null },
       subject: lifted ? 'Your Core Fitness account is active again' : 'Your Core Fitness account is suspended',
       body: lifted
         ? `Hi ${first},\n\nCore Fitness has lifted the suspension on your account. You can sign in to every app again.\n\n— Core Fitness`
-        : `Hi ${first},\n\nCore Fitness has suspended your account, so you cannot use the member, coach or gym apps for now.\n\nThe reason: ${reason}\n\nIf you think this is a mistake, reply to this email.\n\n— Core Fitness`,
+        : `Hi ${first},\n\nCore Fitness has suspended your account, so you cannot use the member, coach or gym apps for now.\n\nThe reason: ${reason}\n\nIf you think this is a mistake, sign in to the app and appeal: Core Fitness reviews each suspension once.\n\n— Core Fitness`,
     });
     if (!r.configured) return `Not emailed, no mail provider is set up yet. They see ${lifted ? 'it' : 'the reason'} when they sign in.`;
     return r.status === 'sent' ? `Emailed to ${p.email}.` : `The email to ${p.email} did not go: ${r.error ?? r.status}.`;
