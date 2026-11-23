@@ -96,6 +96,8 @@ export default function GetApp() {
 
   return (
     <div className="gp" data-getapp>
+      {/* The website's title face, loaded only on this page (React hoists it into <head>). */}
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" precedence="default" />
       <header className="gp-top">
         <button type="button" className="gp-back" onClick={back}><ArrowLeft size={18} aria-hidden />Back</button>
         <span className="gp-brand"><img src="/logo.png" alt="" width={26} height={26} />Core Fitness</span>
