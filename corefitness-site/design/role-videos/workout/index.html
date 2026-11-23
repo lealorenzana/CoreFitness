@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=540, height=1170" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+    <script src="assets/kit.js"></script>
+    <link rel="stylesheet" href="assets/pieces.css" />
+    <style>
+      html, body { width: 540px; height: 1170px; }
+
+      #ex { left: 26px; top: 250px; width: 488px; }
+      .set { display: flex; align-items: center; gap: 16px; padding: 14px 0; border-top: 2px solid rgba(255,255,255,0.07); }
+      .set > span:first-child { width: 90px; color: #b3a5c6; font-size: 25px; }
+      .set b { flex: 1; font-size: 31px; }
+      .box { position: relative; overflow: hidden; width: 62px; height: 62px; border-radius: 18px; display: grid; place-items: center; border: 2px solid rgba(255,255,255,0.2); }
+      .box.on { background: #7c3aed; border-color: #7c3aed; }
+      #rest { left: 26px; top: 600px; width: 488px; }
+      #rest .num { font-size: 64px; }
+      #finish { position: absolute; left: 26px; top: 780px; width: 488px; text-align: center; padding: 20px; font-size: 28px; }
+      #prog { left: 26px; top: 600px; width: 488px; display: block; }
+      .segs { display: flex; gap: 10px; margin-top: 14px; }
+      .segs i { flex: 1; height: 12px; border-radius: 6px; background: rgba(255,255,255,0.12); }
+      #seg1 { background: #f5a524; transform-origin: 0 50%; }
+    </style>
+  </head>
+  <body>
+    <div id="root" class="phone" data-composition-id="workout" data-start="0" data-duration="8" data-fps="30" data-width="540" data-height="1170">
+      <!-- The real Core Fitness Lab member app, demo records. -->
+      <img id="screen" class="clip" src="assets/workout-player.png" alt="" data-start="0" data-duration="8" data-track-index="0" />
+      <div id="dim" class="clip" data-start="0" data-duration="8" data-track-index="1"><i></i></div>
+      <div id="pieces" class="clip" data-start="0" data-duration="8" data-track-index="2">
+        <div id="ex" class="card"><div class="card-head">Barbell Squat <em>2 × 10 @ 60 kg</em></div>
+          <div class="set" id="s1"><span>Set 1</span><b>60 kg × 10</b><span class="box on"><svg width="28" height="28" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+          <div class="set" id="s2"><span>Set 2</span><b>60 kg × 10</b><span class="box" id="box2"><span id="t2"><svg width="28" height="28" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><i class="ripple" id="rip2"></i></span></div></div>
+        <div id="rest" class="chip"><div><span class="lab">Rest</span><b class="num" id="clock">0:30</b></div></div>
+        <span class="btn amber" id="finish">Finish exercise<i class="ripple" id="rip3"></i></span>
+        <div id="prog" class="chip"><b id="ptxt">Exercise 1 of 3 · 0 done</b><div class="segs"><i id="seg1"></i><i></i><i></i></div></div>
+      </div>
+      <div id="cursor-host" class="clip" data-start="0" data-duration="8" data-track-index="3"><svg id="cursor" width="52" height="62" viewBox="0 0 22 26"><path d="M2 2l17 12-7.5 1.2L15.5 23l-3.4 1.5-3.6-7.8L2 21.5z" fill="#fff" stroke="#17121e" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      const k = kit(tl);
+
+      k.dim(0.4, 7.0);
+      k.pop('#ex', 0.7);
+      k.stack(['#s1', '#s2'], 0.95);
+      tl.fromTo('#t2', { opacity: 0 }, { opacity: 0, duration: 0.01 }, 0);
+      tl.set('#seg1', { scaleX: 0 }, 0);
+      k.cursorIn(470, 1100, 1.4);
+      k.tap('box2', 2.3, 'rip2');
+      tl.fromTo('#box2', { backgroundColor: 'rgba(124,58,237,0)', borderColor: 'rgba(255,255,255,0.2)' }, { backgroundColor: 'rgba(124,58,237,1)', borderColor: 'rgba(124,58,237,1)', duration: 0.15 }, 2.36);
+      tl.to('#t2', { opacity: 1, duration: 0.15 }, 2.38);
+      // The rest timer starts on its own and counts down.
+      k.pop('#rest', 2.6);
+      k.count('clock', 30, 26, 2.9, 1.2, (n) => '0:' + String(Math.ceil(n)).padStart(2, '0'));
+      k.pop('#finish', 3.3);
+      k.tap('finish', 4.5, 'rip3');
+      k.away('#rest', 4.5, 0);
+      k.pop('#prog', 4.65);
+      k.flip(5.0, (d) => { k.$('ptxt').textContent = d ? 'Exercise 2 of 3 · 1 done' : 'Exercise 1 of 3 · 0 done'; });
+      tl.to('#seg1', { scaleX: 1, duration: 0.4, ease: 'power2.out' }, 5.0);
+      k.glide({ x: 380, y: 1060 }, 5.2);
+      tl.to('#cursor', { opacity: 0, duration: 0.25 }, 6.3);
+      k.away(['#prog', '#finish', '#ex'], 6.6, 40);
+      window.__timelines['workout'] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

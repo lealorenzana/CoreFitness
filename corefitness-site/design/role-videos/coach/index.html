@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=540, height=1170" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+    <link rel="stylesheet" href="assets/pieces.css" />
+    <style>
+      html, body { width: 540px; height: 1170px; }
+      #req { left: 26px; top: 150px; width: 488px; }
+      #req .row { gap: 14px; }
+      #req .row b { font-size: 29px; }
+      .row .state { color: #e4d8ff; }
+      .row.done { background: rgba(124, 58, 237, 0.3); }
+      #week { left: 26px; top: 720px; width: 488px; display: block; }
+      #week .lab { margin-bottom: 10px; }
+      .slot { display: flex; align-items: center; gap: 16px; padding: 10px 0; }
+      .slot i { width: 10px; align-self: stretch; border-radius: 5px; background: #7c3aed; flex: none; }
+      .slot div b { font-size: 29px; }
+      .slot div span { display: block; font-size: 25px; color: #b3a5c6; margin-top: 2px; }
+    </style>
+  </head>
+  <body>
+    <div id="root" class="phone" data-composition-id="coach" data-start="0" data-duration="8" data-fps="30" data-width="540" data-height="1170">
+      <!-- The real Core Fitness Lab coach app, demo records. -->
+      <img id="screen" class="clip" src="assets/roles-coach.png" alt="" data-start="0" data-duration="8" data-track-index="0" />
+      <div id="dim" class="clip" data-start="0" data-duration="8" data-track-index="1"><i></i></div>
+
+      <div id="req-host" class="clip" data-start="0" data-duration="8" data-track-index="2">
+        <div id="req" class="card">
+          <div class="card-head">Requests <em id="left">4 to decide</em></div>
+          <div class="row" id="r1"><span class="av">ET</span><div><b>Ella Tolentino</b><span id="r1s">1-on-1 · Sun, Nov 1</span></div>
+            <span class="icon-btn"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg></span>
+            <span class="icon-btn amber" id="ok1"><svg width="30" height="30" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#1a1206" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><i class="ripple" id="rip1"></i></span></div>
+          <div class="row" id="r2"><span class="av">AF</span><div><b>Andrea Flores</b><span id="r2s">1-on-1 · Mon, Nov 2</span></div>
+            <span class="icon-btn"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg></span>
+            <span class="icon-btn amber" id="ok2"><svg width="30" height="30" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#1a1206" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><i class="ripple" id="rip2"></i></span></div>
+          <div class="row" id="r3"><span class="av">CO</span><div><b>Carlo Ocampo</b><span>1-on-1 · Wed, Nov 4</span></div>
+            <span class="icon-btn"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg></span>
+            <span class="icon-btn amber"><svg width="30" height="30" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#1a1206" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+        </div>
+        <div id="week" class="chip">
+          <span class="lab">Your week</span>
+          <div class="slot" id="w1"><i></i><div><b>Sun, Nov 1 · 10:00 AM</b><span>1-on-1 with Ella Tolentino</span></div></div>
+          <div class="slot" id="w2"><i></i><div><b>Mon, Nov 2 · 9:00 AM</b><span>1-on-1 with Andrea Flores</span></div></div>
+        </div>
+      </div>
+
+      <div id="cursor-host" class="clip" data-start="0" data-duration="8" data-track-index="3">
+        <svg id="cursor" width="52" height="62" viewBox="0 0 22 26"><path d="M2 2l17 12-7.5 1.2L15.5 23l-3.4 1.5-3.6-7.8L2 21.5z" fill="#fff" stroke="#17121e" stroke-width="1.6" stroke-linejoin="round"/></svg>
+      </div>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      const at = (id) => { const b = document.getElementById(id).getBoundingClientRect(); return { x: b.left + b.width * 0.5 - 4, y: b.top + b.height * 0.55 - 4 }; };
+      const t1 = at('ok1'), t2 = at('ok2');
+      const pop = { scale: 0.6, opacity: 0, transformOrigin: '50% 60%' };
+      const popTo = { scale: 1, opacity: 1, duration: 0.42, ease: 'back.out(1.7)' };
+      const text = (id, value) => { document.getElementById(id).textContent = value; };
+      // One accept: the cursor taps the tick, the row turns violet and says so, the count drops, the slot lands in the week.
+      const accept = (n, tap, start, before, after) => {
+        tl.to('#cursor', { x: tap.x, y: tap.y, duration: 0.6, ease: 'power2.inOut' }, start - 0.65);
+        tl.to('#cursor', { scale: 0.86, duration: 0.08, yoyo: true, repeat: 1 }, start);
+        tl.to('#ok' + n, { scale: 0.9, duration: 0.08, yoyo: true, repeat: 1 }, start);
+        tl.fromTo('#rip' + n, { scale: 0, opacity: 0.6 }, { scale: 2.6, opacity: 0, duration: 0.45, ease: 'power2.out' }, start + 0.02);
+        const f = { v: 0 };
+        tl.to(f, { v: 1, duration: 0.02, onUpdate() {
+          const done = f.v > 0.5;
+          document.getElementById('r' + n).classList.toggle('done', done);
+          text('r' + n + 's', done ? 'Accepted · on your week' : before);
+          text('left', done ? after : (n === 1 ? '4 to decide' : '3 to decide'));
+        } }, start + 0.1);
+        tl.fromTo('#w' + n, { x: -30, opacity: 0 }, { x: 0, opacity: 1, duration: 0.35, ease: 'back.out(1.5)' }, start + 0.45);
+      };
+
+      tl.fromTo('#dim i', { opacity: 0 }, { opacity: 1, duration: 0.35, ease: 'power2.out' }, 0.4);
+      tl.fromTo('#req', pop, popTo, 0.7);
+      tl.fromTo(['#r1', '#r2', '#r3'], { x: -24, opacity: 0 }, { x: 0, opacity: 1, duration: 0.32, stagger: 0.22, ease: 'back.out(1.4)' }, 0.95);
+      tl.fromTo('#cursor', { x: 470, y: 1120, opacity: 0 }, { x: 470, y: 1120, opacity: 1, duration: 0.01 }, 1.7);
+      tl.fromTo('#week', pop, popTo, 2.85);
+      tl.set(['#w1', '#w2'], { opacity: 0 }, 0);
+      accept(1, t1, 2.5, '1-on-1 · Sun, Nov 1', '3 to decide');
+      accept(2, t2, 4.0, '1-on-1 · Mon, Nov 2', '2 to decide');
+      tl.to('#cursor', { x: t2.x - 60, y: t2.y + 260, duration: 0.6, ease: 'power2.inOut' }, 4.6);
+      // Resolve back into the screen.
+      tl.to('#cursor', { opacity: 0, duration: 0.25 }, 6.3);
+      tl.to('#week', { y: -300, scale: 0.5, opacity: 0, duration: 0.42, ease: 'power2.in' }, 6.4);
+      tl.to('#req', { y: 160, scale: 0.75, opacity: 0, duration: 0.45, ease: 'power2.in' }, 6.55);
+      tl.to('#dim i', { opacity: 0, duration: 0.45, ease: 'power2.inOut' }, 6.9);
+      window.__timelines['coach'] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

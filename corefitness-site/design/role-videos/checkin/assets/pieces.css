@@ -1,0 +1,55 @@
+/* Oversized, simplified Core Fitness pieces that pop out of the real screen (reference: flat pops, one accent). */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { overflow: hidden; background: #0e0b14; }
+#root { position: relative; width: 100%; height: 100%; font-family: Inter, sans-serif; color: #fff; font-variant-numeric: tabular-nums; }
+#root > .clip { position: absolute; inset: 0; }
+#screen { width: 100%; height: 100%; object-fit: cover; display: block; }
+#dim i { position: absolute; inset: 0; background: rgba(14, 10, 22, 0.74); opacity: 0; }
+
+.card, .chip { position: absolute; background: #1f1829; border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 30px;
+  box-shadow: 0 28px 60px rgba(8, 4, 14, 0.55), 0 2px 0 rgba(255, 255, 255, 0.06) inset; }
+.card { padding: 30px 34px; }
+.card-head { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 22px; }
+.card-head em { font-style: normal; color: #b9a3e8; font-weight: 400; margin-left: 10px; }
+
+.stat-row { display: flex; gap: 56px; }
+.stat { white-space: nowrap; }
+.lab { display: block; font-size: 25px; color: #c9bddb; margin-bottom: 6px; }
+.num { display: block; font-size: 84px; font-weight: 700; letter-spacing: -0.04em; line-height: 1; }
+.sub { display: block; font-size: 24px; color: #a898bd; margin-top: 8px; }
+
+.row { display: flex; align-items: center; gap: 18px; padding: 13px 16px; margin: 0 -16px; border-radius: 18px; }
+.row + .row { margin-top: 4px; }
+.row > div { flex: 1; min-width: 0; }
+.row b, .chip b { display: block; font-size: 26px; font-weight: 700; letter-spacing: -0.015em; }
+.row > div > span, .chip > div > span { display: block; font-size: 23px; color: #b3a5c6; margin-top: 3px; }
+.dot { width: 12px; height: 12px; border-radius: 50%; background: #f5a524; flex: none; }
+.btn { position: relative; overflow: hidden; flex: none; line-height: 1.3; white-space: nowrap; font-size: 24px; font-weight: 700; padding: 12px 22px; border-radius: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.18); color: #fff; }
+.btn.amber { background: #f5a524; border-color: #f5a524; color: #1a1206; }
+.btn.violet { background: #7c3aed; border-color: #7c3aed; }
+.ripple { position: absolute; left: 50%; top: 50%; width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 50%; background: #fff; opacity: 0; }
+
+.chip { display: flex; align-items: center; gap: 18px; padding: 20px 24px; border-radius: 26px; }
+.chip > div { flex: 1; min-width: 0; }
+.av { flex: none; width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; font-size: 23px; font-weight: 700;
+  background: #3b2a5e; color: #e4d8ff; border: 2px solid #7c3aed; }
+.tag { font-style: normal; font-size: 23px; font-weight: 700; color: #f5a524; padding: 6px 12px; border-radius: 999px; background: rgba(245, 165, 36, 0.14); }
+
+#cursor { position: absolute; left: 0; top: 0; opacity: 0; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.45)); }
+.tag.violet-tag { color: #efe7ff; background: rgba(124, 58, 237, 0.45); }
+.tick { flex: none; width: 58px; height: 58px; border-radius: 50%; background: #7c3aed; display: grid; place-items: center; }
+
+/* Phone videos (540 x 1170): the frame shows them at ~0.43x, so everything is bigger. */
+.phone .card { padding: 26px 26px; border-radius: 32px; }
+.phone .card-head { font-size: 34px; margin-bottom: 14px; }
+.phone .row b, .phone .chip b { font-size: 30px; }
+.phone .row > div > span, .phone .chip > div > span { font-size: 25px; }
+.phone .lab { font-size: 26px; }
+.phone .av { width: 64px; height: 64px; font-size: 23px; }
+.icon-btn { position: relative; overflow: hidden; flex: none; width: 64px; height: 64px; border-radius: 18px; display: grid; place-items: center;
+  border: 2px solid rgba(255, 255, 255, 0.18); }
+.icon-btn.amber { background: #f5a524; border-color: #f5a524; }
+
+/* A line under a bold line, directly in a stacked chip. */
+.phone .chip > b + span { display: block; font-size: 25px; color: #b3a5c6; margin-top: 3px; }

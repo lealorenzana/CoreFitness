@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=540, height=1170" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+    <script src="assets/kit.js"></script>
+    <link rel="stylesheet" href="assets/pieces.css" />
+    <style>
+      html, body { width: 540px; height: 1170px; }
+
+      .bubble { position: absolute; max-width: 400px; padding: 18px 22px; border-radius: 26px; font-size: 27px; line-height: 1.3; }
+      .me { right: 26px; background: #7c3aed; border-bottom-right-radius: 8px; }
+      .ai { left: 26px; background: #1f1829; border: 2px solid rgba(255,255,255,0.1); border-bottom-left-radius: 8px; }
+      #q1 { top: 230px; } #typing { top: 330px; } #a1 { top: 330px; } #q2 { top: 500px; }
+      #typing i { display: inline-block; width: 12px; height: 12px; margin: 0 4px; border-radius: 50%; background: #c9bddb; }
+      #prop { left: 26px; top: 600px; width: 488px; display: block; }
+      #prop .lab { color: #f5a524; font-weight: 700; }
+      .two { display: flex; gap: 12px; margin-top: 18px; }
+      .two .btn { flex: 1; text-align: center; padding: 14px; }
+      #chips { position: absolute; left: 20px; right: 20px; top: 930px; display: flex; flex-wrap: wrap; gap: 12px; }
+      #chips span { font-size: 25px; font-weight: 700; padding: 12px 20px; border-radius: 999px; background: #1f1829; border: 2px solid rgba(124,58,237,0.6); }
+    </style>
+  </head>
+  <body>
+    <div id="root" class="phone" data-composition-id="assistant" data-start="0" data-duration="8" data-fps="30" data-width="540" data-height="1170">
+      <!-- The real Core Fitness Lab member app, demo records. -->
+      <img id="screen" class="clip" src="assets/member-assistant.png" alt="" data-start="0" data-duration="8" data-track-index="0" />
+      <div id="dim" class="clip" data-start="0" data-duration="8" data-track-index="1"><i></i></div>
+      <div id="pieces" class="clip" data-start="0" data-duration="8" data-track-index="2">
+        <div id="chips"><span id="hours">Hours</span><span>Pricing</span><span>Trainers</span><span>Book a class</span></div>
+        <div id="q1" class="bubble me">Hours</div>
+        <div id="typing" class="bubble ai"><i></i><i></i><i></i></div>
+        <div id="a1" class="bubble ai">Today the gym is open 6:00 am to 9:00 pm.</div>
+        <div id="q2" class="bubble me">Put leg day on Friday</div>
+        <div id="prop" class="chip"><span class="lab">A suggestion</span><b id="ptxt">Add Leg day to Friday</b><span id="psub">Nothing changes until you tap Apply</span>
+          <div class="two" id="btns"><span class="btn amber" id="apply">Apply<i class="ripple" id="rip"></i></span><span class="btn">Discard</span></div></div>
+      </div>
+      <div id="cursor-host" class="clip" data-start="0" data-duration="8" data-track-index="3"><svg id="cursor" width="52" height="62" viewBox="0 0 22 26"><path d="M2 2l17 12-7.5 1.2L15.5 23l-3.4 1.5-3.6-7.8L2 21.5z" fill="#fff" stroke="#17121e" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      const k = kit(tl);
+
+      k.dim(0.4, 7.0);
+      tl.fromTo('#chips span', { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, stagger: 0.08, ease: 'back.out(1.6)' }, 0.6);
+      k.cursorIn(300, 1120, 0.9);
+      k.tap('hours', 1.7);
+      k.pop('#q1', 1.85);
+      k.pop('#typing', 2.2);
+      tl.to('#typing i', { y: -8, duration: 0.18, stagger: 0.1, yoyo: true, repeat: 3, ease: 'sine.inOut' }, 2.3);
+      tl.to('#typing', { opacity: 0, duration: 0.12 }, 3.05);
+      k.pop('#a1', 3.1);
+      k.pop('#q2', 3.55);
+      k.pop('#prop', 3.9);
+      k.tap('apply', 5.2, 'rip');
+      k.flip(5.3, (d) => { k.$('ptxt').textContent = d ? 'Leg day added to Friday' : 'Add Leg day to Friday'; k.$('psub').textContent = d ? 'You can undo it' : 'Nothing changes until you tap Apply'; });
+      tl.to('#btns', { opacity: 0, duration: 0.2 }, 5.3);
+      k.glide({ x: 420, y: 1080 }, 5.4);
+      tl.to('#cursor', { opacity: 0, duration: 0.25 }, 6.2);
+      k.away(['#prop', '#q2', '#a1', '#q1', '#chips'], 6.6, 30);
+      window.__timelines['assistant'] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=540, height=912" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+    <script src="assets/kit.js"></script>
+    <link rel="stylesheet" href="assets/pieces.css" />
+    <style>
+      html, body { width: 540px; height: 912px; }
+
+      #stats { left: 26px; top: 96px; width: 488px; }
+      .three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+      .three .num { font-size: 58px; }
+      .three .lab { font-size: 22px; margin: 6px 0 0; }
+      #best { left: 26px; top: 380px; width: 488px; display: block; }
+      .weeks { display: flex; gap: 10px; margin-top: 14px; }
+      .weeks i { flex: 1; height: 46px; border-radius: 12px; background: #7c3aed; }
+      #recent { left: 26px; top: 590px; width: 488px; }
+      .day { flex: none; width: 64px; height: 64px; border-radius: 16px; display: grid; place-items: center; text-align: center; font-size: 17px; line-height: 1.05; color: #c9bddb; border: 2px solid rgba(255,255,255,0.14); }
+      .day b { font-size: 25px !important; color: #fff; }
+    </style>
+  </head>
+  <body>
+    <div id="root" class="phone" data-composition-id="progress" data-start="0" data-duration="8" data-fps="30" data-width="540" data-height="912">
+      <!-- The real Core Fitness Lab member app, demo records. -->
+      <img id="screen" class="clip" src="assets/member-progress.png" alt="" data-start="0" data-duration="8" data-track-index="0" />
+      <div id="dim" class="clip" data-start="0" data-duration="8" data-track-index="1"><i></i></div>
+      <div id="pieces" class="clip" data-start="0" data-duration="8" data-track-index="2">
+        <div id="stats" class="card"><div class="card-head">Progress</div><div class="three">
+          <div><b class="num" id="a">0</b><span class="lab">training days</span></div>
+          <div><b class="num" id="b">0</b><span class="lab">weeks with two or more</span></div>
+          <div><b class="num" id="c">0</b><span class="lab">days as a member</span></div></div></div>
+        <div id="best" class="chip"><b>Your best streak: 6 weeks</b><span class="lab" style="margin:4px 0 0">Train 3 days in a week to start a new one</span>
+          <div class="weeks"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+        <div id="recent" class="card"><div class="card-head">Recent workouts</div>
+          <div class="row" id="w1"><span class="day">OCT<b>27</b></span><div><b>Push day</b><span>1 min</span></div></div>
+          <div class="row" id="w2"><span class="day">OCT<b>16</b></span><div><b>Program day</b><span>50 min</span></div></div></div>
+      </div>
+      <div id="cursor-host" class="clip" data-start="0" data-duration="8" data-track-index="3"></div>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      const k = kit(tl);
+
+      k.dim(0.4, 7.0);
+      k.pop('#stats', 0.7);
+      k.count('a', 0, 303, 0.95); k.count('b', 0, 90, 1.05); k.count('c', 0, 409, 1.15);
+      k.pop('#best', 2.6);
+      tl.fromTo('#best .weeks i', { scaleY: 0, transformOrigin: '50% 100%' }, { scaleY: 1, duration: 0.3, stagger: 0.12, ease: 'back.out(2)' }, 2.95);
+      k.pop('#recent', 4.0);
+      k.stack(['#w1', '#w2'], 4.25, 0.25);
+      k.away(['#recent', '#best', '#stats'], 6.5, 40);
+      window.__timelines['progress'] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

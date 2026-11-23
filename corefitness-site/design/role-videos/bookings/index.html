@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=540, height=912" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+    <script src="assets/kit.js"></script>
+    <link rel="stylesheet" href="assets/pieces.css" />
+    <style>
+      html, body { width: 540px; height: 912px; }
+
+      #open { left: 26px; top: 110px; width: 488px; }
+      #open p { font-size: 25px; color: #c9bddb; line-height: 1.35; }
+      #book { display: block; text-align: center; margin-top: 20px; padding: 18px; font-size: 28px; }
+      #req { left: 26px; top: 110px; width: 488px; display: block; }
+      #req .lab { margin-bottom: 12px; }
+      .when { font-size: 34px !important; }
+      #pill { display: table; margin-top: 16px; font-size: 25px; font-weight: 700; padding: 8px 18px; border-radius: 999px; color: #f5a524; background: rgba(245,165,36,0.16); }
+      #hint { position: absolute; left: 26px; top: 470px; width: 488px; font-size: 25px; color: #c9bddb; line-height: 1.35; background: #1f1829; border: 2px solid rgba(255,255,255,0.1); border-radius: 22px; padding: 16px 20px; box-shadow: 0 20px 40px rgba(8,4,14,0.5); }
+      #tabs { left: 26px; top: 640px; width: 488px; }
+    </style>
+  </head>
+  <body>
+    <div id="root" class="phone" data-composition-id="bookings" data-start="0" data-duration="8" data-fps="30" data-width="540" data-height="912">
+      <!-- The real Core Fitness Lab member app, demo records. -->
+      <img id="screen" class="clip" src="assets/member-bookings.png" alt="" data-start="0" data-duration="8" data-track-index="0" />
+      <div id="dim" class="clip" data-start="0" data-duration="8" data-track-index="1"><i></i></div>
+      <div id="pieces" class="clip" data-start="0" data-duration="8" data-track-index="2">
+        <div id="open" class="card"><div class="card-head">Your week is open</div><p>Book a class or a 1-on-1.</p><span class="btn amber" id="book">Book a session<i class="ripple" id="rip"></i></span></div>
+        <div id="req" class="chip"><span class="lab">Next session</span><b class="when">Sun, Nov 1 · 10:00 AM</b><span>1-on-1 with Gabby Coach</span><em id="pill">Requested</em></div>
+        <div id="hint">It shows here straight away, even before the coach confirms it.</div>
+        <div id="tabs" class="chip"><div><b id="up">Upcoming · 0</b><span>Past · 64 · Cancelled · 0</span></div></div>
+      </div>
+      <div id="cursor-host" class="clip" data-start="0" data-duration="8" data-track-index="3"><svg id="cursor" width="52" height="62" viewBox="0 0 22 26"><path d="M2 2l17 12-7.5 1.2L15.5 23l-3.4 1.5-3.6-7.8L2 21.5z" fill="#fff" stroke="#17121e" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      const k = kit(tl);
+
+      k.dim(0.4, 7.0);
+      k.pop('#open', 0.6);
+      k.cursorIn(470, 860, 0.9);
+      k.tap('book', 2.1, 'rip');
+      k.away('#open', 2.3, -20);
+      k.pop('#req', 2.5);
+      tl.fromTo('#hint', { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35 }, 2.8);
+      k.pop('#tabs', 3.2);
+      k.flip(3.5, (d) => { k.$('up').textContent = d ? 'Upcoming · 1' : 'Upcoming · 0'; });
+      k.glide({ x: 420, y: 820 }, 2.45);
+      // The coach accepts: the pill turns violet with a bounce.
+      k.flip(4.4, (d) => { const p = k.$('pill'); p.textContent = d ? 'Accepted' : 'Requested'; p.style.color = d ? '#efe7ff' : '#f5a524'; p.style.background = d ? 'rgba(124,58,237,0.6)' : 'rgba(245,165,36,0.16)'; });
+      tl.fromTo('#pill', { scale: 1 }, { scale: 1.15, duration: 0.12, yoyo: true, repeat: 1, ease: 'power2.out' }, 4.4);
+      tl.to('#cursor', { opacity: 0, duration: 0.25 }, 6.2);
+      k.away(['#tabs', '#hint', '#req'], 6.5, 40);
+      window.__timelines['bookings'] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

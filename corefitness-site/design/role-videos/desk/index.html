@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1440, height=900" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+    <link rel="stylesheet" href="assets/pieces.css" />
+    <style>
+      html, body { width: 1440px; height: 900px; }
+      #scan { left: 70px; top: 70px; width: 380px; text-align: center; }
+      .qr { position: relative; width: 180px; height: 180px; margin: 6px auto 18px; border-radius: 20px; overflow: hidden;
+        background: #fff; }
+      .qr img { display: block; width: 100%; height: 100%; }
+      .corner { position: absolute; width: 56px; height: 56px; border: 7px solid #7c3aed; }
+      .c1 { left: -14px; top: -14px; border-right: 0; border-bottom: 0; border-radius: 18px 0 0 0; }
+      .c2 { right: -14px; top: -14px; border-left: 0; border-bottom: 0; border-radius: 0 18px 0 0; }
+      .c3 { left: -14px; bottom: -14px; border-right: 0; border-top: 0; border-radius: 0 0 0 18px; }
+      .c4 { right: -14px; bottom: -14px; border-left: 0; border-top: 0; border-radius: 0 0 18px 0; }
+      .frame { position: relative; width: 180px; margin: 0 auto; }
+      #beam { position: absolute; left: -6px; right: -6px; top: 0; height: 6px; border-radius: 3px; background: #f5a524; box-shadow: 0 0 22px #f5a524; }
+      #flash { position: absolute; inset: 0; border-radius: 20px; background: #7c3aed; opacity: 0; }
+      .hint { font-size: 24px; color: #c9bddb; }
+      #who { left: 480px; top: 250px; width: 400px; white-space: nowrap; }
+      #count { left: 480px; top: 70px; width: 330px; display: block; }
+      #count .lab { margin-bottom: 4px; }
+      #count .num { font-size: 72px; }
+      #pay { left: 70px; top: 70px; width: 640px; }
+      .field { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-top: 2px solid rgba(255,255,255,0.07); font-size: 25px; }
+      .field > span { color: #b3a5c6; }
+      .field b { font-size: 26px; }
+      #amount { font-size: 44px; letter-spacing: -0.02em; }
+      #caret { display: inline-block; width: 3px; height: 40px; background: #f5a524; vertical-align: -6px; margin-left: 4px; }
+      .methods { display: flex; gap: 10px; }
+      .m { font-size: 24px; font-weight: 700; padding: 10px 18px; border-radius: 999px; border: 2px solid rgba(255,255,255,0.16); color: #d8cce8; }
+      .m.on { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+      #save { display: block; text-align: center; margin-top: 22px; padding: 18px; font-size: 26px; }
+      #receipt { left: 70px; top: 200px; width: 520px; white-space: nowrap; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="desk" data-start="0" data-duration="8" data-fps="30" data-width="1440" data-height="900">
+      <!-- The real Core Fitness Lab admin app, demo records. -->
+      <img id="screen" class="clip" src="assets/dashboard.png" alt="" data-start="0" data-duration="8" data-track-index="0" />
+      <div id="dim" class="clip" data-start="0" data-duration="8" data-track-index="1"><i></i></div>
+
+      <div id="checkin-host" class="clip" data-start="0" data-duration="8" data-track-index="2">
+        <div id="scan" class="card">
+          <div class="card-head">Check in</div>
+          <div class="frame"><div class="qr"><img src="assets/qr.svg" alt="" /><i id="flash"></i></div><i class="corner c1"></i><i class="corner c2"></i><i class="corner c3"></i><i class="corner c4"></i><i id="beam"></i></div>
+          <div class="hint">Scan a member’s code</div>
+        </div>
+        <div id="who" class="chip"><span class="av">LL</span><div><b>Lea Lorenzana</b><span>Premium · until Dec 7</span></div></div>
+        <div id="count" class="chip"><span class="lab">Checked in today</span><b class="num" id="n-in">18</b></div>
+      </div>
+
+      <div id="pay-host" class="clip" data-start="0" data-duration="8" data-track-index="3">
+        <div id="pay" class="card">
+          <div class="card-head">Record payment</div>
+          <div class="field"><span>Member</span><b>Lea Lorenzana</b></div>
+          <div class="field"><span>Amount</span><b id="amount">₱<em id="typed" style="font-style:normal"></em><i id="caret"></i></b></div>
+          <div class="field"><span>Method</span><div class="methods"><span class="m on">Cash</span><span class="m">GCash</span><span class="m">Maya</span></div></div>
+          <span class="btn amber" id="save">Record payment<i class="ripple" id="rip"></i></span>
+        </div>
+        <div id="receipt" class="chip"><span class="tick"><svg width="30" height="30" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><div><b>Payment recorded</b><span>Receipt INV-2026-0114</span></div></div>
+      </div>
+
+      <div id="cursor-host" class="clip" data-start="0" data-duration="8" data-track-index="4">
+        <svg id="cursor" width="44" height="52" viewBox="0 0 22 26"><path d="M2 2l17 12-7.5 1.2L15.5 23l-3.4 1.5-3.6-7.8L2 21.5z" fill="#fff" stroke="#17121e" stroke-width="1.6" stroke-linejoin="round"/></svg>
+      </div>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      const box = document.getElementById('save').getBoundingClientRect();
+      const tap = { x: box.left + box.width * 0.5, y: box.top + box.height * 0.55 };
+      const pop = { scale: 0.6, opacity: 0, transformOrigin: '50% 60%' };
+      const popTo = { scale: 1, opacity: 1, duration: 0.42, ease: 'back.out(1.7)' };
+      const text = (id, value) => { document.getElementById(id).textContent = value; };
+
+      tl.fromTo('#dim i', { opacity: 0 }, { opacity: 1, duration: 0.35, ease: 'power2.out' }, 0.4);
+      // Check in: the scanner pops, the beam sweeps the code, the frame flashes, the member lands.
+      tl.fromTo('#scan', pop, popTo, 0.7);
+      tl.fromTo('#beam', { y: 0, opacity: 0 }, { y: 174, opacity: 1, duration: 0.55, ease: 'power1.inOut' }, 1.1);
+      tl.to('#beam', { y: 0, duration: 0.5, ease: 'power1.inOut' }, 1.65);
+      tl.to('#beam', { opacity: 0, duration: 0.12 }, 2.1);
+      tl.fromTo('#flash', { opacity: 0 }, { opacity: 0.55, duration: 0.1, yoyo: true, repeat: 1 }, 2.1);
+      tl.fromTo('#who', pop, popTo, 2.25);
+      tl.fromTo('#count', pop, popTo, 2.5);
+      const c = { v: 18 };
+      tl.fromTo(c, { v: 18 }, { v: 19, duration: 0.3, ease: 'none', onUpdate() { text('n-in', Math.round(c.v)); } }, 2.75);
+      tl.fromTo('#n-in', { color: '#ffffff' }, { color: '#f5a524', duration: 0.15, yoyo: true, repeat: 1 }, 2.95);
+      // The check-in pieces step aside; the payment takes over.
+      tl.to(['#scan', '#who', '#count'], { scale: 0.85, opacity: 0, y: -30, duration: 0.28, stagger: 0.05, ease: 'power2.in' }, 3.55);
+      tl.fromTo('#pay', pop, popTo, 3.85);
+      const typing = { n: 0 };
+      tl.fromTo(typing, { n: 0 }, { n: 5, duration: 0.55, ease: 'none', onUpdate() { text('typed', '1,500'.slice(0, Math.round(typing.n))); } }, 4.25);
+      tl.fromTo('#caret', { opacity: 1 }, { opacity: 0, duration: 0.01 }, 5.0);
+      // The cursor taps Record payment; the receipt pops with its number.
+      tl.fromTo('#cursor', { x: 1150, y: 860, opacity: 0 }, { x: 1150, y: 860, opacity: 1, duration: 0.01 }, 4.5);
+      tl.to('#cursor', { x: tap.x - 4, y: tap.y - 4, duration: 0.7, ease: 'power2.inOut' }, 4.55);
+      tl.to('#cursor', { scale: 0.86, duration: 0.08, yoyo: true, repeat: 1, ease: 'power1.inOut' }, 5.27);
+      tl.to('#save', { scale: 0.96, duration: 0.08, yoyo: true, repeat: 1, ease: 'power1.inOut' }, 5.27);
+      tl.fromTo('#rip', { scale: 0, opacity: 0.55 }, { scale: 9, opacity: 0, duration: 0.5, ease: 'power2.out' }, 5.29);
+      tl.to('#rip', { scale: 0, duration: 0.01 }, 5.82);
+      tl.to('#pay', { scale: 0.85, opacity: 0, y: -30, duration: 0.28, ease: 'power2.in' }, 5.5);
+      tl.fromTo('#receipt', pop, popTo, 5.7);
+      tl.to('#cursor', { x: tap.x + 160, y: tap.y + 60, duration: 0.6, ease: 'power2.inOut' }, 5.7);
+      // Resolve back into the screen; the dim lifts, the first frame returns.
+      tl.to('#cursor', { opacity: 0, duration: 0.25 }, 6.5);
+      tl.to('#receipt', { y: 100, scale: 0.6, opacity: 0, duration: 0.42, ease: 'power2.in' }, 6.6);
+      tl.to('#dim i', { opacity: 0, duration: 0.45, ease: 'power2.inOut' }, 7.0);
+      window.__timelines['desk'] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>
