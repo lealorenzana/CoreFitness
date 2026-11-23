@@ -285,7 +285,7 @@ export default function Register() {
       if (!google) {
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) return fail('Please enter a valid email address');
         if (await isEmailTaken(formData.email))
-          return fail('That email already has an account. Sign in — if you train at another gym now, switch gyms in More → Gyms.');
+          return fail('That email already has an account. Sign in. If you train at another gym now, switch gyms in More → Gyms.');
       }
       if (formData.password.length < 8) return fail('Your password needs at least 8 characters');
       if (formData.password !== formData.confirmPassword) return fail('The passwords do not match');
@@ -294,7 +294,7 @@ export default function Register() {
     if (which === 3) {
       // Optional — Onboarding asks again — but a code typed in must look like one (six letters).
       const code = formData.referralCode.trim();
-      if (code && !/^[A-Za-z]{6}$/.test(code)) return fail("A friend's code is six letters — check it, or leave it blank");
+      if (code && !/^[A-Za-z]{6}$/.test(code)) return fail("A friend's code is six letters: check it, or leave it blank");
       return true;
     }
     // Plan interest is optional: everybody starts on the free plan regardless.
@@ -398,7 +398,7 @@ export default function Register() {
       setIsLoading(false);
       const raw = err instanceof Error ? err.message : 'Registration failed';
       // Supabase Auth hides a database refusal behind one sentence; the likeliest one now is a full gym (0230).
-      const message = /Database error saving new user/i.test(raw) ? `${gym?.name ?? 'This gym'} could not take your sign-up — it may be full on its current plan. Ask the front desk.` : raw;
+      const message = /Database error saving new user/i.test(raw) ? `${gym?.name ?? 'This gym'} could not take your sign-up: it may be full on its current plan. Ask the front desk.` : raw;
       showErrorToast({ type: 'validation', message, details: '' });
       // Back to the step that owns the problem.
       if (/email/i.test(message)) go(2);
@@ -421,53 +421,34 @@ export default function Register() {
 
       <div className="h-full flex flex-col" style={{ backgroundColor: 'var(--color-bg)' }} data-register>
         <div className="flex-1 flex flex-col px-5 pt-5 pb-5 overflow-hidden">
-          {/* Step and the dots: the count comes from STEPS, never a literal. */}
-          <div className="flex items-center justify-between mb-3 flex-shrink-0">
-            <p className="text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }} data-step-label>
-              {showSuccess ? 'Done' : `Step ${step} of ${STEPS.length} · ${STEPS[step - 1].label}`}
-            </p>
-            <div className="flex items-center gap-1.5" aria-hidden="true">
-              {STEPS.map(({ n }) => (
-                <span key={n} className={`rg-dot ${n <= step || showSuccess ? 'on' : ''}`} style={{ width: n === step && !showSuccess ? 24 : 8 }} />
-              ))}
+          {/* The top (owner, 2026-11-23: "no card style"): the gym, a line that fills step by step, and you, filling in
+              as you answer: your photo or initials in a ring that closes as the steps do, your name, what you chose. */}
+          <div className="rg-top flex-shrink-0" data-member-card>
+            <span className="rg-glow" aria-hidden="true" />
+            <div className="flex items-center gap-2.5">
+              {gym?.logo_url
+                ? <img src={gym.logo_url} alt="" className="w-8 h-8 rounded-lg object-cover" />
+                : <span className="w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-extrabold rg-mark">{initials(gymName)}</span>}
+              <span className="font-bold text-[14px] truncate" style={{ color: 'var(--color-text-primary)' }}>{gymName}</span>
+              {/* The count comes from STEPS, never a literal. */}
+              <p className="ml-auto text-xs font-semibold flex-none" style={{ color: 'var(--color-text-secondary)' }} data-step-label>
+                {showSuccess ? 'Done' : `Step ${step} of ${STEPS.length} · ${STEPS[step - 1].label}`}
+              </p>
             </div>
-          </div>
-
-          {/* The card: it fills in as they answer, and flips when they are done. */}
-          <div className="rg-scene flex-shrink-0" data-member-card>
-            <div className={`rg-card ${showSuccess ? 'rg-flip' : ''}`}>
-              <div className="rg-face rg-front">
-                <span className="rg-shine" />
-                <div className="relative flex flex-col h-full">
-                  <div className="flex items-center gap-2.5">
-                    {gym?.logo_url
-                      ? <img src={gym.logo_url} alt="" className="w-9 h-9 rounded-xl object-cover" style={{ background: 'rgba(0,0,0,.25)' }} />
-                      : <span className="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-extrabold" style={{ background: 'rgba(0,0,0,.25)' }}>{initials(gymName)}</span>}
-                    <span className="font-bold text-[15px] truncate">{gymName}</span>
-                  </div>
-                  <div className="mt-auto flex items-end gap-3">
-                    {photoUrl && <img src={photoUrl} alt="" data-card-photo className="w-14 h-14 rounded-2xl object-cover flex-none" style={{ border: '2px solid rgba(255,255,255,.75)' }} />}
-                    <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold" style={{ opacity: 0.85 }}>Member</p>
-                    <p className="text-2xl font-extrabold truncate" style={{ minHeight: 32 }} data-card-name>{cardName || 'Your name'}</p>
-                    <div className="flex gap-2 mt-2 flex-wrap">
-                      {level && <span key={level.id} className="rg-tag">Experience: {level.label}</span>}
-                      {goal && <span key={goal.id} className="rg-tag">{goal.label}</span>}
-                      {step === STEPS.length && <span className="rg-tag">{freePlan?.name ?? 'Free plan'} to start</span>}
-                    </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="rg-face rg-back">
-                <span className="w-24 h-24 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: 'var(--color-primary-light)' }}>
-                  <QrCode size={52} style={{ color: 'var(--color-primary-300)' }} />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold" style={{ color: 'var(--color-text-muted)' }}>Your check-in code</p>
-                  <p className="text-base font-bold text-white mt-1 leading-snug">
-                    {rules?.approval === 'auto' ? 'Ready when you first sign in' : 'Ready once the desk approves you'}
-                  </p>
+            <div className="rg-progress" aria-hidden="true">
+              {STEPS.map(({ n }) => <span key={n} className={n < step || showSuccess ? 'done' : n === step ? 'now' : ''}><i /></span>)}
+            </div>
+            <div className="rg-you">
+              <span className="rg-ring" style={{ ['--rg-p' as string]: `${((showSuccess ? STEPS.length : step - 1) / STEPS.length) * 360}deg` }}>
+                {photoUrl ? <img src={photoUrl} alt="" data-card-photo /> : <b>{cardName ? initials(cardName) : '?'}</b>}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className={`rg-name truncate ${cardName ? '' : 'empty'}`} data-card-name>{cardName || 'Your name'}</p>
+                <div className="flex gap-1.5 mt-1 flex-wrap">
+                  <span className="rg-tag">Member</span>
+                  {level && <span key={level.id} className="rg-tag">Experience: {level.label}</span>}
+                  {goal && <span key={goal.id} className="rg-tag">{goal.label}</span>}
+                  {step === STEPS.length && <span className="rg-tag">{freePlan?.name ?? 'Free plan'} to start</span>}
                 </div>
               </div>
             </div>
@@ -476,10 +457,12 @@ export default function Register() {
           <div className="flex-1 overflow-y-auto scrollbar-hide pt-5 min-h-0">
             {showSuccess ? (
               <div className="rg-pane text-center pt-2" data-register-done>
-                <h1 className="text-2xl font-extrabold text-white">That's your card, {formData.firstName.trim() || 'friend'}.</h1>
+                <span className="rg-tick" aria-hidden="true"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24" /><path d="M15 27l7 7 15-16" /></svg></span>
+                <h1 className="text-[26px] font-extrabold leading-tight" style={{ color: 'var(--color-text-primary)' }}>You're in, {formData.firstName.trim() || 'friend'}.</h1>
+                <p className="rg-code mt-4"><QrCode size={18} />{rules?.approval === 'auto' ? 'Your check-in code is ready when you first sign in' : 'Your check-in code is ready once the desk approves you'}</p>
                 <p className="text-sm mt-3 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
                   {rules?.approval === 'auto'
-                    ? <>Confirm your email, then sign in — you start on the free plan.</>
+                    ? <>Confirm your email, then sign in: you start on the free plan.</>
                     : <>Confirm your email. {gym?.name ?? 'The gym'} reviews new sign-ups, and once yours is approved you can sign in on the free plan.</>}
                   {selectedPlan && Number(selectedPlan.price) > 0 ? ` The desk will tell you about ${selectedPlan.name}.` : ''}
                   {' '}Pay at the gym whenever you want to upgrade.
@@ -488,7 +471,7 @@ export default function Register() {
             ) : (
               <div key={step} className={`rg-pane space-y-4 pb-4 ${direction < 0 ? 'rg-back-dir' : ''}`}>
                 {step === 1 && (<>
-                  <h1 className="text-2xl font-extrabold text-white leading-tight">Start with you</h1>
+                  <h1 className="rg-h">Start with you</h1>
                   {/* Google first (0190): it fills the name and the sign-in; these steps ask the rest. */}
                   {!google ? (
                     <div className="space-y-2">
@@ -505,7 +488,7 @@ export default function Register() {
                   {full && (
                     <div data-gym-full className="rounded-2xl px-4 py-3 text-xs leading-relaxed"
                       style={{ background: 'var(--color-secondary-light, rgba(245,158,11,0.12))', color: 'var(--color-text)' }}>
-                      {gym?.name ?? 'This gym'} is full on its current plan, so it cannot take new members right now. Ask the front desk —
+                      {gym?.name ?? 'This gym'} is full on its current plan, so it cannot take new members right now. Ask the front desk:
                       they can make room by upgrading.
                     </div>
                   )}
@@ -514,7 +497,7 @@ export default function Register() {
                     <div data-desk-only className="rounded-2xl px-4 py-3 text-xs leading-relaxed"
                       style={{ background: 'var(--color-secondary-light, rgba(245,158,11,0.12))', color: 'var(--color-text)' }}>
                       {gym?.name ?? 'This gym'} creates its members' accounts at the front desk. Visit the gym and they
-                      will set you up — or ask a member to send you their invite link.
+                      will set you up, or ask a member to send you their invite link.
                     </div>
                   )}
 
@@ -548,23 +531,23 @@ export default function Register() {
 
                   <div>
                     <p className="text-xs font-semibold mb-2" style={{ color: 'var(--color-text-secondary)' }}>Gender</p>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="rg-switch">
                       {GENDERS.map((g) => (
                         <button key={g.value} type="button" onClick={() => update('gender', g.value)} aria-pressed={formData.gender === g.value}
-                          className={`rg-seg text-center ${formData.gender === g.value ? 'on' : ''}`}>{g.label}</button>
+                          className={formData.gender === g.value ? 'on' : ''}>{g.label}</button>
                       ))}
                     </div>
                   </div>
 
                   <Field id="rg-phone" label="Phone" icon={Phone} type="tel" value={formData.phone}
                     placeholder="+63 912 345 6789" autoComplete="tel" inputMode="tel"
-                    hint="Optional — how the gym reaches you about your booking."
+                    hint="Optional: how the gym reaches you about your booking."
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => update('phone', e.target.value)} />
 
-                  <div className="flex items-start gap-2.5 p-3.5 rounded-2xl" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+                  <div className="flex items-start gap-2.5 pt-1">
                     <Dumbbell size={15} style={{ color: 'var(--color-primary-300)' }} className="flex-shrink-0 mt-0.5" />
                     <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-                      Coaching or at the front desk? Your gym invites you — then{' '}
+                      Coaching or at the front desk? Your gym invites you, then{' '}
                       <button type="button" onClick={() => navigate('/login')} className="font-semibold" style={{ color: 'var(--color-secondary)' }}>sign in here</button>.
                     </p>
                   </div>
@@ -572,7 +555,7 @@ export default function Register() {
 
                 {step === 2 && (<>
                   <div>
-                    <h1 className="text-2xl font-extrabold text-white leading-tight">Safety and sign-in</h1>
+                    <h1 className="rg-h">Safety and sign-in</h1>
                     <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
                       If something happens while you train, this is who the gym calls.
                     </p>
@@ -597,7 +580,7 @@ export default function Register() {
                       You sign in with Google as <b className="text-white">{google.email}</b>. Choose a password too, so you can also sign in with your email.
                     </p>
                   ) : (
-                    <Field id="rg-email" label="Email — we send a confirmation link" icon={Mail} type="email" value={formData.email}
+                    <Field id="rg-email" label="Email: we send a confirmation link" icon={Mail} type="email" value={formData.email}
                       placeholder="you@example.com" autoComplete="email" inputMode="email" onChange={(e: React.ChangeEvent<HTMLInputElement>) => update('email', e.target.value)} />
                   )}
 
@@ -649,20 +632,20 @@ export default function Register() {
 
                 {step === 3 && (<>
                   <div>
-                    <h1 className="text-2xl font-extrabold text-white leading-tight">Your training</h1>
+                    <h1 className="rg-h">Your training</h1>
                     <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
                       So your coach and the app start in the right place. Change it any time in Settings.
                     </p>
                   </div>
                   <div>
                     <p className="text-xs font-semibold mb-2" style={{ color: 'var(--color-text-secondary)' }}>How you train now</p>
-                    <div className="space-y-2" data-experience>
+                    <div className="rg-list" data-experience>
                       {EXPERIENCE.map((e) => (
                         <button key={e.id} type="button" aria-pressed={formData.experience === e.id}
                           onClick={() => update('experience', formData.experience === e.id ? '' : e.id)}
-                          className={`rg-seg w-full flex items-center justify-between gap-3 ${formData.experience === e.id ? 'on' : ''}`}>
-                          <span><b className="block text-white">{e.label}</b><span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{e.desc}</span></span>
-                          {formData.experience === e.id && <Check size={16} style={{ color: 'var(--color-primary-300)' }} />}
+                          className={`rg-opt ${formData.experience === e.id ? 'on' : ''}`}>
+                          <span className="rg-radio" aria-hidden="true" />
+                          <span className="min-w-0 flex-1"><b>{e.label}</b><small>{e.desc}</small></span>
                         </button>
                       ))}
                     </div>
@@ -673,7 +656,7 @@ export default function Register() {
                       {GOALS.map((g) => (
                         <button key={g.id} type="button" aria-pressed={formData.goal === g.id}
                           onClick={() => update('goal', formData.goal === g.id ? '' : g.id)}
-                          className={`rg-seg ${formData.goal === g.id ? 'on' : ''}`} style={{ borderRadius: 999, padding: '10px 15px' }}>{g.label}</button>
+                          className={`rg-pill ${formData.goal === g.id ? 'on' : ''}`}>{g.label}</button>
                       ))}
                     </div>
                   </div>
@@ -685,7 +668,7 @@ export default function Register() {
 
                 {step === 4 && (<>
                   <div>
-                    <h1 className="text-2xl font-extrabold text-white leading-tight">You start on the free plan</h1>
+                    <h1 className="rg-h">You start on the free plan</h1>
                     {/* Everyone starts free when the desk approves them; a paid plan
                         begins when cash changes hands. This only tells the desk what to offer. */}
                     <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
@@ -694,24 +677,25 @@ export default function Register() {
                   </div>
 
                   {plans.length === 0 ? (
-                    <div className="p-5 rounded-2xl text-center" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-                      <p className="text-sm font-semibold text-white">Plans unavailable</p>
+                    <div className="py-3">
+                      <p className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>Plans unavailable</p>
                       <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
-                        We couldn't load the gym's plans. You can still sign up — the desk sets your plan when you pay.
+                        We couldn't load the gym's plans. You can still sign up: the desk sets your plan when you pay.
                       </p>
                     </div>
                   ) : (
-                    <div className="space-y-2.5" data-plans>
+                    <div className="rg-list" data-plans>
                       {plans.map((plan) => {
                         const on = plan.id === formData.selectedPlanId;
                         const features = (plan.description ?? '').split(/\\n|\n/).map((l) => l.trim()).filter(Boolean);
                         return (
                           <button key={plan.id} type="button" aria-pressed={on}
                             onClick={() => update('selectedPlanId', on ? '' : plan.id)}
-                            className={`rg-seg w-full p-4 ${on ? 'on' : ''}`}>
-                            <div className="flex items-start justify-between gap-3">
+                            className={`rg-opt ${on ? 'on' : ''}`} style={{ alignItems: 'flex-start' }}>
+                            <span className="rg-radio" aria-hidden="true" style={{ marginTop: 2 }} />
+                            <div className="flex items-start justify-between gap-3 min-w-0 flex-1">
                               <div className="min-w-0">
-                                <p className="text-sm font-bold text-white">{plan.name}</p>
+                                <b>{plan.name}</b>
                                 {features.length > 0 && (
                                   <ul className="mt-1.5 space-y-1">
                                     {features.map((f) => (
@@ -731,7 +715,7 @@ export default function Register() {
                                 </p>
                               </div>
                             </div>
-                            {on && Number(plan.price) > 0 && <p className="text-xs mt-2" style={{ color: 'var(--color-primary-300)' }}>The desk will tell you about this one.</p>}
+                            {on && Number(plan.price) > 0 && <p className="text-xs mt-2 w-full" style={{ color: 'var(--color-primary-300)' }}>The desk will tell you about this one.</p>}
                           </button>
                         );
                       })}

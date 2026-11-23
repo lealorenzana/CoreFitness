@@ -681,3 +681,63 @@ button.v2-railrow:hover, .v2-railbtn:hover { background: rgb(var(--hair-rgb, 255
 .att .ya-main .a-table thead th { position: static; }
 /* The heat and stack shades (Attendance, History) in dark, from the gym's ramp; light.css sets its own. */
 :root { --hx-1: var(--color-primary-400, #9578fb); --hx-2: var(--color-primary-600, #6447c7); --hx-3: color-mix(in srgb, var(--color-primary) 35%, #121211); }
+
+/* ══ Reveal tiles (owner, 2026-11-23, from a screen recording of a shop grid): the picture fills the tile, a
+   vignette carries the name at the foot; under the pointer (or keyboard focus) the picture leans in, the vignette
+   deepens and the details and actions rise into view. Touch screens, with no hover, show the details always.
+   Light keeps solid fills behind words: a tile with a photo stands on the gym's deep fill with white words; one
+   without is a pale tint with ink words and no vignette (.rv-flat). Rewards, Exercises, Resources. */
+.rv { position: relative; isolation: isolate; overflow: hidden; display: block; width: 100%; text-align: left; border-radius: 16px;
+  border: 1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08); background: color-mix(in srgb, var(--color-primary) 16%, #161615); color: #fff;
+  transition: transform 220ms var(--v3-ease), box-shadow 260ms var(--v3-ease), border-color 200ms; }
+.rv-art { position: absolute; inset: 0; z-index: -2; display: grid; place-items: center; color: rgb(255 255 255 / 0.55);
+  transition: transform 520ms var(--v3-ease); }
+.rv-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.rv::after { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(to top, rgb(0 0 0 / 0.88) 0%, rgb(0 0 0 / 0.5) 34%, rgb(0 0 0 / 0) 66%); transition: opacity 260ms; }
+.rv::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: 0;
+  background: radial-gradient(120% 90% at 50% 100%, rgb(0 0 0 / 0.55), rgb(0 0 0 / 0) 70%); transition: opacity 260ms; }
+.rv-body { position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; gap: 3px; padding: 12px 14px 13px; }
+.rv-title { display: block; font-size: 14px; font-weight: 650; line-height: 1.25; color: inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rv-sub { display: block; font-size: 12px; color: rgb(255 255 255 / 0.78); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rv-strong { font-size: 13.5px; font-weight: 700; color: #fff; display: inline-flex; align-items: center; gap: 6px; }
+.rv-more { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows 280ms var(--v3-ease), opacity 200ms; }
+.rv-more > div { min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 6px; }
+.rv-more > div > :first-child { margin-top: 6px; }
+.rv-acts { display: flex; align-items: center; gap: 6px; }
+.rv-act { display: inline-flex; align-items: center; justify-content: center; gap: 5px; height: 30px; min-width: 30px; padding: 0 9px; border-radius: 9px;
+  font-size: 12px; font-weight: 650; color: #fff; background: rgb(255 255 255 / 0.12); border: 1px solid rgb(255 255 255 / 0.22);
+  transition: background-color 140ms, transform 160ms var(--v3-ease); }
+.rv-act:hover:not(:disabled) { background: rgb(255 255 255 / 0.22); transform: translateY(-1px); }
+.rv-act:disabled { opacity: 0.5; }
+.rv-act.go { background: var(--color-secondary); border-color: transparent; color: var(--on-secondary, #111); }
+.rv-corner { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; z-index: 2; pointer-events: none; }
+.rv-corner > * { pointer-events: auto; }
+.rv-tag { height: 26px; padding: 0 10px; border-radius: 99px; font-size: 11.5px; font-weight: 650; display: inline-flex; align-items: center; gap: 5px;
+  background: rgb(0 0 0 / 0.55); color: #fff; }
+.rv-tag.amber { background: var(--amber-solid, #f59e0b); color: var(--on-amber, #1a1205); }
+.rv:hover, .rv:focus-within { transform: translateY(-3px); border-color: color-mix(in srgb, var(--color-primary) 55%, transparent);
+  box-shadow: 0 22px 40px -24px color-mix(in srgb, var(--color-primary) 85%, transparent), 0 0 0 1px color-mix(in srgb, var(--color-primary) 30%, transparent); }
+.rv:hover .rv-art, .rv:focus-within .rv-art { transform: scale(1.07); }
+.rv:hover::before, .rv:focus-within::before { opacity: 1; }
+.rv:hover .rv-more, .rv:focus-within .rv-more { grid-template-rows: 1fr; opacity: 1; }
+.rv.on { border-color: var(--color-primary); box-shadow: 0 0 0 2px var(--color-primary); }
+@media (hover: none) { .rv-more { grid-template-rows: 1fr; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .rv, .rv-art, .rv-more { transition: none; } .rv:hover, .rv:focus-within { transform: none; } .rv:hover .rv-art { transform: none; } }
+
+:root[data-mode="light"] .rv { background: var(--fill-primary, var(--color-primary)); border-color: transparent; }
+:root[data-mode="light"] .rv.rv-flat { background: color-mix(in srgb, var(--color-primary) 10%, #FFFFFF); color: var(--a-ink, #16161f);
+  border-color: rgb(var(--hair-rgb) / 0.12); }
+:root[data-mode="light"] .rv.rv-flat::after, :root[data-mode="light"] .rv.rv-flat::before { display: none; }
+:root[data-mode="light"] .rv.rv-flat .rv-art { color: var(--color-primary-700, var(--color-primary)); }
+:root[data-mode="light"] .rv.rv-flat .rv-sub { color: var(--a-text2, #4b4b5a); }
+:root[data-mode="light"] .rv.rv-flat .rv-strong { color: var(--color-primary-800, var(--a-ink)); }
+:root[data-mode="light"] .rv.rv-flat .rv-act { color: var(--a-ink, #16161f); background: #FFFFFF; border-color: rgb(var(--hair-rgb) / 0.16); }
+:root[data-mode="light"] .rv.rv-flat .rv-act:hover:not(:disabled) { background: color-mix(in srgb, var(--color-primary) 8%, #FFFFFF); }
+:root[data-mode="light"] .rv .rv-act.go { background: var(--fill-action, var(--color-secondary)); color: #FFFFFF; border-color: transparent; }
+:root[data-mode="light"] .rv.rv-flat .rv-tag:not(.amber) { background: var(--fill-primary, var(--color-primary)); }
+/* A tile with no photo: its mark (initials or icon) lifts and fades as the details rise over it. */
+.rv-art > :not(img) { transition: transform 280ms var(--v3-ease), opacity 220ms; }
+.rv:hover .rv-art > :not(img), .rv:focus-within .rv-art > :not(img) { transform: translateY(-18px) scale(0.92); opacity: 0.22; }
+@media (hover: none) { .rv-art > :not(img) { opacity: 0.22; } }
+.a-grid:has(> .rv) { padding: 5px 3px 8px; }

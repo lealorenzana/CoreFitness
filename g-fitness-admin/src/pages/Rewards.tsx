@@ -136,74 +136,61 @@ function RewardArt({ r, size }: { r: Pick<Reward, 'name' | 'image_url'>; size?: 
     );
 }
 
-/** One catalogue card: photo, badges, price, stock, demand. Module-level (never declared in a render body). */
+/** One catalogue tile (a reveal tile, 2026-11-23): the photo fills it, the name and price sit on the vignette, and
+ *  under the pointer the rest rises: stock and restock, dates, limits, demand, Edit. Module-level (never in a render body). */
 function RewardCard({ r, saving, stat, busy, hasExtras, onEdit, onToggle, onRestock, onDuplicate, onFeature }: {
   r: Reward; saving: number; stat: Stat | undefined; busy: boolean; hasExtras: boolean;
   onEdit: () => void; onToggle: () => void; onRestock: (n: number) => void; onDuplicate: () => void; onFeature: () => void;
 }) {
   const out = outOf(r);
   const gone = ended(r);
+  const init = r.name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase();
   return (
-    <RdCard className="overflow-hidden flex flex-col" style={{ opacity: r.is_active ? 1 : 0.6 }} data-reward-card={r.name}>
-      <div className="relative" style={{ aspectRatio: '16 / 10' }}>
-        <RewardArt r={r} />
-        <div className="absolute top-2.5 left-2.5 flex gap-1.5 flex-wrap">
-          {r.featured && <span className="h-7 px-2.5 rounded-full text-[12px] font-semibold inline-flex items-center gap-1" style={{ background: 'rgba(245,158,11,0.9)', color: '#1A1205' }}><Star size={12} fill="currentColor" /> Featured</span>}
-          {!r.is_active && <span className="h-7 px-2.5 rounded-full text-[12px] font-semibold inline-flex items-center gap-1 text-white" style={{ background: 'rgba(0,0,0,0.6)' }}><EyeOff size={12} /> Hidden</span>}
-          {gone && <span className="h-7 px-2.5 rounded-full text-[12px] font-semibold inline-flex items-center text-white" style={{ background: 'rgba(0,0,0,0.6)' }}>Ended</span>}
-        </div>
-        <div className="absolute top-2 right-2">
-          <DotMenu label={`More for ${r.name}`} items={[
-            { label: 'Edit', icon: Pencil, onClick: onEdit },
-            { label: r.featured ? 'Stop featuring' : 'Feature it', icon: Star, onClick: onFeature, hidden: !hasExtras },
-            { label: 'Duplicate', icon: Copy, onClick: onDuplicate },
-            { label: r.is_active ? 'Hide from members' : 'Show to members', icon: r.is_active ? EyeOff : Eye, onClick: onToggle, tone: r.is_active ? 'warn' : undefined },
-          ]} />
-        </div>
+    <div className={`rv ${r.image_url ? '' : 'rv-flat'}`} style={{ height: 300, opacity: r.is_active ? 1 : 0.6 }} data-reward-card={r.name}>
+      <div className="rv-art" style={{ paddingBottom: 70 }}>
+        {r.image_url ? <img src={r.image_url} alt="" /> : <div style={{ textAlign: 'center' }}><Gift size={30} style={{ margin: '0 auto' }} /><b style={{ display: 'block', fontSize: 22, marginTop: 4 }}>{init}</b></div>}
       </div>
-      <div className="p-4 flex flex-col gap-2 flex-1">
-        <div className="flex items-start gap-2">
-          <div className="min-w-0 flex-1">
-            <p className="text-[15.5px] font-semibold text-white truncate">{r.name}</p>
-            {r.description && <p className="text-[12.5px] mt-0.5 line-clamp-2" style={{ color: SECOND }}>{r.description}</p>}
-          </div>
-          <button type="button" onClick={onEdit} aria-label={`Edit ${r.name}`} data-tip="Edit"
-            className="w-8 h-8 rounded-lg grid place-items-center flex-none hover:bg-white/[0.06]" style={{ color: MUTED, border: LINE }}>
-            <Pencil size={14} />
-          </button>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="inline-flex items-center gap-1.5 text-[15px] font-bold" style={{ color: '#C4B5FD' }}><Coins size={15} />{r.cost_points.toLocaleString('en-PH')} pts</span>
-          {r.category && <Pill tone="gray">{r.category}</Pill>}
-        </div>
-        <div className="flex items-center gap-2 text-[12.5px]" style={{ color: out ? TONE.amber.fg : SECOND }}>
-          <Package size={14} />
-          {/* NULL stock is unlimited. 0 is out of stock, and says so. */}
-          <span>{r.stock == null ? 'Unlimited' : out ? 'Out of stock' : `${r.stock} left`}</span>
-          {r.stock != null && (
-            <span className="ml-auto flex gap-1">
-              {[1, 5].map((n) => (
-                <button key={n} type="button" disabled={busy} onClick={() => onRestock(n)} aria-label={`Add ${n} to ${r.name}`}
-                  className="h-7 px-2 rounded-lg text-[12px] font-semibold hover:bg-white/[0.06] disabled:opacity-50" style={{ border: LINE, color: 'var(--color-text-primary)' }}>
-                  +{n}
-                </button>
-              ))}
-            </span>
-          )}
-        </div>
-        {(r.available_until || r.per_member_monthly) && (
-          <div className="flex flex-col gap-1 text-[12px]" style={{ color: MUTED }}>
-            {r.available_until && <span className="inline-flex items-center gap-1.5"><CalendarClock size={13} />{gone ? 'Ended' : 'Until'} {ymdWords(r.available_until)}</span>}
-            {r.per_member_monthly && <span className="inline-flex items-center gap-1.5"><Repeat size={13} />{r.per_member_monthly} a member a month</span>}
-          </div>
-        )}
-        <div className="mt-auto pt-2 flex items-center gap-3 text-[12px]" style={{ borderTop: LINE }}>
+      <div className="rv-corner">
+        <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {r.featured && <span className="rv-tag amber"><Star size={12} fill="currentColor" /> Featured</span>}
+          {!r.is_active && <span className="rv-tag"><EyeOff size={12} /> Hidden</span>}
+          {gone && <span className="rv-tag">Ended</span>}
+        </span>
+        <DotMenu label={`More for ${r.name}`} items={[
+          { label: 'Edit', icon: Pencil, onClick: onEdit },
+          { label: r.featured ? 'Stop featuring' : 'Feature it', icon: Star, onClick: onFeature, hidden: !hasExtras },
+          { label: 'Duplicate', icon: Copy, onClick: onDuplicate },
+          { label: r.is_active ? 'Hide from members' : 'Show to members', icon: r.is_active ? EyeOff : Eye, onClick: onToggle, tone: r.is_active ? 'warn' : undefined },
+        ]} />
+      </div>
+      <div className="rv-body">
+        <span className="rv-title" style={{ fontSize: 15.5 }}>{r.name}</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span className="rv-strong"><Coins size={14} />{r.cost_points.toLocaleString('en-PH')} pts</span>
+          {r.category && <span className="rv-sub" style={{ display: 'inline' }}>· {r.category}</span>}
+        </span>
+        <div className="rv-more"><div>
+          {r.description && <span className="rv-sub" style={{ whiteSpace: 'normal' }}>{r.description}</span>}
+          <span className="rv-sub" style={{ display: 'flex', alignItems: 'center', gap: 6, color: out ? 'var(--amber-solid, #f59e0b)' : undefined }}>
+            <Package size={13} />
+            {/* NULL stock is unlimited. 0 is out of stock, and says so. */}
+            {r.stock == null ? 'Unlimited' : out ? 'Out of stock' : `${r.stock} left`}
+          </span>
+          {r.available_until && <span className="rv-sub" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><CalendarClock size={13} />{gone ? 'Ended' : 'Until'} {ymdWords(r.available_until)}</span>}
+          {r.per_member_monthly && <span className="rv-sub" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Repeat size={13} />{r.per_member_monthly} a member a month</span>}
           {/* Demand (0092): members who pinned it on their Rewards screen. */}
-          <span className="inline-flex items-center gap-1" style={{ color: saving > 0 ? TONE.amber.fg : MUTED }}><Pin size={12} /> {saving} saving for this</span>
-          {stat && <span className="ml-auto tabular-nums" style={{ color: MUTED }} data-tip="Asked for this month · all time">{stat.this_month} this month · {stat.all_time} all</span>}
-        </div>
+          <span className="rv-sub" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Pin size={12} />{saving} saving for this{stat ? ` · ${stat.this_month} this month · ${stat.all_time} all` : ''}
+          </span>
+          <div className="rv-acts">
+            <button type="button" className="rv-act go" onClick={onEdit} aria-label={`Edit ${r.name}`}><Pencil size={13} />Edit</button>
+            {r.stock != null && [1, 5].map((n) => (
+              <button key={n} type="button" className="rv-act" disabled={busy} onClick={() => onRestock(n)} aria-label={`Add ${n} to ${r.name}`}>+{n}</button>
+            ))}
+          </div>
+        </div></div>
       </div>
-    </RdCard>
+    </div>
   );
 }
 

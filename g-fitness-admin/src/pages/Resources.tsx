@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus, ExternalLink, Trash2, Eye, EyeOff, Search, Link2, Pencil, Bookmark, Play, FileText, Info } from 'lucide-react';
+import { ExternalLink, Trash2, Eye, EyeOff, Search, Link2, Pencil, Bookmark, Play, FileText, Info } from 'lucide-react';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import ImageField from '../components/ui/ImageField';
@@ -47,9 +47,11 @@ function fromLink(url: string, f: Form): Form {
   return { ...f, url, provider, imageUrl: f.imageUrl || (yt ? `https://img.youtube.com/vi/${yt}/hqdefault.jpg` : '') };
 }
 
-function Thumb({ r }: { r: WorkoutResourceRow }) {
+function Thumb({ r, fill }: { r: WorkoutResourceRow; fill?: boolean }) {
   const [broken, setBroken] = useState(false);
   const yt = !!youTubeId(r.url);
+  // Inside a reveal tile the picture is the whole tile; the tile draws the ground and the video tag.
+  if (fill) return hasPreview(r) && !broken ? <img src={r.image_url as string} alt="" loading="lazy" onError={() => setBroken(true)} style={{ objectPosition: 'top' }} /> : yt ? <Play size={34} /> : <FileText size={34} />;
   return (
     <div style={{ height: 120, borderRadius: 12, position: 'relative', overflow: 'hidden', display: 'grid', placeItems: 'center', color: '#ffffff99',
       background: 'var(--raised-solid, #1E1B30)' }}>
@@ -160,30 +162,37 @@ export default function Resources() {
 
       <div className="a-card" style={{ flex: 1 }} data-resource-grid>
         <div className="a-scroll grow">
-          {loading ? <SkelRows label="Loading…" /> : rows.length > 0 && visible.length === 0 ? (
+          {loading ? <SkelRows label="Loading…" /> : rows.length === 0 ? (
+            <div className="v3-emptyart"><img src="/art/empty-kettlebell.webp" alt="" /><b>No resources yet</b><span className="a-sub">Paste a YouTube or website link above, or press Add a link.</span></div>
+          ) : visible.length === 0 ? (
             <p className="a-sub" style={{ padding: '10px 0' }}>Nothing matches{search ? ` “${search}”` : ''}: {rows.length} resources in the library.</p>
           ) : (
             <div className="a-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 12 }}>
               {visible.map((r) => {
                 const s = saves?.get(r.id);
                 return (
-                  <div key={r.id} className="a-tile" style={{ opacity: r.is_active ? 1 : 0.55 }} data-resource={r.title}>
-                    <Thumb r={r} />
-                    <b>{r.title}{!r.is_active && <> <span className="a-pill" style={{ fontSize: 9.5 }}>hidden</span></>}</b>
-                    <small>{r.provider} · {levelWord(r.level)}{r.category ? ` · ${r.category}` : ''}</small>
-                    {saves && <small style={{ color: s?.saved ? 'var(--a-p300)' : 'var(--a-muted)', display: 'flex', gap: 4, alignItems: 'center' }}><Bookmark size={10} />{s?.saved ? `saved by ${s.saved} · done by ${s.done}` : 'not saved by anyone yet'}</small>}
-                    <div style={{ display: 'flex', gap: 6, marginTop: 'auto', alignItems: 'center' }}>
-                      <a className="a-btn ghost sm" href={r.url} target="_blank" rel="noopener noreferrer" aria-label={`Open ${r.title}`}><ExternalLink size={13} /></a>
-                      <button type="button" className="a-btn ghost sm" onClick={() => openEdit(r)} aria-label={`Edit ${r.title}`}><Pencil size={13} /></button>
-                      <button type="button" className="a-btn ghost sm" onClick={() => void toggleActive(r)} aria-label={`${r.is_active ? 'Hide' : 'Show'} ${r.title}`}>{r.is_active ? <EyeOff size={13} /> : <Eye size={13} />}</button>
-                      <button type="button" className="a-btn ghost sm" style={{ marginLeft: 'auto' }} onClick={() => setToDelete(r)} aria-label={`Remove ${r.title}`}><Trash2 size={13} /></button>
+                  <div key={r.id} className={`rv ${hasPreview(r) ? '' : 'rv-flat'}`} style={{ height: 236, opacity: r.is_active ? 1 : 0.55 }} data-resource={r.title}>
+                    <div className="rv-art"><Thumb r={r} fill /></div>
+                    <div className="rv-corner">
+                      <span style={{ display: 'flex', gap: 6 }}>{!!youTubeId(r.url) && <span className="rv-tag"><Play size={11} />video</span>}{!r.is_active && <span className="rv-tag"><EyeOff size={11} />hidden</span>}</span>
+                    </div>
+                    <div className="rv-body">
+                      <span className="rv-title">{r.title}</span>
+                      <span className="rv-sub">{r.provider} · {levelWord(r.level)}</span>
+                      <div className="rv-more"><div>
+                        {r.category && <span className="rv-sub">{r.category}</span>}
+                        {saves && <span className="rv-sub" style={{ display: 'flex', gap: 5, alignItems: 'center' }}><Bookmark size={11} />{s?.saved ? `saved by ${s.saved} · done by ${s.done}` : 'not saved by anyone yet'}</span>}
+                        <div className="rv-acts">
+                          <a className="rv-act go" href={r.url} target="_blank" rel="noopener noreferrer" aria-label={`Open ${r.title}`}><ExternalLink size={13} />Open</a>
+                          <button type="button" className="rv-act" onClick={() => openEdit(r)} aria-label={`Edit ${r.title}`}><Pencil size={13} /></button>
+                          <button type="button" className="rv-act" onClick={() => void toggleActive(r)} aria-label={`${r.is_active ? 'Hide' : 'Show'} ${r.title}`}>{r.is_active ? <EyeOff size={13} /> : <Eye size={13} />}</button>
+                          <button type="button" className="rv-act" style={{ marginLeft: 'auto' }} onClick={() => setToDelete(r)} aria-label={`Remove ${r.title}`}><Trash2 size={13} /></button>
+                        </div>
+                      </div></div>
                     </div>
                   </div>
                 );
               })}
-              <button type="button" className="a-tile" style={{ borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: 200 }} onClick={() => openNew()}>
-                <Plus size={22} /><b style={{ color: '#fff' }}>Add a link</b><small>video, article or PDF</small>
-              </button>
             </div>
           )}
         </div>

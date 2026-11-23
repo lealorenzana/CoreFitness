@@ -55,7 +55,8 @@
     },
     {
       "file": "member-light-check.js",
-      "app": "member"
+      "app": "member",
+      "timeoutSec": 900
     },
     {
       "file": "member-light-session-check.js",

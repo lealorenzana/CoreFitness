@@ -83,6 +83,8 @@ async (page) => {
   await page.waitForTimeout(600);
   const post = CALLS.find(([k]) => k === 'post');
   has('…and saves it with that picture', !!post && post[1].title === 'Five-minute warm-up' && /img\.youtube\.com/.test(post[1].image_url ?? ''), JSON.stringify(post && post[1]));
+  // Since 2026-11-23 a resource's actions rise under the pointer (a reveal tile): hover it first, as a person would.
+  await page.locator('[data-resource="Yoga Day 1"]').hover();
   await page.getByRole('button', { name: 'Edit Yoga Day 1' }).click();
   await page.getByLabel('Title').fill('Yoga — Day 1');
   await page.locator('[data-save-resource]').click();

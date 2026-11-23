@@ -1562,30 +1562,76 @@ img { -webkit-user-drag: none; user-select: none; }
 }
 
 /* Sign-up (2026-11-02, direction B): the member card fills in as they answer, then flips. */
-.rg-scene { perspective: 1100px; }
-.rg-card { position: relative; height: 172px; transform-style: preserve-3d; transition: transform .9s cubic-bezier(.3, .9, .3, 1); }
-.rg-card.rg-flip { transform: rotateY(180deg); }
-.rg-face { position: absolute; inset: 0; border-radius: 22px; backface-visibility: hidden; -webkit-backface-visibility: hidden; padding: 18px; overflow: hidden; }
-.rg-front { background: var(--grad-action, linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 40%, var(--color-bg))));
-  box-shadow: 0 18px 40px -20px var(--color-primary); color: #fff; }
-.rg-back { transform: rotateY(180deg); background: var(--color-surface); border: 1.5px solid var(--color-primary); display: flex; align-items: center; gap: 16px; }
-.rg-shine { position: absolute; inset: -40%; background: linear-gradient(115deg, transparent 40%, rgba(255, 255, 255, .16) 50%, transparent 60%); animation: rg-shine 4.5s ease-in-out infinite; pointer-events: none; }
-@keyframes rg-shine { 0%, 60% { transform: translateX(-60%); } 100% { transform: translateX(60%); } }
-.rg-tag { font-size: 12px; font-weight: 700; background: rgba(0, 0, 0, .28); padding: 5px 10px; border-radius: 999px; animation: rg-pop .45s cubic-bezier(.2, 1.4, .4, 1) both; }
-@keyframes rg-pop { from { opacity: 0; transform: scale(.7); } }
-.rg-pane { animation: rg-in .45s cubic-bezier(.2, .8, .2, 1) both; }
+/* Register (owner, 2026-11-23: "clean it but still engaging, no card style"). No member card and no boxes: the gym, a
+   line that fills step by step, and you, filling in as you answer (photo or initials in a ring that closes as the steps
+   do, your name, what you chose); a big heading per step that slides in; choices as rows with a radio, pills and one
+   switch; a tick that draws itself at the end. A soft light in the gym's two colours drifts behind the top in dark;
+   light mode is solid. */
+.rg-top { position: relative; isolation: isolate; display: flex; flex-direction: column; gap: 14px; padding-bottom: 16px;
+  border-bottom: 1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08); }
+.rg-glow { position: absolute; z-index: -1; left: -30%; right: -30%; top: -140px; height: 280px; pointer-events: none; filter: blur(12px);
+  background: radial-gradient(48% 50% at 28% 52%, color-mix(in srgb, var(--color-primary) 40%, transparent), transparent 70%),
+    radial-gradient(38% 44% at 76% 42%, color-mix(in srgb, var(--color-secondary) 22%, transparent), transparent 70%); }
+.rg-mark { background: var(--fill-primary, var(--color-primary)); color: #fff; }
+.rg-progress { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.rg-progress span { height: 4px; border-radius: 99px; overflow: hidden; background: rgb(var(--hair-rgb, 255 255 255) / 0.1); }
+.rg-progress i { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--color-primary); transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.rg-progress .done i { width: 100%; }
+.rg-progress .now i { width: 50%; }
+@property --rg-p { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+.rg-you { display: flex; align-items: center; gap: 12px; }
+.rg-ring { flex: none; width: 54px; height: 54px; padding: 3px; border-radius: 50%; display: grid; place-items: center;
+  background: conic-gradient(var(--color-primary) var(--rg-p), rgb(var(--hair-rgb, 255 255 255) / 0.12) 0); transition: --rg-p 0.7s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.rg-ring > img, .rg-ring > b { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: grid; place-items: center;
+  background: var(--color-bg); font-size: 16px; font-weight: 800; color: var(--color-text-primary); }
+.rg-name { font-size: 19px; font-weight: 800; letter-spacing: -0.01em; color: var(--color-text-primary); }
+.rg-name.empty { color: var(--color-text-muted); }
+.rg-tag { font-size: 11.5px; font-weight: 650; padding: 3px 9px; border-radius: 99px; color: var(--color-primary-300);
+  background: color-mix(in srgb, var(--color-primary) 15%, transparent); animation: rg-pop 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+@keyframes rg-pop { from { opacity: 0; transform: scale(0.7); } }
+.rg-h { font-size: 28px; font-weight: 800; line-height: 1.1; letter-spacing: -0.02em; color: var(--color-text-primary); }
+.rg-pane { animation: rg-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 .rg-pane.rg-back-dir { animation-name: rg-in-back; }
 @keyframes rg-in { from { opacity: 0; transform: translateX(28px); } }
 @keyframes rg-in-back { from { opacity: 0; transform: translateX(-28px); } }
-.rg-dot { height: 8px; border-radius: 8px; background: var(--color-surface-high); transition: width .4s cubic-bezier(.2, .8, .2, 1), background .4s; }
-.rg-dot.on { background: var(--color-primary); }
-.rg-seg { border: 1.5px solid var(--color-border); background: var(--color-surface); color: var(--color-text-secondary); border-radius: 14px; padding: 11px 12px; font-size: 14px; font-weight: 600; min-height: 44px; text-align: left; transition: border-color .2s, background .2s, transform .12s; }
-.rg-seg:active { transform: scale(.97); }
-.rg-seg.on { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 16%, var(--color-surface)); color: #fff; }
-@media (prefers-reduced-motion: reduce) {
-  .rg-card { transition: none; }
-  .rg-shine, .rg-tag, .rg-pane { animation: none; }
+.rg-switch { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 14px; background: rgb(var(--hair-rgb, 255 255 255) / 0.06); }
+.rg-switch button { height: 40px; border-radius: 10px; font-size: 14px; font-weight: 600; color: var(--color-text-secondary); transition: background-color 0.2s, color 0.2s, box-shadow 0.2s; }
+.rg-switch button.on { background: var(--fill-primary, var(--color-primary)); color: #fff; box-shadow: 0 6px 16px -8px var(--color-primary); }
+.rg-list { display: flex; flex-direction: column; border-top: 1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08); }
+.rg-opt { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; width: 100%; padding: 14px 2px; text-align: left;
+  border-bottom: 1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08); transition: background-color 0.2s; }
+.rg-opt:active { background: rgb(var(--hair-rgb, 255 255 255) / 0.04); }
+.rg-opt b { display: block; font-size: 14.5px; font-weight: 700; color: var(--color-text-primary); }
+.rg-opt small { display: block; margin-top: 1px; font-size: 12px; color: var(--color-text-muted); }
+.rg-radio { flex: none; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center;
+  border: 2px solid rgb(var(--hair-rgb, 255 255 255) / 0.3); transition: border-color 0.2s; }
+.rg-radio::after { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--color-primary); transform: scale(0); transition: transform 0.25s cubic-bezier(0.2, 1.4, 0.4, 1); }
+.rg-opt.on .rg-radio { border-color: var(--color-primary); }
+.rg-opt.on .rg-radio::after { transform: scale(1); }
+.rg-pill { padding: 9px 15px; border-radius: 99px; font-size: 13.5px; font-weight: 600; color: var(--color-text-secondary);
+  border: 1px solid rgb(var(--hair-rgb, 255 255 255) / 0.14); transition: background-color 0.2s, color 0.2s, border-color 0.2s, transform 0.15s; }
+.rg-pill:active { transform: scale(0.96); }
+.rg-pill.on { background: var(--fill-primary, var(--color-primary)); border-color: transparent; color: #fff; }
+.rg-tick { display: block; width: 84px; height: 84px; margin: 4px auto 16px; }
+.rg-tick svg { width: 100%; height: 100%; fill: none; stroke: var(--color-primary); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.rg-tick circle { stroke-dasharray: 151; stroke-dashoffset: 151; animation: rg-draw 0.7s ease-out forwards; }
+.rg-tick path { stroke-dasharray: 36; stroke-dashoffset: 36; animation: rg-draw 0.45s 0.55s ease-out forwards; }
+@keyframes rg-draw { to { stroke-dashoffset: 0; } }
+.rg-code { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--color-primary-300); }
+@media (prefers-reduced-motion: no-preference) {
+  .rg-glow { animation: rg-drift 12s ease-in-out infinite alternate; }
+  .rg-progress .now i { animation: rg-now 1.6s ease-in-out infinite alternate; }
 }
+@keyframes rg-drift { to { transform: translate(8%, 12px); } }
+@keyframes rg-now { to { width: 62%; } }
+@media (prefers-reduced-motion: reduce) {
+  .rg-tag, .rg-pane { animation: none; }
+  .rg-tick circle, .rg-tick path { animation: none; stroke-dashoffset: 0; }
+  .rg-ring { transition: none; }
+}
+:root[data-mode="light"] .rg-glow { display: none; }
+:root[data-mode="light"] .rg-tag, :root[data-mode="light"] .rg-code { color: var(--color-primary-700); }
+:root[data-mode="light"] .rg-ring > img, :root[data-mode="light"] .rg-ring > b { background: #FFFFFF; }
 
 /* A chat screen, Messenger style (2026-11-14): the header and its tabs stay put, the messages scroll between,
    and the box to type in is docked to the bottom edge — solid, full width, never floating over the messages.

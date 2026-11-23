@@ -193,11 +193,25 @@ export default function Exercises() {
             {list.length === 0 ? <p className="a-sub" style={{ padding: '10px 0' }}>{rows.length ? 'No exercise matches that.' : 'No exercises yet.'}</p> : (
               <div className="a-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 10 }}>
                 {list.map((r) => (
-                  <button key={r.id} type="button" className={`a-tile ${pickId === r.id ? 'on' : ''}`} style={{ opacity: shown(r) ? 1 : 0.55, textAlign: 'left' }}
-                    onClick={() => { setPickId(r.id); setPanel('detail'); }} data-exercise={r.name}>
-                    {thumb(r, 96)}
-                    <b className="truncate">{r.name}</b>
-                    <small>{shown(r) ? <>{word(r.muscle_group)} · {r.is_timed ? 'timed' : r.equipment}{isOwn(r) && <span style={{ color: 'var(--a-p300)' }}> · yours</span>}</> : 'hidden from your members'}</small>
+                  <button key={r.id} type="button" className={`rv ${media.get(r.id)?.photoUrl ? '' : 'rv-flat'} ${pickId === r.id ? 'on' : ''}`} style={{ height: 168, opacity: shown(r) ? 1 : 0.55 }}
+                    onClick={() => { setPickId(r.id); setPanel('detail'); }} data-exercise={r.name} aria-label={r.name}>
+                    {/* A reveal tile (2026-11-23): the photo, or the exercise's mark, fills it; the details rise under the pointer. */}
+                    <span className="rv-art" style={{ paddingBottom: 46 }}>
+                      {media.get(r.id)?.photoUrl ? <img src={media.get(r.id)!.photoUrl!} alt="" /> : !shown(r) ? <EyeOff size={30} /> : r.is_timed ? <Timer size={30} /> : <Dumbbell size={30} />}
+                    </span>
+                    {(media.get(r.id)?.videoUrl || isOwn(r)) && (
+                      <span className="rv-corner">
+                        {isOwn(r) ? <span className="rv-tag">yours</span> : <span />}
+                        {media.get(r.id)?.videoUrl && <span className="rv-tag"><Play size={10} />video</span>}
+                      </span>
+                    )}
+                    <span className="rv-body">
+                      <span className="rv-title">{r.name}</span>
+                      <span className="rv-more"><span style={{ minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <span className="rv-sub">{shown(r) ? `${word(r.muscle_group)} · ${r.is_timed ? 'timed' : r.equipment}` : 'hidden from your members'}</span>
+                        <span className="rv-acts"><span className="rv-act go">See steps</span></span>
+                      </span></span>
+                    </span>
                   </button>
                 ))}
               </div>

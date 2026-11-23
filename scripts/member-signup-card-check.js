@@ -104,7 +104,8 @@ async (page) => {
   const d = signup?.data ?? {};
   say('the sign-up carries experience, goal, code and plan', d.signup_experience === 'intermediate' && d.signup_goal === 'build-muscle'
     && d.referral_code === 'ABCDEF' && d.requested_plan_id === 'mp-prem' && d.terms_accepted === 'true', JSON.stringify(d));
-  say('the card flips to the check-in code', (await page.locator('.rg-card.rg-flip').count()) === 1 && /Ready once the desk approves you/.test(await text()));
+  // Since 2026-11-23 there is no card to flip (the owner: no card style): the done screen says where the check-in code stands.
+  say('the end says where the check-in code stands', (await page.locator('[data-register-done] .rg-tick').count()) === 1 && /ready once the desk approves you/.test(await text()));
   await page.screenshot({ path: 'shots/member-signup-done.png' });
   await page.getByRole('button', { name: /Go to sign in/ }).click();
   await page.waitForTimeout(800);
