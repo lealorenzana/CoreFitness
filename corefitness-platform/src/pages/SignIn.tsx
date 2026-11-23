@@ -49,6 +49,13 @@ export default function SignIn({ onSignedIn }: { onSignedIn: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [shake, setShake] = useState(0);
+  /** Signed in with a one-time password: they choose their own before going in. */
+  const [mustChange, setMustChange] = useState(false);
+  const [next, setNext] = useState('');
+  const [again, setAgain] = useState('');
+  useEffect(() => {
+    void supabase.auth.getUser().then(({ data: { user } }) => { if (user?.user_metadata?.must_change_password) setMustChange(true); });
+  }, []);
 
   /** Mouse parallax: the pointer's place as two CSS numbers (-1 to 1) on the page; each layer moves by its own depth in CSS.
    *  No React state per move. Off on touch screens and with reduced motion. */
@@ -82,6 +89,19 @@ export default function SignIn({ onSignedIn }: { onSignedIn: () => void }) {
       await supabase.auth.signOut();
       return refuse('That account does not run Core Fitness. Gym owners use the admin app.');
     }
+    setBusy(false);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.user_metadata?.must_change_password) { setMustChange(true); return; }
+    onSignedIn();
+  };
+
+  const choose = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (next.length < 8) return refuse('Use at least 8 characters.');
+    if (next !== again) return refuse('The two passwords are not the same.');
+    setBusy(true); setError(null);
+    const { error: updateError } = await supabase.auth.updateUser({ password: next, data: { must_change_password: false } });
+    if (updateError) return refuse(updateError.message);
     setBusy(false);
     onSignedIn();
   };
@@ -118,8 +138,24 @@ export default function SignIn({ onSignedIn }: { onSignedIn: () => void }) {
           </div>
         <div className="pd-col">
           <p className="pd-hello">{greeting()}</p>
-          <h1>Run Core Fitness</h1>
-          <p className="pd-sub">The platform owner’s account. Every gym on the service, in one place.</p>
+          <h1>{mustChange ? 'Choose your password' : 'Run Core Fitness'}</h1>
+          <p className="pd-sub">{mustChange ? 'You signed in with a one-time password. Pick your own to go in.' : 'The platform owner’s account. Every gym on the service, in one place.'}</p>
+          {mustChange ? (
+          <form key={shake} className={`pd-form${shake ? ' shake' : ''}`} onSubmit={choose} noValidate data-choose-password>
+            <div className="pd-field">
+              <label htmlFor="pd-next">New password</label>
+              <input id="pd-next" className="pd-input" type="password" autoComplete="new-password" value={next} required onChange={(e) => setNext(e.target.value)} aria-describedby="pd-msg" />
+            </div>
+            <div className="pd-field">
+              <label htmlFor="pd-again">Type it again</label>
+              <input id="pd-again" className="pd-input" type="password" autoComplete="new-password" value={again} required onChange={(e) => setAgain(e.target.value)} aria-describedby="pd-msg" />
+            </div>
+            <p id="pd-msg" className={`pd-msg${error ? ' err' : ''}`} aria-live="polite">{error ?? ''}</p>
+            <button className="pd-btn" type="submit" disabled={busy}>
+              {busy && <span className="pd-spin" aria-hidden="true" />}{busy ? 'Saving' : 'Save and go in'}
+            </button>
+          </form>
+          ) : (
           <form key={shake} className={`pd-form${shake ? ' shake' : ''}`} onSubmit={submit} noValidate>
             <div className="pd-field">
               <label htmlFor="pd-email">Email</label>
@@ -140,6 +176,7 @@ export default function SignIn({ onSignedIn }: { onSignedIn: () => void }) {
               {busy && <span className="pd-spin" aria-hidden="true" />}{busy ? 'Signing in' : 'Sign in'}
             </button>
           </form>
+          )}
         </div>
         </div>
       </main>

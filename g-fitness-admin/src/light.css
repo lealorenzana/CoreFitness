@@ -64,7 +64,7 @@
 /* ── The redesigned pages (pages/attendance/att.css) ─────────────────────────── */
 :root[data-mode="light"] .att {
   --a-surface-solid: #FFFFFF; --a-raised-solid: #F3F3F7; --a-high: #E8E8EF; --a-border: rgb(22 22 38 / 0.10); --a-line: rgb(22 22 38 / 0.14); /* see-through ink: a line shows on white, grey or a tint */
-  --a-primary: #7C3AED; --a-p300: #6D28D9; --a-p400: #7C3AED; --a-plight: #EFE8FD;
+  --a-primary: var(--color-primary); --a-p300: var(--color-primary-700, color-mix(in srgb, var(--color-primary) 90%, #121211)); --a-p400: var(--color-primary); --a-plight: color-mix(in srgb, var(--color-primary) 10%, #FFFFFF);
   --a-amber: #E08A0B; --a-a300: #B45309; --a-alight: #FDF3E1;
   --a-text2: #4A4D5E; --a-muted: #6B6E80;
   --a-ink: #15151C; --a-well: #F7F7FA;

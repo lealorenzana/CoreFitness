@@ -33,7 +33,7 @@ export default function PremiumThemes() {
     if (error) { setMsg(error.message); return; }
     setChosen(key);
     await loadGymLook();
-    setMsg(key ? 'Saved — your members see it the next time they open the app.' : 'Back to your plain colours.');
+    setMsg(key ? 'Saved. Your members see it the next time they open the app.' : 'Back to your plain colours.');
   };
 
   if (chosen === undefined) return null;
@@ -41,11 +41,11 @@ export default function PremiumThemes() {
     <div data-premium-themes style={{ marginTop: 14 }}>
       <div className="a-ct">
         <h3><Sparkles size={16} />Premium themes</h3>
-        <small>{unlocked ? 'yours to use — part of your colours unlock' : `part of the one-time colours unlock${price ? ` (₱${price.toLocaleString('en-PH')})` : ''}`}</small>
+        <small>{unlocked ? 'yours to use, part of your colours unlock' : `part of the one-time colours unlock${price ? ` (₱${price.toLocaleString('en-PH')})` : ''}`}</small>
       </div>
       {!unlocked && (
         <p className="a-sub" style={{ marginBottom: 10 }}><Lock size={12} style={{ display: 'inline', marginRight: 4 }} />
-          Buy custom colours under Saved themes above to use these. One purchase unlocks your own colour codes and every premium theme.</p>
+          Buy custom colours under Saved themes (any other chip on Colour pair) to use these. One purchase unlocks your own colour codes and every premium theme.</p>
       )}
       <div className="a-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(118px, 1fr))', gap: 8 }}>
         {PREMIUM_THEMES.map((t) => {

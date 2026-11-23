@@ -211,3 +211,40 @@
 .gx-timeline span { color: var(--text); }
 
 @media (max-width: 1100px) { .gx-tab2.manage-tab, .gx-tab2.money-tab, .gx-tab2.people-tab { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---- reveal tiles (owner, 2026-11-23, like the admin's Exercises and Resources) ----
+   The gym's front photo fills the card under a vignette; at rest the name, status and first warning sit at the foot.
+   Under the pointer or keyboard focus the photo leans in, the vignette deepens and the figures and actions rise into
+   view. One fixed height, so useFitCards still counts a page. Touch screens (no hover) show everything. */
+.page[data-page="gyms"] .gym-grid > .gym-card.gx-rv { position: relative; isolation: isolate; overflow: hidden; height: 252px; padding: 0 !important;
+  gap: 0 !important; background: #121216 !important; color: #fff; transition: border-color 200ms, box-shadow 260ms; }
+.gx-rv .gx-art { position: absolute; inset: 0; z-index: -2; display: grid; place-items: center; transition: transform 520ms cubic-bezier(.2,.7,.2,1); }
+.gx-rv .gx-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.gx-rv .gx-art img.gx-blur { inset: -24px; width: calc(100% + 48px); height: calc(100% + 48px); filter: blur(22px) saturate(1.2); opacity: .75; }
+.gx-rv .gx-art .gx-big { margin-bottom: 70px; opacity: .55; transform: scale(1.25); }
+.gx-rv::after { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(to top, rgb(0 0 0 / .9) 0%, rgb(0 0 0 / .55) 38%, rgb(0 0 0 / .08) 72%, rgb(0 0 0 / .25) 100%); }
+.gx-rv::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: 0; background: rgb(0 0 0 / .5); transition: opacity 260ms; }
+.gx-rv .gx-corner { position: absolute; top: 12px; right: 12px; padding: 4px 10px; border-radius: 99px; background: rgb(0 0 0 / .55); }
+.gx-rv .gx-corner .gx-status { color: #fff; }
+.gx-rv .gx-body { position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; }
+.gx-rv .gx-name { color: #fff; }
+.gx-rv .gx-slug { color: rgb(255 255 255 / .7); }
+.gx-rv :is(.gx-figs, .gym-foot) { border-color: rgb(255 255 255 / .16) !important; }
+.gx-rv .gx-figs > div + div { border-left-color: rgb(255 255 255 / .16); }
+.gx-rv .gx-figs b, .gx-rv .gx-facts dd { color: #fff; }
+.gx-rv :is(.gx-figs span, .gx-facts dt, .gx-end) { color: rgb(255 255 255 / .7); }
+.gx-rv .gym-flag { color: #fbbf24; }
+.gx-rv .gx-more { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows 280ms cubic-bezier(.2,.7,.2,1), opacity 200ms; }
+.gx-rv .gx-more > div { min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 10px; }
+.page[data-page="gyms"] .gx-rv .gym-foot { margin-top: 0; }
+.page[data-page="gyms"] .gx-rv .gym-foot .btn.ghost { color: #fff; border-color: rgb(255 255 255 / .28); background: rgb(255 255 255 / .1); }
+.page[data-page="gyms"] .gx-rv .gym-foot .open { color: rgb(255 255 255 / .8); }
+.page[data-page="gyms"] .gym-grid > .gym-card.gx-rv:is(:hover, :focus-within) { border-color: rgb(255 255 255 / .3) !important; background: #121216 !important;
+  box-shadow: 0 22px 40px -24px rgb(0 0 0 / .9); }
+.gx-rv:is(:hover, :focus-within) .gx-art { transform: scale(1.06); }
+.gx-rv:is(:hover, :focus-within)::before { opacity: 1; }
+.gx-rv:is(:hover, :focus-within) .gx-more { grid-template-rows: 1fr; opacity: 1; }
+.gx-rv:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (hover: none) { .gx-rv .gx-more { grid-template-rows: 1fr; opacity: 1; } .page[data-page="gyms"] .gym-grid > .gym-card.gx-rv { height: auto; min-height: 252px; } .gx-rv .gx-body { position: relative; margin-top: 120px; } }
+@media (prefers-reduced-motion: reduce) { .gx-rv .gx-art, .gx-rv .gx-more { transition: none; } .gx-rv:hover .gx-art { transform: none; } }

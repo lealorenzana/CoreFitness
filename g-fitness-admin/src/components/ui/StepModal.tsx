@@ -57,7 +57,7 @@ export default function StepModal({
               style={{ color: 'var(--color-text-secondary)' }}><X size={16} /></button>
           </div>
           {hideNav ? <div className="h-4" /> : (
-            <ol className="flex gap-5 mt-4 overflow-x-auto" aria-label={tabs ? 'Sections' : 'Steps'} role={tabs ? 'tablist' : undefined}>
+            <ol className="flex gap-5 mt-4 overflow-x-auto overflow-y-hidden scrollbar-hide" aria-label={tabs ? 'Sections' : 'Steps'} role={tabs ? 'tablist' : undefined}>
               {steps.map((t, i) => {
                 const reach = tabs || i <= step;
                 const here = i === step;

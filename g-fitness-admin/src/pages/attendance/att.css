@@ -118,7 +118,7 @@
 .att .a-rank.g { background: var(--a-alight); color: var(--a-a300); }
 
 /* the door */
-.att .a-door { position: relative; border-radius: 16px; padding: 12px 14px; background: linear-gradient(160deg,color-mix(in srgb, var(--color-primary) 17%, #121211),#17162a); border: 1px solid var(--a-line); display: flex; flex-direction: column; gap: 8px; overflow: hidden; min-width: 0; }
+.att .a-door { position: relative; border-radius: 16px; padding: 12px 14px; background: linear-gradient(160deg,color-mix(in srgb, var(--color-primary) 17%, #121211),color-mix(in srgb, var(--color-primary) 8%, #141413)); border: 1px solid var(--a-line); display: flex; flex-direction: column; gap: 8px; overflow: hidden; min-width: 0; }
 .att .a-screen { height: 46px; border-radius: 10px; background: #0b0b13; border: 1px solid #2c2a45; display: grid; place-items: center; position: relative; overflow: hidden; flex: none; }
 .att .a-qrm { width: 32px; height: 32px; border-radius: 7px; background: #fff; color: #111; display: grid; place-items: center; }
 .att .a-tv { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; width: 86%; }
@@ -149,7 +149,9 @@
 .att .a-cal button:disabled { cursor: default; }
 .att .a-cal .sel { outline: 2px solid var(--a-amber); outline-offset: 1px; }
 .att .a-cal .today { box-shadow: inset 0 0 0 1px #ffffff40; }
-.att .l0 { background: #17161f; color: #4d4c60 !important; } .att .l1 { background: color-mix(in srgb, var(--color-primary) 32%, #121211); } .att .l2 { background: color-mix(in srgb, var(--color-primary) 57%, #121211); } .att .l3 { background: color-mix(in srgb, var(--color-primary) 95%, #121211); } .att .l4 { background: color-mix(in srgb, var(--color-primary) 61%, #FFFFFF); }
+/* Days: an empty day is a plain tile with readable grey numbers; busier days get more of the gym's colour, never a pale wash under white words. */
+.att .a-cal { flex: none; }
+.att .l0 { background: rgb(var(--hair-rgb, 255 255 255) / 0.04); color: var(--a-muted) !important; } .att .l1 { background: color-mix(in srgb, var(--color-primary) 28%, #121211); } .att .l2 { background: color-mix(in srgb, var(--color-primary) 50%, #121211); } .att .l3 { background: color-mix(in srgb, var(--color-primary) 72%, #121211); color: #FFFFFF; } .att .l4 { background: color-mix(in srgb, var(--color-primary) 90%, #121211); color: #FFFFFF; }
 .att .a-out { opacity: .35; }
 /* Coaching's side column: cards keep their height and the column scrolls itself, never squeezing a card. */
 .att .coaching-side > * { flex-shrink: 0; }
@@ -174,7 +176,7 @@
 .att .a-slot { font-size: 11.5px; font-weight: 600; border-radius: 9px; padding: 6px 9px; background: var(--a-raised); border: 1px solid var(--a-line); color: var(--a-text2); }
 .att .a-slot.on { background: var(--a-alight); border-color: #5a4512; color: var(--a-a300); }
 .att .a-slot:disabled, .att .a-slot.full { opacity: .4; text-decoration: line-through; }
-.att .a-hint { display: flex; gap: 9px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; background: #151427; border: 1px dashed color-mix(in srgb, var(--color-primary) 40%, #121211); font-size: 11.5px; color: var(--a-text2); line-height: 1.5; }
+.att .a-hint { display: flex; gap: 9px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--color-primary) 7%, #121211); border: 1px dashed color-mix(in srgb, var(--color-primary) 40%, #121211); font-size: 11.5px; color: var(--a-text2); line-height: 1.5; }
 .att .a-hint > svg { color: var(--a-p300); margin-top: 1px; }
 .att .a-toggle { display: inline-block; vertical-align: middle; width: 38px; height: 22px; border-radius: 999px; background: var(--a-primary); position: relative; flex: none; transition: background .15s; }
 .att .a-toggle::after { content: ""; position: absolute; right: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: all .15s; }
@@ -211,12 +213,12 @@
 .att .a-meter { height: 10px; border-radius: 99px; background: var(--a-high); overflow: hidden; } .att .a-meter i { display: block; height: 100%; background: linear-gradient(90deg, color-mix(in srgb, var(--a-primary) 80%, black), var(--a-p400)); }
 .att .a-stage { display: flex; align-items: center; justify-content: center; background: radial-gradient(70% 60% at 50% 40%, color-mix(in srgb, var(--color-primary) 31%, #121211), #0c0c16 75%); border-radius: 18px; border: 1px solid var(--a-border); position: relative; overflow: hidden; min-height: 0; }
 .att .a-stage .cap { position: absolute; top: 12px; left: 14px; font-size: 11px; color: var(--a-text2); display: flex; gap: 6px; align-items: center; }
-.att .a-phone { width: 270px; height: 560px; max-height: calc(100% - 40px); border-radius: 38px; border: 9px solid #050508; outline: 1px solid #2a2842; background: #0B0B14; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 30px 70px #000c; position: relative; }
+.att .a-phone { width: 270px; height: 560px; max-height: calc(100% - 40px); border-radius: 38px; border: 9px solid #050508; outline: 1px solid color-mix(in srgb, var(--color-primary) 18%, #1c1c1b); background: #0D0D0C; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 30px 70px #000c; position: relative; }
 .att .a-phone::before { content: ""; position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: 84px; height: 20px; border-radius: 12px; background: #050508; }
 .att .a-phone .scr { flex: 1; padding: 40px 16px 14px; display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow: hidden; }
-.att .a-phcard { border-radius: 16px; padding: 12px; background: #17162a; border: 1px solid #2b2846; }
+.att .a-phcard { border-radius: 16px; padding: 12px; background: color-mix(in srgb, var(--color-primary) 8%, #141413); border: 1px solid color-mix(in srgb, var(--color-primary) 18%, #1c1c1b); }
 .att .a-phbtn { border-radius: 12px; padding: 10px; text-align: center; font-weight: 700; font-size: 12px; }
-.att .a-tabbar { margin-top: auto; display: flex; justify-content: space-around; border-top: 1px solid #222036; padding-top: 9px; font-size: 9.5px; color: var(--a-muted); text-align: center; }
+.att .a-tabbar { margin-top: auto; display: flex; justify-content: space-around; border-top: 1px solid color-mix(in srgb, var(--color-primary) 14%, #222220); padding-top: 9px; font-size: 9.5px; color: var(--a-muted); text-align: center; }
 .att .a-tabbar span { display: flex; flex-direction: column; align-items: center; gap: 2px; } .att .a-tabbar .on { color: var(--a-p300); }
 .att .a-sn { display: flex; flex-direction: column; gap: 1px; } .att .a-sn .g { font-size: 10.5px; font-weight: 700; color: var(--a-muted); text-transform: uppercase; letter-spacing: .07em; margin: 12px 8px 5px; }
 .att .a-sn button { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 10px; color: var(--a-text2); font-weight: 500; font-size: 12.5px; text-align: left; }
@@ -236,8 +238,8 @@
 .att .a-msg { border-radius: 14px 14px 14px 4px; padding: 10px 12px; background: var(--a-raised); font-size: 12.5px; line-height: 1.5; white-space: pre-wrap; margin-right: 40px; }
 .att .a-msg.me { border-radius: 14px 14px 4px 14px; background: color-mix(in srgb, var(--color-primary) 31%, #121211); margin: 0 0 0 40px; }
 /* the week calendar (schedule) */
-.att .a-wk { display: grid; grid-template-columns: 52px repeat(7, minmax(0, 1fr)); flex: 1; min-height: 0; border: 1px solid var(--a-border); border-radius: 14px; overflow: auto; background: #101019; align-content: start; }
-.att .a-wk .dh { position: sticky; top: 0; z-index: 4; padding: 8px 6px; text-align: center; border-bottom: 1px solid var(--a-border); border-left: 1px solid var(--a-border); font-size: 11px; color: var(--a-text2); background: #101019; }
+.att .a-wk { display: grid; grid-template-columns: 52px repeat(7, minmax(0, 1fr)); flex: 1; min-height: 0; border: 1px solid var(--a-border); border-radius: 14px; overflow: auto; background: #121211; align-content: start; }
+.att .a-wk .dh { position: sticky; top: 0; z-index: 4; padding: 8px 6px; text-align: center; border-bottom: 1px solid var(--a-border); border-left: 1px solid var(--a-border); font-size: 11px; color: var(--a-text2); background: #121211; }
 .att .a-wk .dh b { display: block; font-size: 13px; color: var(--a-ink); } .att .a-wk .dh.today { background: color-mix(in srgb, var(--color-primary) 16%, #121211); } .att .a-wk .dh.today b { color: var(--a-p300); }
 .att .a-wk .col { position: relative; border-left: 1px solid var(--a-border); background: repeating-linear-gradient(180deg, transparent 0 35px, rgb(var(--hair-rgb, 255 255 255) / 0.045) 35px 36px); }
 .att .a-wk .col.today { background: repeating-linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 5%, #121211) 0 35px, color-mix(in srgb, var(--color-primary) 17%, #121211) 35px 36px); }
@@ -328,7 +330,7 @@
 @keyframes a-pamb-b { to { transform: translate(-26%, 18%) scale(0.9); } }
 @media (prefers-reduced-motion: reduce) { .att .a-phone .a-phamb span { animation: none; } }
 .att .a-phone .scr, .att .a-phone .a-tabbar { position: relative; z-index: 1; }
-.att .a-phone .a-phcard { background: rgba(23, 22, 42, 0.7); }
+.att .a-phone .a-phcard { background: color-mix(in srgb, color-mix(in srgb, var(--color-primary) 8%, #141413) 70%, transparent); }
 
 /* Members with many rows (2026-11-08): a laptop (1366×768) showed three members a page — the row was 72px because
    its menu button was 40px tall. A compact row (one line of name, one of detail, a 30px menu) fits five or six. */
@@ -442,7 +444,6 @@
 .att [data-at-the-door] .a-door > div:nth-child(2) { flex: 1; min-width: 0; }
 .att [data-at-the-door] .a-door .a-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .att [data-at-the-door] .a-door > :last-child { margin-top: 0 !important; flex: none; flex-wrap: nowrap !important; }
-.att [data-at-the-door] .a-door .a-btn.amber { background: transparent; color: var(--a-ink); border-color: var(--a-line); }
 .att [data-at-the-door] [data-coaches-row], .att [data-at-the-door] [data-coaches-off] { margin: 0 !important; padding: 10px 16px !important; }
 .att [data-at-the-door] .a-ic { background: transparent; }
 .att [data-at-the-door] .a-door b + .a-status, .att [data-at-the-door] [data-kiosk-status] { font-size: 11px; }

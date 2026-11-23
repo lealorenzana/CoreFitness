@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { BellRing, Building, ChevronRight, FileText, Keyboard, Mail, Monitor, Receipt, ShieldCheck, Timer, UserMinus, UserPlus, Wallet } from 'lucide-react';
+import { BellRing, Building, ChevronRight, FileText, KeyRound, Keyboard, Mail, Monitor, Receipt, ShieldCheck, Timer, UserMinus, UserPlus, Wallet } from 'lucide-react';
 import {
-  addAdmin, billingSettings, explain, listAdmins, removeAdmin, saveBillingSettings,
+  billingSettings, explain, listAdmins, platformOwner, removeAdmin, saveBillingSettings, sendEmail,
   type BillingSettings, type PlatformAdmin,
 } from '../lib/platform';
 import InfoDot from '../components/InfoDot';
@@ -36,6 +36,11 @@ export default function Settings() {
   const [b, setB] = useState<(BillingSettings & { reminders: string }) | null | undefined>(undefined);
   const [admins, setAdmins] = useState<PlatformAdmin[] | null>(null);
   const [email, setEmail] = useState('');
+  const [first, setFirst] = useState('');
+  const [last, setLast] = useState('');
+  /** A one-time password just made: shown once, here, and emailed. */
+  const [slip, setSlip] = useState<{ email: string; password: string; mailed: string } | null>(null);
+  const [resetting, setResetting] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ part: string; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   // `?part=billing` opens a section directly (Money's "Change in Settings" does).
@@ -62,6 +67,19 @@ export default function Settings() {
       setMsg({ part, text: 'Saved.' });
     } catch (e) { setMsg({ part, text: e instanceof Error ? e.message : 'Could not save' }); }
     finally { setBusy(false); }
+  };
+  /** Email a one-time password; the slip on screen says whether it went, so nobody is told a mail arrived that did not. */
+  const mailSlip = async (to: string, name: string | null, password: string, isNew: boolean) => {
+    let mailed = 'Not emailed. Give it to them yourself.';
+    try {
+      const r = await sendEmail({
+        to, toName: name, kind: isNew ? 'owner_credentials' : 'password_reset',
+        subject: isNew ? 'You can now run Core Fitness' : 'A new password for Core Fitness',
+        body: `${isNew ? 'You were added as a Core Fitness platform owner.' : 'Your Core Fitness platform password was reset.'}\n\nEmail: ${to}\nOne-time password: ${password}\n\nSign in on the platform computer. You will choose your own password straight away.`,
+      });
+      if (r.configured && r.status !== 'failed') mailed = `Emailed to ${to}.`;
+    } catch { /* the slip still shows the password */ }
+    setSlip({ email: to, password, mailed });
   };
   const said = (part: string) => msg?.part === part && <span className="meta" style={{ margin: 0 }}>{msg.text}</span>;
 
@@ -159,6 +177,18 @@ export default function Settings() {
                 <span className="name" style={{ fontSize: 13.5 }}>{[a.first_name, a.last_name].filter(Boolean).join(' ') || a.email}{a.is_me && <span className="pill ok" style={{ marginLeft: 8 }}>you</span>}</span>
                 <span className="meta" style={{ marginTop: 1 }}>{a.email}</span>
               </span>
+              {!a.is_me && (
+                <button className="btn ghost" disabled={busy} data-tip="A one-time password, shown once here and emailed. They choose their own at sign in."
+                  onClick={() => {
+                    if (resetting !== a.user_id) { setResetting(a.user_id); return; }
+                    setResetting(null); setBusy(true); setMsg(null);
+                    void (async () => {
+                      try { const r = await platformOwner({ action: 'reset', userId: a.user_id }); await mailSlip(r.email ?? a.email ?? '', [a.first_name, a.last_name].filter(Boolean).join(' ') || null, r.password!, false); }
+                      catch (e) { setMsg({ part: 'admins', text: e instanceof Error ? e.message : 'Could not reset' }); }
+                      finally { setBusy(false); }
+                    })();
+                  }}><KeyRound size={14} /> {resetting === a.user_id ? 'Confirm reset' : 'Reset password'}</button>
+              )}
               {!a.is_me && admins.length > 1 && (
                 <button className="btn ghost" data-tip="Takes away their platform access. Their own account stays." onClick={() => void (async () => {
                   try { await removeAdmin(a.user_id); await load(); } catch (e) { setMsg({ part: 'admins', text: e instanceof Error ? e.message : 'Could not remove them' }); }
@@ -167,12 +197,32 @@ export default function Settings() {
             </div>
           ))}
         </div>
-        <form className="row set-actions" onSubmit={(e) => { e.preventDefault(); void (async () => {
-          try { await addAdmin(email.trim()); setEmail(''); await load(); setMsg({ part: 'admins', text: 'Added.' }); }
+        {slip && (
+          <div className="card" style={{ marginTop: 12, padding: 14 }} role="status" data-owner-slip>
+            <b style={{ fontSize: 13.5 }}>One-time password for {slip.email}</b>
+            <div className="row" style={{ marginTop: 8, gap: 10, alignItems: 'center' }}>
+              <code style={{ fontSize: 16, letterSpacing: '.04em' }}>{slip.password}</code>
+              <button type="button" className="btn ghost" onClick={() => void navigator.clipboard.writeText(slip.password)}>Copy</button>
+              <button type="button" className="btn ghost" onClick={() => setSlip(null)}>Done</button>
+            </div>
+            <p className="meta" style={{ marginTop: 8 }}>{slip.mailed} Shown only now. They choose their own password when they sign in.</p>
+          </div>
+        )}
+        {/* Add a profile (owner, 2026-11-23): a new account with a one-time password, or an existing one granted as it is. */}
+        <form className="row set-actions" style={{ flexWrap: 'wrap', gap: 8 }} onSubmit={(e) => { e.preventDefault(); setBusy(true); setMsg(null); void (async () => {
+          try {
+            const r = await platformOwner({ action: 'create', email: email.trim(), firstName: first.trim(), lastName: last.trim() });
+            setEmail(''); setFirst(''); setLast(''); await load();
+            if (r.password) await mailSlip(r.email ?? email.trim(), [first.trim(), last.trim()].filter(Boolean).join(' ') || null, r.password, true);
+            else setMsg({ part: 'admins', text: 'They already had a Core Fitness account, so they sign in with its own password. Use Reset password if they do not know it.' });
+          }
           catch (err) { setMsg({ part: 'admins', text: err instanceof Error ? err.message : 'Could not add them' }); }
+          finally { setBusy(false); }
         })(); }}>
-          <input className="grow" type="email" required value={email} aria-label="Their email" placeholder="their email, they need a Core Fitness account already" onChange={(e) => setEmail(e.target.value)} />
-          <button className="btn" type="submit"><UserPlus size={14} /> Add</button>
+          <input style={{ flex: '1 1 140px' }} required value={first} aria-label="First name" placeholder="First name" onChange={(e) => setFirst(e.target.value)} />
+          <input style={{ flex: '1 1 140px' }} value={last} aria-label="Last name" placeholder="Last name" onChange={(e) => setLast(e.target.value)} />
+          <input style={{ flex: '2 1 220px' }} type="email" required value={email} aria-label="Their email" placeholder="Their email" onChange={(e) => setEmail(e.target.value)} />
+          <button className="btn" type="submit" disabled={busy}><UserPlus size={14} /> Add</button>
         </form>
         {said('admins')}
       </section>

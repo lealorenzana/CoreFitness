@@ -416,6 +416,25 @@ export const addAdmin = (email: string) => call<string>('add_platform_admin', { 
 export const removeAdmin = (user: string) => call<void>('remove_platform_admin', { p_user: user });
 
 /**
+ * Add a platform owner (a new account with a one-time password, or an existing account granted as it is),
+ * or give a platform owner a new one-time password: the platform-owner Edge Function. The password comes
+ * back once, to show and email; it is stored nowhere.
+ */
+export async function platformOwner(body: { action: 'create'; email: string; firstName: string; lastName: string } | { action: 'reset'; userId: string }):
+  Promise<{ email: string | null; existing?: boolean; password?: string }> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('You are signed out. Sign in again and retry.');
+  const { data, error } = await supabase.functions.invoke('platform-owner', { body, headers: { Authorization: `Bearer ${session.access_token}` } });
+  if (error) {
+    const status = (error as { context?: Response }).context?.status;
+    if (/FunctionsFetchError|FunctionsRelayError/.test(error.name) || status === 404) throw new Error('The platform-owner Edge Function is not deployed yet.');
+    const b = await (error as { context?: Response }).context?.json?.().catch(() => null);
+    throw new Error(b?.error ?? error.message);
+  }
+  return data as { email: string | null; existing?: boolean; password?: string };
+}
+
+/**
  * Give a gym's owner or front desk a new temporary password (support's answer
  * to "I cannot get in"). Returned once, shown once, stored nowhere.
  *
@@ -786,6 +805,19 @@ export const confirmApplicationPayment = (id: string, ok: boolean, reason: strin
 export async function applicationAccounts(): Promise<Set<string>> {
   try { return new Set((await call<{ application_id: string; has_account: boolean }[]>('platform_application_accounts')).filter((r) => r.has_account).map((r) => r.application_id)); }
   catch { return new Set(); }
+}
+/**
+ * Each gym's front photo from its application (0267), as short-lived signed URLs keyed by gym.
+ * Empty before 0267 or when nothing was uploaded: the card then falls back to the logo.
+ */
+export async function gymFrontPhotos(): Promise<Map<string, string>> {
+  try {
+    const rows = await call<{ gym_id: string; path: string }[]>('platform_gym_front_photos');
+    if (!rows?.length) return new Map();
+    const { data } = await supabase.storage.from('applications').createSignedUrls(rows.map((r) => r.path), 3600);
+    const byPath = new Map((data ?? []).filter((d) => d.signedUrl).map((d) => [d.path, d.signedUrl]));
+    return new Map(rows.filter((r) => byPath.has(r.path)).map((r) => [r.gym_id, byPath.get(r.path)!]));
+  } catch { return new Map(); }
 }
 export async function documentUrl(path: string): Promise<string | null> {
   const { data } = await supabase.storage.from('applications').createSignedUrl(path, 300);

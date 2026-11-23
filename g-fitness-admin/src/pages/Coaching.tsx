@@ -246,9 +246,10 @@ export default function Coaching({ embedded = false }: { embedded?: boolean } = 
         </div>
       </div>
 
-      <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0,1fr) 330px', flex: 1 }}>
+      {/* The rail gets real room (the table had dead space, the rail scrolled): its cards sit side by side when it is wide. */}
+      <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0,1.35fr) minmax(380px,1fr)', flex: 1 }}>
         <div className="a-card" data-coaching-list>
-          <div className="a-ct">
+          <div className="a-ct" style={{ flexWrap: 'wrap', rowGap: 8 }}>
             <div className="flex gap-1.5">
               {(['all', 'active', 'waiting', 'ending', 'ended'] as Filter[]).map((k) => (
                 <button key={k} type="button" className={`a-chip ${filter === k ? 'v' : ''}`} onClick={() => setFilter(k)} data-chip={k}>
@@ -284,7 +285,7 @@ export default function Coaching({ embedded = false }: { embedded?: boolean } = 
           )}
         </div>
 
-        <div className="a-scroll coaching-side" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="a-scroll coaching-side" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gridAutoRows: 'max-content', alignContent: 'start', alignItems: 'start', gap: 12 }}>
           {toConfirm.length > 0 && (
             <div className="a-card" style={{ borderColor: 'var(--a-warn-line, #3e310f)' }} data-coaching-confirm>
               <div className="a-ct"><h3><Wallet size={16} style={{ color: 'var(--a-a300)' }} />Payments to confirm</h3></div>

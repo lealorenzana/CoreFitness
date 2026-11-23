@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { downloadCsv } from '../lib/csv';
 import {
-  createGym, gymHealth, listGyms, listPlatformPlans, setGymPlan, setGymStatus, slugFor,
+  createGym, gymFrontPhotos, gymHealth, listGyms, listPlatformPlans, setGymPlan, setGymStatus, slugFor,
   type PlatformGym, type PlatformPlan,
 } from '../lib/platform';
 import InviteOwner from '../components/InviteOwner';
@@ -72,6 +72,8 @@ export default function Gyms() {
   const [plans, setPlans] = useState<PlatformPlan[]>([]);
   /** Gym id → its risk (0136). Empty before 0136. */
   const [risk, setRisk] = useState<Map<string, Risk>>(new Map());
+  /** Gym id → a signed URL of its front photo (0267). */
+  const [photos, setPhotos] = useState<Map<string, string>>(new Map());
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
   const [sort, setSort] = useState<Sort>('name');
@@ -90,6 +92,7 @@ export default function Gyms() {
       setError(null);
       const h = await gymHealth().catch(() => []);
       setRisk(new Map(h.filter((x) => x.level !== 'healthy').map((x) => [x.gym_id, { level: x.level, reasons: x.reasons }])));
+      setPhotos(await gymFrontPhotos());
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load the gyms');
     }
@@ -206,7 +209,7 @@ export default function Gyms() {
 
       <div className="gym-grid" ref={gridRef}>
         {onPage.map((gym) => (
-          <GymCard key={gym.id} gym={gym} risk={risk.get(gym.id)} busy={busy === gym.id}
+          <GymCard key={gym.id} gym={gym} photo={photos.get(gym.id)} risk={risk.get(gym.id)} busy={busy === gym.id}
             onOpen={() => setDialog({ kind: 'view', gym })}
             onPlan={() => setDialog({ kind: 'plan', gym })}
             onSuspend={() => setDialog({ kind: 'suspend', gym })}
@@ -351,21 +354,32 @@ function Flags({ gym, risk }: { gym: PlatformGym; risk?: Risk }) {
  * it holds buttons of its own — and its footer buttons stop the click so they
  * open their own popup, not the quick view.
  */
-function GymCard({ gym, risk, busy, onOpen, onPlan, onSuspend, onInvite, onReactivate }: Omit<CardProps, 'onArchive'> & { onOpen: () => void }) {
+function GymCard({ gym, photo, risk, busy, onOpen, onPlan, onSuspend, onInvite, onReactivate }: Omit<CardProps, 'onArchive'> & { onOpen: () => void; photo?: string }) {
   const stop = (fn: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); fn(); };
   const warn = !!gym.lock_reason || risk?.level === 'high';
+  /* A reveal tile (owner, 2026-11-23, like the admin's Exercises and Resources): the gym's own front photo behind a
+     vignette, its name, status and first warning at rest; the figures and actions rise in under the pointer or focus.
+     No photo: its logo blown up and blurred, else its colour and initials. */
   return (
-    <div className={`gym-card${warn ? ' warn' : ''}`} role="button" tabIndex={0} aria-label={`${gym.name}, open`}
-      onClick={onOpen}
+    <div className={`gym-card gx-rv${warn ? ' warn' : ''}`} role="button" tabIndex={0} aria-label={`${gym.name}, open`}
+      onClick={onOpen} data-has-photo={photo ? '' : undefined}
       onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onOpen(); } }}>
+      <div className="gx-art" aria-hidden="true">
+        {photo ? <img src={photo} alt="" loading="lazy" />
+          : gym.logo_url ? <img className="gx-blur" src={gym.logo_url} alt="" loading="lazy" />
+          : <span className="gx-big"><GymMark name={gym.name} logoUrl={null} accent={gym.accent} size={96} /></span>}
+      </div>
+      <div className="gx-corner"><GymStatus gym={gym} short /></div>
+      <div className="gx-body">
       <div className="gx-head">
-        <GymMark name={gym.name} logoUrl={gym.logo_url} accent={gym.accent} size={40} />
+        <GymMark name={gym.name} logoUrl={gym.logo_url} accent={gym.accent} size={36} />
         <span className="gx-title">
           <span className="gx-name">{gym.name}</span>
           <span className="gx-slug">/join/{gym.slug}</span>
         </span>
-        <GymStatus gym={gym} short />
       </div>
+      <Flags gym={gym} risk={risk} />
+      <div className="gx-more"><div>
 
       <div className="gx-figs">
         <div><b>{gym.members.toLocaleString('en-PH')}{gym.max_members !== null && <small> / {gym.max_members}</small>}</b><span>member{gym.members === 1 ? '' : 's'}</span></div>
@@ -379,8 +393,6 @@ function GymCard({ gym, risk, busy, onOpen, onPlan, onSuspend, onInvite, onReact
         <div><dt>Activity</dt><dd>{since(gym.last_activity)}</dd></div>
       </dl>
 
-      <Flags gym={gym} risk={risk} />
-
       <div className="gym-foot">
         {gym.owners === 0 && <button className="btn" disabled={busy} onClick={stop(onInvite)}>Invite the owner</button>}
         <button className="btn ghost" disabled={busy} onClick={stop(onPlan)}>Plan</button>
@@ -388,6 +400,8 @@ function GymCard({ gym, risk, busy, onOpen, onPlan, onSuspend, onInvite, onReact
           ? <button className="btn ghost" disabled={busy} onClick={stop(onSuspend)}>Suspend</button>
           : <button className="btn" disabled={busy} onClick={stop(onReactivate)}>{gym.status === 'archived' ? 'Restore' : 'Reactivate'}</button>}
         <span className="open">Details <ChevronRight size={14} /></span>
+      </div>
+      </div></div>
       </div>
     </div>
   );

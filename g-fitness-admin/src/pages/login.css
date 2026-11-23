@@ -75,7 +75,9 @@
 
 /* ---- The floor plan behind it all (LoginFloorPlan.tsx): drawn once, never looping. ---- */
 .al { position: relative; isolation: isolate; overflow: hidden; }
-.al > :not(.al-plan) { position: relative; z-index: 1; }
+.al > :not(.al-plan):not(.al-dialog) { position: relative; z-index: 1; }
+/* The "already signed in" dialog covers the whole screen over the page; the rule above had made it a strip in the flow. */
+.al > .al-dialog { position: fixed; z-index: 80; }
 /* Between the header and the footer, whole (meet), so no wall crosses their words. */
 .al-plan { position: absolute; top: 76px; bottom: 64px; left: 0; width: 100%; height: calc(100% - 140px); z-index: 0; pointer-events: none; }
 .al-plan path, .al-plan rect, .al-plan circle { fill: none; stroke: rgb(255 255 255 / .085); stroke-width: 1.4; vector-effect: non-scaling-stroke;

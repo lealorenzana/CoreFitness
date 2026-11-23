@@ -74,7 +74,9 @@ export default function App() {
   const [gate, setGate] = useState<Gate>('checking');
 
   const check = useCallback(async () => {
-    setGate((await isPlatformAdmin()) ? 'in' : 'out');
+    // A one-time password (platform-owner Edge Function) is not a way in: the door asks for their own first.
+    const { data: { user } } = await supabase.auth.getUser();
+    setGate(!user?.user_metadata?.must_change_password && (await isPlatformAdmin()) ? 'in' : 'out');
   }, []);
 
   useEffect(() => {

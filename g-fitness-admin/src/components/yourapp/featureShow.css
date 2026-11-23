@@ -24,10 +24,10 @@
 
 /* Frames */
 .fs-frame { position: relative; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 24px 50px rgb(0 0 0 / .45); }
-.fs-phone { width: 200px; height: min(360px, 100%); border-radius: 30px; border: 7px solid #050508; background: #0B0B14; }
+.fs-phone { width: 200px; height: min(360px, 100%); border-radius: 30px; border: 7px solid #050508; background: #0D0D0C; }
 .fs-phone::before { content: ""; position: absolute; top: 6px; left: 50%; transform: translateX(-50%); width: 62px; height: 15px; border-radius: 10px; background: #050508; z-index: 3; }
-.fs-desk { width: 300px; height: min(230px, 100%); border-radius: 12px; border: 1px solid #2a2842; background: #0E0E18; }
-.fs-desk::before { content: ""; height: 18px; flex: none; background: #17162a; border-bottom: 1px solid #2a2842;
+.fs-desk { width: 300px; height: min(230px, 100%); border-radius: 12px; border: 1px solid color-mix(in srgb, var(--color-primary) 18%, #1c1c1b); background: #0E0E18; }
+.fs-desk::before { content: ""; height: 18px; flex: none; background: color-mix(in srgb, var(--color-primary) 8%, #141413); border-bottom: 1px solid color-mix(in srgb, var(--color-primary) 18%, #1c1c1b);
   background-image: radial-gradient(circle at 10px 9px, #3a3850 3px, transparent 3.5px), radial-gradient(circle at 22px 9px, #3a3850 3px, transparent 3.5px), radial-gradient(circle at 34px 9px, #3a3850 3px, transparent 3.5px); }
 .fs-tv { width: 310px; height: min(190px, 100%); border-radius: 10px; border: 8px solid #050508; background: #07070d; }
 .fs-tv::after { content: ""; position: absolute; }

@@ -699,7 +699,7 @@ Let ${member.profile.first_name} in anyway?`)) return;
               <div className="a-door" data-door-screen="tv">
                 <div className="a-screen"><div className="a-tv"><span /><span /><span /><span /><span /></div></div>
                 <div><b>Lobby TV</b><div className="a-sub">Today’s classes, records and the gym goal, big.</div></div>
-                <button type="button" className="a-btn" style={{ marginTop: 'auto' }} onClick={() => navigate('/tv')}><MonitorPlay size={16} />Open lobby TV</button>
+                <button type="button" className="a-btn amber" style={{ marginTop: 'auto' }} onClick={() => navigate('/tv')}><MonitorPlay size={16} />Open lobby TV</button>
               </div>
             </div>
             {door?.coachCheckin ? (

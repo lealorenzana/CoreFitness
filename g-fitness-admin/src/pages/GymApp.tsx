@@ -4,7 +4,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import {
   Bell, Bot, Building2, Calendar, CalendarHeart, Camera, Check, Clapperboard, Coins, Copy, CreditCard, DoorOpen, Dumbbell, Flag, Globe, HeartHandshake,
   Lock, MessageSquare, MessagesSquare, PartyPopper, NotebookPen, Palette, Printer, QrCode, RefreshCw, Salad, Share2, ShoppingBag, Smartphone,
-  ToggleRight, Trophy, Tv, Type, UserCheck, UserPlus, Users, type LucideIcon,
+  Sparkles, ToggleRight, Trophy, Tv, Type, UserCheck, UserPlus, Users, type LucideIcon,
 } from 'lucide-react';
 import './attendance/att.css';
 import { showToast } from '../utils/toast';
@@ -16,6 +16,8 @@ import {
 } from '../lib/api/gymApp';
 import { rampFor } from '../lib/gymTheme';
 import { GROUPS, PAIRS, gradientOf } from '../lib/themePairs';
+/** The last chip on Colour pair: the premium themes, beside the free pairs. */
+const PREMIUM = 'Premium';
 import ColourRolePicker from '../components/ColourRolePicker';
 import { refreshGymModules } from '../hooks/useGymModules';
 import { uploadMedia } from '../lib/api/media';
@@ -287,7 +289,7 @@ export default function GymApp() {
             </button>
             {k === 'look' && (
               <div className="ya-sub" role="tablist" aria-label="Look steps">
-                {([['pair', 'Colour pair'], ['own', 'Your own colours'], ['premium', 'Premium theme'], ['logo', 'Logo and name']] as const).map(([s, l]) => (
+                {([['pair', 'Colour pair'], ['own', 'Your own colours'], ['logo', 'Logo and name']] as const).map(([s, l]) => (
                   <button key={s} type="button" role="tab" aria-selected={lookStep === s} className={lookStep === s ? 'on' : ''} onClick={() => go(k, s)} data-look-step={s}>{l}</button>
                 ))}
               </div>
@@ -305,7 +307,7 @@ export default function GymApp() {
               <div><div className="a-sub">Good morning</div><b style={{ display: 'block', fontSize: 16 }}>{shortName}</b></div>{logo(32)}
             </div>
             <div className="a-phcard"><div className="a-sub">This week</div><b style={{ fontSize: 18, color: a.c300 }}>3 of 4 days</b>
-              <div style={{ marginTop: 8, height: 6, borderRadius: 99, background: '#1E1D2B', overflow: 'hidden' }}><i style={{ display: 'block', width: '75%', height: '100%', background: gradientOf(look.accent, look.action) }} /></div></div>
+              <div style={{ marginTop: 8, height: 6, borderRadius: 99, background: 'color-mix(in srgb, var(--color-primary) 12%, #1c1c1b)', overflow: 'hidden' }}><i style={{ display: 'block', width: '75%', height: '100%', background: gradientOf(look.accent, look.action) }} /></div></div>
             <div className="a-phcard"><b>Strength Basics</b><div className="a-sub">Today 7:00 AM · seats left</div>
               <div className="a-phbtn" style={{ background: b.base, color: '#0B0B12', marginTop: 8 }}>Book</div></div>
             <div className="a-phcard flex items-center justify-between"><span className="a-sub">{pointsTitle}</span><b style={{ color: a.c300 }}>340</b></div>
@@ -316,12 +318,14 @@ export default function GymApp() {
               were stacked into one long list whose titles did not say how they differ. */}
 
           <div className="ya-step" data-ya-step="pair" id="ya-step-pair"><h2 className="ya-h">Colour pair</h2>
-            <p className="a-sub" style={{ marginBottom: 10 }}>The quickest way: a ready-made pair sets your main colour and your button colour together. Free.</p>
+            <p className="a-sub" style={{ marginBottom: 10 }}>The quickest way: a ready-made pair sets your main colour and your button colour together. Pairs are free; Premium themes restyle the whole app and come with the colours unlock.</p>
           <div className="flex items-center gap-2 flex-wrap" style={{ marginBottom: 6 }}>
-            <span className="a-lbl">One tap sets both colours</span>
+            <span className="a-lbl">{group === PREMIUM ? 'A whole style on top of your colours' : 'One tap sets both colours'}</span>
             <span style={{ marginLeft: 'auto' }} />
-            {GROUPS.map((g) => <button key={g} type="button" className={`a-chip ${group === g ? 'v' : ''}`} onClick={() => setGroup(g)}>{g}</button>)}
+            {[...GROUPS, PREMIUM].map((g) => <button key={g} type="button" className={`a-chip ${group === g ? 'v' : ''}`} onClick={() => setGroup(g)} data-pair-group={g}>{g === PREMIUM && <Sparkles size={12} />}{g}</button>)}
           </div>
+          {/* Premium themes live with the pairs (owner, 2026-11-23); still part of the colours unlock. */}
+          {group === PREMIUM ? <PremiumThemes /> : <>
           <div className="a-grid" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 6 }}>
             {PAIRS.filter((p) => p.group === group).map((p) => (
               <button key={p.name} type="button" className={`a-pair ${pairOn?.name === p.name ? 'on' : ''}`} aria-pressed={pairOn?.name === p.name}
@@ -331,6 +335,7 @@ export default function GymApp() {
             ))}
           </div>
           <SavedThemes accent={look.accent} action={look.action} onPick={(accent, action) => setLook((l) => ({ ...l, accent, action }))} />
+          </>}
           </div>
 
           <div className="ya-step" data-ya-step="own" id="ya-step-own"><h2 className="ya-h">Your own colours</h2>
@@ -352,11 +357,6 @@ export default function GymApp() {
             </div>
           </div>
 
-          </div>
-
-          <div className="ya-step" data-ya-step="premium" id="ya-step-premium"><h2 className="ya-h">Premium theme</h2>
-            <p className="a-sub" style={{ marginBottom: 4 }}>A whole style on top of your colours: the background, the panels, and a gradient on the main buttons, bars and member card. Saved as soon as you tap one.</p>
-            <PremiumThemes />
           </div>
 
           <div className="ya-step" data-ya-step="logo" id="ya-step-logo"><h2 className="ya-h">Logo and name</h2>

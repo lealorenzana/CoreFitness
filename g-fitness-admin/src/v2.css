@@ -177,7 +177,7 @@ button.dv2-row:active { transform: none; }
 /* The rail: a word under every icon (LESSONS L7), where you are = a raised tile and a 2px mark in the gym's colour. */
 .rail { display: flex; flex-direction: column; align-items: stretch; gap: 2px; padding: 10px 8px; background: var(--surface-solid);
   border-right: 1px solid var(--color-border); }
-.rail-mark { width: 36px; height: 36px; border-radius: 8px; margin: 0 auto 10px; overflow: hidden; flex: none; display: grid; place-items: center;
+.rail-mark { width: 36px; height: 36px; border-radius: 50%; margin: 0 auto 10px; overflow: hidden; flex: none; display: grid; place-items: center;
   background: var(--fill-primary, var(--color-primary)); color: #fff; font-size: 12px; font-weight: 700; }
 .rail-mark img { width: 100%; height: 100%; object-fit: cover; }
 .rail-nav { display: flex; flex-direction: column; gap: 2px; min-height: 0; overflow-y: auto; scrollbar-width: none; }
@@ -541,6 +541,9 @@ button.v2-railrow:hover, .v2-railbtn:hover { background: rgb(var(--hair-rgb, 255
     .dv2-figs > .dv2-fig:first-child) :is(.a-num, .n, b) { color: #fff !important; }
 :is(.att .a-figstrip > .a-card:first-child, .att [data-stats-strip] > .a-card:first-child) .v2-spark .cur { stroke: #fff !important; }
 :is(.att .a-figstrip > .a-card:first-child, .att [data-stats-strip] > .a-card:first-child) .v2-spark .cmp { stroke: rgb(255 255 255 / 0.45) !important; }
+/* A bar on the coloured hero tile: the gym's colour on the gym's colour vanished, so white on a white track. */
+:is(.att .a-figstrip > .a-card:first-child, .att [data-stats-strip] > .a-card:first-child, .dv2-figs > .dv2-fig:first-child) :is(.a-bar, .a-meter) { background: rgb(255 255 255 / 0.25) !important; }
+:is(.att .a-figstrip > .a-card:first-child, .att [data-stats-strip] > .a-card:first-child, .dv2-figs > .dv2-fig:first-child) :is(.a-bar, .a-meter) i { background: #FFFFFF !important; }
 
 /* Panels and rows answer the pointer. */
 .att .a-card, .att .a-row, .att .a-chip, .att .a-btn, .dv2-fig, .dv2-row, .att .a-table tbody tr {
@@ -762,6 +765,21 @@ button.v2-railrow:hover, .v2-railbtn:hover { background: rgb(var(--hair-rgb, 255
 :is(.att .ya-main, .att .st-main) .a-hint { padding: 12px 14px; font-size: 12.5px; line-height: 1.55; }
 :is(.att .ya-main, .att .st-main) :is(.a-grid, .a-what, .a-setting, .a-hint, table, .a-card) + :is(p, .a-sub, .a-hint) { margin-top: 12px !important; }
 :is(.att .ya-main, .att .st-main) :is(p, .a-sub, .a-hint, .a-grid) + :is(.a-grid, .a-fld, .a-setting:first-of-type) { margin-top: 14px; }
+/* More air on Settings and Your app (owner, 2026-11-23: "still too close to each other"): taller lines, a gap
+   between a label and its field, between one field and the next, and between a heading and what follows. */
+:is(.att .ya-main, .att .st-main) { line-height: 1.65; }
+:is(.att .ya-main, .att .st-main) :is(.a-sub, small, p) { line-height: 1.7; }
+:is(.att .ya-main, .att .st-main) .a-fld { gap: 10px; }
+:is(.att .ya-main, .att .st-main) .a-grid:has(> .a-fld) { row-gap: 24px !important; column-gap: 20px !important; }
+:is(.att .ya-main, .att .st-main) .a-setting { padding: 20px 0; gap: 22px; }
+:is(.att .ya-main, .att .st-main) .a-setting small { margin-top: 6px; }
+:is(.att .ya-main, .att .st-main) .a-ct { margin-bottom: 20px; }
+:is(.att .ya-main, .att .st-main) .a-ct:not(:first-child) { margin-top: 38px; }
+:is(.att .ya-main, .att .st-main) .ya-h { margin-bottom: 10px; }
+:is(.att .ya-main, .att .st-main) .ya-step + .ya-step { margin-top: 40px; }
+:is(.att .ya-main, .att .st-main) :is(.a-grid, .a-what, .a-setting, .a-hint, table, .a-card) + :is(p, .a-sub, .a-hint) { margin-top: 16px !important; }
+:is(.att .ya-main, .att .st-main) :is(p, .a-sub, .a-hint, .a-grid) + :is(.a-grid, .a-fld, .a-setting:first-of-type) { margin-top: 18px; }
+:is(.att .ya-main, .att .st-main) :is(p, .a-sub) + :is(p, .a-sub) { margin-top: 10px; }
 .att .st-sec { padding: 8px 0 48px; }
 .att .st-sec + .st-sec { padding-top: 36px; }
 .att .ya-sec { padding-bottom: 48px; }

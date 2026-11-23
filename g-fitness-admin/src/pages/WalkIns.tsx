@@ -220,7 +220,7 @@ export default function WalkIns() {
                 <label className="a-input"><Phone size={16} />
                   <input aria-label="Guest phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone (finds them next time)" /></label>
                 {guest ? (
-                  <div className="a-input" style={{ borderColor: '#43357e' }} data-guest-found>
+                  <div className="a-input" style={{ borderColor: 'color-mix(in srgb, var(--color-primary) 50%, transparent)' }} data-guest-found>
                     <Av name={guest.name} small />{guest.name}
                     <span className="a-pill v" style={{ marginLeft: 'auto' }}>been here {guest.visits_this_month}× this month</span>
                   </div>
@@ -297,10 +297,10 @@ export default function WalkIns() {
             </div>
           )}
 
-          <div className="a-card" style={{ minHeight: 0, flex: 1 }} data-walkins-today>
+          <div className="a-card" style={{ minHeight: 200, flex: 1 }} data-walkins-today>
             <div className="a-ct"><h3><Footprints size={16} />Today's walk-ins</h3><button type="button" className="a-link" style={{ color: 'var(--a-p300)' }} onClick={() => setHistOpen(true)}>Past walk-ins →</button></div>
             {visits.length === 0 ? <EmptyBlock icon={Footprints} compact title="No walk-ins yet today" body="A guest who pays for a visit shows here, with the cash and the time." /> : (
-              <div className="a-scroll" data-walkin-list>
+              <div className="a-scroll" style={{ flex: '1 1 0' }} data-walkin-list>
                 {visits.map((v) => (
                   <div key={v.id} className="a-row" style={{ opacity: v.voided ? 0.55 : 1 }}>
                     <Av name={v.name} small />
