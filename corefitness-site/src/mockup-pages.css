@@ -1,0 +1,16 @@
+/* The pages behind the header (My application, an application's status, the gym documents) wear mock-up 02's
+   language, so moving between them feels like one product (2026-11-24): the glass pill panel, the hero's
+   Archivo Black title, an amber pill button and a mascot resting on the panel. Admin login and the member
+   app's Get the app page copy the same values. */
+.status-page{position:relative;max-width:1240px;margin:28px auto 0;padding:56px 64px 60px;background:var(--v2-panel);border:1px solid var(--v2-edge);border-radius:72px;isolation:isolate}
+.status-page::after{content:'';position:absolute;right:46px;top:-86px;width:118px;height:118px;background:url(/mockup-art/phone-journey-mascot.webp) center/contain no-repeat;pointer-events:none;z-index:2}
+.status-title{font-family:'Archivo Black',Inter,sans-serif;font-weight:900;text-transform:uppercase;letter-spacing:-.035em;line-height:.98}
+.acct-card{border-radius:40px;background:#0e0d12b8;border-color:var(--v2-edge);padding:34px}
+:root[data-theme="light"] .acct-card{background:#fff}
+.status-page .cta{border-radius:16px}
+@media(max-width:900px){
+  .status-page{margin:16px 12px 0;padding:30px 20px 34px;border-radius:40px}
+  .status-page::after{width:80px;height:80px;top:-58px;right:22px}
+  .acct-card{border-radius:28px;padding:22px 18px}
+}
+@media(prefers-reduced-motion:no-preference){.status-page::after{animation:v2-rest-float 4s ease-in-out infinite alternate}}

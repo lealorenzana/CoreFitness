@@ -129,7 +129,7 @@ async (page) => {
   await page.locator('[data-next-step]').getByRole('button', { name: 'Open Documents' }).click();
   await page.locator('[data-documents]').waitFor({ timeout: 8000 });
   let t = await page.locator('main').innerText();
-  out.push('signed in, their application opens: ' + (/Iron Den/.test(t) && /signed in as ana@ironden\.ph/i.test(t) ? 'yes' : 'MISSING'));
+  out.push('signed in, their application opens: ' + (/Iron Den/i.test(t) && /signed in as ana@ironden\.ph/i.test(t) ? 'yes' : 'MISSING'));
   out.push('six documents, with what was made of each: ' + ((await page.locator('[data-doc]').count()) === 6 && /1 of 6 verified/.test(t)
     && /The photo is blurred\./.test(t) ? 'yes' : 'MISSING ' + (await page.locator('[data-doc]').count())));
   out.push('a verified one cannot be resent here: ' + ((await page.locator('[data-doc="permit"] input[type=file]').count()) === 0 ? 'yes' : 'STILL SHOWN'));

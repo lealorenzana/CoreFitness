@@ -19,7 +19,6 @@ import { usePublishedDocs } from './usePublishedDocs';
 import { usePlatformFacts } from './usePlatformFacts';
 import { useSiteTexts } from './siteTexts';
 import { useMotionEngine } from './motion';
-import { currentTheme, setTheme, type Theme } from './theme';
 
 const MEMBER_APP = 'https://corefitness-gym.vercel.app';
 import { GYM_SIGN_IN, showGymSignIn, useSiteAccount, type SiteAccount } from './siteAccount';
@@ -78,18 +77,6 @@ const FAQ: [string, string][] = [
 ];
 
 const NAV: [string, string][] = [['inside', 'Features'], ['day', 'A day'], ['pricing', 'Pricing'], ['faq', 'Questions']];
-
-/** Light or dark (2026-10-21) — index.html picked one before paint; this flips it and remembers. */
-function ThemeToggle() {
-  const [theme, setThemeState] = useState<Theme>(() => currentTheme());
-  const next: Theme = theme === 'dark' ? 'light' : 'dark';
-  return (
-    <button type="button" className="theme-btn" aria-label={`Switch to ${next} mode`} title={`Switch to ${next} mode`}
-      onClick={() => { setTheme(next); setThemeState(next); }}>
-      <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
-    </button>
-  );
-}
 
 /**
  * The coaches band's try-it (2026-11-21): a coach's request queue with three sample requests. Accept tells
@@ -308,7 +295,6 @@ export default function App() {
           <a className="link-quiet hide-sm" href="#account">My application</a>
           {/* Hidden for an applicant whose gym is still pending — they have no gym to sign in to yet (2026-11-08). */}
           {showGymSignIn(siteAccount) && <a className="link-quiet" href={GYM_SIGN_IN} aria-label="Gym sign in" data-gym-sign-in><span className="hide-sm">Gym sign in</span><span className="only-sm">Sign in</span></a>}
-          <ThemeToggle />
           <a className="cta" href="#apply">Register</a>
         </div>
       </header>
