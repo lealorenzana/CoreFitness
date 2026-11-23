@@ -1,3 +1,4 @@
+import SkelRows from './ui/SkelRows';
 import { useCallback, useEffect, useState } from 'react';
 import { HandHeart, Medal, Plus, Sparkles, Trash2, Trophy } from 'lucide-react';
 import Button from './ui/Button';
@@ -39,18 +40,29 @@ export default function SeasonSection({ isAdmin }: { isAdmin: boolean }) {
   const [draft, setDraft] = useState<{ name: string; points: string; reward: string }>({ name: '', points: '', reward: '' });
   const [preset, setPreset] = useState<{ name: string; points: string; reward: string }[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   const load = useCallback(async () => {
-    const [t, c, o, r] = await Promise.all([
-      listTiers(), openClaims(), seasonOverview(),
-      supabase.from('rewards').select('id, name').eq('is_active', true).order('name'),
-    ]);
-    setTiers(t); setClaims(c); setOverview(o);
-    setRewards((r.data ?? []) as { id: string; name: string }[]);
+    try {
+      const [t, c, o, r] = await Promise.all([
+        listTiers(), openClaims(), seasonOverview(),
+        supabase.from('rewards').select('id, name').eq('is_active', true).order('name'),
+      ]);
+      setTiers(t); setClaims(c); setOverview(o);
+      setRewards((r.data ?? []) as { id: string; name: string }[]);
+      setFailed(false);
+    } catch {
+      // A failed read used to leave the tab blank forever, which reads as "nothing here" (2026-11-23).
+      setFailed(true);
+    }
   }, []);
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
-  if (tiers === undefined) return null;
+  if (tiers === undefined) {
+    return failed
+      ? <Section title="Monthly season" icon={Medal}><p className="text-xs" style={{ color: MUTED }}>The season could not be loaded: a connection problem, not an empty season. Reload to try again.</p></Section>
+      : <SkelRows label="Loading the season…" />;
+  }
   if (tiers === null) {
     return <Section title="Monthly season" icon={Medal}><p className="text-xs" style={{ color: MUTED }}>Monthly seasons need migration 0123, which is not live here.</p></Section>;
   }

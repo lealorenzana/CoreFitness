@@ -81,9 +81,9 @@ export default function SquadsTab() {
       <div className="a-card" data-squads-how>
         <div className="a-ct"><h3><Info size={16} />How squads work</h3></div>
         <div className="a-step" style={{ fontWeight: 500, alignItems: 'flex-start' }}><span>1</span><div className="a-sub" style={{ fontSize: 12.5, color: 'var(--a-text2)' }}>A member opens Squads in the app, names one and gets a six-letter code.</div></div>
-        <div className="a-step" style={{ fontWeight: 500, alignItems: 'flex-start' }}><span>2</span><div className="a-sub" style={{ fontSize: 12.5, color: 'var(--a-text2)' }}>Friends join with the code — five at most. The squad sets a weekly target: days trained between them.</div></div>
+        <div className="a-step" style={{ fontWeight: 500, alignItems: 'flex-start' }}><span>2</span><div className="a-sub" style={{ fontSize: 12.5, color: 'var(--a-text2)' }}>Friends join with the code, five at most. The squad sets a weekly target: days trained between them.</div></div>
         <div className="a-step" style={{ fontWeight: 500, alignItems: 'flex-start' }}><span>3</span><div className="a-sub" style={{ fontSize: 12.5, color: 'var(--a-text2)' }}>Every member's training days count for the squad, Monday to Sunday. A week they hit pays each of them the squad-week points from Rewards.</div></div>
-        <div className="a-hint" style={{ marginTop: 6 }}><Lightbulb size={14} /><span>Squads cost you nothing to run. Mention them at the desk — members who train with friends have a reason to show up.</span></div>
+        <div className="a-hint" style={{ marginTop: 6 }}><Lightbulb size={14} /><span>Squads cost you nothing to run. Mention them at the desk: members who train with friends have a reason to show up.</span></div>
       </div>
     </div>
   );

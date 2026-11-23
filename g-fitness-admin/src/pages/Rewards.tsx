@@ -551,7 +551,7 @@ export default function Rewards() {
 
   return (
     <div className="rd-fit" data-rewards>
-      <RdHeader title="Rewards" subtitle="What members can spend their CORE Points on, and who is waiting on you."
+      <RdHeader art="/art/tile-rewards.webp" title="Rewards" subtitle="What members can spend their CORE Points on, and who is waiting on you."
         actions={<>
           <PageGuide id="rewards" />
           <PageTabs<Tab> label="Rewards sections" value={tab} onChange={setTab} tabs={[

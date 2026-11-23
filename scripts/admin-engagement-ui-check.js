@@ -149,7 +149,8 @@ async (page) => {
   await page.waitForTimeout(1200);
   await page.screenshot({ path: 'shots/admin-challenges.png' });
   t = await text();
-  out.push('the four ideas, each explained where it is chosen: ' + ((await page.locator('[data-idea]').count()) === 4 && /members make/.test(t) && /everyone together/.test(t) && /personal goal/.test(t) ? 'yes' : 'MISSING'));
+  // Since 2026-11-23 the four ideas are a list down the left and only the open one's explanation leads the page.
+  out.push('the four ideas listed, the open one explained: ' + ((await page.locator('[data-idea]').count()) === 4 && /dates that members join/.test(t) ? 'yes' : 'MISSING'));
   out.push('completions settle on open: ' + (CALLS.some((c) => c[1] === 'settle_challenges') ? 'yes' : 'MISSING'));
   await page.locator('[data-challenge-new]').getByRole('button', { name: 'Weekend warrior' }).click();
   out.push('a preset fills the sentence: ' + ((await page.getByLabel('Target', { exact: true }).inputValue()) === '6' && (await page.getByLabel('What is counted').inputValue()) === 'weekend_days'
@@ -180,8 +181,8 @@ async (page) => {
   await page.goto('http://localhost:5174/achievements', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(2000);
   await page.screenshot({ path: 'shots/admin-achievements.png' });
-  // One-screen maker beside the catalogue (2026-10-20, the approved mock-up).
-  await page.getByRole('button', { name: /New achievement/ }).click();
+  // One-screen maker beside the catalogue (2026-10-20); the form is already open, so New achievement shows only while editing (2026-11-23).
+  if (await page.getByRole('button', { name: /New achievement/ }).count()) await page.getByRole('button', { name: /New achievement/ }).click();
   await page.locator('[data-badge-maker]').waitFor({ timeout: 10000 });
   await page.getByLabel('What it counts').selectOption('training_days');
   await page.getByLabel('How many').fill('10');

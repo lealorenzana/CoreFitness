@@ -25,6 +25,11 @@ import CoachTab from '../components/yourapp/CoachTab';
 import PayTab from '../components/yourapp/PayTab';
 import TvTab from '../components/yourapp/TvTab';
 import CelebrationsTab from '../components/yourapp/CelebrationsTab';
+import { YaStage } from '../components/yourapp/stage';
+import { StageCtx } from '../components/yourapp/stageCtx';
+
+/** Sections that hand a preview to the fixed column. */
+const STAGED: string[] = ['look', 'words', 'runs', 'join', 'coach', 'pay', 'tv', 'moments'];
 import PremiumThemes from '../components/yourapp/PremiumThemes';
 import SavedThemes from '../components/yourapp/SavedThemes';
 import { cropPhoto } from '../components/ui/PhotoCropper';
@@ -89,6 +94,10 @@ export default function GymApp() {
   const [look, setLook] = useState({ accent: 'violet', action: '', logo_url: '' });
   const [lookStep, setLookStep] = useState<'pair' | 'own' | 'premium' | 'logo'>('pair');
   const [open, setOpen] = useState<AppTab>(tab);
+  /** The fixed preview column (owner, 2026-11-23): shows the section on screen; one with no phone keeps the last. */
+  const [stageEl, setStageEl] = useState<HTMLElement | null>(null);
+  const [stageSec, setStageSec] = useState<string>(tab);
+  if (open !== stageSec && STAGED.includes(open)) setStageSec(open);
   const [group, setGroup] = useState(GROUPS[0]);
   const [uploading, setUploading] = useState(false);
   /** The gym's address, open for editing. NULL means "not editing", so an accidental empty box cannot be saved. */
@@ -227,12 +236,13 @@ export default function GymApp() {
   return (
     <div className="att" data-your-app>
       <div className="a-head">
-        <div className="min-w-0"><h1>Your app</h1><p>Everything {app.gym_name}'s members see on their phones: change it here, watch it change on the right</p></div>
+        <div className="min-w-0 v3-banner" style={{ ['--art' as string]: 'url(/art/tile-yourapp.webp)' }}><h1>Your app</h1><p>Everything {app.gym_name}'s members see on their phones: change it here, watch it change on the right</p></div>
       </div>
 
       {/* Settings-app layout (owner, 2026-11-23, after Discord's): the sections down the left, the open one's
           steps under it with a line beside the current; the content in one column; the phone on the right. */}
-      <div className="ya-shell">
+      <StageCtx.Provider value={{ el: stageEl, sec: stageSec }}>
+      <div className="ya-shell ya-has-stage">
       <nav className="ya-nav" role="tablist" aria-label="Your app sections" aria-orientation="vertical">
         {APP_TABS.filter(([k]) => k !== 'coach' || coachSold).map(([k, t, Icon]) => (
           <div key={k}>
@@ -535,7 +545,9 @@ export default function GymApp() {
       <section className="ya-sec ya-full" data-ya-sec="tv" id="ya-tv"><TvTab /></section>
       <section className="ya-sec ya-full" data-ya-sec="moments" id="ya-moments"><CelebrationsTab /></section>
       </div>
+      <aside className="ya-stage-col" ref={setStageEl} aria-label="Live preview" />
       </div>
+      </StageCtx.Provider>
 
       {poster && (
         <JoinPoster
@@ -555,11 +567,11 @@ export default function GymApp() {
 
 /** A settings card beside a phone, the shape of every tab on this page. */
 function Split({ children, preview, sec }: { children: ReactNode; preview: ReactNode; sec: string }) {
-  // One section of the page; its phone stays beside it while the section scrolls past (sticky).
+  // One section of the page; its phone goes to the fixed preview column while the section is on screen.
   return (
     <section className="ya-sec" data-ya-sec={sec} id={`ya-${sec}`}>
       <div className="ya-body">{children}</div>
-      <div className="ya-preview">{preview}</div>
+      <YaStage sec={sec}>{preview}</YaStage>
     </section>
   );
 }

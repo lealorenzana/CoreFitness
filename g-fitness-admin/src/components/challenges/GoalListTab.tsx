@@ -69,7 +69,7 @@ export default function GoalListTab({ onChanged }: { onChanged?: () => void }) {
   };
 
   if (items === undefined) return <SkelRows label="Loading…" />;
-  if (items === null) return <div className="a-card"><p className="a-sub">The goal list could not be loaded — a connection problem, not an empty list.</p></div>;
+  if (items === null) return <div className="a-card"><p className="a-sub">The goal list could not be loaded: a connection problem, not an empty list.</p></div>;
   const t = items.find((x) => x.key === pick) ?? null;
   const target = Number(draft.target) || 0;
   const dirty = !!t && (draft.label !== t.label || draft.description !== t.description || draft.target !== String(t.target_default));
@@ -119,10 +119,10 @@ export default function GoalListTab({ onChanged }: { onChanged?: () => void }) {
           <div className="a-prev"><b>{draft.label.trim() || 'Untitled'}</b>
             <div className="a-sub" style={{ margin: '3px 0 8px' }}>0 of {target} · {windowWord(t.period_days)}</div>
             <div className="a-big"><i style={{ width: '2%' }} /></div>
-            <div className="a-sub" style={{ marginTop: 6 }}>Marked reached by the app when the count gets there — worth points.</div></div>
+            <div className="a-sub" style={{ marginTop: 6 }}>Marked reached by the app when the count gets there: worth points.</div></div>
           <div className="a-hint" style={{ marginTop: 10 }}><Lock size={14} /><span>How a goal is measured cannot change once members use it, so a goal they set never moves under them. The starting number applies to goals set from now on.</span></div>
           <button type="button" className="a-btn violet" style={{ marginTop: 12 }} disabled={busy || !dirty || !draft.label.trim() || target <= 0}
-            onClick={() => void save(t, { label: draft.label.trim(), description: draft.description.trim(), target_default: target }, `${draft.label.trim()} saved — members see it in the goal picker`)} data-save-goal>
+            onClick={() => void save(t, { label: draft.label.trim(), description: draft.description.trim(), target_default: target }, `${draft.label.trim()} saved: members see it in the goal picker`)} data-save-goal>
             <Check size={15} />Save</button>
         </div>
       )}

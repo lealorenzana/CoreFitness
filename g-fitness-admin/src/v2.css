@@ -538,3 +538,86 @@ button.v2-railrow:hover, .v2-railbtn:hover { background: rgb(var(--hair-rgb, 255
 @media (prefers-reduced-motion: reduce) {
   .att button.a-card:hover, .att .a-card.press:hover, .att .a-btn:hover, .dv2-fig.as-btn:hover { transform: none; }
 }
+
+/* ══ Design V3, part 2 (owner, 2026-11-23): Plans, Challenges, Achievements, Rewards, Programs, Your app's preview ═══
+   Discord's settings: a list down the left whose marks round into the gym's art tile when chosen, one column of
+   headings and rows, raised panels only where a form lives. Header tiles are the owner's images (public/art). */
+.v3-banner { position: relative; isolation: isolate; overflow: hidden; border-radius: 14px; padding: 14px 22px 14px 18px; min-height: 74px;
+  display: flex; flex-direction: column; justify-content: center; flex: 1 1 520px;
+  background: #0b0a0f var(--art) right center / cover no-repeat; }
+.v3-banner::after { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: color-mix(in srgb, var(--color-primary) 70%, transparent); mix-blend-mode: color; }
+.v3-banner h1 { color: #fff !important; }
+.v3-banner p { color: rgb(255 255 255 / 0.8) !important; }
+:root[data-mode="light"] .v3-banner { background: var(--v3-art); }
+:root[data-mode="light"] .v3-banner::after { inset: 0 0 0 42%; background: var(--art) right center / cover no-repeat; mix-blend-mode: screen; opacity: 0.6; }
+
+.att .v3-shell { grid-template-columns: 264px minmax(0, 1fr); }
+.att .v3-li { align-items: flex-start; padding: 9px 10px; gap: 11px; }
+.att .v3-li-t { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
+.att .v3-li-t b { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 13.5px; font-weight: 600; color: var(--a-ink); }
+.att .v3-li-t small { font-size: 12px; line-height: 1.35; color: var(--a-muted); font-weight: 500; }
+.att .v3-mark { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-size: 14px; font-weight: 700;
+  background: rgb(var(--hair-rgb, 255 255 255) / 0.07); color: var(--a-text2);
+  transition: border-radius 220ms var(--v3-ease), transform 180ms var(--v3-ease), background-color 160ms, color 160ms; }
+.att .v3-li:hover .v3-mark { border-radius: 11px; }
+.att .v3-li.on .v3-mark { border-radius: 11px; background: var(--v3-art); color: #fff; }
+.att .v3-li.on .v3-mark svg { color: #fff; }
+.att .v3-new { flex-wrap: wrap; margin-top: 6px; color: var(--a-text2); }
+.att .v3-new svg { width: 34px; height: 34px; padding: 8px; border-radius: 50%; background: rgb(var(--hair-rgb, 255 255 255) / 0.07); color: var(--a-p300, currentColor);
+  transition: border-radius 220ms var(--v3-ease), background-color 160ms; flex: none; }
+.att .v3-new:hover svg, .att .v3-new.on svg { border-radius: 11px; }
+.att .v3-new small { flex-basis: 100%; padding-left: 44px; margin-top: -8px; font-size: 12px; color: var(--a-muted); font-weight: 500; }
+.att [data-program-list] .v3-new { margin: 0 0 4px; }
+
+.att .v3-sec { max-width: 880px; }
+.att .v3-sec-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.att .v3-sec-h .ya-h { margin: 0; }
+.att .v3-lead { margin: 4px 0 18px; max-width: 660px; font-size: 13px; line-height: 1.5; }
+.att .v3-lead b { color: var(--a-ink); font-weight: 600; }
+.att .v3-row-h { margin: 22px 0 8px; font-size: 13px; font-weight: 650; color: var(--a-ink); }
+.att .v3-row-h span { font-weight: 500; color: var(--a-muted); }
+.att .v3-sec .a-setting { padding: 12px 0; gap: 14px; }
+.att .v3-page-h { margin-bottom: 4px; }
+
+/* Challenges: the list sits on the page, the form is the one raised panel; nothing stretches into an empty box. */
+.att .v3-main > .a-grid { flex: none !important; align-items: start; gap: 20px; }
+:root .att .ya-main.v3-main > .a-grid > .a-card.glow, :root .att .ya-main.v3-main > .a-grid > [data-goal-new] {
+  background: var(--a-surface); border: 1px solid var(--a-border); border-radius: 14px; padding: 18px; max-width: none; }
+.att .v3-main .a-scroll.grow { overflow: visible; }
+
+/* Empty states: the owner's art, floating gently. */
+.att .v3-emptyart { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding: 20px 12px; margin: auto; }
+.att .v3-emptyart img { height: 120px; width: auto; margin-bottom: 8px; filter: drop-shadow(0 18px 22px rgb(0 0 0 / 0.35)); }
+.att .v3-emptyart b { font-size: 14px; color: var(--a-ink); }
+.att .v3-emptyart-row { flex-direction: row; text-align: left; align-items: center; gap: 18px; margin: 0; padding: 12px 0; }
+.att .v3-emptyart-row img { height: 84px; margin: 0; }
+.att .v3-emptyart-row > div { display: flex; flex-direction: column; gap: 2px; }
+@media (prefers-reduced-motion: no-preference) {
+  .att .v3-emptyart img { animation: v3-float 6s ease-in-out infinite; }
+  .att .v3-sec { animation: v2-row-in 240ms var(--v3-ease) both; }
+}
+@keyframes v3-float { 50% { transform: translateY(-6px); } }
+
+/* Badges and programs answer the pointer like the rest. */
+.att .a-badge, .att .a-tile { transition: border-color 160ms var(--v3-ease), transform 180ms var(--v3-ease), box-shadow 180ms var(--v3-ease), background-color 160ms; }
+.att .a-badge:hover, .att button.a-tile:hover:not(:disabled) { transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--color-primary) 45%, var(--a-border, transparent));
+  box-shadow: 0 14px 30px -20px color-mix(in srgb, var(--color-primary) 70%, transparent); }
+[data-reward-card] { transition: transform 180ms var(--v3-ease), box-shadow 180ms var(--v3-ease), border-color 160ms; }
+[data-reward-card]:hover { transform: translateY(-2px); box-shadow: 0 16px 34px -22px color-mix(in srgb, var(--color-primary) 75%, transparent); }
+@media (prefers-reduced-motion: reduce) {
+  .att .a-badge:hover, .att button.a-tile:hover, [data-reward-card]:hover { transform: none; }
+}
+
+/* Your app: one preview column that never scrolls; it shows the section on screen (owner, 2026-11-23). */
+.att .ya-shell.ya-has-stage { grid-template-columns: 220px minmax(0, 1fr) 360px; }
+.att .ya-has-stage .ya-sec { display: block; }
+.att .ya-stage-col { min-height: 0; display: flex; flex-direction: column; }
+.att .ya-stage-in { flex: 1; min-height: 0; display: flex; }
+.att .ya-stage-in > * { flex: 1; min-height: 0; }
+@media (prefers-reduced-motion: no-preference) { .att .ya-stage-in { animation: v2-row-in 240ms var(--v3-ease) both; } }
+@media (max-width: 1400px) { .att .ya-shell.ya-has-stage { grid-template-columns: 200px minmax(0, 1fr) 320px; gap: 20px; } }
+/* Inside the scrolling Challenges column a grid row sized for a fixed height page collapsed to nothing. */
+.att .v3-main .a-grid { grid-template-rows: none !important; }
+.att .v3-main .a-card { min-height: auto; }

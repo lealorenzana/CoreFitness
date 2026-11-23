@@ -245,7 +245,6 @@ export default function Achievements() {
           <button type="button" className={audience === 'member' ? 'on' : ''} onClick={() => { setAudience('member'); setKind('all'); if (!editing) setDraft(blank('member', 0)); }}><Users size={14} />For members <em>{rows.filter((r) => r.audience === 'member').length}</em></button>
           <button type="button" className={audience === 'trainer' ? 'on' : ''} onClick={() => { setAudience('trainer'); setKind('all'); if (!editing) setDraft(blank('trainer', 0)); }} data-audience="trainer"><Dumbbell size={14} />For coaches <em>{rows.filter((r) => r.audience === 'trainer').length}</em></button>
         </nav>
-        <button type="button" className="a-btn violet" onClick={startNew}><Plus size={15} />New achievement</button>
       </div>
 
       <div className="a-grid" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', flex: 'none' }} data-badge-tiles>
@@ -272,7 +271,8 @@ export default function Achievements() {
             </div>
           </div>
           <div className="a-scroll grow">
-            {state === 'loading' ? <SkelRows label="Loading…" /> : visible.length === 0 ? <p className="a-sub" style={{ padding: '10px 0' }}>{q ? 'Nothing matches that.' : 'None of this kind yet: make one on the right.'}</p> : groups.map((g) => {
+            {state === 'loading' ? <SkelRows label="Loading…" /> : visible.length === 0 ? (q ? <p className="a-sub" style={{ padding: '10px 0' }}>Nothing matches that.</p>
+              : <div className="v3-emptyart" style={{ marginTop: 40 }}><img src="/art/empty-trophy.webp" alt="" /><b>None of this kind yet</b><span className="a-sub">Make one with the form beside this list.</span></div>) : groups.map((g) => {
               const items = visible.filter((r) => r.category === g);
               return (
                 <div key={g}>
@@ -301,6 +301,8 @@ export default function Achievements() {
         <div className="a-card glow" style={{ overflowY: 'auto' }} data-badge-maker>
           <div className="a-ct">
             <h3><Sparkles size={16} />{editing ? `Edit ${editing.title}` : 'New achievement'}</h3>
+            {/* The form is always open; New achievement only leaves an open badge (owner, 2026-11-23: no button for a form already on the page). */}
+            {editing && <button type="button" className="a-btn ghost sm" onClick={startNew}><Plus size={13} />New achievement</button>}
             {!locked && (
               <div className="a-seg" role="group" aria-label="How it is given">
                 <button type="button" className={draft.rule_kind === 'metric' ? 'on' : ''} onClick={() => set({ rule_kind: 'metric' })}>Automatic</button>

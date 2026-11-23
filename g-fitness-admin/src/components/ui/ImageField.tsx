@@ -122,7 +122,7 @@ export default function ImageField({
             border: `1px dashed ${broken ? 'var(--color-secondary)' : 'var(--color-border)'}`,
             cursor: busy ? 'wait' : 'pointer',
           }}
-          title="Upload a JPEG, PNG or WebP — it is resized automatically"
+          title="Upload a JPEG, PNG or WebP; it is resized automatically"
         >
           {busy ? (
             <>
@@ -144,7 +144,7 @@ export default function ImageField({
               <ImagePlus size={18} style={{ color: 'var(--color-text-muted)' }} />
               <span className="text-[11px] font-semibold text-white">Add a picture</span>
               <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
-                JPEG, PNG or WebP — resized for you
+                JPEG, PNG or WebP, resized for you
               </span>
             </>
           )}

@@ -49,13 +49,15 @@ export function RdTabs({ tabs }: { tabs: RdTab[] }) {
   );
 }
 
-export function RdHeader({ title, subtitle, tabs, actions }: {
+export function RdHeader({ title, subtitle, tabs, actions, art }: {
   title: string; subtitle?: React.ReactNode; tabs?: RdTab[]; actions?: React.ReactNode;
+  /** A header tile image (Design V3): the title sits on its dark left, the picture shows on the right. */
+  art?: string;
 }) {
   return (
     <header className="flex items-start justify-between gap-4 flex-wrap" data-rd-header>
       <div className="flex items-center gap-8 flex-wrap min-w-0">
-        <div className="min-w-0">
+        <div className={art ? 'min-w-0 v3-banner' : 'min-w-0'} style={art ? { ['--art' as string]: `url(${art})` } : undefined}>
           {/* One type scale across the app (Design V2): 22px titles, 13px subtitles. */}
           <h1 className="text-[22px] leading-tight font-semibold text-white tracking-tight">{title}</h1>
           {subtitle && <p className="text-[13px] mt-0.5" style={{ color: SECOND }}>{subtitle}</p>}

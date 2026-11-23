@@ -1,5 +1,6 @@
 import PageGuide from '../guides/PageGuide';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { YaStage } from './stage';
 import { Check, CreditCard, ExternalLink, Smartphone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { showToast } from '../../utils/toast';
@@ -30,13 +31,13 @@ function Steps({ acc }: { acc: GymAccount | null }) {
     { title: 'Make a PayMongo account', done: !!acc,
       body: <>At {link('https://www.paymongo.com', 'paymongo.com')}, with your gym&rsquo;s email. It is free to open; PayMongo takes a fee from each payment.</> },
     { title: 'Activate it with your business details', done: !!acc?.live,
-      body: <>PayMongo asks for your business registration (DTI or SEC), a valid ID and the bank account it pays you out to, and reviews them. Until it activates you, only test mode works — that is fine for step 5.</> },
+      body: <>PayMongo asks for your business registration (DTI or SEC), a valid ID and the bank account it pays you out to, and reviews them. Until it activates you, only test mode works, that is fine for step 5.</> },
     { title: 'Copy your secret key', done: !!acc,
       body: <>In {link('https://dashboard.paymongo.com/developers', 'dashboard.paymongo.com → Developers → API keys')}. It starts with <b>sk_test_</b> (test) or, once activated, <b>sk_live_</b>. Never share it with anyone else.</> },
     { title: 'Paste it below and press Connect', done: !!acc,
       body: <>Core Fitness checks it with PayMongo and stores it encrypted; it is never shown again, here or anywhere.</> },
     { title: 'Try it in test mode', done: !!acc?.live,
-      body: <>With the test key, open the member app, renew a plan and choose Pay in the app. Use one of {link('https://developers.paymongo.com', 'PayMongo’s test cards (in its developer docs)')} — no real money moves — and see it arrive in Payments with a receipt number.</> },
+      body: <>With the test key, open the member app, renew a plan and choose Pay in the app. Use one of {link('https://developers.paymongo.com', 'PayMongo’s test cards (in its developer docs)')}, no real money moves, and see it arrive in Payments with a receipt number.</> },
     { title: 'Go live', done: !!acc?.live,
       body: <>When PayMongo activates your account, connect your <b>sk_live_</b> key here instead. Members&rsquo; payments land in your PayMongo balance and PayMongo pays them out to your bank; Core Fitness never holds your money.</> },
   ];
@@ -87,7 +88,7 @@ export default function PayTab() {
   const monthName = new Date().toLocaleDateString('en-PH', { month: 'long' });
 
   return (
-    <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) 380px', flex: 1 }}>
+    <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr)', flex: 1 }}>
       <div className="a-card a-scroll" data-gym-paymongo>
         {acc === undefined ? <SkelRows label="Loading…" /> : (
           <>
@@ -99,9 +100,9 @@ export default function PayTab() {
             {acc ? (
               <>
                 <p className="a-sub" style={{ lineHeight: 1.55, color: 'var(--a-text2)' }} data-paymongo-connected>
-                  <b style={{ color: 'var(--color-text-primary)' }}>{acc.live ? 'Live — members pay you real money.' : 'Test mode — no real money moves yet.'}</b>{' '}
-                  Key ending {acc.key_last4}. Members see “Pay in the app” when they renew or pay for coaching — GCash, Maya, cards or online
-                  banking, whatever your PayMongo account takes — and it lands in your PayMongo account, minus PayMongo’s own fee, and shows in
+                  <b style={{ color: 'var(--color-text-primary)' }}>{acc.live ? 'Live: members pay you real money.' : 'Test mode: no real money moves yet.'}</b>{' '}
+                  Key ending {acc.key_last4}. Members see “Pay in the app” when they renew or pay for coaching: GCash, Maya, cards or online
+                  banking, whatever your PayMongo account takes, and it lands in your PayMongo account, minus PayMongo’s own fee, and shows in
                   Payments with a receipt number. The desk still takes cash.
                 </p>
                 <div className="a-grid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10, marginTop: 10 }}>
@@ -113,8 +114,8 @@ export default function PayTab() {
                     <div className="a-sub">{paid.length} payment{paid.length === 1 ? '' : 's'} · <Link to="/payments" style={{ color: 'var(--a-p300)' }}>on Payments</Link></div></div>
                 </div>
                 <div className="a-setting" style={{ marginTop: 8 }}>
-                  <div className="t"><b>Turn off paying in the app</b><small>disconnects PayMongo — members only see “pay at the desk”</small></div>
-                  <button type="button" className="a-btn sm" disabled={busy} onClick={() => void run(() => disconnectGymPayMongo(), 'Disconnected — members pay at the desk again')}>
+                  <div className="t"><b>Turn off paying in the app</b><small>disconnects PayMongo: members only see “pay at the desk”</small></div>
+                  <button type="button" className="a-btn sm" disabled={busy} onClick={() => void run(() => disconnectGymPayMongo(), 'Disconnected: members pay at the desk again')}>
                     {busy ? 'Disconnecting…' : 'Disconnect'}
                   </button>
                 </div>
@@ -123,7 +124,7 @@ export default function PayTab() {
             ) : (
               <>
                 <p className="a-sub" style={{ lineHeight: 1.5 }}>
-                  Connect your gym's own PayMongo account and members pay you in the app by GCash, Maya, card or online banking —
+                  Connect your gym's own PayMongo account and members pay you in the app by GCash, Maya, card or online banking,
                   straight to you; Core Fitness never holds your money. Use the test keys to try it first; your secret key is stored encrypted and never shown again.
                 </p>
                 <Steps acc={null} />
@@ -135,7 +136,7 @@ export default function PayTab() {
                     <input id="pm-public" className="a-in" autoComplete="off" value={pub} onChange={(e) => setPub(e.target.value)} placeholder="pk_…" aria-label="PayMongo public key" /></div>
                 </div>
                 <button type="button" className="a-btn amber" style={{ alignSelf: 'flex-start', marginTop: 12 }} disabled={busy || !/^sk_(test|live)_/.test(secret.trim())}
-                  onClick={() => void run(() => connectGymPayMongo(secret.trim(), pub.trim()), 'Connected — members can pay in the app')}>
+                  onClick={() => void run(() => connectGymPayMongo(secret.trim(), pub.trim()), 'Connected: members can pay in the app')}>
                   {busy ? 'Checking with PayMongo…' : 'Connect PayMongo'}
                 </button>
               </>
@@ -155,6 +156,7 @@ export default function PayTab() {
         )}
       </div>
 
+      <YaStage sec="pay">
       <div className="a-stage">
         <div className="cap"><Smartphone size={13} />Live preview · Renew</div>
         <div className="a-phone"><div className="scr">
@@ -165,6 +167,7 @@ export default function PayTab() {
           <div className="a-phbtn" style={{ background: 'var(--amber-solid, #f59e0b)', color: 'var(--on-amber, #1f1a0a)', marginTop: 'auto' }}>{acc ? 'Pay now' : 'I’ll pay at the desk'}</div>
         </div></div>
       </div>
+      </YaStage>
     </div>
   );
 }

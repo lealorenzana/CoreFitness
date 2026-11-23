@@ -83,7 +83,7 @@ export default function GymGoalTab({ onChanged }: { onChanged?: () => void }) {
     });
     setBusy(false);
     if (error) { showToast(error.message, 'error'); return; }
-    showToast(form.starts_on <= today ? 'Goal set — members see it on Today.' : `Goal set — it starts on ${fmt(form.starts_on)}.`, 'success');
+    showToast(form.starts_on <= today ? 'Goal set: members see it on Today.' : `Goal set: it starts on ${fmt(form.starts_on)}.`, 'success');
     setForm({ ...form, title: '' });
     await load();
     onChanged?.();
@@ -91,7 +91,7 @@ export default function GymGoalTab({ onChanged }: { onChanged?: () => void }) {
   const patch = async (g: Goal, change: Partial<Goal>, ok: string) => {
     const { data, error } = await supabase.from('gym_goals').update(change).eq('id', g.id).select('id');
     if (error) { showToast(error.message, 'error'); return; }
-    try { assertWrote(data, 'That goal could not be changed — only the owner sets gym goals.'); } catch (e) { showToast((e as Error).message, 'error'); return; }
+    try { assertWrote(data, 'That goal could not be changed: only the owner sets gym goals.'); } catch (e) { showToast((e as Error).message, 'error'); return; }
     showToast(ok, 'success');
     await load();
     onChanged?.();
@@ -99,7 +99,7 @@ export default function GymGoalTab({ onChanged }: { onChanged?: () => void }) {
   const announce = async (g: Goal) => {
     try {
       const p = progress[g.id]?.progress ?? 0;
-      const input = { type: 'event', title: g.title, message: `The whole gym is at ${p.toLocaleString()} of ${g.target.toLocaleString()} ${UNIT[g.metric]} — every visit counts${g.reward_points && pointsOn ? `, and everyone who helps gets ${g.reward_points} points when we reach it` : ''}. Until ${fmt(g.ends_on)}.`, actionUrl: '/member/home' };
+      const input = { type: 'event', title: g.title, message: `The whole gym is at ${p.toLocaleString()} of ${g.target.toLocaleString()} ${UNIT[g.metric]}, every visit counts${g.reward_points && pointsOn ? `, and everyone who helps gets ${g.reward_points} points when we reach it` : ''}. Until ${fmt(g.ends_on)}.`, actionUrl: '/member/home' };
       const r = await broadcastNotification({ audience: 'all_members', ...input });
       void pushToMany(r.recipientIds, { type: 'event', title: input.title, message: input.message, actionUrl: input.actionUrl });
       showToast(`Announced to ${r.recipients} member${r.recipients === 1 ? '' : 's'}`, 'success');
@@ -123,7 +123,7 @@ export default function GymGoalTab({ onChanged }: { onChanged?: () => void }) {
       <div className="a-grid" style={{ gridTemplateRows: 'auto minmax(0, 1fr)' }}>
         {current && cp ? (
           <div className="a-card glow" data-goal-now>
-            <div className="a-ct"><h3><Building2 size={16} />{current.title} — the whole gym</h3><span className="a-pill v">running · {left} day{left === 1 ? '' : 's'} left</span></div>
+            <div className="a-ct"><h3><Building2 size={16} />{current.title}: the whole gym</h3><span className="a-pill v">running · {left} day{left === 1 ? '' : 's'} left</span></div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}><div className="a-num" style={{ fontSize: 34 }}>{cp.progress.toLocaleString()}</div>
               <span className="a-sub" style={{ fontSize: 13 }}>of {current.target.toLocaleString()} {UNIT[current.metric]} · {cp.contributors} member{cp.contributors === 1 ? ' has' : 's have'} helped</span></div>
             <div className="a-big" style={{ margin: '10px 0 6px' }}><i style={{ width: `${Math.min(100, (cp.progress / current.target) * 100)}%` }} /></div>
@@ -132,7 +132,7 @@ export default function GymGoalTab({ onChanged }: { onChanged?: () => void }) {
             <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
               <button type="button" className="a-btn sm" onClick={() => void announce(current)} data-announce><Megaphone size={13} />Announce it again</button>
               <button type="button" className="a-btn ghost sm" onClick={(e) => setMoreAt(e.currentTarget)}><CalendarPlus size={13} />Give it more time</button>
-              <button type="button" className="a-btn ghost sm" onClick={() => void patch(current, { is_active: false }, `${current.title} is ended — nobody gets points for it`)}>End it</button>
+              <button type="button" className="a-btn ghost sm" onClick={() => void patch(current, { is_active: false }, `${current.title} is ended: nobody gets points for it`)}>End it</button>
             </div>
             <Popover anchor={moreAt} open={!!moreAt} onClose={() => setMoreAt(null)} width={300}>
               <div className="p-3"><p className="text-[12px] mb-1.5" style={{ color: 'var(--color-text-secondary)' }}>Ends on</p>
@@ -142,7 +142,7 @@ export default function GymGoalTab({ onChanged }: { onChanged?: () => void }) {
           </div>
         ) : (
           <div className="a-card glow"><div className="a-ct"><h3><Building2 size={16} />No gym goal running</h3></div>
-            <p className="a-sub">Set one on the right — every member's visits add to it, and everyone who helped gets the points when it is reached.</p></div>
+            <p className="a-sub">Set one on the right: every member's visits add to it, and everyone who helped gets the points when it is reached.</p></div>
         )}
         <div className="a-card" data-goal-history>
           <div className="a-ct"><h3><History size={16} />Past and coming gym goals</h3></div>
@@ -155,7 +155,7 @@ export default function GymGoalTab({ onChanged }: { onChanged?: () => void }) {
               return (
                 <div key={g.id} className="a-row" data-goal-row={g.title}>
                   <div className="a-ic" style={reached || coming ? undefined : { background: 'var(--a-alight)', color: 'var(--a-a300)' }}>{reached ? <Check size={15} /> : coming ? <Target size={15} /> : <X size={15} />}</div>
-                  <div className="t"><b>{g.title} — {g.target.toLocaleString()} {UNIT[g.metric]}</b>
+                  <div className="t"><b>{g.title}: {g.target.toLocaleString()} {UNIT[g.metric]}</b>
                     <small>{coming ? `starts ${fmt(g.starts_on)} · runs to ${fmt(g.ends_on)}`
                       : reached ? `reached ${fmt(localDateKey(g.reached_at!))} · ${p?.contributors ?? 0} members${g.reward_points ? ` got ${g.reward_points} points` : ''}`
                       : `${g.is_active ? 'ended' : 'stopped'} at ${(p?.progress ?? 0).toLocaleString()} · nobody got points`}</small></div>
@@ -184,7 +184,7 @@ export default function GymGoalTab({ onChanged }: { onChanged?: () => void }) {
         {monthDays != null && form.metric !== 'workouts_logged' && (
           <div className="a-hint" style={{ marginTop: 10 }}><Calculator size={14} />
             <span>In the last 30 days your members checked in on <b style={{ color: '#fff' }}>{monthDays.toLocaleString()} days</b> between them{form.metric === 'training_days' ? ' (logged workouts at home add to training days)' : ''}.
-              {target > 0 && monthDays > 0 ? ` ${target.toLocaleString()} over ${daysBetween(form.starts_on, form.ends_on) + 1} days is ${target > monthDays * 1.3 ? 'a lot more than that — it may be out of reach' : target > monthDays ? 'reachable with a push' : 'within what they already do'}.` : ''}</span></div>
+              {target > 0 && monthDays > 0 ? ` ${target.toLocaleString()} over ${daysBetween(form.starts_on, form.ends_on) + 1} days is ${target > monthDays * 1.3 ? 'a lot more than that, it may be out of reach' : target > monthDays ? 'reachable with a push' : 'within what they already do'}.` : ''}</span></div>
         )}
         <div className="a-lbl" style={{ margin: '12px 0 6px' }}>What members see on Today</div>
         <div className="a-prev"><b>{form.title.trim() || 'Your goal'}</b>

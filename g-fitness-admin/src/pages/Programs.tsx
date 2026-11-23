@@ -84,19 +84,19 @@ export default function Programs() {
   if (programs === null) return <div className="att"><div className="a-card"><p className="a-sub">Programs need migration 0122_gym_programs.sql, which is not pasted yet (or the list could not load).</p></div></div>;
 
   const program = editingProgram && editingProgram !== 'new' ? programs.find((p) => p.id === editingProgram) ?? null : null;
-  const workout = editingWorkout && editingWorkout !== 'new' ? workouts.find((w) => w.id === editingWorkout) ?? null : null;
+  // The workouts side is never an empty box: with nothing picked it opens the first workout (owner, 2026-11-23).
+  const openWorkout = editingWorkout ?? workouts[0]?.id ?? null;
+  const workout = openWorkout && openWorkout !== 'new' ? workouts.find((w) => w.id === openWorkout) ?? null : null;
   const published = programs.filter((p) => p.published).length;
 
   return (
     <div className="att" data-programs>
       <div className="a-head">
-        <div className="min-w-0"><h1>Programs</h1><p>Multi-week plans members follow: a workout for each training day · {published} published</p></div>
+        <div className="min-w-0 v3-banner" style={{ ['--art' as string]: 'url(/art/tile-programs.webp)' }}><h1>Programs</h1><p>Multi-week plans members follow: a workout for each training day · {published} published</p></div>
         <nav className="a-tabs" aria-label="Programs or workouts" data-rd-tabs style={{ marginLeft: 'auto' }}>
           <button type="button" className={tab === 'programs' ? 'on' : ''} onClick={() => setTab('programs')}><CalendarRange size={14} />Programs <em>{programs.length}</em></button>
           <button type="button" className={tab === 'workouts' ? 'on' : ''} onClick={() => setTab('workouts')} data-tab="workouts"><Dumbbell size={14} />Workouts <em>{workouts.length}</em></button>
         </nav>
-        <button type="button" className="a-btn violet" onClick={() => (tab === 'programs' ? setEditingProgram('new') : setEditingWorkout('new'))}>
-          <Plus size={15} />{tab === 'programs' ? 'New program' : 'New workout'}</button>
       </div>
       {programs.length > 0 && published === 0 && (
         <div className="a-hint" style={{ flex: 'none' }}><AlertTriangle size={14} /><span>Members cannot see any of your programs yet: open one and press Publish.</span></div>
@@ -107,6 +107,7 @@ export default function Programs() {
           {tab === 'programs' ? (<>
             <div className="a-ct"><h3><CalendarRange size={16} />Your programs</h3><small>{programs.length}</small></div>
             <div className="a-scroll grow" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <button type="button" className={`ya-item v3-new ${editingProgram === 'new' ? 'on' : ''}`} onClick={() => setEditingProgram('new')}><Plus size={16} />New program</button>
               {programs.length === 0 && <p className="a-sub">No programs yet: start from a ready-made one below, or build your own.</p>}
               {programs.map((p) => (
                 <button key={p.id} type="button" className={`a-tile ${editingProgram === p.id ? 'on' : ''}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
@@ -131,11 +132,12 @@ export default function Programs() {
           </>) : (<>
             <div className="a-ct"><h3><Dumbbell size={16} />Workouts</h3><small>one session each</small></div>
             <div className="a-scroll grow" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <button type="button" className={`ya-item v3-new ${openWorkout === 'new' ? 'on' : ''}`} onClick={() => setEditingWorkout('new')}><Plus size={16} />New workout</button>
               {workouts.length === 0 && <p className="a-sub">No workouts yet. A workout is one session: exercises with sets, reps or time, and rest. Programs put them on days.</p>}
               {workouts.map((w) => {
                 const used = programs.filter((p) => p.days.some((d) => d.workoutId === w.id)).length;
                 return (
-                  <button key={w.id} type="button" className={`a-tile ${editingWorkout === w.id ? 'on' : ''}`} onClick={() => setEditingWorkout(w.id)} aria-label={`Edit workout ${w.name}`}>
+                  <button key={w.id} type="button" className={`a-tile ${openWorkout === w.id ? 'on' : ''}`} onClick={() => setEditingWorkout(w.id)} aria-label={`Edit workout ${w.name}`}>
                     <b>{w.name}</b><small>{w.items.length} exercise{w.items.length === 1 ? '' : 's'} · {levelWord(w.level).toLowerCase()}{used ? ` · in ${used} program${used === 1 ? '' : 's'}` : ''}</small>
                   </button>
                 );
@@ -151,15 +153,15 @@ export default function Programs() {
               onSaved={async (id) => { await load(); setEditingProgram(id); }} onClose={() => setEditingProgram(programs[0]?.id ?? null)}
               onRemoved={async () => { await load(); setEditingProgram(null); }} />
           ) : (
-            <div style={{ margin: 'auto', textAlign: 'center' }}><CalendarRange size={28} style={{ color: 'var(--a-p300)', margin: '0 auto 8px' }} />
+            <div className="v3-emptyart"><img src="/art/empty-kettlebell.webp" alt="" />
               <b>How members get a program</b>
               <div className="a-sub" style={{ marginTop: 6, maxWidth: 460 }}>Build workouts, put one on each training day of each week, then Publish. Members find it under Train → Programs; Today shows their next day with a Start button, and each finished day counts for points, streaks and badges.</div></div>
-          )) : (editingWorkout ? (
-            <WorkoutEditor key={editingWorkout} workout={workout} exercises={exercises}
+          )) : (openWorkout ? (
+            <WorkoutEditor key={openWorkout} workout={workout} exercises={exercises}
               onSaved={async () => { await load(); setEditingWorkout(null); }} onClose={() => setEditingWorkout(null)} />
           ) : (
-            <div style={{ margin: 'auto', textAlign: 'center' }}><Dumbbell size={28} style={{ color: 'var(--a-p300)', margin: '0 auto 8px' }} />
-              <b>Pick a workout, or make a new one</b><div className="a-sub" style={{ marginTop: 6 }}>Coaches build workouts in their app too; theirs show here.</div></div>
+            <div className="v3-emptyart"><img src="/art/empty-kettlebell.webp" alt="" />
+              <b>No workouts yet</b><div className="a-sub" style={{ marginTop: 6 }}>Press New workout on the left. Coaches build workouts in their app too; theirs show here.</div></div>
           ))}
         </div>
       </div>

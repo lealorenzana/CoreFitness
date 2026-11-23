@@ -3,6 +3,7 @@ import { Check, PartyPopper, Smartphone, Volume2 } from 'lucide-react';
 import { getCelebrations, setCelebrations, type Celebrations } from '../../lib/api/celebrations';
 import { showToast } from '../../utils/toast';
 import SkelRows from '../ui/SkelRows';
+import { YaStage } from './stage';
 
 /**
  * Your app → Celebrations (0216). The member app gives a moment to checking
@@ -37,7 +38,7 @@ export default function CelebrationsTab() {
   ];
 
   return (
-    <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) 380px', flex: 1 }} data-celebrations-tab>
+    <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr)', flex: 1 }} data-celebrations-tab>
       <div className="a-card a-scroll">
         <div className="a-ct"><h3><PartyPopper size={16} />Celebrations</h3><small>how loudly the app tells members what they did</small></div>
         {c === undefined ? <SkelRows label="Loading…" />
@@ -56,6 +57,7 @@ export default function CelebrationsTab() {
         </p>
       </div>
 
+      <YaStage sec="moments">
       <div className="a-stage">
         <div className="cap"><Smartphone size={13} />{c?.celebrations === false ? 'What members see · a small card' : 'What members see · the full moment'}</div>
         <div className="a-phone">
@@ -80,6 +82,7 @@ export default function CelebrationsTab() {
         </div>
         <span className="a-sub" style={{ position: 'absolute', bottom: 10, fontSize: 10 }}>Sample screen, in your colours</span>
       </div>
+      </YaStage>
     </div>
   );
 }

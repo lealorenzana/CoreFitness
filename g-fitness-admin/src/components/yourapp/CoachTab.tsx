@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Bolt, Bot, Coins, Smartphone } from 'lucide-react';
+import { YaStage } from './stage';
 import { Link } from 'react-router-dom';
 import { showToast } from '../../utils/toast';
 import { shrinkImage } from '../../utils/shrinkImage';
@@ -69,7 +70,7 @@ export default function CoachTab({ enabled, sold, onToggle }: { enabled: boolean
   })();
 
   return (
-    <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) 380px', flex: 1 }}>
+    <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr)', flex: 1 }}>
       <div className="a-card a-scroll" data-card="ai-coach">
         <div className="a-ct">
           <h3><Bot size={16} />AI assistant</h3>
@@ -146,6 +147,7 @@ export default function CoachTab({ enabled, sold, onToggle }: { enabled: boolean
         <TopUps />
       </div>
 
+      <YaStage sec="coach">
       <div className="a-stage">
         <div className="cap"><Smartphone size={13} />Live preview · a member's chat</div>
         <div className="a-phone"><div className="scr">
@@ -158,6 +160,7 @@ export default function CoachTab({ enabled, sold, onToggle }: { enabled: boolean
           <div className="a-sub" style={{ textAlign: 'center', fontSize: 10 }}>Sample conversation</div>
         </div></div>
       </div>
+      </YaStage>
     </div>
   );
 }
