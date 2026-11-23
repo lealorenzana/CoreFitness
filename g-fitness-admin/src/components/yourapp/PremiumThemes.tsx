@@ -45,7 +45,7 @@ export default function PremiumThemes() {
       </div>
       {!unlocked && (
         <p className="a-sub" style={{ marginBottom: 10 }}><Lock size={12} style={{ display: 'inline', marginRight: 4 }} />
-          Buy custom colours under Saved themes above to use these — one purchase unlocks your own colour codes and every premium theme.</p>
+          Buy custom colours under Saved themes above to use these. One purchase unlocks your own colour codes and every premium theme.</p>
       )}
       <div className="a-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(118px, 1fr))', gap: 8 }}>
         {PREMIUM_THEMES.map((t) => {

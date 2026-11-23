@@ -2,7 +2,7 @@ import PageGuide from '../components/guides/PageGuide';
 import StaffAccounts from '../components/staff/StaffAccounts';
 import DeleteAccount from '../components/DeleteAccount';
 import { setAccountStatus } from '../lib/api/accountEvents';
-import { useState, useEffect, useCallback, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import './attendance/att.css';
 import { Link } from 'react-router-dom';
 import WaiverTab from '../components/WaiverTab';
@@ -139,6 +139,25 @@ export default function Settings() {
     return TAB_IDS.includes(asked as TabId) ? (asked as TabId) : 'gym';
   });
   const [loading, setLoading] = useState(true);
+  /** One scrolling page (owner, 2026-11-23, after Discord's settings): the list follows what is on screen. */
+  const mainRef = useRef<HTMLDivElement>(null);
+  const go = (id: TabId) => document.getElementById(`st-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  useEffect(() => {
+    const root = mainRef.current;
+    if (!root) return;
+    const spy = () => {
+      const line = root.getBoundingClientRect().top + 96;
+      let cur: string | null = null;
+      root.querySelectorAll<HTMLElement>('[data-ya-sec]').forEach((el) => { if (el.getBoundingClientRect().top <= line) cur = el.dataset.yaSec ?? null; });
+      if (root.scrollTop + root.clientHeight >= root.scrollHeight - 4) cur = root.querySelector<HTMLElement>('[data-ya-sec]:last-of-type')?.dataset.yaSec ?? cur;
+      if (cur) setActiveTab(cur as TabId);
+    };
+    root.addEventListener('scroll', spy, { passive: true });
+    // ?tab=refunds (the setup wizard's links) lands on that section.
+    if (activeTab !== 'gym') requestAnimationFrame(() => document.getElementById(`st-${activeTab}`)?.scrollIntoView({ block: 'start' }));
+    return () => root.removeEventListener('scroll', spy);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
   const [saving, setSaving] = useState(false);
 
   const [me, setMe] = useState<ProfileRow | null>(null);
@@ -402,11 +421,11 @@ export default function Settings() {
           <Search size={14} />
           {/* type=search + autocomplete off: Chrome took this box for the username beside Security's password fields. */}
           <input type="search" name="cf-settings-search" autoComplete="off" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search settings: “refund”, “hours”, “waiver”…" aria-label="Search settings"
-            onKeyDown={(e) => { if (e.key === 'Enter') { const first = SECTIONS.find((s) => s.id && matches(s)); if (first?.id) { setActiveTab(first.id); setSearch(''); } } }} />
+            onKeyDown={(e) => { if (e.key === 'Enter') { const first = SECTIONS.find((s) => s.id && matches(s)); if (first?.id) { go(first.id); setSearch(''); } } }} />
         </label>
       </div>
 
-      <div className="a-grid" style={{ gridTemplateColumns: activeTab === 'gym' || activeTab === 'hours' ? '230px minmax(0, 1fr) 320px' : '230px minmax(0, 1fr)', flex: 1 }}>
+      <div className="a-grid" style={{ gridTemplateColumns: '230px minmax(0, 1fr) 320px', flex: 1, minHeight: 0 }}>
         <div className="a-card a-scroll" style={{ padding: 10 }}>
           <nav className="a-sn" aria-label="Settings sections">
             {SECTIONS.filter((s) => s.group || matches(s)).map((s) => s.group
@@ -416,7 +435,7 @@ export default function Settings() {
                     <s.icon size={16} />{s.label}<ArrowUpRight size={13} style={{ marginLeft: 'auto' }} /></Link>
                 : (
                   <button key={s.id} type="button" className={activeTab === s.id ? 'on' : ''} aria-current={activeTab === s.id ? 'page' : undefined}
-                    onClick={() => { setActiveTab(s.id!); setSearch(''); }}>
+                    onClick={() => { go(s.id!); setSearch(''); }}>
                     <s.icon size={16} />{s.label}
                     {s.id === 'gym' && infoMissing.length > 0 && <em>{infoMissing.length} to fill</em>}
                   </button>
@@ -425,10 +444,10 @@ export default function Settings() {
           </nav>
         </div>
 
-        <div className="a-card a-scroll" key={activeTab}>
+        <div className="a-card a-scroll st-main" ref={mainRef}>
           {loading ? <SkelRows label="Loading…" /> : (
             <>
-              {activeTab === 'gym' && (
+              <section className="st-sec" data-ya-sec="gym" id="st-gym">{(
                 <>
                   {head('Gym information', 'Shown on the sign-up page, receipts, the legal pages and the gym map',
                     infoMissing.length > 0 ? <span className="a-pill a">{infoMissing.length} to fill</span> : <span className="a-pill v">complete</span>)}
@@ -465,9 +484,9 @@ export default function Settings() {
                     <Check size={15} />{saving ? 'Saving…' : 'Save'}
                   </button>
                 </>
-              )}
-
-              {activeTab === 'hours' && (
+              )
+              }</section>
+              <section className="st-sec" data-ya-sec="hours" id="st-hours">{(
                 <>
                   {head('Hours and closed days', 'Members see whether you are open now; classes outside these hours are flagged on Schedule')}
                   <div className="a-setting">
@@ -498,12 +517,12 @@ export default function Settings() {
                     </div>
                   )}
                   <button type="button" className="a-btn violet" style={{ marginTop: 14, alignSelf: 'flex-end' }} onClick={() => void handleSaveGym()} disabled={saving}>
-                    <Check size={15} />{saving ? 'Saving…' : 'Save'}
+                    <Check size={15} />{saving ? 'Saving…' : 'Save hours'}
                   </button>
                 </>
-              )}
-
-              {activeTab === 'checkin' && (
+              )
+              }</section>
+              <section className="st-sec" data-ya-sec="checkin" id="st-checkin">{(
                 <>
                   {head('Checking in', 'How members and coaches get in, and what a check-in can be tagged with')}
                   <div style={{ margin: '0 0 10px' }}><PageGuide id="door-checkin" /> <PageGuide id="kiosk" label="Set up the kiosk" /></div>
@@ -528,35 +547,43 @@ export default function Settings() {
                     <Check size={15} />{saving ? 'Saving…' : 'Save activities'}
                   </button>
                 </>
-              )}
-
-              {activeTab === 'slots' && <>{head('Time slots', 'Members book a time to come in, and you cap how many train at once: every rule is yours')}<TimeSlotsSettings /></>}
-              {activeTab === 'bookings' && <>
+              )
+              }</section>
+              <section className="st-sec" data-ya-sec="slots" id="st-slots">{<>{head('Time slots', 'Members book a time to come in, and you cap how many train at once: every rule is yours')}<TimeSlotsSettings /></>
+              }</section>
+              <section className="st-sec" data-ya-sec="bookings" id="st-bookings">{<>
                 {head('How your gym works', 'Your gym’s style sets the booking and coaching settings below: you can still change each one')}
                 <GymStyles onApplied={() => setStyleTick((n) => n + 1)} />
                 <div style={{ height: 22 }} />
                 {head('Bookings', 'Who approves bookings: for group classes and 1-on-1 sessions separately')}<BookingApproval key={styleTick} />
                 <div style={{ height: 22 }} />
                 {head('Repeats, late cancels and no-shows', 'Your rules for weekly bookings, cancelling close to the start, and members who do not come')}<BookingRulesSettings />
-              </>}
-              {activeTab === 'coaching' && <>{head('Personal training', 'How members get a coach, for how long, and who is paid')}<CoachingSettings /></>}
-              {activeTab === 'walk-ins' && (
+              </>
+              }</section>
+              <section className="st-sec" data-ya-sec="coaching" id="st-coaching">{<>{head('Personal training', 'How members get a coach, for how long, and who is paid')}<CoachingSettings /></>
+              }</section>
+              <section className="st-sec" data-ya-sec="walk-ins" id="st-walk-ins">{(
                 <>
                   {head('Walk-ins', 'For people without a membership: paid in cash at the desk (Attendance → Walk-ins) or, if you take payments in the app, bought by the member themselves')}
                   <div style={{ margin: '0 0 10px' }}><PageGuide id="day-pass" /></div>
                   <WalkInGuide open />
                   <DayPassSettings />
                 </>
-              )}
-              {activeTab === 'refunds' && <RefundPolicyTab />}
-              {activeTab === 'payments' && <OnlinePaymentsTab />}
-              {activeTab === 'waiver' && <><div style={{ margin: '0 0 10px' }}><PageGuide id="waiver" /></div><WaiverTab /></>}
-              {activeTab === 'house-rules' && <HouseRulesTab />}
-              {activeTab === 'staff' && (
+              )
+              }</section>
+              <section className="st-sec" data-ya-sec="refunds" id="st-refunds">{<RefundPolicyTab />
+              }</section>
+              <section className="st-sec" data-ya-sec="payments" id="st-payments">{<OnlinePaymentsTab />
+              }</section>
+              <section className="st-sec" data-ya-sec="waiver" id="st-waiver">{<><div style={{ margin: '0 0 10px' }}><PageGuide id="waiver" /></div><WaiverTab /></>
+              }</section>
+              <section className="st-sec" data-ya-sec="house-rules" id="st-house-rules">{<HouseRulesTab />
+              }</section>
+              <section className="st-sec" data-ya-sec="staff" id="st-staff">{(
                 <StaffAccounts accounts={accounts} meId={me?.id ?? null} onStatus={(account, next) => setStaffAction({ account, next })} onChanged={load} />
-              )}
-
-              {activeTab === 'profile' && (
+              )
+              }</section>
+              <section className="st-sec" data-ya-sec="profile" id="st-profile">{(
                 <>
                   {head('My profile', `Signed in as ${realEmail(me?.email) ?? (me?.username ? `@${me.username}` : '')} · ${me?.role ?? ''}`)}
                   <div className="flex items-center gap-4" style={{ marginBottom: 12 }}>
@@ -587,9 +614,9 @@ export default function Settings() {
                   </button>
                   <DeleteAccount />
                 </>
-              )}
-
-              {activeTab === 'security' && (
+              )
+              }</section>
+              <section className="st-sec" data-ya-sec="security" id="st-security">{(
                 <>
                   {head('Security', 'Changes your real sign-in password')}
                   <div className="a-grid" style={{ gap: 10, maxWidth: 420 }}>
@@ -620,12 +647,13 @@ export default function Settings() {
                     {saving ? 'Changing…' : 'Change Password'}
                   </button>
                 </>
-              )}
+              )
+              }</section>
             </>
           )}
         </div>
 
-        {(activeTab === 'gym' || activeTab === 'hours') && (
+        {(
           <div className="a-grid a-scroll" style={{ alignContent: 'start' }}>
             <div className="a-card glow">
               <div className="a-ct"><h3><Smartphone size={16} />Members see</h3></div>
@@ -646,7 +674,7 @@ export default function Settings() {
                     {c.ok ? <CircleCheck size={16} style={{ color: 'var(--a-p300)' }} /> : <CircleDashed size={16} style={{ color: 'var(--a-a300)' }} />}
                     <div className="t"><b>{c.label}</b>{!c.ok && <small>{c.why}</small>}</div>
                     {!c.ok && c.href && <Link to={c.href} className="a-link">Fix</Link>}
-                    {!c.ok && c.go && c.go !== activeTab && <button type="button" className="a-link" onClick={() => setActiveTab(c.go!)}>Fix</button>}
+                    {!c.ok && c.go && c.go !== activeTab && <button type="button" className="a-link" onClick={() => go(c.go!)}>Fix</button>}
                   </div>
                 ))}
               </div>

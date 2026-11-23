@@ -77,7 +77,7 @@ async (page) => {
   out.push('Closed on, beside the hours: ' + ((await pressed('Sun')) === 'true' && (await pressed('Sat')) === 'false' ? 'Sunday closed' : 'MISSING'));
   out.push('…and why it matters, said plainly: ' + (/never count a closed day as a day left to train/.test(await text()) ? 'yes' : 'MISSING'));
   await page.getByRole('group', { name: 'Days the gym is closed' }).getByRole('button', { name: 'Sat' }).click();
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.getByRole('button', { name: 'Save hours', exact: true }).click();
   await page.waitForTimeout(1200);
   const last = PATCHES[PATCHES.length - 1] ?? {};
   out.push('saved with the hours: ' + (Array.isArray(last.closed_days) && [...last.closed_days].sort().join(',') === '0,6' ? 'Sat and Sun' : 'MISSING ' + JSON.stringify(last.closed_days)));
@@ -87,9 +87,9 @@ async (page) => {
   GYM = { ...GYM }; delete GYM.closed_days; PATCHES.length = 0;
   await page.goto('http://localhost:5174/settings', { waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: /^Hours and closed days/ }).first().click();
-  await page.getByRole('button', { name: 'Save', exact: true }).waitFor({ timeout: 10000 });
+  await page.getByRole('button', { name: 'Save hours', exact: true }).waitFor({ timeout: 10000 });
   out.push('before 0153: no picker: ' + ((await page.getByRole('group', { name: 'Days the gym is closed' }).count()) === 0 ? 'yes' : 'STILL SHOWN'));
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.getByRole('button', { name: 'Save hours', exact: true }).click();
   await page.waitForTimeout(1000);
   out.push('…and the save never names the missing column: ' + (PATCHES.length > 0 && !('closed_days' in PATCHES[PATCHES.length - 1]) ? 'yes' : 'MISSING ' + JSON.stringify(PATCHES)));
   return out.join('\n');

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import {
@@ -76,9 +76,8 @@ const MODULE_ICONS: Record<string, LucideIcon> = {
 };
 
 export default function GymApp() {
-  const [params, setParams] = useSearchParams();
+  const [params] = useSearchParams();
   const tab = (APP_TABS.some(([k]) => k === params.get('tab')) ? params.get('tab') : 'look') as AppTab;
-  const setTab = (t: AppTab) => setParams((prev) => { const n = new URLSearchParams(prev); n.set('tab', t); return n; }, { replace: true });
   const [app, setApp] = useState<App | null>(null);
   const [modules, setModules] = useState<GymModule[]>([]);
   /** What you run: the part the owner is pointing at, played on the right (FeatureShow). */
@@ -89,6 +88,7 @@ export default function GymApp() {
   /** Both colour roles and the logo, edited together because they are one look. */
   const [look, setLook] = useState({ accent: 'violet', action: '', logo_url: '' });
   const [lookStep, setLookStep] = useState<'pair' | 'own' | 'premium' | 'logo'>('pair');
+  const [open, setOpen] = useState<AppTab>(tab);
   const [group, setGroup] = useState(GROUPS[0]);
   const [uploading, setUploading] = useState(false);
   /** The gym's address, open for editing. NULL means "not editing", so an accidental empty box cannot be saved. */
@@ -100,6 +100,31 @@ export default function GymApp() {
   const [ready, setReady] = useState(false);
   const [copied, setCopied] = useState<'link' | 'code' | 'message' | null>(null);
 
+  /** The page is one scrolling column (owner, 2026-11-23, after Discord's settings): the list follows the scroll. */
+  const mainRef = useRef<HTMLDivElement>(null);
+  const go = (k: AppTab, step?: 'pair' | 'own' | 'premium' | 'logo') =>
+    document.getElementById(step ? `ya-step-${step}` : `ya-${k}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  useEffect(() => {
+    const root = mainRef.current;
+    if (!root) return;
+    const spy = () => {
+      const line = root.getBoundingClientRect().top + 96;
+      let sec: string | null = null, step: string | null = null;
+      root.querySelectorAll<HTMLElement>('[data-ya-sec]').forEach((el) => { if (el.getBoundingClientRect().top <= line) sec = el.dataset.yaSec ?? null; });
+      root.querySelectorAll<HTMLElement>('[data-ya-step]').forEach((el) => { if (el.getBoundingClientRect().top <= line) step = el.dataset.yaStep ?? null; });
+      // At the very bottom the last section is the one being read, even when it is too short to reach the line.
+      if (root.scrollTop + root.clientHeight >= root.scrollHeight - 4) sec = root.querySelector<HTMLElement>('[data-ya-sec]:last-of-type')?.dataset.yaSec ?? sec;
+      const first = root.querySelector<HTMLElement>('[data-ya-sec]')?.dataset.yaSec ?? 'look';
+      setOpen((sec ?? first) as AppTab);
+      if (step) setLookStep(step as 'pair' | 'own' | 'premium' | 'logo');
+    };
+    root.addEventListener('scroll', spy, { passive: true });
+    // A link to ?tab=words lands on that section.
+    const start = params.get('tab');
+    if (start && start !== 'look') requestAnimationFrame(() => document.getElementById(`ya-${start}`)?.scrollIntoView({ block: 'start' }));
+    return () => root.removeEventListener('scroll', spy);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready]);
   const load = useCallback(async () => {
     const [a, m, js] = await Promise.all([getGymApp(), getGymModules(), getJoinSettings()]);
     setApp(a); setModules(m); setJoinSet(js);
@@ -211,24 +236,24 @@ export default function GymApp() {
       <nav className="ya-nav" role="tablist" aria-label="Your app sections" aria-orientation="vertical">
         {APP_TABS.filter(([k]) => k !== 'coach' || coachSold).map(([k, t, Icon]) => (
           <div key={k}>
-            <button type="button" role="tab" aria-selected={tab === k} className={`ya-item ${tab === k ? 'on' : ''}`} onClick={() => setTab(k)}>
+            <button type="button" role="tab" aria-selected={open === k} className={`ya-item ${open === k ? 'on' : ''}`} onClick={() => go(k)}>
               <Icon size={16} />{t}
             </button>
-            {k === 'look' && tab === 'look' && (
+            {k === 'look' && (
               <div className="ya-sub" role="tablist" aria-label="Look steps">
                 {([['pair', 'Colour pair'], ['own', 'Your own colours'], ['premium', 'Premium theme'], ['logo', 'Logo and name']] as const).map(([s, l]) => (
-                  <button key={s} type="button" role="tab" aria-selected={lookStep === s} className={lookStep === s ? 'on' : ''} onClick={() => setLookStep(s)} data-look-step={s}>{l}</button>
+                  <button key={s} type="button" role="tab" aria-selected={lookStep === s} className={lookStep === s ? 'on' : ''} onClick={() => go(k, s)} data-look-step={s}>{l}</button>
                 ))}
               </div>
             )}
           </div>
         ))}
       </nav>
-      <div className="ya-main" key={tab}>
+      <div className="ya-main" ref={mainRef}>
 
       {/* ---- Look ---------------------------------------------------------------------- */}
-      {tab === 'look' && (
-        <Split preview={(
+      {(
+        <Split sec="look" preview={(
           <Phone cap="Live preview · Today" colours={[a.base, b.base]}>
             <div className="flex items-center justify-between">
               <div><div className="a-sub">Good morning</div><b style={{ display: 'block', fontSize: 16 }}>{shortName}</b></div>{logo(32)}
@@ -243,9 +268,8 @@ export default function GymApp() {
         )}>
           {/* Four steps, one at a time (2026-11-02): pairs, saved and premium themes and the two pickers
               were stacked into one long list whose titles did not say how they differ. */}
-          <h2 className="ya-h">{{ pair: 'Colour pair', own: 'Your own colours', premium: 'Premium theme', logo: 'Logo and name' }[lookStep]}</h2>
 
-          {lookStep === 'pair' && <>
+          <div className="ya-step" data-ya-step="pair" id="ya-step-pair"><h2 className="ya-h">Colour pair</h2>
             <p className="a-sub" style={{ marginBottom: 10 }}>The quickest way: a ready-made pair sets your main colour and your button colour together. Free.</p>
           <div className="flex items-center gap-2 flex-wrap" style={{ marginBottom: 6 }}>
             <span className="a-lbl">One tap sets both colours</span>
@@ -261,9 +285,9 @@ export default function GymApp() {
             ))}
           </div>
           <SavedThemes accent={look.accent} action={look.action} onPick={(accent, action) => setLook((l) => ({ ...l, accent, action }))} />
-          </>}
+          </div>
 
-          {lookStep === 'own' && <>
+          <div className="ya-step" data-ya-step="own" id="ya-step-own"><h2 className="ya-h">Your own colours</h2>
             <p className="a-sub" style={{ marginBottom: 10 }}>Choose each colour yourself. The swatches are free; typing your own colour code is part of the one-time colours unlock.</p>
           <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16, marginTop: 4 }}>
             <div>
@@ -282,14 +306,14 @@ export default function GymApp() {
             </div>
           </div>
 
-          </>}
+          </div>
 
-          {lookStep === 'premium' && <>
+          <div className="ya-step" data-ya-step="premium" id="ya-step-premium"><h2 className="ya-h">Premium theme</h2>
             <p className="a-sub" style={{ marginBottom: 4 }}>A whole style on top of your colours: the background, the panels, and a gradient on the main buttons, bars and member card. Saved as soon as you tap one.</p>
             <PremiumThemes />
-          </>}
+          </div>
 
-          {lookStep === 'logo' && <>
+          <div className="ya-step" data-ya-step="logo" id="ya-step-logo"><h2 className="ya-h">Logo and name</h2>
           <div className="flex items-center gap-3.5">
             {logo(64)}
             <div className="a-fld" style={{ flex: 1 }}>
@@ -317,7 +341,7 @@ export default function GymApp() {
             {look.logo_url && <button type="button" className="a-btn ghost" onClick={() => setLook({ ...look, logo_url: '' })}>Remove</button>}
           </div>
           <p className="a-sub" style={{ marginTop: 6 }}>Square works best: it shows in a circle. With none, members see the Core Fitness mark.</p>
-          </>}
+          </div>
 
           {/* The look is the members' and coaches' app AND this dashboard (owner, 2026-11-07) — not members alone. */}
           <div style={{ marginTop: 'auto', alignSelf: 'flex-end', display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -330,8 +354,8 @@ export default function GymApp() {
       )}
 
       {/* ---- Words --------------------------------------------------------------------- */}
-      {tab === 'words' && (
-        <Split preview={(
+      {(
+        <Split sec="words" preview={(
           <Phone cap="Live preview · your words in place">
             {words.welcome_message.trim() && <div className="a-phcard" style={{ background: 'var(--color-primary-light)', borderColor: 'color-mix(in srgb, var(--color-primary) 30%, transparent)' }}><span className="a-sub">📣 {words.welcome_message.trim()}</span></div>}
             <div className="a-phcard"><b>You earned <span style={{ color: 'var(--a-a300)' }}>{pointsShort}</span></b><div className="a-sub">for checking in</div></div>
@@ -384,16 +408,16 @@ export default function GymApp() {
       )}
 
       {/* ---- What you run ---------------------------------------------------------------- */}
-      {tab === 'runs' && (
-        <Split preview={<FeatureShow module={modules.find((m) => m.feature_key === pointed) ?? modules.find((m) => !m.parent_key) ?? null} />}>
+      {(
+        <Split sec="runs" preview={<FeatureShow module={modules.find((m) => m.feature_key === pointed) ?? modules.find((m) => !m.parent_key) ?? null} />}>
           <div className="a-ct"><h3><ToggleRight size={16} />What your gym runs</h3><small>switching off hides it: nothing is deleted · click one to see what it does</small></div>
           <ModuleColumns modules={modules} onToggle={(m) => void toggle(m)} onPoint={setPointed} pointed={pointed} />
         </Split>
       )}
 
       {/* ---- Joining ---------------------------------------------------------------------- */}
-      {tab === 'join' && (
-        <Split preview={(
+      {(
+        <Split sec="join" preview={(
           <Phone cap="Live preview · someone opening your link" centre>
             <div style={{ marginTop: 20 }}>{logo(56)}</div>
             <b style={{ fontSize: 17 }}>Join {app.gym_name}</b>
@@ -506,10 +530,10 @@ export default function GymApp() {
         </Split>
       )}
 
-      {tab === 'coach' && coachSold && coach && <CoachTab enabled={coach.enabled} sold={coachSold} onToggle={() => void toggle(coach)} />}
-      {tab === 'pay' && <PayTab />}
-      {tab === 'tv' && <TvTab />}
-      {tab === 'moments' && <CelebrationsTab />}
+      {coachSold && coach && <section className="ya-sec ya-full" data-ya-sec="coach" id="ya-coach"><CoachTab enabled={coach.enabled} sold={coachSold} onToggle={() => void toggle(coach)} /></section>}
+      <section className="ya-sec ya-full" data-ya-sec="pay" id="ya-pay"><PayTab /></section>
+      <section className="ya-sec ya-full" data-ya-sec="tv" id="ya-tv"><TvTab /></section>
+      <section className="ya-sec ya-full" data-ya-sec="moments" id="ya-moments"><CelebrationsTab /></section>
       </div>
       </div>
 
@@ -530,12 +554,13 @@ export default function GymApp() {
 }
 
 /** A settings card beside a phone, the shape of every tab on this page. */
-function Split({ children, preview }: { children: ReactNode; preview: ReactNode }) {
+function Split({ children, preview, sec }: { children: ReactNode; preview: ReactNode; sec: string }) {
+  // One section of the page; its phone stays beside it while the section scrolls past (sticky).
   return (
-    <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) 380px', flex: 1 }}>
-      <div className="a-card a-scroll">{children}</div>
-      {preview}
-    </div>
+    <section className="ya-sec" data-ya-sec={sec} id={`ya-${sec}`}>
+      <div className="ya-body">{children}</div>
+      <div className="ya-preview">{preview}</div>
+    </section>
   );
 }
 
