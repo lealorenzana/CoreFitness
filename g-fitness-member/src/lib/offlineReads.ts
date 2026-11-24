@@ -33,8 +33,8 @@ const MAX_AGE_MS = 30 * 86_400_000;
 /** RPCs that only read. A name missing here is never answered from the phone. */
 const READ_RPCS = new Set([
   'achievement_progress', 'achievement_rarity', 'ai_coach_status', 'assignment_detail', 'challenge_progress',
-  'class_waitlist_status', 'coach_timeline', 'coaching_settings', 'current_gym_goal', 'goal_current_value',
-  'goal_progress', 'gym_join_rules', 'gym_online_pay', 'gym_photo_usage', 'gym_reels_feed', 'gym_traffic', 'list_gyms',
+  'class_waitlist_status', 'coach_timeline', 'coaching_settings', 'current_gym_goal',
+  'gym_join_rules', 'gym_online_pay', 'gym_photo_usage', 'gym_reels_feed', 'gym_traffic', 'list_gyms',
   'may_rate_trainer', 'member_commitments', 'member_exercise_history', 'member_last_sets',
   'member_personal_records', 'member_points_balance', 'member_progression',
   'member_streak', 'my_ai_proposals', 'my_booking_modes', 'my_coach_setup',

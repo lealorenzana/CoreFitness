@@ -27,7 +27,7 @@ export const TOURS: TourDef[] = [
   ] },
   { id: 'you', app: 'member', name: 'You', path: '/member/membership', steps: [
     { target: '[data-trophy-level]', title: 'Your level', text: 'Earned by training days and steady weeks — what it takes to reach the next one.' },
-    { target: '[role="tablist"]', title: 'Progress, badges, membership', text: 'Your body and targets, what you have earned, and your plan and payments.' },
+    { target: '[role="tablist"]', title: 'Progress, badges, membership', text: 'Your body, what you have earned, and your plan and payments.' },
   ] },
   // ── The coach app ──
   { id: 'today', app: 'coach', name: 'Today', path: '/trainer/home', steps: [

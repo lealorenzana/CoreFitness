@@ -1,7 +1,7 @@
 /**
  * The big moments (wave 1, 2026-10-27; mock-up approved): Today's arrival once a
- * day, a kiosk check-in the app did not see, a higher earned level, a target the
- * database settled, a challenge finished — each with its real numbers (the
+ * day, a kiosk check-in the app did not see, a higher earned level, a challenge
+ * finished (targets went with 0274) — each with its real numbers (the
  * ledger row that paid for it), each played once and marked on the account
  * (0216). The owner's switch makes them a small card; the phone's reduce-motion
  * setting makes them still; before 0216 none of the replaying ones play.
@@ -76,15 +76,11 @@ async (page) => {
     workout_sets: [],
     gym_workouts: [{ id: 'gw1', name: 'Pull day', notes: null, updated_at: iso(-9, 9, 0), gym_workout_items: [] }],
     member_profiles_markers: true,
-    fitness_goals: [
-      { id: 'g1', member_id: 'm1', title: 'Squat 100 kg', metric: 'lift_kg', start_value: 60, target_value: 100, template_key: null,
-        achieved_on: dstr(0), celebrated_at: null, created_at: iso(-30, 9, 0) },
-      { id: 'g0', member_id: 'm1', title: 'Old target', metric: 'lift_kg', start_value: 40, target_value: 50, template_key: null,
-        achieved_on: dstr(-20), celebrated_at: iso(-20, 9, 0), created_at: iso(-60, 9, 0) }],
+
     challenge_participants: [{ challenge_id: 'c1', member_id: 'm1', completed_on: dstr(0), challenges: { title: 'October visits' } }],
     point_ledger: [
       { id: 'p1', member_id: 'm1', rule_key: 'checkin', points: 10, source_table: 'attendance', source_id: 'aT', created_at: iso(0, 7, 0) },
-      { id: 'p2', member_id: 'm1', rule_key: 'goal_achieved', points: 100, source_table: 'fitness_goals', source_id: 'g1', created_at: iso(0, 7, 0) },
+
       { id: 'p3', member_id: 'm1', rule_key: 'challenge_complete', points: 250, source_table: 'challenge_participants', source_id: 'c1', created_at: iso(0, 7, 0) }],
     gym_plans: [{ id: 'g1', member_id: 'm1', day_of_week: new Date().getDay(), remind_at: '18:00:00', active: true,
       last_reminded_on: null, routine_id: null, created_at: iso(-5, 9, 0) },
@@ -283,14 +279,6 @@ async (page) => {
   await shot('moments-level');
   await next();
 
-  out.push('then the target the database settled: ' + ((await kind()) === 'target' ? 'yes' : 'NO (' + (await kind()) + ')'));
-  t = await text();
-  out.push('…with the points it paid: ' + (/Squat 100 kg/.test(t) && /\+100/.test(t) ? 'yes' : 'NO'));
-  out.push('…marked on the target: ' + (DB.fitness_goals.find((g) => g.id === 'g1').celebrated_at ? 'yes' : 'NO'));
-  out.push('…and an old one is not replayed: ' + (!/Old target/.test(t) ? 'yes' : 'REPLAYED'));
-  await page.waitForTimeout(2600);
-  await shot('moments-target');
-  await next();
 
   out.push('then the challenge: ' + ((await kind()) === 'challenge' ? 'yes' : 'NO (' + (await kind()) + ')'));
   t = await text();

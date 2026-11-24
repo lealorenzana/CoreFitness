@@ -69,7 +69,7 @@ export const CATALOGUE: CatalogueGroup[] = [
       ['One app, three tabs', 'Today is what is next, Train holds their workouts and their coach, You holds their level, progress and membership.'],
       ['Today', 'Their membership, next session, streak and what the gym wants them to know, on one screen.'],
       ['Workouts, routines and programs', 'A player that logs every set, even with no signal, and finds their personal records itself.'],
-      ['Progress', 'Body readings, goals with numbers, records and a weekly streak that counts training days.'],
+      ['Progress', 'Body readings, records and a weekly streak that counts training days.'],
       ['Private progress photos', 'Only the member, and the coaches they choose, can ever see them. Not even the gym owner.'],
       ['Where it is in the gym', 'Your equipment list, and each exercise saying where in the gym to find its machine.'],
       ['Find a gym on a map', 'New members find your gym by distance, see how it lets people join, and get directions.'],
@@ -81,7 +81,7 @@ export const CATALOGUE: CatalogueGroup[] = [
     id: 'ai', icon: 'sparkle', title: 'The AI assistant',
     lede: 'A real Claude model, on the plans you choose. Careful by design.',
     items: [
-      ['Builds and adjusts training', 'Routines, multi-week programs, weekly schedules, goals, bookings and logged workouts.'],
+      ['Builds and adjusts training', 'Routines, multi-week programs, weekly schedules, bookings and logged workouts.'],
       ['Nothing changes until Apply', 'Every proposal is a card the member accepts or discards, and every change can be undone.'],
       ['Knows your gym', 'Hours, plans, classes and house rules come only from your settings, never guessed.'],
       ['Safe on purpose', 'A stated injury gets a referral to a person, never a changed exercise; no calorie or macro targets.'],

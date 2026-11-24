@@ -31,8 +31,6 @@ export type FeatureKey =
   // 0141: each lives inside a parent above, and is on only while it is.
   | 'shop' | 'requests' | 'online_pay' | 'chat' | 'rooms' | 'programs' | 'photos'
   | 'seasons' | 'quests' | 'referrals'
-  // 0176: Targets (members' own goals), a child of Progress.
-  | 'targets'
   // 0184: the gym's equipment list.
   | 'equipment'
   // 0186: points (earning and the rewards shop), a child of Engagement; Seasons live under it.

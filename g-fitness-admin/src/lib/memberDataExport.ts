@@ -28,7 +28,6 @@ const TABLES: [string, string, string?][] = [
   ['workout_routines', 'member_id', '*, workout_routine_exercises(*)'],
   ['workout_logs', 'member_id', '*, workout_sets(*)'],
   ['body_measurements', 'member_id'],
-  ['fitness_goals', 'member_id'],
   ['point_ledger', 'member_id'],
   ['reward_redemptions', 'member_id'],
   ['saved_resources', 'member_id'],

@@ -33,7 +33,7 @@ import MembershipActionDialog from './MembershipActionDialog';
 import ReasonDialog from './ReasonDialog';
 import { recordReason } from '../../lib/api/reasons';
 import { notifyUser } from '../../lib/api/notify';
-import { bmi, bmiBand, goalProgress } from '../../lib/api/progress';
+import { bmi, bmiBand } from '../../lib/api/progress';
 import { formatCheckInCode } from '../../utils/checkInCode';
 import { formatDate, formatPhoneNumber } from '../../utils/formatters';
 import { showToast } from '../../utils/toast';
@@ -922,7 +922,7 @@ function clock(t: string): string {
 }
 
 function ProgressTab({ detail }: { detail: MemberDetail }) {
-  const { measurements, goals, workouts, progression, plan, routines, goalValues } = detail;
+  const { measurements, workouts, progression, plan, routines } = detail;
   // listMeasurements is oldest-first, so the latest is the last element.
   const latest = measurements.length > 0 ? measurements[measurements.length - 1] : null;
   const latestBmi = latest ? bmi(latest.weight_kg, latest.height_cm) : null;
@@ -962,47 +962,6 @@ function ProgressTab({ detail }: { detail: MemberDetail }) {
           <p className="text-[10px] mt-2" style={{ color: 'var(--color-text-muted)' }}>
             {measurements.length} entries on record, from {formatDate(measurements[0].measured_on)}.
           </p>
-        )}
-      </Section>
-
-      <Section title="Goals">
-        {goals.length === 0 ? (
-          <Empty text="No goals set." />
-        ) : (
-          <div className="space-y-2.5">
-            {goals.map((g) => {
-              // Only weight goals have a current reading to measure against; for
-              // anything else the honest answer is that we cannot say, and a bar
-              // that invents a position is worse than no bar.
-              // 0087's value where the database has one — the number the
-              // member's own Goals tab shows; the latest weight otherwise.
-              const currentValue = goalValues[g.id] ?? (g.metric === 'weight_kg' ? latest?.weight_kg ?? null : null);
-              const p = goalProgress(g, currentValue);
-              return (
-                <div key={g.id}>
-                  <div className="flex items-center justify-between mb-1 gap-2">
-                    <span className="text-xs text-white font-medium truncate">{g.title}</span>
-                    <span className="text-[10px] flex-shrink-0" style={{ color: 'var(--color-text-muted)' }}>
-                      {g.achieved_on
-                        ? `achieved ${formatDate(g.achieved_on)}`
-                        : p == null ? 'no reading yet' : `${Math.round(p * 100)}%`}
-                    </span>
-                  </div>
-                  {p != null && (
-                    <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--color-border)' }}>
-                      <div className="h-full rounded-full" style={{ width: `${p * 100}%`, background: 'var(--color-secondary)' }} />
-                    </div>
-                  )}
-                  {g.target_value != null && (
-                    <p className="text-[10px] mt-1" style={{ color: 'var(--color-text-muted)' }}>
-                      {g.start_value ?? '?'} → {g.target_value} {g.metric}
-                      {g.target_date ? ` by ${formatDate(g.target_date)}` : ''}
-                    </p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
         )}
       </Section>
 

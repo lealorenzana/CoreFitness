@@ -314,20 +314,6 @@ export const FEATURE_SHOWS: Record<string, FeatureShow> = {
       { en: 'Each day opens as a workout to log.', fil: 'Bawat araw ay bubukas bilang workout na itatala.' },
     ],
   },
-  targets: {
-    frame: 'phone',
-    screen: [
-      { t: 'head', text: 'Targets' },
-      { t: 'row', text: 'Squat 80 kg', sub: 'by December' },
-      { t: 'bar', label: 'Best so far', from: 0.7, to: 1, at: 1, note: '80 of 80 kg' },
-      { t: 'tick', text: 'Reached — the app checked it', at: 2 },
-    ],
-    steps: [
-      { en: 'A member sets a target: a weight, a lift, visits a week.', fil: 'Magtatakda ang member ng target: timbang, buhat, o pagpunta bawat linggo.' },
-      { en: 'Their logs move it on by themselves.', fil: 'Kusang uusad ito mula sa mga tala nila.' },
-      { en: 'The app marks it reached — not a hand-ticked box.', fil: 'Ang app ang magmamarka na naabot — hindi mano-manong tsek.' },
-    ],
-  },
   push: {
     frame: 'phone', guide: 'notifications',
     screen: [

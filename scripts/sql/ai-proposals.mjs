@@ -221,36 +221,18 @@ await db.exec(`select apply_ai_proposal('${p9}')`);
     JSON.stringify({ mid, e, before9, after }));
 }
 
-// 10 ------------------------------------------------------------------------------------------
+// 10: goal.create went with members' own goals (0274): the kind is refused at create.
 await as(A);
-const p10 = await propose('goal.create', { title: 'Five workouts a week', metric: 'workouts_per_week', target_value: 5 });
-await as(A);
-await db.exec(`select apply_ai_proposal('${p10}')`);
 {
-  const g = (await proposalRow(p10)).undo?.goal_id;
-  const made = (await one(`select count(*)::int as n from fitness_goals where id = '${g}' and member_id = '${A}'`)).n;
-  await as(A);
-  const e = await tryExec(`select undo_ai_proposal('${p10}')`);
-  await owner();
-  const gone = (await one(`select count(*)::int as n from fitness_goals where id = '${g}'`)).n;
-  await as(A);
-  const p10b = await propose('goal.create', { title: 'Touch my toes', metric: 'custom' });
-  await as(A);
-  await db.exec(`select apply_ai_proposal('${p10b}')`);
-  const g2 = (await proposalRow(p10b)).undo.goal_id;
-  await db.exec(`update fitness_goals set achieved_on = manila_today() where id = '${g2}'`);
-  await as(A);
-  const e2 = await tryExec(`select undo_ai_proposal('${p10b}')`);
-  await owner();
-  const kept = (await one(`select count(*)::int as n from fitness_goals where id = '${g2}'`)).n;
-  check('10. goal.create inserts; undo removes it; an achieved goal\'s undo is refused',
-    made === 1 && e === null && gone === 0 && !!e2 && /reached that goal/.test(e2) && kept === 1,
-    JSON.stringify({ made, e, gone, e2, kept }));
+  const e = await tryPropose('goal.create', { title: 'Five workouts a week', metric: 'workouts_per_week', target_value: 5 });
+  check('10. a goal proposal is refused since 0274', !!e && /not a change the coach can make/.test(e), String(e));
 }
+// The proposals below only need some valid change; a one-day weekly plan is the smallest.
+const SCHED = { days: [{ day_of_week: 2 }] };
 
 // 11 ------------------------------------------------------------------------------------------
 await as(A);
-const p11 = await propose('goal.create', { title: 'Discard me', metric: 'custom' });
+const p11 = await propose('schedule.set', SCHED, 'Discard me');
 await as(A);
 {
   const e = await tryExec(`select discard_ai_proposal('${p11}')`);
@@ -258,18 +240,18 @@ await as(A);
   await as(A);
   const ea = await tryExec(`select apply_ai_proposal('${p11}')`);
   await owner();
-  const goals = (await one(`select count(*)::int as n from fitness_goals where title = 'Discard me'`)).n;
+  const after = (await proposalRow(p11)).status;
   check('11. discard marks it discarded; applying a discarded one is refused',
-    e === null && st === 'discarded' && !!ea && goals === 0, JSON.stringify({ e, st, ea, goals }));
+    e === null && st === 'discarded' && !!ea && after === 'discarded', JSON.stringify({ e, st, ea, after }));
 }
 
 // 12 ------------------------------------------------------------------------------------------
 await owner();
 const pendingNow = (await one(`select count(*)::int as n from ai_proposals where member_id = '${A}' and status = 'pending'`)).n;
 await as(A);
-for (let i = pendingNow; i < 10; i++) await propose('goal.create', { title: `Goal ${i}`, metric: 'custom' });
+for (let i = pendingNow; i < 10; i++) await propose('schedule.set', SCHED, `Plan ${i}`);
 {
-  const e = await tryPropose('goal.create', { title: 'Eleventh', metric: 'custom' });
+  const e = await tryPropose('schedule.set', SCHED, 'Eleventh');
   check('12. an 11th pending proposal is refused', !!e && /10 changes waiting/.test(e), String(e));
 }
 await db.exec(`reset role; update ai_proposals set status = 'discarded' where member_id = '${A}' and status = 'pending';`);
@@ -320,15 +302,15 @@ await db.exec(`reset role; insert into gym_modules (gym_id, feature_key, enabled
   on conflict (gym_id, feature_key) do update set enabled = false;`);
 await as(A);
 {
-  const e = await tryPropose('goal.create', { title: 'Switched off', metric: 'custom' });
+  const e = await tryPropose('schedule.set', SCHED, 'Switched off');
   await owner();
-  const n = (await one(`select count(*)::int as n from ai_proposals where summary = 'A change' and payload->>'title' = 'Switched off'`)).n;
+  const n = (await one(`select count(*)::int as n from ai_proposals where summary = 'Switched off'`)).n;
   check('15. with the assistant switched off no proposal can be made', !!e && /not available to you/.test(e) && n === 0, String(e));
 }
 await db.exec(`reset role; update gym_modules set enabled = true where gym_id = '${GYM}' and feature_key = 'assistant';`);
 await as(DESK);
 {
-  const e = await tryPropose('goal.create', { title: 'Desk', metric: 'custom' });
+  const e = await tryPropose('schedule.set', SCHED, 'Desk');
   check('15b. a desk account cannot make a proposal', !!e && /Only members/.test(e), String(e));
 }
 // The reply that spent the day's last message can still propose: limits gate messages, not proposals.
@@ -337,7 +319,7 @@ await db.exec(`reset role; update gym_settings set ai_daily_messages = 1 where g
   on conflict (gym_id, member_id, day) do update set messages = 1;`);
 await as(A);
 {
-  const e = await tryPropose('goal.create', { title: 'Last message', metric: 'custom' });
+  const e = await tryPropose('schedule.set', SCHED, 'Last message');
   check('15c. at the daily limit, the reply that used the last message can still propose', e === null, String(e));
 }
 await db.exec(`reset role; update gym_settings set ai_daily_messages = 30 where gym_id = '${GYM}';`);
@@ -347,8 +329,8 @@ await db.exec(`reset role; update gym_settings set ai_daily_messages = 30 where 
 await db.exec(`reset role; update ai_proposals set status = 'discarded' where member_id = '${A}' and status = 'pending';`);
 await as(A);
 {
-  const old = await propose('goal.create', { title: 'Old but waiting', metric: 'custom' });
-  const decided = await propose('goal.create', { title: 'Old and decided', metric: 'custom' });
+  const old = await propose('schedule.set', SCHED, 'Old but waiting');
+  const decided = await propose('schedule.set', SCHED, 'Old and decided');
   await db.exec(`select discard_ai_proposal('${decided}')`);
   await db.exec(`reset role; update ai_proposals set created_at = now() - interval '40 days' where id in ('${old}', '${decided}');`);
   await as(A);
@@ -356,14 +338,7 @@ await as(A);
   check('18. a pending proposal from 40 days ago is still listed; a decided one that old is not',
     ids.includes(old) && !ids.includes(decided), JSON.stringify({ old, decided, n: ids.length }));
 }
-// 19. 9999.995 rounds to 10000.00 and would overflow numeric(6,2): refused in plain words at create.
-await as(A);
-{
-  const e = await tryPropose('goal.create', { title: 'Huge', metric: 'custom', target_value: 9999.995 });
-  const ok = await tryPropose('goal.create', { title: 'Just fits', metric: 'custom', target_value: 9999.99 });
-  check('19. a goal value of 9999.995 is refused in plain words; 9999.99 is accepted',
-    !!e && /under 10,000/.test(e) && ok === null, JSON.stringify({ e, ok }));
-}
+// 19 (a goal value that would overflow) went with goal.create (0274).
 await db.exec(`reset role; update ai_proposals set status = 'discarded' where member_id = '${A}' and status = 'pending';`);
 // 20. Undoing an older schedule while a newer one is applied is refused; newest-first works.
 await as(A);
@@ -484,23 +459,7 @@ await as(A);
     !!blocked && /newer change from the coach/.test(blocked) && er === null && ec === null && gone === null && es === null,
     JSON.stringify({ blocked, er, ec, gone: !!gone, es }));
 }
-// 25. A gym with progress switched off takes no goals: refused at apply (made while on) and at create.
-await as(A);
-{
-  const pg = await propose('goal.create', { title: 'Progress off', metric: 'custom' });
-  await db.exec(`reset role; insert into gym_modules (gym_id, feature_key, enabled) values ('${GYM}', 'progress', false)
-    on conflict (gym_id, feature_key) do update set enabled = false;`);
-  await as(A);
-  const e = await tryExec(`select apply_ai_proposal('${pg}')`);
-  const ec = await tryPropose('goal.create', { title: 'Progress off 2', metric: 'custom' });
-  await owner();
-  const goals = (await one(`select count(*)::int as n from fitness_goals where title like 'Progress off%'`)).n;
-  const st = (await proposalRow(pg)).status;
-  await db.exec(`reset role; update gym_modules set enabled = true where gym_id = '${GYM}' and feature_key = 'progress';`);
-  check('25. with progress switched off a goal is refused ("doesn\'t use goals") at apply and create; nothing written',
-    !!e && /doesn't use goals in the app/.test(e) && !!ec && /doesn't use goals/.test(ec) && goals === 0 && st === 'pending',
-    JSON.stringify({ e, ec, goals, st }));
-}
+// 25 (no goals while progress is off) went with goal.create (0274).
 await db.exec(`reset role; update ai_proposals set status = 'discarded' where member_id = '${A}' and status = 'pending';`);
 
 // 16 ------------------------------------------------------------------------------------------
@@ -510,7 +469,7 @@ await owner();
     and cmd in ('INSERT','UPDATE','DELETE','ALL')`);
   await as(A);
   const ins = await tryExec(`insert into ai_proposals (member_id, kind, payload, summary)
-    values ('${A}', 'goal.create', '{}'::jsonb, 'forged')`);
+    values ('${A}', 'schedule.set', '{"days": []}'::jsonb, 'forged')`);
   const upd = await tryExec(`update ai_proposals set status = 'applied' where member_id = '${A}'`);
   await owner();
   const forged = (await one(`select count(*)::int as n from ai_proposals where summary = 'forged'`)).n;
@@ -564,8 +523,7 @@ await db.exec(`reset role;
   select act_as_gym('${GYM}');
   insert into trainer_profiles (profile_id, gym_id) values ('${T}', '${GYM}'), ('${T2}', '${GYM}') on conflict do nothing;
   insert into pt_sessions (gym_id, member_id, trainer_id, starts_at) values ('${GYM}', '${A}', '${T}', now() - interval '2 days');
-  insert into member_share_prefs (gym_id, member_id, share_goals) values ('${GYM}', '${A}', false)
-    on conflict (gym_id, member_id) do update set share_goals = false;
+  insert into member_share_prefs (gym_id, member_id) values ('${GYM}', '${A}') on conflict (gym_id, member_id) do nothing;
   update ai_proposals set status = 'discarded' where member_id = '${A}' and status = 'pending';`);
 {
   // Fixture: T trains A by the existing rule, T2 does not.
@@ -638,7 +596,7 @@ await guarded('M15. the coach is not sent a meal guide', async () => {
   check('M15. ai_coach_context() has no meal_guide, even with consent and a stored guide', !!ctx && !('meal_guide' in ctx), JSON.stringify(ctx));
 });
 await guarded('M16. trainers cannot read a meal guide', async () => {
-  await db.exec(`reset role; update member_share_prefs set share_goals = true where member_id = '${A}' and gym_id = '${GYM}';`);
+  await db.exec(`reset role;`);
   await as(T);
   const err = await tryExec(`select trainee_meal_guide('${A}')`);
   await owner();

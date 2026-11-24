@@ -189,7 +189,7 @@ async (page) => {
     const method = req.method();
     if (method === 'POST') {
       const body = JSON.parse(req.postData() || '[]');
-      if (t === 'fitness_goals' && JSON.stringify(body).includes('Refuse me')) {
+      if (t === 'body_measurements' && JSON.stringify(body).includes('Refuse me')) {
         return route.fulfill({ status: 403, contentType: 'application/json', body: JSON.stringify({ code: '42501', message: 'new row violates row-level security policy' }) });
       }
       const list = (Array.isArray(body) ? body : [body]).map((r) => ({
@@ -262,36 +262,38 @@ async (page) => {
   out.push('back online, the screen reads live: ' + (/Core day/.test(t) ? 'yes' : 'MISSING'));
   out.push('…and the banner goes: ' + ((await page.locator('[data-offline-banner]').count()) === 0 ? 'yes' : 'STILL SHOWN'));
 
-  // 4. Writing with no signal: a target and a message wait on the phone, then go.
+  // 4. Writing with no signal: a body reading and a message wait on the phone, then go.
+  // (A target was the example until 0274 removed targets.)
   // (The modules are loaded first: the dev server cannot serve them offline.)
   await page.evaluate(async () => {
-    window.__goals = await import('/src/lib/api/progress.ts');
+    window.__progress = await import('/src/lib/api/progress.ts');
     window.__chat = await import('/src/lib/api/chat.ts');
     window.__outbox = await import('/src/lib/outbox.ts');
   });
   await ctx.setOffline(true);
   await page.evaluate(() => dispatchEvent(new Event('offline')));
   const queuedHow = await page.evaluate(async () => {
-    const goals = window.__goals;
+    const progress = window.__progress;
     const chat = window.__chat;
-    const a = await goals.createGoal({ member_id: 'm1', title: 'Squat 100', metric: 'lift_kg', exercise_id: 'e1', start_value: 60, target_value: 100, target_date: null });
+    const how = (r) => (r.queued ? 'queued' : 'sent');
+    const a = how(await progress.saveMeasurement({ member_id: 'm1', measured_on: '2026-11-20', weight_kg: 72, notes: 'Keep me' }));
     const b = await chat.sendMessageTo('t1', 'Ben Cruz', 'Running late, coach');
-    const c = await goals.createGoal({ member_id: 'm1', title: 'Refuse me', metric: 'custom', exercise_id: null, start_value: null, target_value: null, target_date: null });
+    const c = how(await progress.saveMeasurement({ member_id: 'm1', measured_on: '2026-11-21', weight_kg: 71, notes: 'Refuse me' }));
     return [a, b, c].join(',');
   });
-  out.push('offline, a target and a message are kept: ' + (queuedHow === 'queued,queued,queued' ? 'yes' : 'NO ' + queuedHow));
+  out.push('offline, a body reading and a message are kept: ' + (queuedHow === 'queued,queued,queued' ? 'yes' : 'NO ' + queuedHow));
   await page.waitForTimeout(400);
   t = await text();
   out.push('…and the banner counts them: ' + (/3 waiting to send/.test(t) ? 'yes' : 'MISSING ' + t.slice(0, 120)));
-  out.push('…nothing reached the server: ' + (!(DB.fitness_goals ?? []).length && !(DB.sent_messages ?? []).length ? 'yes' : 'NO'));
+  out.push('…nothing reached the server: ' + (!(DB.body_measurements ?? []).some((m) => /Keep me|Refuse me/.test(m.notes ?? '')) && !(DB.sent_messages ?? []).length ? 'yes' : 'NO'));
   await shot('offline-waiting');
   await ctx.setOffline(false);
   await page.evaluate(() => dispatchEvent(new Event('online')));
   await page.waitForTimeout(2500);
-  out.push('back online, the target goes: ' + ((DB.fitness_goals ?? []).some((g) => g.title === 'Squat 100') ? 'yes' : 'NO'));
+  out.push('back online, the reading goes: ' + ((DB.body_measurements ?? []).some((m) => m.notes === 'Keep me') ? 'yes' : 'NO'));
   out.push('…and the message, to the right person: ' + ((DB.sent_messages ?? []).some((m) => m.p_conversation === 'c-t1' && m.p_body === 'Running late, coach') ? 'yes' : 'NO ' + JSON.stringify(DB.sent_messages)));
   t = await text();
-  out.push('…the refused one is dropped and said so: ' + (/Target could not be sent/.test(t) && !(DB.fitness_goals ?? []).some((g) => g.title === 'Refuse me') ? 'yes' : 'NO'));
+  out.push('…the refused one is dropped and said so: ' + (/Body reading could not be sent/.test(t) && !(DB.body_measurements ?? []).some((m) => m.notes === 'Refuse me') ? 'yes' : 'NO'));
   out.push('…and nothing is left waiting: ' + (!/waiting to send/.test(t) && (await page.evaluate(() => localStorage.getItem('cf:outbox:v1'))) === null ? 'yes' : 'NO'));
   // A resend after a lost reply: the same id again counts as already there.
   const again = await page.evaluate(async () => {

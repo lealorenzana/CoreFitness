@@ -6,17 +6,15 @@ import { listMemberBookings, type BookingWithDetails } from '../lib/api/bookings
 import { listMemberPtSessions, type PtSessionRow } from '../lib/api/ptSessions';
 import {
   listMeasurements,
-  listGoals,
   listWorkoutLogs,
   type BodyMeasurementRow,
-  type FitnessGoalRow,
   type WorkoutLogRow,
 } from '../lib/api/progress';
 import { listNotifications } from '../lib/api/notifications';
 import { getMemberProgression, type MemberProgression } from '../lib/api/progression';
 import type { AttendanceRow, PaymentRow } from '../types/db';
 import {
-  getMemberPlan, listMemberRoutines, listCoachNotes, getGoalValues,
+  getMemberPlan, listMemberRoutines, listCoachNotes,
   type MemberPlan, type MemberRoutine, type CoachNoteRecord,
 } from '../lib/api/memberTraining';
 import { getOpenRenewalRequest, type OpenRenewalRequest } from '../lib/api/renewalRequests';
@@ -48,7 +46,6 @@ export interface MemberDetail {
   bookings: BookingWithDetails[];
   ptSessions: PtSessionRow[];
   measurements: BodyMeasurementRow[];
-  goals: FitnessGoalRow[];
   workouts: WorkoutLogRow[];
   notes: TrainerNote[];
   /** Coach notes as records (0072) — null for staff, whom 0072 does not let
@@ -57,8 +54,6 @@ export interface MemberDetail {
   /** Their training plan and routines from the phone app (0030/0086/0089). */
   plan: MemberPlan | null;
   routines: MemberRoutine[] | null;
-  /** goal id → current value (0087), as the member's Goals tab shows it. */
-  goalValues: Record<string, number | null>;
   /** null when migration 0028 isn't live — the drawer hides the section. */
   progression: MemberProgression | null;
   stats: MemberStats;
@@ -225,7 +220,6 @@ export async function loadMemberDetail(memberId: string): Promise<MemberDetail> 
     bookings,
     ptSessions,
     measurements,
-    goals,
     workouts,
     notifications,
     progression,
@@ -240,7 +234,6 @@ export async function loadMemberDetail(memberId: string): Promise<MemberDetail> 
     listMemberBookings(memberId).catch(() => []),
     listMemberPtSessions(memberId).catch(() => []),
     listMeasurements(memberId).catch(() => []),
-    listGoals(memberId).catch(() => []),
     listWorkoutLogs(memberId).catch(() => []),
     listNotifications(memberId).catch(() => []),
     getMemberProgression(memberId),
@@ -249,7 +242,6 @@ export async function loadMemberDetail(memberId: string): Promise<MemberDetail> 
     listCoachNotes(memberId),
     getOpenRenewalRequest(memberId).catch(() => null),
   ]);
-  const goalValues = await getGoalValues(goals.filter((g) => !g.achieved_on).map((g) => g.id)).catch(() => ({}));
 
   const notes: TrainerNote[] = notifications
     .filter((n) => n.type === 'trainer_recommendation' || n.type === 'trainer_feedback')
@@ -268,13 +260,11 @@ export async function loadMemberDetail(memberId: string): Promise<MemberDetail> 
     bookings,
     ptSessions,
     measurements,
-    goals,
     workouts,
     notes,
     coachNotes,
     plan,
     routines,
-    goalValues,
     progression,
     stats: computeStats(identity, payments, attendance, bookings, ptSessions),
     renewalRequest,

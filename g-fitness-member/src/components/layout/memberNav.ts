@@ -81,7 +81,7 @@ const TAB_PATHS: string[][] = [
   // You: the earned level, progress, badges and records, the membership and the
   // account (simplify, 2026-10-28) — and Rewards, which More opens.
   ['/member/membership', '/member/renew', '/member/renew-membership',
-   '/member/progress', '/member/body', '/member/targets', '/member/progress-photos', '/member/workout-history',
+   '/member/progress', '/member/body', '/member/progress-photos', '/member/workout-history',
    '/member/achievements', '/member/challenges', '/member/season',
    '/member/payments', '/member/attendance-history', '/member/rewards', '/member/shop',
    '/member/profile', '/member/settings', '/member/change-password',

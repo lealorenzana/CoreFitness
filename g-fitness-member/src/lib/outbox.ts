@@ -33,7 +33,7 @@ import { reportError } from './errorReporter';
  * one bad write cannot jam everything behind it.
  */
 
-export type JobKind = 'message' | 'room-post' | 'room-comment' | 'measurement' | 'goal-add' | 'goal-update' | 'profile'
+export type JobKind = 'message' | 'room-post' | 'room-comment' | 'measurement' | 'profile'
   | 'member-profile' | 'trainer-profile'
   // A workout started, finished or discarded with no signal (lib/api/routines.ts, offlineSets.ts).
   | 'workout-start' | 'workout-finish' | 'workout-discard';

@@ -132,7 +132,7 @@ async (page) => {
     notifications: [], events: [], event_registrations: [], attendance: [],
     workout_resources: [], point_ledger: [], rewards: [], reward_redemptions: [],
     challenges: [], challenge_participants: [], workout_logs: [], workout_sets: [],
-    body_measurements: [], fitness_goals: [], achievements: [], achievement_unlocks: [],
+    body_measurements: [], achievements: [], achievement_unlocks: [],
     features: [], plan_features: [], payments: [], notification_prefs: [],
     member_share_prefs: [], push_subscriptions: [], assistant_chats: [], gym_plans: [],
     trainer_ratings: [], trainer_feedback: [], public_trainer_credentials: [],

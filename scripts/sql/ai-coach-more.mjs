@@ -61,7 +61,7 @@ await db.exec(`select set_ai_coach_consent(false)`);
 check('progress is not read without the member\'s consent', (await one(`select ai_coach_progress() p`)).p === null);
 await db.exec(`select set_ai_coach_consent(true)`);
 const prog = (await one(`select ai_coach_progress() p`)).p;
-check('…and is with it', prog && 'workouts_per_week_last_8' in prog && 'targets' in prog, JSON.stringify(prog));
+check('…and is with it, without targets (0274)', prog && 'workouts_per_week_last_8' in prog && !('targets' in prog), JSON.stringify(prog));
 
 // ---- booking.create ----
 check('a class at another gym cannot be proposed', (await tryPropose('booking.create', { class_id: klass2 })) !== null);

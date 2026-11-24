@@ -515,9 +515,9 @@ function trackerAnswer(ctx: AssistantContext): string {
   return '**Tracking a workout**\n\nOpen **Train → Workout** and start one of your workouts, or an empty one. Add each set as you finish it: reps and weight, or time for things like planks. Every set saves as you enter it, so locking your phone between sets loses nothing.';
 }
 
-/** Preset goals (0055) — the five that track themselves. */
+/** Personal goals were removed (0274): say so, and point at what counts toward something. */
 function goalsAnswer(): string {
-  return '**Goals**\n\nOpen **You → Progress → Targets**. Alongside number goals like "get to 70 kg", there are ready-made ones that track themselves from your check-ins and logged workouts — build consistency, stay active, improve fitness, increase strength, improve endurance.\n\nEach one says exactly how it is counted, and the gym marks it reached for you; you never have to claim it.';
+  return '**Goals**\n\nThe app does not keep personal goals. To work toward a number, join a challenge under **More → Rewards → Challenges**, or ask your coach to plan it with you.';
 }
 
 /**
@@ -785,7 +785,7 @@ const RULES: { match: RegExp; reply: (ctx: AssistantContext) => string; kind?: R
     // programming question, not a request to open the logging screen.
     match: /\b(?:progress|my weight|weigh ?-?ins?|measurement|body ?map|log my|goals?)s?\b/,
     reply: () =>
-      '**Tracking progress**\n\n• Weight and measurements: **You → Progress → Body**\n• Targets: **You → Progress → Targets**\n• Workouts: **Train → Workout**\n\nYou can also just tell me, for example *log my weight 72 kg*, and I will save it after you tap Save.',
+      '**Tracking progress**\n\n• Weight and measurements: **You → Progress → Body**\n• Workouts: **Train → Workout**\n\nYou can also just tell me, for example *log my weight 72 kg*, and I will save it after you tap Save.',
   },
   {
     match: /\b(?:event|announce\w*)s?\b/,

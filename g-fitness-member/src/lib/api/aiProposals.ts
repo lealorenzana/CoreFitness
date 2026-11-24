@@ -11,7 +11,7 @@ import { listRoutines } from './routines';
  * is the database's, and its refusals are plain sentences meant to be shown as-is.
  */
 
-export type ProposalKind = 'routine.create' | 'routine.replace' | 'schedule.set' | 'goal.create'
+export type ProposalKind = 'routine.create' | 'routine.replace' | 'schedule.set'
   /** Retired with meal guides (0166): an old one can only be discarded. */
   | 'meals.set';
 export type ProposalStatus = 'pending' | 'applied' | 'discarded' | 'undone';
@@ -36,9 +36,7 @@ export interface RoutinePayload {
   }[];
 }
 export interface SchedulePayload { days: { day_of_week: number; routine_id?: string; remind_at?: string }[] }
-export interface GoalPayload {
-  title: string; metric: string; start_value?: number; target_value?: number; target_date?: string;
-}
+
 
 /** Every waiting proposal, and the last 30 days of decided ones, newest first. */
 export async function listProposals(): Promise<Proposal[]> {

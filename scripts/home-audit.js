@@ -79,7 +79,7 @@ async (page) => {
       message: 'Kenji approved it.', action_url: '/member/bookings', metadata: null,
       read: false, created_at: iso(0, 8, 10) }],
     gym_settings: [{ id: true, gym_name: 'Core Fitness', short_name: 'CF' }],
-    workout_logs: [], workout_sets: [], body_measurements: [], fitness_goals: [],
+    workout_logs: [], workout_sets: [], body_measurements: [],
     achievements: [], achievement_unlocks: [], notification_prefs: [], member_share_prefs: [],
     challenges: [], challenge_participants: [], point_ledger: [], point_rules: [],
     rewards: [], events: [], event_registrations: [], workout_resources: [],
@@ -99,7 +99,7 @@ async (page) => {
     ],
     plan_allows: true, member_points_balance: 340,
     member_progression: [{ level: 3, points: 340, next_level_points: 500 }],
-    member_commitments: [], challenge_progress: [], goal_progress: [],
+    member_commitments: [], challenge_progress: [],
     sync_my_achievements: 0, my_trainer_ratings: [], may_rate_trainer: false,
   };
 

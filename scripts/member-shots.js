@@ -138,8 +138,6 @@ async (page) => {
       height_cm: 163, waist_cm: 74, created_at: iso(-30, 9, 0) },
       { id: 'bm2', member_id: 'm1', measured_on: dstr(-2), weight_kg: 60.1, height_cm: 163,
         waist_cm: 72, created_at: iso(-2, 9, 0) }],
-    fitness_goals: [{ id: 'g1', member_id: 'm1', kind: 'weight', target_value: 58,
-      target_date: dstr(45), created_at: iso(-30, 9, 0), achieved_at: null }],
     // Real column names, or the catalogue builds a def with an undefined tier
     // and the unlock overlay takes the whole app down with it — which is how
     // the first run of this script produced sixteen shots of the splash screen.
@@ -173,7 +171,7 @@ async (page) => {
       closing_time: '21:00', logo_url: null, short_name: 'CF', tagline: null,
       activity_options: ['Strength', 'Cardio', 'Mobility'], updated_at: iso(0, 9, 0), updated_by: null }],
     notification_prefs: [{ member_id: 'm1', bookings: true, payments: true, announcements: true }],
-    member_share_prefs: [{ member_id: 'm1', share_measurements: true, share_goals: true, share_workouts: false }],
+    member_share_prefs: [{ member_id: 'm1', share_measurements: true, share_workouts: false }],
     push_subscriptions: [], assistant_chats: [], gym_plans: [], workout_plans: [],
     membership_events: [], refund_rules: [], features: [], plan_features: [],
     pending_registrations: [], reward_redemptions: [], activity_feed: [],

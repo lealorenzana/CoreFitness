@@ -24,7 +24,7 @@ every role landing in the lab, the member's two-year history, wiping the lab aga
 |---|---|
 | `1-wipe.sql` | One transaction. Refuses if there is no platform admin. Anything it cannot delete undoes the whole run. Ends with a one-row count. |
 | `2-test-gym.sql` | Renames Gym #1, prices its plans, makes the 4 sign-ins, 3 more coaches, 40 members, 2 months of check-ins and payments, a timetable, 1-on-1, events, challenges, rewards, a program, equipment, walk-ins. **The result table shows the four passwords once — copy them.** Run it again for new passwords. |
-| `3-member-history.sql` | The member sign-in's two years: terms, receipts, visits, weigh-ins, goals, routines, workouts, points, badges. |
+| `3-member-history.sql` | The member sign-in's two years: terms, receipts, visits, weigh-ins, routines, workouts, points, badges. |
 | `4-member-coaching.sql` | Their coaching with the test coach: sessions + notes, rating, room, chat, classes, a program. |
 | `5-gym-life.sql` | The shop (3 months of sales), seasons, challenges, events, rewards, streaks, an inbox. |
 

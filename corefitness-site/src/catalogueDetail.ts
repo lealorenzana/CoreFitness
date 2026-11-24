@@ -82,7 +82,7 @@ export const DETAIL: Record<string, Detail> = {
   'Workouts, routines and programs': { who: 'Members.',
     steps: ['Pick a routine, or start an empty workout.', 'Log every set, even with no signal. It sends when the signal is back.', 'The database finds personal records itself.'] },
   'Progress': { who: 'Members, and the coaches they share it with.',
-    steps: ['Log body readings.', 'Set goals with numbers.', 'See records, and a weekly streak of training days.'] },
+    steps: ['Log body readings.', 'See records, and a weekly streak of training days.'] },
   'Private progress photos': { who: 'Members, and the coaches they choose.',
     steps: ['The member adds a photo.', 'They choose which coaches can see it.', 'Nobody else can, not even the gym owner.'] },
   'Where it is in the gym': { who: 'Members. The owner keeps the list.',
@@ -96,7 +96,7 @@ export const DETAIL: Record<string, Detail> = {
 
   // ---- The AI assistant
   'Builds and adjusts training': { who: 'Members, on the plans that include it.',
-    steps: ['The member asks in plain words.', 'It proposes a routine, a program, a weekly schedule, a goal or a booking.', 'It can log a workout too.'] },
+    steps: ['The member asks in plain words.', 'It proposes a routine, a program, a weekly schedule or a booking.', 'It can log a workout too.'] },
   'Nothing changes until Apply': { who: 'Members.',
     steps: ['Each proposal is a card.', 'The member taps Apply, or discards it.', 'Every applied change can be undone.'] },
   'Knows your gym': { who: 'Members.',

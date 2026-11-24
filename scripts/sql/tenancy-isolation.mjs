@@ -220,7 +220,7 @@ check('an insert with no gym and no caller fails', !!(await fails(`insert into e
 // Gym B gets Gym #1's rules, then the rows later checks read.
 await db.exec(`select seed_gym_defaults('${GYM_B}')`);
 // Plans are the exception since 0186: a new gym gets starter plans, not Gym #1's.
-for (const t of ['point_rules', 'cancellation_reasons', 'goal_templates', 'achievements', 'refund_rules']) {
+for (const t of ['point_rules', 'cancellation_reasons', 'achievements', 'refund_rules']) {
   const [a, b] = [(await one(`select count(*)::int as n from ${t} where gym_id = '${GYM_A}'${t === 'membership_plans' ? ' and is_active' : ''}`)).n,
     (await one(`select count(*)::int as n from ${t} where gym_id = '${GYM_B}'`)).n];
   check(`Gym B starts with Gym #1's ${t} (${b} of ${a})`, a > 0 && a === b, `${b} of ${a}`);
@@ -657,16 +657,7 @@ const settled = (await one(`select settle_challenges() as n`)).n;
 const reward = await one(`select gym_id::text as g, points from point_ledger where rule_key = 'challenge_complete' and member_id = '${P.both}'`);
 check('pg_cron (no caller) settles a finished challenge — it saw zero progress before 0102', settled >= 1, `settled ${settled}`);
 check("the challenge's points land in the challenge's gym", reward?.g === GYM_B && reward?.points === 50, JSON.stringify(reward));
-// Goals: a goal settles in its own gym.
-await db.exec(`select act_as_gym('${GYM_B}');
-  insert into fitness_goals (gym_id, member_id, title, template_key, target_value, created_at)
-  values ('${GYM_B}', '${P.both}', 'Visit once', (select key from goal_templates where gym_id = '${GYM_B}' and metric = 'training_days' limit 1), 1,
-          now() - interval '8 days');
-  select act_as_gym(null);`);
-await db.exec(`select settle_goals()`);
-check('a goal settles against its own gym', (await one(`select achieved_on is not null as done from fitness_goals where title = 'Visit once'`)).done === true);
-check("goal points land in the goal's gym",
-  (await one(`select count(*)::int as n from point_ledger where rule_key = 'goal_achieved' and member_id = '${P.both}' and gym_id = '${GYM_B}'`)).n === 1);
+// Members' own goals settled in their own gym here until 0274 removed them.
 
 // ---- 0103: messages and the activity log stay in one gym ----------------------
 await asOwner();
@@ -710,12 +701,12 @@ check('0105 removed the last transition keys',
 // What those keys were holding back: one person, two gyms, the same day.
 await db.exec(`select act_as_gym('${GYM_A}');
   insert into body_measurements (gym_id, member_id, measured_on, weight_kg) values ('${GYM_A}', '${P.both}', current_date, 70);
-  insert into member_share_prefs (gym_id, member_id, share_goals) values ('${GYM_A}', '${P.both}', true);
+  insert into member_share_prefs (gym_id, member_id, share_workouts) values ('${GYM_A}', '${P.both}', true);
   select act_as_gym('${GYM_B}');`);
 check('a two-gym member can be measured in both gyms on one day', !(await fails(
   `insert into body_measurements (gym_id, member_id, measured_on, weight_kg) values ('${GYM_B}', '${P.both}', current_date, 70)`)));
 check('…and shares different things with each gym', !(await fails(
-  `insert into member_share_prefs (gym_id, member_id, share_goals) values ('${GYM_B}', '${P.both}', false)`)));
+  `insert into member_share_prefs (gym_id, member_id, share_workouts) values ('${GYM_B}', '${P.both}', false)`)));
 await db.exec(`select act_as_gym(null)`);
 
 // ---- 0104: what the apps read to be gym-aware ---------------------------------

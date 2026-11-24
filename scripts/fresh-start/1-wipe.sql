@@ -18,7 +18,7 @@
 --     methods, features, announcements, the shared exercise library and free
 --     workout library, the map cache
 --   * Gym #1's row and its RULES — points, badges, refund tiers, cancellation
---     reasons, goal templates, settings — because every new gym copies its
+--     reasons, settings — because every new gym copies its
 --     starting rules from Gym #1 (seed_gym_defaults). Part 2 renames it into
 --     your private test gym.
 --
@@ -32,7 +32,7 @@ declare
   v_one    uuid := gym_one();
   v_keep   uuid[];
   -- Gym #1's rules, copied into every new gym (0098/0186 seed_gym_defaults).
-  v_rules  text[] := array['gym_settings', 'point_rules', 'cancellation_reasons', 'goal_templates',
+  v_rules  text[] := array['gym_settings', 'point_rules', 'cancellation_reasons',
                            'achievements', 'refund_rules'];
   -- Platform-level tables with no gym_id that hold gym or person history.
   v_clear  text[] := array['application_documents', 'application_messages', 'gym_applications',

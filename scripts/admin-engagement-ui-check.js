@@ -51,7 +51,7 @@ async (page) => {
     achievement_metrics: [
       { key: 'training_days', audience: 'member', label: 'Training days', unit: 'days', is_boolean: false, sort_order: 1, challengeable: true },
       { key: 'weekend_days', audience: 'member', label: 'Weekend days', unit: 'days', is_boolean: false, sort_order: 2, challengeable: true }],
-    challenges: [], challenge_participants: [], achievements: [], achievement_unlocks: [], goal_templates: [],
+    challenges: [], challenge_participants: [], achievements: [], achievement_unlocks: [],
     events: [
       { id: 'e1', title: 'Old fun run', description: null, starts_at: iso(-20), duration_minutes: 60, location: null, capacity: 30, cancelled: false, image_url: null, is_featured: false },
       { id: 'e2', title: 'Old yoga', description: null, starts_at: iso(-10), duration_minutes: 60, location: null, capacity: 30, cancelled: false, image_url: null, is_featured: false },
@@ -147,8 +147,9 @@ async (page) => {
   await page.waitForTimeout(1200);
   await page.screenshot({ path: 'shots/admin-challenges.png' });
   t = await text();
-  // Since 2026-11-23 the four ideas are a list down the left and only the open one's explanation leads the page.
-  out.push('the four ideas listed, the open one explained: ' + ((await page.locator('[data-idea]').count()) === 4 && /dates that members join/.test(t) ? 'yes' : 'MISSING'));
+  // Since 2026-11-23 the ideas are a list down the left and only the open one's explanation leads the page.
+  // Two since teams (0273) and members' own goals (0274) were removed: challenges and the gym goal.
+  out.push('the two ideas listed, the open one explained: ' + ((await page.locator('[data-idea]').count()) === 2 && /dates that members join/.test(t) ? 'yes' : 'MISSING'));
   out.push('completions settle on open: ' + (CALLS.some((c) => c[1] === 'settle_challenges') ? 'yes' : 'MISSING'));
   await page.locator('[data-challenge-new]').getByRole('button', { name: 'Weekend warrior' }).click();
   out.push('a preset fills the sentence: ' + ((await page.getByLabel('Target', { exact: true }).inputValue()) === '6' && (await page.getByLabel('What is counted').inputValue()) === 'weekend_days'
@@ -158,18 +159,20 @@ async (page) => {
   const ch = CALLS.find((c) => c[0] === 'POST' && c[1] === 'challenges');
   out.push('…and starts it as written: ' + (ch && ch[2].metric_key === 'weekend_days' && ch[2].target === 6 && ch[2].reward_points === 200 && ch[2].title === 'Weekend warrior' ? 'yes' : 'MISSING ' + JSON.stringify(ch?.[2])));
   await page.screenshot({ path: 'shots/admin-challenge-new.png' });
-  for (const [k, sel] of [['gg', '[data-goal-new]'], ['gp', '[data-goal-list]']]) {
+  for (const [k, sel] of [['gg', '[data-goal-new]']]) {
     await page.locator(`[data-idea="${k}"]`).click();
     await page.locator(sel).waitFor({ timeout: 10000 }).catch(() => {});
     out.push(`the ${k} tab opens: ` + ((await page.locator(sel).count()) === 1 ? 'yes' : 'MISSING'));
     await page.waitForTimeout(800);
     await page.screenshot({ path: `shots/admin-challenges-${k}.png` });
   }
-  // Teams were removed (0273): no third idea, and an old ?tab=sq link opens Challenges.
-  await page.goto('http://localhost:5174/challenges?tab=sq', { waitUntil: 'domcontentloaded' });
-  await page.locator('[data-challenge-new]').waitFor({ timeout: 15000 }).catch(() => {});
-  out.push('teams are gone, an old link opens Challenges: ' + ((await page.locator('[data-idea]').count()) === 3
-    && (await page.locator('[data-idea="sq"]').count()) === 0 && (await page.locator('[data-challenge-new]').count()) === 1 ? 'yes' : 'MISSING'));
+  // Teams (0273) and members' own goals (0274) were removed: an old ?tab=sq or ?tab=gp link opens Challenges.
+  for (const old of ['sq', 'gp']) {
+    await page.goto(`http://localhost:5174/challenges?tab=${old}`, { waitUntil: 'domcontentloaded' });
+    await page.locator('[data-challenge-new]').waitFor({ timeout: 15000 }).catch(() => {});
+    out.push(`an old ?tab=${old} link opens Challenges: ` + ((await page.locator('[data-idea]').count()) === 2
+      && (await page.locator(`[data-idea="${old}"]`).count()) === 0 && (await page.locator('[data-challenge-new]').count()) === 1 ? 'yes' : 'MISSING'));
+  }
 
   // ---- Achievements --------------------------------------------------------------------------------
   await page.goto('http://localhost:5174/achievements', { waitUntil: 'domcontentloaded' });

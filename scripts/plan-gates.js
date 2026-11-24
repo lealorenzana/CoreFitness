@@ -139,7 +139,7 @@ async (page) => {
     classes: [], bookings: [], pt_sessions: [], attendance: [], notifications: [],
     events: [], event_registrations: [], point_ledger: [], reward_redemptions: [],
     challenge_participants: [], workout_logs: [], workout_sets: [], body_measurements: [],
-    fitness_goals: [], achievements: [], achievement_unlocks: [], trainer_profiles: [],
+    achievements: [], achievement_unlocks: [], trainer_profiles: [],
     public_trainers: [], trainer_availability: [], trainer_busy_slots: [],
     class_availability: [], features: [], plan_features: [], payments: [],
     notification_prefs: [], member_share_prefs: [], push_subscriptions: [],

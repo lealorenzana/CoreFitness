@@ -3,8 +3,8 @@ import { getTrainer, type TrainerWithProfile } from '../lib/api/trainers';
 import { listTrainerClasses } from '../lib/api/classes';
 import { listTrainerBookings } from '../lib/api/bookings';
 import {
-  listGoals, listMeasurements, listWorkoutLogs,
-  type FitnessGoalRow, type BodyMeasurementRow, type WorkoutLogRow,
+  listMeasurements, listWorkoutLogs,
+  type BodyMeasurementRow, type WorkoutLogRow,
 } from '../lib/api/progress';
 import { getSharePrefs, SHARE_ALL, type SharePrefs } from '../lib/api/sharePrefs';
 import {
@@ -66,13 +66,12 @@ export interface TrainerOverview {
  * `shared` is the member's own choice, and it is enforced by RLS — a category
  * switched off returns no rows to *any* trainer, not just this screen. It is
  * reported alongside the data so the UI can say "not shared" instead of
- * drawing an empty panel, which would tell the trainer the member has no goals
- * when in fact they have several and kept them private.
+ * drawing an empty panel, which would tell the trainer the member has no
+ * readings when in fact they have several and kept them private.
  */
 export interface MemberDetailForTrainer {
   progression: Progression | null;
   shared: SharePrefs;
-  goals: FitnessGoalRow[];
   latestMeasurement: BodyMeasurementRow | null;
   recentWorkouts: WorkoutLogRow[];
   /** Their training plan (0030/0089): days, reminder time, routine per day.
@@ -84,9 +83,6 @@ export interface MemberDetailForTrainer {
   } | null;
   /** Saved routines (0086) — under "workouts" sharing, like the logs they produce. */
   routines: { id: string; name: string; exerciseCount: number; source: 'member' | 'coach' | 'trainer' }[];
-  /** Goal id → current value from `goal_current_value` (0087), the number the
-   *  member's own Goals tab shows. Null where the database gives none. */
-  goalValues: Record<string, number | null>;
   /** Who to call if something happens in a session — the member keeps it
    *  current in Edit profile. Null when none on file or unreadable. */
   emergency: { name: string; phone: string | null; relationship: string | null } | null;
@@ -147,9 +143,8 @@ export async function getMemberDetailForTrainer(memberId: string): Promise<Membe
 
   // Each read is independent and allowed to fail on its own. A trainer looking
   // at a member must not get a blank screen because one optional panel errored.
-  const [progression, goals, measurements, workouts, planRows, routines, achievements] = await Promise.all([
+  const [progression, measurements, workouts, planRows, routines, achievements] = await Promise.all([
     getProgression(memberId).catch(() => null),
-    shared.shareGoals ? listGoals(memberId).catch(() => []) : Promise.resolve([]),
     shared.shareMeasurements ? listMeasurements(memberId).catch(() => []) : Promise.resolve([]),
     shared.shareWorkouts ? listWorkoutLogs(memberId).catch(() => []) : Promise.resolve([]),
     // The plan is readable by the gym's staff and coaches (0030's policy) —
@@ -159,27 +154,19 @@ export async function getMemberDetailForTrainer(memberId: string): Promise<Membe
     achievementsFor(memberId),
   ]);
 
-  const openGoals = goals.filter((g) => g.achieved_on == null).slice(0, 4);
   const { data: mp } = await supabase.from('member_profiles')
     .select('emergency_contact_name, emergency_contact_phone, emergency_contact_relationship')
     .eq('profile_id', memberId).maybeSingle();
   const em = mp as { emergency_contact_name: string | null; emergency_contact_phone: string | null; emergency_contact_relationship: string | null } | null;
-  const values = await Promise.all(openGoals.map(async (g) => {
-    const { data, error } = await supabase.rpc('goal_current_value', { p_goal: g.id });
-    return [g.id, error || data == null ? null : Number(data)] as const;
-  }));
   const active = planRows?.filter((r) => r.active) ?? [];
 
   return {
     progression,
     achievements,
     shared,
-    // Newest first, and only what a coach can act on in a modal.
-    goals: openGoals,
     emergency: em?.emergency_contact_name
       ? { name: em.emergency_contact_name, phone: em.emergency_contact_phone, relationship: em.emergency_contact_relationship }
       : null,
-    goalValues: Object.fromEntries(values),
     plan: planRows == null ? null : {
       days: active.map((r) => r.day_of_week).sort((a, b) => a - b),
       remindAt: active[0]?.remind_at ?? null,

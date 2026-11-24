@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useUrlState } from '../../hooks/useUrlState';
 import { useNavigate } from 'react-router-dom';
-import { Barbell, CalendarCheck, ChatCircleText, EyeSlash, Lifebuoy, ListChecks, ListPlus, PaperPlaneRight, Ruler, Target, Trophy, X, type Icon } from '@phosphor-icons/react';
+import { Barbell, CalendarCheck, ChatCircleText, EyeSlash, Lifebuoy, ListChecks, ListPlus, PaperPlaneRight, Ruler, Trophy, X, type Icon } from '@phosphor-icons/react';
 import { leaveFeedback, listFeedbackByTrainer, type TrainerFeedbackRow } from '../../lib/api/trainerFeedback';
 import { DAY_LABELS, formatRemindAt } from '../../lib/api/gymPlans';
 import TraineeProgram from './TraineeProgram';
@@ -248,26 +248,6 @@ export default function TraineeAbout({ member, onChat, initialTab = 'progress' }
           <SkelRows label="Loading their details…" />
         ) : (
           <>
-            <SharedBlock
-              icon={Target}
-              label="Goals"
-              shared={detail?.shared.shareGoals ?? true}
-              empty={(detail?.goals.length ?? 0) === 0}
-              emptyText="No active goals."
-            >
-              {detail?.goals.map((g) => (
-                <p key={g.id} className="flex items-baseline justify-between" style={{ ...line, gap: 10 }}>
-                  <span className="truncate">{g.title}</span>
-                  {/* The same current value the member's Goals tab shows (0087). */}
-                  {g.target_value != null && (
-                    <span className="flex-none tabular-nums" style={muted}>
-                      {detail.goalValues[g.id] != null ? `${detail.goalValues[g.id]} of ` : 'target '}{g.target_value}
-                    </span>
-                  )}
-                </p>
-              ))}
-            </SharedBlock>
-
             <SharedBlock
               icon={Ruler}
               label="Latest measurement"

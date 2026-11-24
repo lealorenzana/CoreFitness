@@ -205,7 +205,7 @@ async (page) => {
     ...['words', 'runs', 'join', 'coach', 'pay', 'tv', 'moments'].map((t) => `/gym-app?tab=${t}`),
     ...['gym', 'hours', 'checkin', 'bookings', 'coaching', 'walk-ins', 'refunds', 'payments', 'waiver', 'house-rules', 'security', 'staff', 'profile'].map((t) => `/settings?tab=${t}`),
     ...['catalogue', 'earning', 'season', 'referrals', 'history'].map((t) => `/rewards?tab=${t}`),
-    ...['gg', 'sq', 'gp'].map((t) => `/challenges?tab=${t}`),
+    '/challenges?tab=gg',
     ...['ideas', 'rate', 'tours'].map((t) => `/help?tab=${t}`),
     '/trainers?view=pay', '/trainers?view=credentials', '/kiosk'];
   const bad = [];

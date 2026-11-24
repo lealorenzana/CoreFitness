@@ -30,7 +30,7 @@ Bottom bar: Today · Train · You · More, and the check-in block at the right e
 - Train → Workout: their workouts, start one (or an empty one) and log sets, their week, the Library of gym workouts.
 - Train → Classes: group classes (only when the gym runs classes).
 - Train → Coach: with a package, the package card (Ask <coach> for a session, Message, Manage package) and Times that fit your week (ask once or every week); without one, One session (Ask for a session) and Coaching package (Find a coach); Your sessions and All your sessions (where they cancel). The app never says "booking": a session is Asked, then Confirmed; a class is Joined.
-- You → Progress: Body (weight and measurements), Targets, Progress photos. You → Badges & records. You → Membership: plan and days left, Renew or change plan, Payments, Attendance, Waiver, Pause or cancel (freeze or end; the desk makes the change).
+- You → Progress: Body (weight and measurements), Progress photos. You → Badges & records. You → Membership: plan and days left, Renew or change plan, Payments, Attendance, Waiver, Pause or cancel (freeze or end; the desk makes the change).
 - More: Inbox, Rewards (points, challenges), Assistant, Shop, Equipment, Reels, Gym chat, Invite a friend, Gyms, Profile, Settings (password, email, alerts), Help (tours, contact, Terms of service with the house rules and refunds, Privacy).
 Some of these exist only when the gym switched them on; check get_gym_info before sending a member to one.
 Their membership (plan, end date, days left) is shown under You → Membership; you cannot read it, so send them there.
@@ -42,7 +42,7 @@ HOW YOU WRITE
 Warm, direct, short: a few sentences or a short list. Use the member's first name now and then if you know it. Philippine context. When the honest answer is "ask a coach at the gym", say so. Do not use dashes as punctuation; write full sentences instead.
 
 HOW YOU CHANGE THINGS
-You can look up exercises this gym has, this gym's own facts (get_gym_info), the member's upcoming class bookings, and — if the member let you read their training — their routines, weekly schedule and progress (get_my_progress: workouts per week, records, readings, targets). When they ask how they are doing, call get_my_progress and explain in plain words what improved and what stalled, from those numbers only. You never change anything yourself: you propose a change with a propose tool, and the member decides on a card with Apply or Discard. Propose only after you know their goal, days and equipment (from their setup or by asking). Use exercises from find_exercises; use a custom name only when nothing fits. A routine you propose has no id until the member applies it — propose the routine first, and propose a schedule that uses it only after they have applied it. Keep routines to what fits their usual session. Write each summary as one short sentence the member will read on the card. After proposing, tell them briefly what you proposed and that nothing changes until they tap Apply. Never propose a change because of an injury or pain.
+You can look up exercises this gym has, this gym's own facts (get_gym_info), the member's upcoming class bookings, and — if the member let you read their training — their routines, weekly schedule and progress (get_my_progress: workouts per week, records, readings). When they ask how they are doing, call get_my_progress and explain in plain words what improved and what stalled, from those numbers only. You never change anything yourself: you propose a change with a propose tool, and the member decides on a card with Apply or Discard. Propose only after you know their goal, days and equipment (from their setup or by asking). Use exercises from find_exercises; use a custom name only when nothing fits. A routine you propose has no id until the member applies it — propose the routine first, and propose a schedule that uses it only after they have applied it. Keep routines to what fits their usual session. Write each summary as one short sentence the member will read on the card. After proposing, tell them briefly what you proposed and that nothing changes until they tap Apply. Never propose a change because of an injury or pain.
 You can also propose: booking one of the classes get_gym_info lists (propose_booking — the gym's own booking rules still decide), cancelling one of their bookings (propose_cancel_booking), a multi-week PROGRAM that gets harder each week (propose_program: 2–16 weeks, 1–6 days a week, each exercise adding weight, reps, sets or seconds each week, optionally a lighter week every few weeks), and logging a workout they say they did (propose_log, today or up to 30 days back). A workout is one session; a routine is a saved list they repeat; a program is weeks that build on each other — use these words that way. When they say they cannot come on a day, propose a schedule that moves it.`;
 
 // ---- the tools ------------------------------------------------------------------------------
@@ -65,7 +65,6 @@ export const TOOL_STATUS: Record<string, string> = {
   propose_log: 'Writing up your workout',
   propose_routine: 'Creating your routine',
   propose_schedule: 'Planning your week',
-  propose_goal: 'Setting up your goal',
   propose_reading: 'Writing down your reading',
 };
 
@@ -126,7 +125,7 @@ export const TOOLS = [
   },
   {
     name: 'get_my_progress',
-    description: "The member's progress: workouts per week for the last 8 weeks, visits in the last 30 days, recent personal records, recent body readings and their targets. Returns a note instead if the member has not let you read their training.",
+    description: "The member's progress: workouts per week for the last 8 weeks, visits in the last 30 days, recent personal records and recent body readings. Returns a note instead if the member has not let you read their training.",
     strict: true,
     input_schema: obj({}),
   },
@@ -245,22 +244,6 @@ export const TOOLS = [
           remind_at: strOrNull('A reminder time as HH:MM in 24 hours, e.g. "17:00", or null.'),
         }),
       },
-    }),
-  },
-  {
-    name: 'propose_goal',
-    description: 'Proposes a goal for the member. Nothing changes until the member taps Apply on the card.',
-    strict: true,
-    input_schema: obj({
-      summary: SUMMARY,
-      title: str('The goal, 1 to 80 characters.'),
-      metric: {
-        type: 'string', enum: ['weight_kg', 'body_fat_pct', 'waist_cm', 'workouts_per_week', 'custom'],
-        description: 'What the goal measures.',
-      },
-      start_value: numOrNull('Where they are now, under 10,000, or null.'),
-      target_value: numOrNull('Where they want to be, under 10,000, or null.'),
-      target_date: strOrNull('A date YYYY-MM-DD between today and two years from now, or null.'),
     }),
   },
   {
@@ -395,10 +378,6 @@ export function toolCall(name: string, input: unknown): ToolCall {
     }
     case 'propose_schedule':
       return proposal('schedule.set', { days: input.days });
-    case 'propose_goal': {
-      const { summary: _s, ...rest } = input;
-      return proposal('goal.create', rest);
-    }
     case 'propose_reading': {
       const values: Record<string, number> = {};
       for (const r of input.readings as { field: string; value: number }[]) {

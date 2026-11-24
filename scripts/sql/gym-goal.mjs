@@ -1,5 +1,6 @@
 /**
- * 0124's gym-wide goal, and 0273: squads removed while the goal stays.
+ * 0124's gym-wide goal, and 0273/0274: squads and members' own goals removed
+ * while the gym goal stays.
  *
  * Ways it could go wrong, each checked:
  *   - a gym goal paid twice, or paid to someone who did nothing toward it;
@@ -113,5 +114,34 @@ check('the Teams switch and the squad points rule are gone',
 check('the TV refuses a squads panel', !!(await tryExec(`update gym_settings set tv_design = '{"panels":["squads"]}' where gym_id = '${GYM_A}'`)));
 check('…and still takes the others', !(await tryExec(`update gym_settings set tv_design = '{"panels":["goal","season","classes"]}' where gym_id = '${GYM_A}'`)));
 
-console.log(failures ? `\n${failures} FAILED` : '\nall gym goal and 0273 checks passed');
+// ---- 0274: members' own goals removed ------------------------------------------------------------
+await asOwner();
+check('no goal table is left', (await one(`select to_regclass('public.fitness_goals') is null and to_regclass('public.goal_templates') is null as ok`)).ok);
+check('the tenancy list names neither',
+  (await one(`select not tenancy_gym_tables() && array['fitness_goals','goal_templates'] as ok`)).ok);
+const goalLeft = (await db.query(`select proname from pg_proc where pronamespace = 'public'::regnamespace
+  and prosrc ~ '(fitness_goals|goal_templates|goals_achieved|goal\\.create|share_goals|goal_value_of|settle_goals|settle_my_goals)'`)).rows;
+check('no function names a goal table, column or kind', goalLeft.length === 0, JSON.stringify(goalLeft));
+check('the functions it cut are still there',
+  (await count(`select 1 from pg_proc where pronamespace = 'public'::regnamespace and proname in
+    ('ai_coach_context','ai_coach_progress','challenge_progress','complete_gym_switch','erase_account','exercise_used_outside',
+     'member_training_stats','seed_gym_defaults','trainer_may_see','notify_coaches_of_win',
+     'ai_proposal_check_v1','apply_ai_proposal_v1','undo_ai_proposal_v1')`)) === 13);
+check('member_training_stats has no goals column, and still counts',
+  !(await one(`select pg_get_function_result('member_training_stats(uuid)'::regprocedure) r`)).r.includes('goals_achieved')
+  && !(await tryExec(`select * from member_training_stats('${M[0]}')`)));
+check('…and anon still may not call it', !(await one(`select has_function_privilege('anon', 'member_training_stats(uuid)', 'execute') x`)).x);
+check('a gym goal still counts', !(await tryExec(`select * from gym_goal_progress('${goal}')`)));
+check('the coach can no longer propose a goal', !!(await tryExec(`insert into ai_proposals (gym_id, member_id, kind, payload, summary)
+  values ('${GYM_A}', '${M[0]}', 'goal.create', '{}', 'x')`)));
+check('the goal badges, metric, points rule and switch are gone',
+  (await count(`select 1 from achievements where metric = 'goals_achieved' or metric2 = 'goals_achieved'`)) === 0
+  && (await count(`select 1 from achievement_metrics where key = 'goals_achieved'`)) === 0
+  && (await count(`select 1 from point_rules where key = 'goal_achieved'`)) === 0
+  && (await count(`select 1 from platform_features where key = 'targets'`)) === 0);
+check('sharing has no goals switch', (await count(`select 1 from information_schema.columns where table_name = 'member_share_prefs' and column_name = 'share_goals'`)) === 0);
+check('a trainer is still told about workouts the member shares',
+  /share_workouts/.test((await one(`select prosrc from pg_proc where proname = 'trainer_may_see'`)).prosrc));
+
+console.log(failures ? `\n${failures} FAILED` : '\nall gym goal, 0273 and 0274 checks passed');
 process.exit(failures ? 1 : 0);
