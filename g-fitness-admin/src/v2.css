@@ -196,7 +196,10 @@ button.dv2-row:active { transform: none; }
 .cf-gym { display: flex; align-items: baseline; gap: 8px; white-space: nowrap; flex: none; max-width: 40%; }
 .cf-gym b { font-size: 13px; font-weight: 650; color: var(--color-text-primary); }
 .cf-gym span { font-size: 12px; color: var(--color-text-muted); }
-.cf-tabs { height: 36px; display: flex; align-items: stretch; gap: 20px; padding: 0 24px; overflow-x: auto; scrollbar-width: none; }
+.cf-tabs { height: 36px; display: flex; align-items: stretch; gap: 20px; padding: 0 24px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+/* Sideways only: overflow-x auto made the row scroll up and down too, and the tabs' 1px underline offset showed a scrollbar
+   at the right edge of every page (2026-11-25). The WebKit rule covers browsers that ignore scrollbar-width. */
+.cf-tabs::-webkit-scrollbar { display: none; }
 .cf-tabs-sec { display: flex; align-items: center; padding-right: 16px; margin-right: -4px; border-right: 1px solid var(--color-border);
   font-size: 13px; font-weight: 650; color: var(--color-text-primary); white-space: nowrap; }
 .cf-tab { display: flex; align-items: center; font-size: 13px; font-weight: 600; color: var(--color-text-secondary); white-space: nowrap;

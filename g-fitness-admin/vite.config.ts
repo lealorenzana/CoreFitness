@@ -11,7 +11,8 @@ export default defineConfig({
   },
   server: {
     port: 5174,
-    strictPort: false,
+    // Never slide to the next port: a second copy landed on 5175, and the platform's desktop icon opened it (2026-11-25).
+    strictPort: true,
     headers: {
       'X-Frame-Options': 'SAMEORIGIN',
     },
