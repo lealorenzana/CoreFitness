@@ -111,7 +111,7 @@ export default function TimeSlotsSettings() {
         {/* 0260: the cancel window is set with the other kinds, so every late-cancel rule lives in one place. */}
         <p className="text-sm self-end" style={muted} data-slot-cancel-moved>
           Cancel up to <b style={{ color: 'var(--color-text-primary)' }}>{rules.cancel_minutes ? `${rules.cancel_minutes} minutes before` : 'the start'}</b> —{' '}
-          <Link to="/settings?tab=bookings" style={{ color: 'var(--color-primary)', textDecoration: 'underline' }}>change it in Bookings → Late cancels</Link>
+          <Link to="/settings?tab=bookings&focus=late-cancels" style={{ color: 'var(--color-primary)', textDecoration: 'underline' }}>change it in Bookings → Late cancels</Link>
         </p>
       </div>
 

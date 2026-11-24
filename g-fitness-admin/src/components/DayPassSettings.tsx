@@ -65,7 +65,7 @@ export default function DayPassSettings() {
 
   return (
     <div className="space-y-4" data-day-pass-settings>
-      <label className="flex items-start gap-3 cursor-pointer">
+      <label className="flex items-start gap-3 cursor-pointer" data-focus="day-passes">
         <input type="checkbox" checked={f.on} onChange={(e) => setF({ ...f, on: e.target.checked })} className="mt-1" aria-label="Sell day passes" />
         <span>
           <span className="block text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>Sell day passes to walk-ins</span>

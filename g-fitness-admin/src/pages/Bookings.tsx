@@ -533,7 +533,7 @@ export default function Bookings({ scope, embedded = false }: { scope?: 'pt' | '
           <BookingAttentionPanel onChanged={load} />
           {modes && (
             <div className="a-card" style={{ flexShrink: 0 }}>
-              <div className="a-ct"><h3><ShieldCheck size={16} />Who decides here</h3><button type="button" className="a-btn ghost sm" onClick={() => navigate('/settings?tab=bookings')}><Settings2 size={13} />Change</button></div>
+              <div className="a-ct"><h3><ShieldCheck size={16} />Who decides here</h3><button type="button" className="a-btn ghost sm" onClick={() => navigate('/settings?tab=bookings&focus=booking-approval')}><Settings2 size={13} />Change</button></div>
               {scope !== 'pt' && <div className="a-row"><span className="a-dot v" /><div className="t"><b>Classes</b><small>{MODE_SAY[modes.class]}</small></div></div>}
               {scope !== 'class' && <div className="a-row"><span className="a-dot a" /><div className="t"><b>1-on-1</b><small>{MODE_SAY[modes.pt]}</small></div></div>}
             </div>

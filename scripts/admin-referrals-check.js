@@ -108,7 +108,7 @@ async (page) => {
   say('a reward owed carries a Give button for that side', (await page.locator('[data-give-reward="f1:referrer"]').count()) === 1);
   say('a reward handed over is a given pill, not a button',
     (await page.locator('[data-give-reward="f1:friend"]').count()) === 0 && /Ben: ₱100 off the first renewal · given/.test(head));
-  say('a pending referral waits for its first payment', /Waiting for their first payment/.test(head));
+  say('a pending referral waits for its first payment', /Not paid yet/.test(head));
   say('the sidebar has Referrals', (await page.locator('a[href="/referrals"]').count()) >= 1);
   await openEngagement();
   say('…and no Rewards row in the open Engagement group while points are off', (await page.locator('a[href="/rewards"]').count()) === 0 && !/Rewards/.test(await engageTip()));

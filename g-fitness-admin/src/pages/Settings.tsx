@@ -575,7 +575,7 @@ export default function Settings() {
                 {head('How your gym works', 'Your gym’s style sets the booking and coaching settings below: you can still change each one')}
                 <GymStyles onApplied={() => setStyleTick((n) => n + 1)} />
                 <div style={{ height: 22 }} />
-                {head('Bookings', 'Who approves bookings: for group classes and 1-on-1 sessions separately')}<BookingApproval key={styleTick} />
+                {head('Bookings', 'Who approves bookings: for group classes and 1-on-1 sessions separately')}<div data-focus="booking-approval"><BookingApproval key={styleTick} /></div>
                 <div style={{ height: 22 }} />
                 {head('Repeats, late cancels and no-shows', 'Your rules for weekly bookings, cancelling close to the start, and members who do not come')}<BookingRulesSettings />
               </>

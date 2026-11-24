@@ -67,10 +67,10 @@ export default function CoachPay() {
     return <div className="a-card" data-coach-pay-missing><p className="a-sub">Coach pay is not available yet — the database update for it has not been added.</p></div>;
   }
 
-  const off = (what: string, why: string) => (
+  const off = (what: string, why: string, focus: string) => (
     <div className="flex flex-col items-start gap-2" style={{ padding: '6px 0' }} data-rule-off>
       <p className="a-sub inline-flex items-start gap-1.5"><Lock size={13} className="mt-0.5 flex-none" />{why}</p>
-      <button type="button" className="a-btn sm" onClick={() => navigate('/settings?tab=coaching')}>Switch on {what} in Settings → Personal training</button>
+      <button type="button" className="a-btn sm" onClick={() => navigate(`/settings?tab=coaching&focus=${focus}`)}>Switch on {what} in Settings → Personal training</button>
     </div>
   );
   const months = (list: string[], value: string | null, set: (m: string) => void, name: string) => (
@@ -94,7 +94,7 @@ export default function CoachPay() {
           <h3><HandCoins size={15} />The gym&rsquo;s share</h3>
           {rules.cutOn && <small>{rules.cutPercent}% of what members paid each coach</small>}
         </div>
-        {!rules.cutOn ? off('the share', 'Off — your coaches keep all of what members pay them.') : (
+        {!rules.cutOn ? off('the share', 'Off. Your coaches keep all of what members pay them.', 'share') : (
           <>
             {months(earnMonths, em, setEarnMonth, 'Share month')}
             <table className="a-table" style={{ marginTop: 10 }}>
@@ -133,7 +133,7 @@ export default function CoachPay() {
           <h3><Banknote size={15} />Coach dues</h3>
           {rules.duesOn && <small>{peso(rules.duesAmount)} a month{rules.duesSince ? ` since ${monthLabel(rules.duesSince)}` : ''}</small>}
         </div>
-        {!rules.duesOn ? off('coach dues', 'Off — coaches pay the gym nothing to train here.') : (
+        {!rules.duesOn ? off('coach dues', 'Off. Coaches pay the gym nothing to train here.', 'dues') : (
           <>
             {months(duesMonths, dm, setDuesMonth, 'Dues month')}
             <table className="a-table" style={{ marginTop: 10 }}>

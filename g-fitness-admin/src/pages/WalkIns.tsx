@@ -195,7 +195,7 @@ export default function WalkIns() {
         actions={(
           <div className="flex items-center gap-2">
             <button type="button" className="a-btn" onClick={() => setHistOpen(true)} data-open-walkin-history><History size={15} />Past walk-ins</button>
-            <button type="button" className="a-btn" onClick={() => navigate('/settings?tab=walk-ins')}><Settings2 size={15} />Walk-in prices</button>
+            <button type="button" className="a-btn" onClick={() => navigate('/settings?tab=walk-ins&focus=day-passes')}><Settings2 size={15} />Walk-in prices</button>
           </div>
         )} />
 
@@ -208,7 +208,7 @@ export default function WalkIns() {
             <div className="a-card glow" style={{ alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 10 }}>
               <Footprints size={40} style={{ color: 'var(--a-p300)' }} />
               <b style={{ fontSize: 15 }}>{prices === null ? 'Walk-ins need the 0185 update to the database.' : 'Day passes are off at this gym.'}</b>
-              {prices !== null && <button type="button" className="a-btn violet" onClick={() => navigate('/settings?tab=walk-ins')}>Turn them on in Settings → Walk-ins</button>}
+              {prices !== null && <button type="button" className="a-btn violet" onClick={() => navigate('/settings?tab=walk-ins&focus=day-passes')}>Turn them on in Settings → Walk-ins</button>}
             </div>
           ) : (
             <div className="a-card glow a-scroll" data-walkin-card>
@@ -328,7 +328,7 @@ export default function WalkIns() {
             </div>
           </div>
           <div className="a-card">
-            <div className="a-ct"><h3><Tags size={16} />Prices</h3><button type="button" className="a-btn ghost sm" onClick={() => navigate('/settings?tab=walk-ins')}>Edit in Settings</button></div>
+            <div className="a-ct"><h3><Tags size={16} />Prices</h3><button type="button" className="a-btn ghost sm" onClick={() => navigate('/settings?tab=walk-ins&focus=day-passes')}>Edit in Settings</button></div>
             <div className="a-sub">
               {prices && prices.on
                 ? [prices.day != null && `Day ${peso(prices.day)}`, prices.pack5 != null && `5 visits ${peso(prices.pack5)}`, prices.pack10 != null && `10 visits ${peso(prices.pack10)}`].filter(Boolean).join(' · ') + ' · the desk never types a price'

@@ -346,7 +346,7 @@ export default function Coaching({ embedded = false }: { embedded?: boolean } = 
             <div className="a-card">
               <div className="a-ct"><h3><UserPlus size={16} />Assigning a coach</h3></div>
               <p className="a-sub">The desk does not assign coaches at this gym — members {settings.modes.includes('pick_pt') ? 'pick their own coach' : 'start coaching from the app'}.{' '}
-                <button type="button" className="a-link" style={{ color: 'var(--a-p300)' }} onClick={() => navigate('/settings?tab=coaching')}>Change in Settings</button></p>
+                <button type="button" className="a-link" style={{ color: 'var(--a-p300)' }} onClick={() => navigate('/settings?tab=coaching&focus=coach-modes')}>Change in Settings</button></p>
             </div>
           )}
 
