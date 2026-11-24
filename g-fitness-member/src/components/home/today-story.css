@@ -193,8 +193,12 @@
 }
 .today-story .today-hero-atmosphere { display: none; }
 :root[data-mode="light"] .member-clean-shell:has(.today-story-page) #phone-screen {
-  background-image: linear-gradient(to bottom, color-mix(in srgb, var(--color-primary) 13%, var(--color-bg)) 0%, color-mix(in srgb, var(--color-primary) 13%, var(--color-bg)) 72%, var(--color-bg));
+  /* Light is solid (owner, 2026-11-06): the same tint as the gradient's top, flat, no gradient behind words. */
+  background-image: none;
+  background-color: color-mix(in srgb, var(--color-primary) 13%, var(--color-bg));
 }
+/* Light has nothing near-black (owner, 2026-11-06): the mascot's face takes the gym's deep colour. */
+:root[data-mode="light"] .today-companion-face { background: var(--color-primary-700); }
 
 /* One strong action in the agenda; the surrounding actions stay quieter. */
 .member-calm-home .today-story [data-today-timeline] > div:first-child button > span:last-child {
