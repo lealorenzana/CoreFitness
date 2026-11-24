@@ -6,7 +6,6 @@ import { leaveFeedback, listFeedbackByTrainer, type TrainerFeedbackRow } from '.
 import { DAY_LABELS, formatRemindAt } from '../../lib/api/gymPlans';
 import TraineeProgram from './TraineeProgram';
 import TraineeRecords from './TraineeRecords';
-import TraineeSquad from './TraineeSquad';
 import TraineeStreak from './TraineeStreak';
 import TraineeShowingUp from './TraineeShowingUp';
 import TraineePhotos from './TraineePhotos';
@@ -17,8 +16,6 @@ import { listMyTrainerMembers } from '../../lib/api/trainerRoster';
 import { getCurrentTrainerId, getMemberDetailForTrainer, type MemberDetailForTrainer } from '../../services/trainerService';
 import { levelLabel } from '../../lib/api/achievements';
 import { errorMessage } from '../../utils/errorMessage';
-import { moduleOn } from '../../lib/gymApp';
-import { useGymApp } from '../../hooks/useGymApp';
 import SkelRows from '../ui/SkelRows';
 
 /**
@@ -71,7 +68,6 @@ export default function TraineeAbout({ member, onChat, initialTab = 'progress' }
   onChat: () => void;
   initialTab?: AboutTab;
 }) {
-  const squadsOn = moduleOn(useGymApp(), 'squads');
   const navigate = useNavigate();
   // In the address (`?about=`), so coming Back to a trainee lands on the same part (2026-11-07).
   const [sheetTab, setSheetTab] = useUrlState<AboutTab>('about', initialTab, ['progress', 'training', 'notes', 'safety']);
@@ -316,8 +312,6 @@ export default function TraineeAbout({ member, onChat, initialTab = 'progress' }
             </SharedBlock>
           </>
         )}
-          {/* Their squad this week (0124) — name and figures, never its code. Not while the gym has Teams off. */}
-          {squadsOn && <TraineeSquad memberId={member.id} firstName={member.name.split(' ')[0]} />}
           <TraineePhotos memberId={member.id} firstName={member.name.split(' ')[0]} />
         </div>
       )}

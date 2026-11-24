@@ -30,7 +30,7 @@ export type FeatureKey =
   | 'engagement' | 'progress' | 'assistant' | 'push' | 'analytics'
   // 0141: each lives inside a parent above, and is on only while it is.
   | 'shop' | 'requests' | 'online_pay' | 'chat' | 'rooms' | 'programs' | 'photos'
-  | 'squads' | 'seasons' | 'quests' | 'referrals'
+  | 'seasons' | 'quests' | 'referrals'
   // 0176: Targets (members' own goals), a child of Progress.
   | 'targets'
   // 0184: the gym's equipment list.
@@ -170,7 +170,7 @@ export function moduleOn(app: GymApp | null, key: FeatureKey | undefined): boole
 /** Each 0141 switch and the switch it lives inside (the same pairs as platform_features.parent_key). */
 export const PARENT: Partial<Record<FeatureKey, FeatureKey>> = {
   shop: 'front_desk', requests: 'front_desk', chat: 'coaching', rooms: 'coaching',
-  programs: 'progress', photos: 'progress', squads: 'engagement', points: 'engagement', seasons: 'points',
+  programs: 'progress', photos: 'progress', points: 'engagement', seasons: 'points',
   quests: 'engagement', referrals: 'engagement', events: 'push',
 };
 

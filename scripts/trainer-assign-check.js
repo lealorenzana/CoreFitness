@@ -125,7 +125,6 @@ async (page) => {
   let assigned = null;
   const FN = {
     assign_program: (b) => { assigned = b.p_program; return 'en1'; },
-    member_squad: (b) => b.p_member !== 'mb1' ? [] : [{ squad_name: 'Iron Barkada', members: 3, squad_days: 4, weekly_target: 9, member_days: 2 }],
     member_personal_records: (b) => b.p_member !== 'mb1' ? [] : [
       { id: 'r1', exercise_name: 'Deadlift', kind: 'weight', value: 120, previous: 110, achieved_at: new Date().toISOString() }],
     program_progress: (b) => !assigned || b.p_member !== 'mb1' ? [] : [1, 3].map((d) => ({
@@ -236,12 +235,11 @@ async (page) => {
   const text = async () => (await page.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ');
 
   const sub = async (name) => { await page.getByRole('tab', { name, exact: true }).click(); await page.waitForTimeout(700); return text(); };
-  // A trainee's place, About (simplify, 2026-10-28): records and squad under Progress, the program under Training.
+  // A trainee's place, About (simplify, 2026-10-28): records under Progress, the program under Training.
   await go('/trainer/pt/mb1?tab=about');
   await page.waitForTimeout(1500);
   let t = await sub('Progress');
   out.push("trainee's records on the sheet: " + (/Personal records/.test(t) && /Deadlift/.test(t) && /120 kg/.test(t) ? 'shown' : 'MISSING'));
-  out.push("trainee's squad on the sheet: " + (/Iron Barkada · 4 of 9 days this week/.test(t) && /Lea has trained 2 days of it/.test(t) ? 'shown' : 'MISSING'));
   t = await sub('Training');
   out.push('trainee sheet shows their program: ' + (/Program/.test(t) && /Lea is not following a program/.test(t) ? 'none yet' : 'MISSING'));
   out.push('premium programs marked in the picker: ' + ((await page.locator('option', { hasText: 'Advanced Block (Premium)' }).count()) === 1 ? 'marked' : 'MISSING'));

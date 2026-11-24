@@ -329,13 +329,13 @@ async (page) => {
   t = await body();
   say('You calls the earned level a level, and never says experience level', /earned level/i.test(t) && !/experience level/i.test(t), t.slice(0, 200));
 
-  // ── Switches: Season, Team and Events appear only when the gym turns them on ──
-  STATE.modules = { classes: false, seasons: false, squads: false, events: false };
+  // ── Switches: Season and Events appear only when the gym turns them on ──
+  STATE.modules = { classes: false, seasons: false, events: false };
   await go('/member/rewards');
   t = await body();
   const rtabs = (await page.getByRole('tab').allInnerTexts()).map((x) => x.trim());
   say('Rewards: Rewards · Challenges in one place', rtabs.includes('Rewards') && rtabs.includes('Challenges'), JSON.stringify(rtabs));
-  say('…no Season or Team while they are off', (await page.locator('[data-rewards-extras]').count()) === 0);
+  say('…no Season while it is off', (await page.locator('[data-rewards-extras]').count()) === 0);
   await page.getByRole('tab', { name: 'Challenges' }).click();
   await page.waitForTimeout(1200);
   say('…Challenges is a tab, in the address', /tab=challenges/.test(page.url()), page.url());
@@ -348,10 +348,10 @@ async (page) => {
   await go('/member/season');
   say('/member/season says not at this gym while off', /Not at this gym/.test(await body()));
 
-  STATE.modules = { classes: false, seasons: true, squads: true, events: true, points: true };
+  STATE.modules = { classes: false, seasons: true, events: true, points: true };
   await go('/member/rewards');
   const extras = await page.locator('[data-rewards-extras]').innerText().catch(() => '');
-  say('switched on: Season and Team rows in Rewards', /Season/.test(extras) && /Team/.test(extras), extras);
+  say('switched on: a Season row in Rewards, and no Team row (0273)', /Season/.test(extras) && !/Team/.test(extras), extras);
   await page.screenshot({ path: 'shots/member-rewards-on.png' });
   await go('/member/home');
   say('switched on: Today shows the gym event', /Saturday fun run/.test(await body()));

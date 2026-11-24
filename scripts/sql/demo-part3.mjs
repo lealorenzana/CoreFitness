@@ -103,7 +103,6 @@ check('a program, two days in', (await c('program_enrolments')) === 1 && (await 
 check('the shop sold for three months, stock adds up', (await c('shop_sales', `gym_id = '${GYM}'`)) >= 140
   && (await one(`select bool_and(stock = (select sum(change) from stock_moves m where m.product_id = p.id)) ok from shop_products p where id::text like '5eed3138-%'`)).ok);
 check('season tiers and the member\'s claims', (await c('season_tiers', `gym_id = '${GYM}'`)) >= 3 && (await c('season_claims')) === 3);
-check('a squad of four, eight weeks', (await c('squad_members', `squad_id = '5eed3147-0000-4000-8000-000000000001'`)) === 4 && (await c('squad_weeks', `gym_id = '${GYM}'`)) === 8);
 check('challenges, events, rewards, streaks, an inbox', (await c('challenge_participants')) === 3 && (await c('event_registrations')) >= 6
   && (await c('reward_redemptions')) === 3 && (await c('streak_milestones')) === 4 && (await c('notifications', `user_id = '${LEA}'`)) >= 12);
 
@@ -121,7 +120,7 @@ const said = (await one(`select remove_demo_data() as m`)).m;
 await db.exec(`reset role;`);
 const left = (await one(`select (select count(*) from attendance where id::text like '5eed3%') + (select count(*) from workout_logs where id::text like '5eed3%')
   + (select count(*) from shop_sales where id::text like '5eed3%') + (select count(*) from notifications where id::text like '5eed3%')
-  + (select count(*) from messages where id::text like '5eed3%') + (select count(*) from squads where id::text like '5eed3%') as n`)).n;
+  + (select count(*) from messages where id::text like '5eed3%') as n`)).n;
 check('remove_demo_data() takes every part 3 row out', Number(left) === 0 && /member history demo/.test(said ?? ''), `${left} left; said: ${said}`);
 check('the demo coach and members are gone, rooms and chats with them', (await one(`select count(*)::int n from profiles where id::text like '5eed000%'`)).n === 0
   && (await one(`select count(*)::int n from rooms where trainer_id = '${COACH}'`)).n === 0, said);

@@ -87,8 +87,6 @@ async (page) => {
       if (m === 'POST') { SENT.goals.push(body()); return json([], 201); }
       return json(GOALS);
     }
-    if (t === 'squads') return json([{ id: 'sq1', name: 'Iron Barkada', code: 'IRNBAR', weekly_target: 9, created_by: 'm1' }]);
-    if (t === 'squad_members') return json([{ squad_id: 'sq1' }, { squad_id: 'sq1' }, { squad_id: 'sq1' }]);
     if (t === 'achievement_metrics') return json([{ key: 'training_days', label: 'Training days', unit: 'days' }]);
     if (t === 'profiles' || t === 'gym_people') return json(one ? owner : [owner]);
     return json(one ? null : []);
@@ -132,7 +130,7 @@ async (page) => {
   t = await text();
   out.push('template marked: ' + ((await page.locator('[data-challenge="Train twice a week"]', { hasText: 'weekly' }).count()) === 1 ? 'shown' : 'MISSING'));
   out.push('weekly copies not listed: ' + (/this week copy/.test(t) ? 'MISSING (copy listed)' : 'hidden'));
-  // The gym goal and squads have their own tabs (2026-10-20: the four ideas).
+  // The gym goal has its own tab (2026-10-20: the ideas down the left).
   await page.locator('[data-idea="gg"]').click();
   await page.waitForTimeout(900);
   t = await text();
@@ -145,9 +143,6 @@ async (page) => {
   const gl = SENT.goals[SENT.goals.length - 1] || {};
   out.push('goal sent: ' + (gl.title === '500 workouts this month' && gl.metric === 'workouts_logged' && gl.target === 500 ? 'workouts 500' : 'MISSING ' + JSON.stringify(gl)));
   await page.screenshot({ path: 'shots/admin-gym-goal.png', fullPage: true });
-  await page.locator('[data-idea="sq"]').click();
-  await page.waitForTimeout(900);
-  out.push("members' squads listed: " + ((await page.locator('[data-squad-row="Iron Barkada"]').count()) === 1 ? 'shown' : 'MISSING'));
   await page.locator('[data-idea="ch"]').click();
   await page.waitForTimeout(500);
   await page.getByLabel('Name members see').fill('Two classes a week');

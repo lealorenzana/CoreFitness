@@ -27,7 +27,6 @@ const WorkoutsToday = lazyPage(() => import('./pages/WorkoutsToday'));
 const Program = lazyPage(() => import('./pages/Program'));
 const Programs = lazyPage(() => import('./pages/Programs'));
 const Season = lazyPage(() => import('./pages/Season'));
-const Squad = lazyPage(() => import('./pages/Squad'));
 const Refer = lazyPage(() => import('./pages/Refer'));
 const ReferInvited = lazyPage(() => import('./pages/ReferInvited'));
 const SeasonRecords = lazyPage(() => import('./pages/SeasonRecords'));
@@ -419,7 +418,6 @@ function App() {
           <Route path="season/records" element={<SeasonRecords />} />
           {/* Friends (0217) were removed by 0220: an old link lands on Today. */}
           <Route path="friends/*" element={<Navigate to="/member/home" replace />} />
-          <Route path="squad" element={<Squad />} />
           <Route path="refer" element={<Refer />} />
           {/* Reels (0245): the gym's short videos, full screen. */}
           <Route path="reels" element={<Reels />} />

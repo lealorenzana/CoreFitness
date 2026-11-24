@@ -1,15 +1,13 @@
 /**
- * 0124: squads and the gym-wide goal.
+ * 0124's gym-wide goal, and 0273: squads removed while the goal stays.
  *
  * Ways it could go wrong, each checked:
- *   - a squad over five, a member in two squads, a stranger joining without the code
- *     or from another gym;
- *   - a squad's code or its members visible to people outside it;
- *   - a squad week paid twice, or a gym goal paid twice, or paid to someone who
- *     did nothing toward it;
- *   - anyone but the owner setting a gym goal.
+ *   - a gym goal paid twice, or paid to someone who did nothing toward it;
+ *   - anyone but the owner setting a gym goal;
+ *   - 0273 leaving a squad table, function, policy, switch or points rule behind, or
+ *     breaking a shared function it edited in place.
  *
- *   node <repo>/scripts/sql/squads-goals.mjs "<repo>"   (from a dir with pglite installed)
+ *   node <repo>/scripts/sql/gym-goal.mjs "<repo>"   (from a dir with pglite installed)
  */
 import { liveDb, describe } from './lib/live-db.mjs';
 
@@ -38,12 +36,12 @@ const tryExec = async (sql) => { try { await db.exec(sql); return null; } catch 
 const count = async (sql) => Number((await one(`select count(*)::int as n from (${sql}) x`)).n);
 
 await asOwner();
-const ready = await one(`select to_regclass('public.squads') is not null as ok`);
-check('0124 is applied (squads exists)', ready.ok);
+const ready = await one(`select to_regclass('public.gym_goals') is not null as ok`);
+check('0124 is applied (gym_goals exists)', ready.ok);
 if (!ready.ok) { console.log(`\n${failures} FAILED`); process.exit(1); }
 
-const person = (id, n) => `insert into auth.users (id, email, raw_user_meta_data) values ('${id}', '${n}@squad-test.com', '{}');
-  insert into profiles (id, first_name, last_name, email, status, role) values ('${id}', '${n}', 'Test', '${n}@squad-test.com', 'active', 'member')
+const person = (id, n) => `insert into auth.users (id, email, raw_user_meta_data) values ('${id}', '${n}@goal-test.com', '{}');
+  insert into profiles (id, first_name, last_name, email, status, role) values ('${id}', '${n}', 'Test', '${n}@goal-test.com', 'active', 'member')
     on conflict (id) do update set first_name = excluded.first_name, status = 'active';`;
 await db.exec(`
   insert into gyms (id, slug, name) values ('${GYM_B}', 'gym-b', 'Gym B');
@@ -65,66 +63,13 @@ const prem = (await one(`select id from membership_plans where gym_id = '${GYM_A
 await db.exec(`insert into memberships (member_id, gym_id, plan_id, status, start_date, expiry_date) values
   ${M.map((id) => `('${id}', '${GYM_A}', '${prem}', 'active', current_date - 1, current_date + 29)`).join(', ')}`);
 
-// ---- squads -------------------------------------------------------------------------------------
-await as(M[0]);
-const squad = (await one(`select create_squad('Iron Barkada', 3) as id`)).id;
-const code = (await one(`select code from squads where id = '${squad}'`)).code;
-check('a member creates a squad and gets a 6-letter code', /^[A-Z]{6}$/.test(code), code);
-check('and is in it', (await count(`select 1 from squad_members where squad_id = '${squad}' and member_id = '${M[0]}' and left_at is null`)) === 1);
-check('a member cannot start a second squad', !!(await tryExec(`select create_squad('Second', 3)`)));
-
-await as(M[1]);
-check('a friend joins with the code (any case)', !(await tryExec(`select join_squad('${code.toLowerCase()}')`)));
-check('and cannot join twice', !!(await tryExec(`select join_squad('${code}')`)));
-for (const m of [M[2], M[3], M[4]]) { await as(m); await db.exec(`select join_squad('${code}')`); }
-await as(M[5]);
-check('a sixth member is refused — five is the most', !!(await tryExec(`select join_squad('${code}')`)));
-check('an outsider cannot read the code', (await count(`select code from squads where id = '${squad}'`)) === 0);
-check("nor the squad's members", (await count(`select 1 from squad_members where squad_id = '${squad}'`)) === 0);
-check('a wrong code is refused', !!(await tryExec(`select join_squad('ZZZZZZ')`)));
-await as(MB);
-check("another gym's member cannot join with the code", !!(await tryExec(`select join_squad('${code}')`)));
-
-await as(M[1]);
-const mine = (await db.query(`select * from my_squad()`)).rows;
-check('my_squad lists all five members', mine.length === 5 && mine[0].squad_name === 'Iron Barkada', JSON.stringify(mine.map((r) => r.first_name)));
-
+// ---- the gym-wide goal ---------------------------------------------------------------------------
 // Three members train today.
 await asOwner();
 await db.exec(`insert into workout_logs (member_id, gym_id, activity, performed_on) values
   ${[M[0], M[1], M[2]].map((m) => `('${m}', '${GYM_A}', 'Gym', (now() at time zone 'Asia/Manila')::date)`).join(', ')};
   select set_config('app.workout_counting', 'on', false); update workout_logs set counts = true where not counts; select set_config('app.workout_counting', '', false);`);
 
-await as(M[5]);
-const board = (await db.query(`select * from squad_board()`)).rows;
-check('the board shows the squad to anyone in the gym', board.length === 1 && board[0].squad_name === 'Iron Barkada', JSON.stringify(board));
-check('with days, target and size, and no member names',
-  Number(board[0].days) === 3 && Number(board[0].weekly_target) === 3 && Number(board[0].members) === 5
-  && !Object.keys(board[0]).some((k) => /name/.test(k) && k !== 'squad_name'), JSON.stringify(board[0]));
-
-await as(ADMIN);
-await db.exec(`select settle_squads(); select settle_squads();`);
-check('reaching the target records the week once', (await count(`select 1 from squad_weeks where squad_id = '${squad}'`)) === 1);
-await asOwner();
-check('and pays every active member once',
-  (await count(`select 1 from point_ledger where rule_key = 'squad_week'`)) === 5
-  && (await count(`select distinct member_id from point_ledger where rule_key = 'squad_week'`)) === 5);
-
-await as(M[4]);
-await db.exec(`select leave_squad()`);
-await as(M[5]);
-check('once someone leaves, there is room again', !(await tryExec(`select join_squad('${code}')`)));
-await as(M[4]);
-check('and the leaver may start their own', !(await tryExec(`select create_squad('Solo Start', 2)`)));
-
-// ---- the coach's and desk's view -------------------------------------------------------------
-await as(STAFF);
-const ms = await one(`select * from member_squad('${M[1]}')`);
-check("the desk sees a member's squad, not its code", ms && ms.squad_name === 'Iron Barkada' && !('code' in ms), JSON.stringify(ms));
-await as(M[3]);
-check("another member cannot look up someone's squad", !!(await tryExec(`select * from member_squad('${M[1]}')`)));
-
-// ---- the gym-wide goal ---------------------------------------------------------------------------
 await as(M[0]);
 check('a member cannot set a gym goal', !!(await tryExec(`insert into gym_goals (title, metric, target, starts_on, ends_on, reward_points)
   values ('x', 'training_days', 1, current_date, current_date + 1, 10)`)));
@@ -150,13 +95,23 @@ check('nobody who did nothing is paid', !paid.some((p) => [M[3], M[4], M[5]].inc
 await as(MB);
 check("gym B sees none of gym A's goals", (await count(`select 1 from gym_goals`)) === 0);
 
-// ---- rules as queries ----------------------------------------------------------------------------
+// ---- 0273: squads removed --------------------------------------------------------------------
 await asOwner();
-check('the new tables are in the tenancy list',
-  (await one(`select tenancy_gym_tables() @> array['squads','squad_members','squad_weeks','gym_goals'] as ok`)).ok);
-check('no write policy on squads, members or weeks',
-  (await count(`select 1 from pg_policies where tablename in ('squads','squad_members','squad_weeks')
-    and cmd in ('INSERT','UPDATE','DELETE','ALL') and permissive = 'PERMISSIVE'`)) === 0);
+check('the goal table is in the tenancy list, the squad tables are not',
+  (await one(`select tenancy_gym_tables() @> array['gym_goals'] and not tenancy_gym_tables() && array['squads','squad_members','squad_weeks'] as ok`)).ok);
+check('no squad table is left', (await count(`select 1 from pg_class where relnamespace = 'public'::regnamespace and relname ilike '%squad%'`)) === 0);
+const left = (await db.query(`select proname from pg_proc where pronamespace = 'public'::regnamespace and (proname ilike '%squad%' or prosrc ilike '%squad%')`)).rows;
+check('no function names or mentions a squad', left.length === 0, JSON.stringify(left));
+check('the shared functions it edited are still there',
+  (await count(`select 1 from pg_proc where pronamespace = 'public'::regnamespace and proname in
+    ('tenancy_gym_tables','remove_demo_data','streak_nudge_sweep','trg_tv_design','platform_feature_adoption','platform_gym_features','platform_gym_usage')`)) === 7);
+check('the streak sweep still nudges members', /streak_card\(r\.id, v_gym\)/.test((await one(`select prosrc from pg_proc where proname = 'streak_nudge_sweep'`)).prosrc));
+check('the Teams switch and the squad points rule are gone',
+  (await count(`select 1 from platform_features where key = 'squads'`)) === 0
+  && (await count(`select 1 from gym_modules where feature_key = 'squads'`)) === 0
+  && (await count(`select 1 from point_rules where key = 'squad_week'`)) === 0);
+check('the TV refuses a squads panel', !!(await tryExec(`update gym_settings set tv_design = '{"panels":["squads"]}' where gym_id = '${GYM_A}'`)));
+check('…and still takes the others', !(await tryExec(`update gym_settings set tv_design = '{"panels":["goal","season","classes"]}' where gym_id = '${GYM_A}'`)));
 
-console.log(failures ? `\n${failures} FAILED` : '\nall 0124 checks passed');
+console.log(failures ? `\n${failures} FAILED` : '\nall gym goal and 0273 checks passed');
 process.exit(failures ? 1 : 0);

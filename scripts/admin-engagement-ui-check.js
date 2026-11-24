@@ -63,7 +63,6 @@ async (page) => {
       { id: 'n3', title: 'New class', message: 'Boxing', type: 'event', created_at: iso(-2), read: false, image_url: null }],
   };
   const CALLS = [];
-  let squadsOff = false;   // the gym's squads switch (0220 makes it off by default)
   await page.route(`**://${REF}.supabase.co/**`, async (route) => {
     const req = route.request();
     const after = req.url().replace(/^https?:\/\/[^/]+/, '');
@@ -80,7 +79,6 @@ async (page) => {
       CALLS.push(['rpc', fn, body]);
       if (fn === 'my_gym_context') return json([{ gym_id: 'gym-1', gym_name: 'Harbour Strength', slug: 'harbour', role: 'admin', status: 'active',
         lock_reason: null, short_name: null, logo_url: null, accent: 'violet', gym_count: 1, onboarded: true, onboarding_step: null, gym_state: 'open' }]);
-      if (fn === 'my_gym_app' && squadsOff) return json([{ modules: { engagement: true, squads: false } }]);
       if (fn === 'count_audience' || fn === 'broadcast_audience_count') return json(12);
       return json(fn === 'my_gym_modules' || fn === 'my_support_grant' ? [] : null);
     }
@@ -160,22 +158,18 @@ async (page) => {
   const ch = CALLS.find((c) => c[0] === 'POST' && c[1] === 'challenges');
   out.push('…and starts it as written: ' + (ch && ch[2].metric_key === 'weekend_days' && ch[2].target === 6 && ch[2].reward_points === 200 && ch[2].title === 'Weekend warrior' ? 'yes' : 'MISSING ' + JSON.stringify(ch?.[2])));
   await page.screenshot({ path: 'shots/admin-challenge-new.png' });
-  for (const [k, sel] of [['gg', '[data-goal-new]'], ['sq', '[data-squads]'], ['gp', '[data-goal-list]']]) {
+  for (const [k, sel] of [['gg', '[data-goal-new]'], ['gp', '[data-goal-list]']]) {
     await page.locator(`[data-idea="${k}"]`).click();
     await page.locator(sel).waitFor({ timeout: 10000 }).catch(() => {});
     out.push(`the ${k} tab opens: ` + ((await page.locator(sel).count()) === 1 ? 'yes' : 'MISSING'));
     await page.waitForTimeout(800);
     await page.screenshot({ path: `shots/admin-challenges-${k}.png` });
   }
-  // Squads switched off at the gym: the card says so and the tab explains with the way to switch it on — never the live list.
-  squadsOff = true;
+  // Teams were removed (0273): no third idea, and an old ?tab=sq link opens Challenges.
   await page.goto('http://localhost:5174/challenges?tab=sq', { waitUntil: 'domcontentloaded' });
-  await page.locator('[data-squads-off]').waitFor({ timeout: 15000 }).catch(() => {});
-  out.push('squads off: the card says so, the tab explains and links to Your app: ' + ((await page.locator('[data-squads-off]').count()) === 1
-    && (await page.locator('[data-squads]').count()) === 0 && /Off at your gym/.test(await page.locator('[data-idea="sq"]').innerText())
-    && (await page.locator('[data-squads-off] a[href="/gym-app?tab=runs"]').count()) === 1 ? 'yes' : 'MISSING'));
-  await page.screenshot({ path: 'shots/admin-challenges-sq-off.png' });
-  squadsOff = false;
+  await page.locator('[data-challenge-new]').waitFor({ timeout: 15000 }).catch(() => {});
+  out.push('teams are gone, an old link opens Challenges: ' + ((await page.locator('[data-idea]').count()) === 3
+    && (await page.locator('[data-idea="sq"]').count()) === 0 && (await page.locator('[data-challenge-new]').count()) === 1 ? 'yes' : 'MISSING'));
 
   // ---- Achievements --------------------------------------------------------------------------------
   await page.goto('http://localhost:5174/achievements', { waitUntil: 'domcontentloaded' });

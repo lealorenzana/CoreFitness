@@ -35,13 +35,12 @@ async (page) => {
     { id: 'p-prem', name: 'Premium', tier: 'premium', price: 999, duration_days: 30, is_active: true },
     { id: 'p-trial', name: 'Free Trial', tier: 'premium', price: 0, duration_days: 30, is_active: true },
   ];
-  // The defaults since 0220: classes, seasons and events off; the lobby TV and teams not on this gym's plan.
+  // The defaults since 0220: classes, seasons and events off; the lobby TV not on this gym's plan.
   const mod = (feature_key, label, state, enabled, sort_order, parent_key = null) => ({ feature_key, label, description: label, state, enabled, sort_order, parent_key });
   const MODULES = [
     mod('classes', 'Classes', 'off', false, 1),
     mod('engagement', 'Engagement', 'on', true, 2),
     mod('points', 'Points', 'on', true, 3, 'engagement'),
-    mod('squads', 'Squads', 'not_sold', false, 4, 'engagement'),
     mod('seasons', 'Seasons', 'off', false, 5, 'points'),
     mod('push', 'Announcements', 'on', true, 6),
     mod('events', 'Events', 'off', false, 7, 'push'),

@@ -14,7 +14,7 @@ const FULL_EVERY = 6;
  * Runs like /kiosk — on a gym computer signed in as the desk or owner — so
  * there is no public link that could put members' names on the internet. It
  * reads the same data as the members' own screens (lib/api/tv.ts), so every
- * privacy rule holds: opted-in names only, squads by name, check-ins counted.
+ * privacy rule holds: opted-in names only, check-ins counted.
  *
  * Since 0209 it is a Core Fitness plan feature and the gym designs it (Your app
  * → Lobby TV): a gym whose plan does not include it, or that switched it off,

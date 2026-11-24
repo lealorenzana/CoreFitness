@@ -207,7 +207,7 @@ async (page) => {
   const MEMBER_PAGES = ['home', 'train', 'you', 'membership', 'notifications', 'settings', 'progress', 'achievements', 'rewards', 'chatbot',
     'events', 'trainers', 'coach', 'equipment', 'book-class', 'booking-history', 'sessions', 'book-session', 'workouts', 'workouts/today',
     'programs', 'progress-photos', 'coach-notes', 'shop', 'rooms', 'messages', 'plan', 'track', 'track/log', 'rewards/requests', 'challenges',
-    'season', 'season/records', 'squad', 'refer', 'refer/invited', 'challenges/completed', 'activity', 'workout-history', 'body', 'targets',
+    'season', 'season/records', 'refer', 'refer/invited', 'challenges/completed', 'activity', 'workout-history', 'body', 'targets',
     'progress/reached', 'progress/readings', 'gym-plan', 'profile', 'profile/edit', 'help', 'change-password', 'change-email', 'payments',
     'renew', 'training', 'pause-or-cancel', 'waiver', 'visits'].map((x) => '/member/' + x);
   const COACH_PAGES = ['home', 'today', 'packages', 'schedule', 'members', 'rooms', 'messages', 'availability', 'equipment', 'profile',

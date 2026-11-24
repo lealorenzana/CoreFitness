@@ -4,7 +4,7 @@
  * milestone; tapped, the last twelve weeks as tokens, the milestone road, and the
  * member's own target and reminder. Nothing drawn when there is no streak.
  *
- * Setup copied from squad-check.js. Member dev server on :5173.
+ * Setup copied from an older member check. Member dev server on :5173.
  */
 async (page) => {
   await page.unrouteAll({ behavior: 'ignoreErrors' });
@@ -110,7 +110,6 @@ async (page) => {
   }));
 
   const CALLS = {};
-  let inSquad = false;
   // The streak card's data, as my_streak() returns it (0151). Mutable: Save changes it.
   let STREAK = { target: 3, current: 4, best: 6, days_this_week: 2, needed: 1, days_left: 1,
     week: [true, false, true, false, false, false, false], today_index: 6, frozen: false,
@@ -128,20 +127,7 @@ async (page) => {
     settle_my_streak: () => { if (settled) return []; settled = true; return [4]; },
     set_streak_target: (b) => { STREAK = { ...STREAK, target: b.p_target, nudges: b.p_nudges,
       needed: Math.max(0, b.p_target - STREAK.days_this_week) }; return null; },
-    settle_squads: () => 0,
     settle_gym_goals: () => 0,
-    join_squad: (b) => { if (b.p_code !== 'ABCDEF') throw new Error('bad code'); inSquad = true; return 'sq1'; },
-    create_squad: () => { inSquad = true; return 'sq1'; },
-    leave_squad: () => { inSquad = false; return null; },
-    my_squad: () => !inSquad ? [] : [
-      { squad_id: 'sq1', squad_name: 'Iron Barkada', code: 'ABCDEF', weekly_target: 9, squad_days: 4,
-        member_id: 'm2', first_name: 'Ana', days_this_week: 3, is_me: false },
-      { squad_id: 'sq1', squad_name: 'Iron Barkada', code: 'ABCDEF', weekly_target: 9, squad_days: 4,
-        member_id: 'm1', first_name: 'Lea', days_this_week: 1, is_me: true },
-      { squad_id: 'sq1', squad_name: 'Iron Barkada', code: 'ABCDEF', weekly_target: 9, squad_days: 4,
-        member_id: 'm3', first_name: 'Joy', days_this_week: 0, is_me: false }],
-    squad_board: () => [{ squad_name: 'Iron Barkada', members: 3, days: 4, weekly_target: 9, reached: false, is_mine: inSquad },
-      { squad_name: 'Morning Crew', members: 4, days: 12, weekly_target: 10, reached: true, is_mine: false }],
     current_gym_goal: () => [{ id: 'g1', title: '1,000 training days in October', metric: 'training_days', target: 1000,
       starts_on: dstr(-5), ends_on: dstr(20), reward_points: 50, reached: false, progress: 412, contributors: 88, mine: 2 }],
     request_renewal: (b) => { DB.renewal_requests.forEach((r) => { if (r.status === 'open') r.status = 'withdrawn'; });

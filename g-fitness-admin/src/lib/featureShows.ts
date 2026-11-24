@@ -161,20 +161,6 @@ export const FEATURE_SHOWS: Record<string, FeatureShow> = {
       { en: 'When the friend first pays, both are rewarded — points, or your desk reward if you run no points.', fil: 'Kapag unang nagbayad ang kaibigan, pareho silang may reward — points, o ang desk reward mo kung walang points.' },
     ],
   },
-  squads: {
-    frame: 'phone',
-    screen: [
-      { t: 'head', text: 'Team · Iron Four' },
-      { t: 'row', text: 'Mia · Leo · Ana · Jo', sub: '4 friends, one weekly target' },
-      { t: 'bar', label: 'Team week', from: 0.4, to: 1, at: 1, note: '10 of 10 workouts' },
-      { t: 'bar', label: 'Whole gym goal', from: 0.5, to: 0.62, at: 2, note: '310 of 500 days' },
-    ],
-    steps: [
-      { en: 'Two to five friends make a team.', fil: 'Dalawa hanggang lima ang bubuo ng team.' },
-      { en: 'Every workout adds to the team’s weekly target.', fil: 'Bawat workout ay dagdag sa weekly target ng team.' },
-      { en: 'And one goal for the whole gym, everyone adding to it.', fil: 'At isang goal para sa buong gym, lahat ay nag-aambag.' },
-    ],
-  },
   seasons: {
     frame: 'phone',
     screen: [

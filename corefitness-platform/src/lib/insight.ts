@@ -78,7 +78,6 @@ export const USAGE_FEATURES: { key: string; label: string; tip: string }[] = [
   { key: 'chat', label: 'Chat', tip: 'Messages between members and their coaches, counted, never read' },
   { key: 'shop', label: 'Shop', tip: 'Sales rung up at the counter' },
   { key: 'rewards', label: 'Rewards', tip: "Points spent on the gym's rewards" },
-  { key: 'squads', label: 'Teams', tip: 'Teams members formed' },
   { key: 'referrals', label: 'Referrals', tip: 'Friends referred by members' },
   { key: 'photos', label: 'Photos', tip: 'Progress photos members took, counted, never seen' },
   { key: 'payments', label: 'Payments', tip: 'Member payments the desk recorded' },

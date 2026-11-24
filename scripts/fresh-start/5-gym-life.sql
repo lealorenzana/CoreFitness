@@ -6,14 +6,13 @@
 -- (mf.jgabrielle+coach@gmail.com) as their coach. Re-runnable.
 -- ============================================================================
 
--- Demo data part 3 — BLOCK 3 of 3 — the gym's shop, seasons, squads, and the
+-- Demo data part 3 — BLOCK 3 of 3 — the gym's shop, seasons, and the
 -- member's place in them
 --
 -- After blocks 1 and 2. Re-runnable. Expect a NOTICE starting "Part 3 block 3:".
 --
 -- The shop stocked and selling for three months (some of it to the member),
--- three season tiers with the member's claimed rewards, a squad with demo
--- members, the gym's challenges and events with the member in them, rewards
+-- three season tiers with the member's claimed rewards, the gym's challenges and events with the member in them, rewards
 -- redeemed, streak milestones, and a real-looking notification inbox. Every
 -- row has a demo id (5eed3___-…) for Remove demo data.
 do $seed$
@@ -23,7 +22,6 @@ declare
   v_me     uuid;
   v_owner  uuid;
   v_mates  uuid[];
-  v_squad  uuid;
   v_today  date := (now() at time zone 'Asia/Manila')::date;
   id_of constant text := '5eed3%s-0000-4000-8000-%s';
 begin
@@ -45,9 +43,6 @@ begin
   alter table stock_moves         disable trigger user;
   alter table season_tiers        disable trigger user;
   alter table season_claims       disable trigger user;
-  alter table squads              disable trigger user;
-  alter table squad_members       disable trigger user;
-  alter table squad_weeks         disable trigger user;
   alter table challenge_participants disable trigger user;
   alter table reward_redemptions  disable trigger user;
   alter table event_registrations disable trigger user;
@@ -117,25 +112,6 @@ begin
     join lateral (select id from season_tiers where gym_id = v_gym order by sort_order offset (m % 3) limit 1) t on true
   on conflict do nothing;
 
-  -- ── A squad: the member and three demo friends, eight weeks of training days ──
-  if v_mates is not null and not exists (select 1 from squad_members where member_id = v_me and left_at is null) then
-    v_squad := format(id_of, '147', '000000000001')::uuid;
-    insert into squads (id, gym_id, name, code, weekly_target, created_by, created_at)
-    values (v_squad, v_gym, 'Sunset Lifters', 'SUNSET', 3, v_me, (v_today - 70) at time zone 'Asia/Manila')
-    on conflict do nothing;
-    insert into squad_members (id, gym_id, squad_id, member_id, joined_at)
-    select format(id_of, '134', lpad(k::text, 12, '0'))::uuid, v_gym, v_squad,
-           case k when 1 then v_me else v_mates[k] end, (v_today - 70 + k) at time zone 'Asia/Manila'
-      from generate_series(1, least(4, 1 + coalesce(array_length(v_mates, 1), 0))) k
-    on conflict do nothing;
-    insert into squad_weeks (id, gym_id, squad_id, week_start, days, reached_at)
-    select format(id_of, '135', lpad(w::text, 12, '0'))::uuid, v_gym, v_squad,
-           (date_trunc('week', v_today)::date - 7 * w), 3 + w % 3,
-           ((date_trunc('week', v_today)::date - 7 * w + 5) + time '19:00') at time zone 'Asia/Manila'
-      from generate_series(1, 8) w
-    on conflict do nothing;
-  end if;
-
   -- ── The member in the gym's challenges, events and rewards ──────────────────────
   insert into challenge_participants (gym_id, challenge_id, member_id, joined_at, completed_on)
   select v_gym, c.id, v_me, (c.starts_on + 1) at time zone 'Asia/Manila',
@@ -191,9 +167,6 @@ begin
   alter table stock_moves         enable trigger user;
   alter table season_tiers        enable trigger user;
   alter table season_claims       enable trigger user;
-  alter table squads              enable trigger user;
-  alter table squad_members       enable trigger user;
-  alter table squad_weeks         enable trigger user;
   alter table challenge_participants enable trigger user;
   alter table reward_redemptions  enable trigger user;
   alter table event_registrations enable trigger user;

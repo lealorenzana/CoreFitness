@@ -23,7 +23,6 @@ const WHEN: Record<string, string> = {
   goal_achieved: 'A goal with a number, reached — the app checks it; a hand-ticked goal earns nothing.',
   challenge_complete: 'Finishing a challenge.',
   personal_record: 'A new personal record on a lift — at most three a week, since weights are typed in.',
-  squad_week: 'Their team reaches its weekly target.',
   gym_goal: 'The whole gym reaches its goal — everyone who helped.',
   referral: 'A friend they invited pays for a membership — at most five a month.',
   referral_welcome: 'Joining through a friend, once they first pay.',
@@ -34,7 +33,7 @@ const WHEN: Record<string, string> = {
 };
 const ICON: Record<string, LucideIcon> = {
   checkin: CalendarCheck, workout_logged: Dumbbell, class_attended: Users, pt_session: Handshake, goal_achieved: Target,
-  challenge_complete: Flag, personal_record: Trophy, squad_week: Users, gym_goal: Trophy, referral: UserPlus, referral_welcome: UserPlus,
+  challenge_complete: Flag, personal_record: Trophy, gym_goal: Trophy, referral: UserPlus, referral_welcome: UserPlus,
   classwork_on_time: BookOpen, streak_milestone: Flame, shop_purchase: ShoppingBag, membership_paid: Banknote,
 };
 const per = (r: PointRule) => (r.key === 'shop_purchase' ? ' per ₱100' : '');

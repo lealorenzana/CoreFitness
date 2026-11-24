@@ -159,7 +159,7 @@ check('the member sign-in has two years: visits, receipts, workouts, points', aw
   && await n(`select count(*) n from point_ledger where member_id = '${ME}'`) > 300);
 check('…coached by the test coach: sessions, notes, chat', await n(`select count(*) n from pt_sessions where member_id = '${ME}' and trainer_id = 'cf1ab000-0000-4000-8000-000000000003'`) >= 19
   && await n(`select count(*) n from messages where sender_id = '${ME}'`) >= 3);
-check('…and the gym has a shop, squads and a season', await n(`select count(*) n from shop_sales`) >= 140 && await n(`select count(*) n from squad_members`) >= 4);
+check('…and the gym has a shop', await n(`select count(*) n from shop_sales`) >= 140);
 
 // ---- part 2 again: new passwords ------------------------------------------------------------
 r = await run('2-test-gym.sql');

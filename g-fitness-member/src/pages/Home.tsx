@@ -505,7 +505,7 @@ export default function Home() {
       {/* Things to read or finish, below the day: each renders nothing when it has nothing to say. */}
       {moduleOn(gymApp, 'programs') && <ProgramNext />}
       {moduleOn(gymApp, 'rooms') && <DueStrip />}
-      {moduleOn(gymApp, 'squads') && <GymGoalStrip />}
+      {moduleOn(gymApp, 'engagement') && <GymGoalStrip />}
       <TermsUpdateStrip />
       <FinishPlanCard />
       <PushPrompt />
