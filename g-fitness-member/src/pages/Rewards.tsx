@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useGymApp } from '../hooks/useGymApp';
 import { moduleOn, pointsWord } from '../lib/gymApp';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { CaretRight, Coins, Gift, Package, PushPin, Ranking, Star, Storefront, WarningCircle } from '@phosphor-icons/react';
 import Challenges from './Challenges';
 import { CountNumber } from '../components/ui/lively';
@@ -50,6 +50,7 @@ type RewardsTab = 'rewards' | 'challenges';
 export default function Rewards() {
   const gymApp = useGymApp();
   const navigate = useNavigate();
+  const { state } = useLocation();
   const [params, setParams] = useSearchParams();
   const offeredTabs: RewardsTab[] = [
     ...(moduleOn(gymApp, 'points') ? ['rewards' as const] : []),
@@ -152,19 +153,19 @@ export default function Rewards() {
   const title = (
     <>
       <PageTitle back fallback="/member/home" title="Rewards"
-        subtitle="Points, challenges, and what you can get" />
+        subtitle="Use your points or join a challenge." />
       {offeredTabs.length > 1 && (
         <TextTabs<RewardsTab> label="Rewards"
           tabs={[{ id: 'rewards' as const, label: 'Rewards' }, { id: 'challenges' as const, label: 'Challenges' }].filter((x) => offeredTabs.includes(x.id))}
           active={rtab}
-          onChange={(next) => setParams((old) => { const q = new URLSearchParams(old); q.set('tab', next); return q; }, { replace: true })} />
+          onChange={(next) => setParams((old) => { const q = new URLSearchParams(old); q.set('tab', next); return q; }, { replace: true, state })} />
       )}
       {extras.length > 0 && (
-        <section aria-label="More ways to play" data-rewards-extras>
+        <details className="member-secondary-fold" data-rewards-extras><summary>Team and season activities</summary>
           {extras.map((x, i) => (
             <LineRow key={x.path} icon={x.icon} title={x.label} meta={x.meta} onClick={() => navigate(x.path)} last={i === extras.length - 1} />
           ))}
-        </section>
+        </details>
       )}
     </>
   );

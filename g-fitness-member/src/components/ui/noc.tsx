@@ -320,6 +320,17 @@ export function TextTabs<T extends string>({
             key={t.id}
             role="tab"
             aria-selected={on}
+            tabIndex={on ? 0 : -1}
+            onKeyDown={(event) => {
+              const index = tabs.findIndex((item) => item.id === active);
+              const next = event.key === 'ArrowRight' ? (index + 1) % tabs.length
+                : event.key === 'ArrowLeft' ? (index + tabs.length - 1) % tabs.length
+                : event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : null;
+              if (next !== null) {
+                event.preventDefault(); onChange(tabs[next].id);
+                row.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();
+              }
+            }}
             onClick={() => onChange(t.id)}
             className="flex-none whitespace-nowrap relative noc-press"
             style={{
@@ -431,10 +442,10 @@ export function Panel({
 
   if (onClick) {
     return (
-      <button onClick={onClick} aria-label={ariaLabel} className={cn('w-full text-left block noc-press-soft', className)} style={css}>
+      <button onClick={onClick} aria-label={ariaLabel} className={cn('member-panel w-full text-left block noc-press-soft', className)} style={css}>
         {topLine}{children}
       </button>
     );
   }
-  return <div className={className} style={css}>{topLine}{children}</div>;
+  return <div className={cn('member-panel', className)} style={css}>{topLine}{children}</div>;
 }

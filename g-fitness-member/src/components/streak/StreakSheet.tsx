@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ArrowCounterClockwise, Check } from '@phosphor-icons/react';
 import GlassSheet from '../ui/GlassSheet';
 import { Chip, NocButton, Panel } from '../ui/noc';
-import StreakOrb from './StreakOrb';
+import './streak-story.css';
 import StreakWeeks from './StreakWeeks';
 import StreakCalendar from './StreakCalendar';
 import { MILESTONES, TIER_LABEL, closedDaysLabel, flameTier, streakLine, type StreakCard, type StreakWeek } from '../../lib/api/streak';
@@ -32,6 +32,7 @@ export default function StreakSheet({
   const [nudges, setNudges] = useState(card.nudges);
   const [saving, setSaving] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  const [reaction, setReaction] = useState(0);
   // A sheet reopened for a changed card starts from the card, not stale edits.
   const [shownFor, setShownFor] = useState(card);
   if (shownFor !== card) { setShownFor(card); setTarget(card.target); setNudges(card.nudges); }
@@ -57,11 +58,23 @@ export default function StreakSheet({
 
   return (
     <GlassSheet open={open} onClose={onClose} title="Your gym streak" subtitle="Weeks in a row at your target"
-      footer={<NocButton className="w-full" onClick={() => void save()} disabled={saving}>{saving ? 'Saving…' : 'Save'}</NocButton>}>
+      footer={<NocButton className="w-full" onClick={() => void save()} disabled={saving}>{saving ? 'Saving…' : 'Save target'}</NocButton>}>
+      <div className="streak-story">
       {/* The flame, large. */}
-      <div className="flex flex-col items-center text-center" style={{ paddingTop: 4 }}>
-        <StreakOrb weeks={card.current} days={card.daysThisWeek} target={card.target}
-          live={!card.frozen && !card.outOfReach && card.needed > 0} size={132} />
+      <div className="streak-story-hero flex flex-col items-center text-center" style={{ paddingTop: 4 }}>
+        <button type="button" className="streak-story-art" data-state={card.frozen ? 'frozen' : card.current > 0 || card.daysThisWeek >= card.target ? 'lit' : 'resting'}
+          aria-label="Play the streak mascot animation" onClick={event => {
+            setReaction(value => value + 1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) event.currentTarget.animate([
+              { transform: 'scale(1)' }, { transform: 'scale(1.12,.88)', offset: .18 },
+              { transform: 'translateY(-14px) scale(.94,1.08)', offset: .48 },
+              { transform: 'translateY(0) scale(1.04,.96)', offset: .8 }, { transform: 'scale(1)' },
+            ], { duration: 650, easing: 'ease-in-out' });
+          }}>
+          <span className="streak-story-aura" /><span className="streak-story-shadow" />
+          <picture key={reaction}><source media="(prefers-reduced-motion: reduce)" srcSet="/images/streak-flame-companion.png" /><img src="/images/streak-flame-idle.gif" alt="" /></picture>
+          <i className="streak-story-spark is-one" /><i className="streak-story-spark is-two" /><i className="streak-story-spark is-three" />
+        </button>
         <p className="tabular-nums" style={{ marginTop: 10, fontSize: 40, fontWeight: 700, lineHeight: 1, color: 'var(--color-text-primary)' }}>
           {card.current}
         </p>
@@ -77,6 +90,13 @@ export default function StreakSheet({
             {line.text}
           </p>
         )}
+      </div>
+      <div className="streak-story-week">
+        <div><strong>This week</strong><span>{card.daysThisWeek} / {card.target} training days</span></div>
+        <div className="streak-story-days" aria-label={`${card.daysThisWeek} of ${card.target} training days completed`}>
+          {Array.from({ length: card.target }, (_, i) => <span key={i} data-done={i < card.daysThisWeek} aria-hidden="true">{i < card.daysThisWeek ? <Check size={15} weight="bold" /> : i + 1}</span>)}
+        </div>
+        <p>{card.frozen ? 'Your streak is protected while membership is frozen.' : card.needed === 0 ? 'Weekly target reached. Keep your rhythm.' : `${card.needed} more training ${card.needed === 1 ? 'day' : 'days'} to reach this week’s target.`}</p>
       </div>
 
       {/* A missed week, today only (0272). */}
@@ -182,6 +202,7 @@ export default function StreakSheet({
           ))}
         </section>
       )}
+      </div>
     </GlassSheet>
   );
 }

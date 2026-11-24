@@ -32,6 +32,7 @@ export default function BookTimeRow() {
   if (!on || next === undefined) return null;
   const when = next ? `${next.date === todayKey() ? t('Today') : new Date(`${next.date}T00:00`).toLocaleDateString('en-PH', { weekday: 'short', day: 'numeric' })} · ${clock(next.starts)} – ${clock(next.ends)}` : '';
   return (
+    <div className="today-booking-card">
     <button type="button" onClick={() => navigate('/member/slots')} data-book-time
       className="w-full text-left noc-press-soft flex items-center"
       style={{ gap: 12, padding: '12px 14px', borderRadius: 16, background: 'var(--color-surface)', border: '1px solid rgb(var(--hair-rgb, 233 233 237) / 0.1)' }}>
@@ -45,5 +46,6 @@ export default function BookTimeRow() {
       </span>
       <CaretRight size={14} style={{ color: 'var(--color-text-muted)' }} />
     </button>
+    </div>
   );
 }

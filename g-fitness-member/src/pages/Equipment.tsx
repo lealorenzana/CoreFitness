@@ -64,7 +64,7 @@ export default function Equipment() {
 
   return (
     <Page>
-      <PageTitle title="Equipment" subtitle="What the gym has, and where" back fallback={trainer ? '/trainer/home' : '/member/home'} />
+      <PageTitle title="Equipment" subtitle="Find equipment and see how to use it." back fallback={trainer ? '/trainer/home' : '/member/home'} />
       {items === undefined ? <SkeletonList count={4} />
         : items === null ? <Panel><p style={{ fontSize: 13.5, color: 'var(--color-secondary)' }}>The equipment list could not be loaded.</p></Panel>
         : items.length === 0 ? <Panel><p style={{ fontSize: 13.5, color: 'var(--color-text-secondary)' }}>Your gym has not listed its equipment yet.</p></Panel>

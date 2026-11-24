@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { applyColorMode } from './lib/colorMode';
 import './index.css';
+import './member-calm.css';
 import App from './App.tsx';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { keepAppUpdated } from './lib/appUpdate';

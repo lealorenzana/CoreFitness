@@ -27,6 +27,22 @@ import { assertWrote } from './api/mutate';
 export type Lang = 'en' | 'fil';
 
 const FIL: Record<string, string> = {
+  'Booking updates, coach messages and gym reminders—even when the app is closed.': 'Booking updates, messages ng coach at gym reminders—kahit sarado ang app.',
+  'One step at a time': 'Isa-isang hakbang lang',
+  'Make today': 'Gawing sa’yo',
+  'your day.': 'ang araw na ’to.',
+  'Your next chapter starts here.': 'Dito nagsisimula ang susunod mong hakbang.',
+  'You showed up. Take it from here.': 'Nandito ka na. Tuloy mo lang.',
+  'Show up. Find your rhythm. Keep going.': 'Tara na. Hanapin ang ritmo mo. Tuloy lang.',
+  'See your day': 'Tingnan ang araw mo',
+  'Scroll to explore': 'Mag-scroll pa',
+  'Your next steps': 'Mga susunod mong hakbang',
+  'A little movement starts here.': 'Dito nagsisimula ang pagkilos.',
+  'Your week and membership': 'Linggo at membership mo',
+  'Every visit is a step forward.': 'Bawat punta, isang hakbang pasulong.',
+  'From your gym': 'Mula sa gym mo',
+  'Updates, videos, and community goals': 'Updates, videos, at mga goal ng gym',
+  'One day. Your own pace.': 'Isang araw. Sa sarili mong ritmo.',
   "Today": "Ngayon",
   "Train": "Training",
   "You": "Ikaw",

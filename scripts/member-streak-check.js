@@ -288,17 +288,12 @@ async (page) => {
   out.push('Today shows the streak as a line, not the big card: ' + ((await page.locator('[data-streak-line]').count()) === 1 && (await page.locator('.streak-hero').count()) === 0 ? 'yes' : 'MISSING'));
   await hero.click();
   await page.getByText('Your gym streak', { exact: true }).waitFor({ timeout: 5000 });
-  const segs = await page.locator('.streak-orb .streak-seg').count();
-  const on = await page.locator('.streak-orb .streak-seg--on').count();
-  const nextSeg = await page.locator('.streak-orb .streak-seg--next').count();
-  out.push('the orb: one segment per target day, filled for each day, the next one lit: ' + (segs === 3 && on === 2 && nextSeg === 1 ? '3 / 2 / 1' : `MISSING ${segs}/${on}/${nextSeg}`));
-  const centred = await page.evaluate(() => {
-    const o = document.querySelector('.streak-orb').getBoundingClientRect();
-    const f = document.querySelector('.streak-orb__flame svg').getBoundingClientRect();
-    return Math.abs((o.x + o.width / 2) - (f.x + f.width / 2)) < 3 && Math.abs((o.y + o.height / 2) - (f.y + f.height / 2)) < 4;
-  });
-  out.push('the flame sits in the middle of the ring: ' + (centred ? 'yes' : 'OFF CENTRE'));
-  out.push('the flame tier: ' + ((await page.locator('.streak-orb--flame').count()) === 1 ? 'flame (4 weeks)' : 'MISSING'));
+  // The new sheet (member UI, 2026-11-24): the flame artwork, then one dot per target day, done ones ticked.
+  const dots = await page.locator('.streak-story-days > span').count();
+  const done = await page.locator('.streak-story-days > span[data-done="true"]').count();
+  out.push('this week: one dot per target day, ticked for each day trained: ' + (dots === 3 && done === 2 ? '3 / 2' : `MISSING ${dots}/${done}`));
+  out.push('the flame artwork is lit while a streak runs: ' + ((await page.locator('.streak-story-art[data-state="lit"]').count()) === 1 ? 'lit' : 'MISSING'));
+  out.push('the tier is named: ' + (/weeks in a row · Flame/.test((await page.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ')) ? 'Flame (4 weeks)' : 'MISSING'));
   out.push('a milestone reached is celebrated: ' + ('settle_my_streak' in CALLS && (await page.evaluate(() => window.__seen)).includes('milestone') ? 'yes' : 'MISSING'));
   out.push('…and the orb ignites: ' + ((await page.evaluate(() => window.__seen)).includes('ignite') ? 'yes' : 'MISSING'));
   await shot('streak-today');
@@ -354,7 +349,7 @@ async (page) => {
   out.push('…and it fits 393px: ' + (fits ? 'yes' : 'OVERFLOWS'));
   await page.locator('[data-streak-calendar]').scrollIntoViewIfNeeded();
   await shot('streak-calendar-dark-violet');
-  await page.getByRole('button', { name: 'Previous month' }).click();
+  await page.locator('[data-streak-calendar]').getByRole('button', { name: 'Previous month' }).click();
   await page.waitForTimeout(600);
   out.push('…an earlier month opens: ' + (CALLS.my_streak_month?.p_month && CALLS.my_streak_month.p_month < `${dstr(0).slice(0, 7)}-01` ? 'yes' : 'MISSING'));
   await page.keyboard.press('Escape');

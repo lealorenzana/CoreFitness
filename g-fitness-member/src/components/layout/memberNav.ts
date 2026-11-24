@@ -55,7 +55,7 @@ export interface Tab {
 export const TABS: Tab[] = [
   { id: 'today', label: 'Today', path: '/member/home', icon: House, eyebrow: 'Your day' },
   { id: 'train', label: 'Train', path: '/member/book-class', icon: Barbell, eyebrow: 'Train' },
-  { id: 'you', label: 'You', path: '/member/membership', icon: User, eyebrow: 'Your level, progress and membership' },
+  { id: 'you', label: 'Account', path: '/member/membership', icon: User, eyebrow: 'Membership and progress' },
 ];
 
 /**
@@ -77,15 +77,15 @@ const TAB_PATHS: string[][] = [
   ['/member/book-class', '/member/training', '/member/book', '/member/bookings',
    '/member/booking-history', '/member/sessions', '/member/book-session', '/member/chat', '/member/coach',
    '/member/track', '/member/plan', '/member/gym-plan', '/member/workouts', '/member/programs', '/member/program/',
-   '/member/trainers', '/member/trainer/', '/member/events', '/member/rooms', '/member/messages', '/member/coach-notes'],
+   '/member/trainers', '/member/trainer/', '/member/equipment', '/member/events', '/member/rooms', '/member/messages', '/member/coach-notes'],
   // You: the earned level, progress, badges and records, the membership and the
   // account (simplify, 2026-10-28) — and Rewards, which More opens.
-  ['/member/membership', '/member/renew', '/member/renew-membership',
+  ['/member/membership', '/member/account', '/member/you', '/member/renew', '/member/renew-membership', '/member/pause-or-cancel', '/member/waiver',
    '/member/progress', '/member/body', '/member/progress-photos', '/member/workout-history',
    '/member/achievements', '/member/challenges', '/member/records',
    '/member/payments', '/member/attendance-history', '/member/rewards', '/member/shop',
    '/member/profile', '/member/settings', '/member/change-password',
-   '/member/change-email', '/member/activity', '/member/visits', '/member/help'],
+   '/member/change-email', '/member/username', '/member/refer', '/member/activity', '/member/visits', '/member/help'],
 ];
 
 /** The tab a path belongs to, or null for a path that belongs to none. */
@@ -208,16 +208,7 @@ export function hubAt(pathname: string, search: string): { hub: HubId; tab: Dest
 const lastTab = new Map<HubId, string>();
 export function rememberHubTab(id: HubId, path: string): void { lastTab.set(id, path); }
 /** Forget the remembered tabs. Called from `logout()` with the other per-member memory. */
-export function clearHubMemory(): void { lastTab.clear(); lastInBar.clear(); }
-
-/**
- * The bottom bar remembers the last screen open under each of its tabs (the owner, 2026-11-07: "when going to
- * a page and go back it should still be in that same area … not tapping many buttons"). Tapping a tab returns
- * there; tapping the tab you are in goes to its main screen. Forgotten at sign-out (clearHubMemory).
- */
-const lastInBar = new Map<TabId, string>();
-export function rememberBarPath(id: TabId, path: string): void { lastInBar.set(id, path); }
-export function lastBarPath(id: TabId): string | undefined { return lastInBar.get(id); }
+export function clearHubMemory(): void { lastTab.clear(); }
 
 /** Where a section's pill lands: the tab last open there, else the first one this gym runs. */
 export function hubEntry(id: HubId, app: GymApp | null): string {
@@ -234,10 +225,7 @@ export function hubEntry(id: HubId, app: GymApp | null): string {
  * progress, badges and the membership on You — and Change password and email
  * are inside Settings. Rewards is points, challenges and spending them.
  */
-export const EVERYTHING: { group: string; items: Destination[] }[] = [
-  {
-    group: 'More',
-    items: [
+const MORE_ITEMS: Destination[] = [
       { label: 'Inbox', path: '/member/notifications', icon: Bell, blurb: 'Everything sent to you' },
       { label: 'Rewards', path: '/member/rewards', module: 'engagement', icon: Gift, blurb: 'Points, challenges, what you can get' },
       { label: 'Assistant', path: '/member/chatbot', module: 'assistant', icon: Sparkle, blurb: 'Questions about training and the gym' },
@@ -252,8 +240,11 @@ export const EVERYTHING: { group: string; items: Destination[] }[] = [
       { label: 'Profile', path: '/member/profile', icon: UserCircle, blurb: 'Your name, photo and details' },
       { label: 'Settings', path: '/member/settings', icon: GearSix, blurb: 'Alerts, privacy, sign-in, password, email' },
       { label: 'Help', path: '/member/help', icon: Question, blurb: 'Tours of each screen, your gym, terms and privacy' },
-    ],
-  },
+];
+export const EVERYTHING: { group: string; items: Destination[] }[] = [
+  { group: 'Your gym', items: MORE_ITEMS.filter((item) => ['/member/notifications', '/member/equipment', '/member/shop', '/choose-gym'].includes(item.path)) },
+  { group: 'Community', items: MORE_ITEMS.filter((item) => ['/member/rewards', '/member/reels', '/member/gym-chat', '/member/refer'].includes(item.path)) },
+  { group: 'You and support', items: MORE_ITEMS.filter((item) => ['/member/profile', '/member/settings', '/member/help', '/member/chatbot'].includes(item.path)) },
 ];
 
 /** More has no tiles since the simplify: its ten rows are the whole list. */

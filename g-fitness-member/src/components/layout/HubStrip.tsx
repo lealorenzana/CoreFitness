@@ -15,7 +15,7 @@ import { HUBS, hubAt, hubTabs, rememberHubTab } from './memberNav';
  * The tab is remembered for the session, so the rail's pill returns to it.
  */
 export default function HubStrip() {
-  const { pathname, search } = useLocation();
+  const { pathname, search, state } = useLocation();
   const navigate = useNavigate();
   const app = useGymApp();
   const t = useT();
@@ -35,7 +35,7 @@ export default function HubStrip() {
         label={t(label)}
         tabs={tabs.map((d) => ({ id: d.path, label: t(d.label) }))}
         active={at.tab.path}
-        onChange={(path) => navigate(path, { replace: true })}
+        onChange={(path) => navigate(path, { replace: true, state })}
         gap={20}
       />
     </div>

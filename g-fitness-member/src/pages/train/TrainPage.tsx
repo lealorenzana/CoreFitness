@@ -1,3 +1,4 @@
+import MemberScene from '../../components/ui/MemberScene';
 import { useEffect } from 'react';
 import { Navigate, useLocation, useSearchParams } from 'react-router-dom';
 import { Barbell, ChalkboardTeacher, UsersThree } from '@phosphor-icons/react';
@@ -80,7 +81,7 @@ export default function TrainPage() {
         </div>
       )}
 
-      {active === 'workout' && <Page><WorkoutHome /></Page>}
+      {active === 'workout' && <Page><MemberScene kind="training" title="Find your next workout" description="Follow your plan or choose something to try." /><WorkoutHome /></Page>}
       {active === 'classes' && <BookClass mode="classes" />}
       {active === 'coach' && <Page><CoachHome /></Page>}
     </div>

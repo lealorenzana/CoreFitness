@@ -774,6 +774,10 @@
     {
       "file": "trainer-noshows-check.js",
       "app": "member"
+    },
+    {
+      "file": "member-calendar-assets-check.js",
+      "app": "member"
     }
   ]
 }

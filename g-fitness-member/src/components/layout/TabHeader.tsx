@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { PointsChip } from '../ui/lively';
 import { useNavigate } from 'react-router-dom';
 import { ChatsCircle, GearSix } from '@phosphor-icons/react';
 import Notifications from '../Notifications';
@@ -152,7 +151,7 @@ export default function TabHeader({ tab }: { tab: Tab }) {
         </h1>
         {!isToday && <div style={{ paddingTop: 22 }}>{actions}</div>}
         {/* Wave 2: the member's points beside the date, counting up when they changed. */}
-        {isToday && <div style={{ paddingTop: 6 }}><PointsChip /></div>}
+
       </div>
 
       {/* Room under the title, where the rail of chips used to be (redesign,

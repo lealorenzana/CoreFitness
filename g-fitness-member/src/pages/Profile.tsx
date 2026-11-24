@@ -109,7 +109,7 @@ export default function Profile() {
 
   return (
     <Page>
-      <PageTitle back fallback="/member/membership" title="Profile" subtitle="Who you are to the gym" />
+      <PageTitle back fallback="/member/membership" title="Profile" subtitle="Your photo, contact details, and membership." />
 
       {loading ? (
         <SkeletonList />

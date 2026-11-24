@@ -5,6 +5,7 @@ import { CountNumber } from '../components/ui/lively';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useGymApp } from '../hooks/useGymApp';
 import { moduleOn } from '../lib/gymApp';
+import MemberScene from '../components/ui/MemberScene';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowsClockwise, CaretRight, Check, ClockCounterClockwise, Gear,
@@ -78,7 +79,7 @@ export default function MembershipHub() {
     'membership',
   ];
   const asked = params.get('tab') as YouTab | null;
-  const tab: YouTab = asked && offered.includes(asked) ? asked : offered[0];
+  const tab: YouTab = asked && offered.includes(asked) ? asked : 'membership';
   useTour(tourFor('member', 'you'), useT());
   const cached = readCache<Hub>(CACHE_KEY);
   const [hub, setHub] = useState<Hub | null>(cached ?? null);
@@ -192,22 +193,19 @@ export default function MembershipHub() {
         <CaretRight size={15} style={{ color: 'var(--color-text-muted)' }} aria-hidden />
       </button>
 
-      {/* ── Your earned level (wave 2's trophy room hero), above the tabs ── */}
-      <TrophyRoom part="level" />
-
       {offered.length > 1 && (
-        <TextTabs<YouTab> label="You"
+        <TextTabs<YouTab> label="Account"
           tabs={[
-            { id: 'progress' as const, label: 'Progress' },
-            { id: 'badges' as const, label: 'Badges & records' },
             { id: 'membership' as const, label: 'Membership' },
+            { id: 'progress' as const, label: 'Progress' },
+            { id: 'badges' as const, label: 'Achievements' },
           ].filter((x) => offered.includes(x.id))}
           active={tab}
           onChange={(next) => setParams((old) => { const q = new URLSearchParams(old); q.set('tab', next); return q; }, { replace: true })} />
       )}
 
-      {tab === 'progress' && <ProgressTab />}
-      {tab === 'badges' && <TrophyRoom part="shelf" />}
+      {tab === 'progress' && <><MemberScene kind="progress" title="See how far you’ve come" description="Your workouts, visits, and personal goals." /><ProgressTab /></>}
+      {tab === 'badges' && <><TrophyRoom part="shelf" /><TrophyRoom part="level" /></>}
 
       {tab === 'membership' && (<>
 
@@ -294,8 +292,10 @@ export default function MembershipHub() {
 
       {/* ── This term so far ── */}
       {t && !home.frozen && (
-        <section>
-          <SectionHead title="This term so far" meta={`${t.elapsedDays} ${t.elapsedDays === 1 ? 'day' : 'days'} in`} />
+        <details className="member-secondary-fold">
+          <summary>Your activity this membership</summary>
+          <div className="member-fold-content">
+          <SectionHead title="Your activity" meta={`${t.elapsedDays} ${t.elapsedDays === 1 ? 'day' : 'days'} in`} />
           <div className="grid" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 10, marginTop: 12 }}>
             <InlineStat value={<CountNumber value={t.visitDays} />} label={t.visitDays === 1 ? 'visit day' : 'visit days'} />
             <InlineStat value={<CountNumber value={t.classes} />} label={t.classes === 1 ? 'class' : 'classes'} />
@@ -311,7 +311,8 @@ export default function MembershipHub() {
               </p>
             </>
           )}
-        </section>
+          </div>
+        </details>
       )}
 
       {/* ── Everything else about the membership: one described row each, each its own page

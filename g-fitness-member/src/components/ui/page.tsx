@@ -5,6 +5,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft } from '@phosphor-icons/react';
 import { cn } from '../../lib/utils';
 import { panelStyle } from './Card';
+import { useMemberArtwork } from './MemberScene';
 import HubStrip from '../layout/HubStrip';
 
 /**
@@ -49,7 +50,7 @@ export function Page({
 }) {
   return (
     <div
-      className={cn('flex flex-col noc-stack', className)}
+      className={cn('flex flex-col noc-stack member-page', className)}
       style={{
         gap: 'var(--stack)',
         paddingBottom: dockClear ? 'var(--dock-clear)' : undefined,
@@ -94,14 +95,21 @@ export function PageTitle({
 }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const artwork = useMemberArtwork();
   return (
-    <header className="flex flex-col">
+    <header className="flex flex-col member-page-header">
       {back && (
         <button
           onClick={() => {
             // Back steps back within the tab you are in (lib/navTrail.ts, 2026-11-14): each bottom-bar tab keeps its
             // own stack, the way the big apps do, so a visit to Today in between never becomes Train's Back.
             const here = location.pathname + location.search;
+            const origin = (location.state as { memberBackTo?: string } | null)?.memberBackTo;
+            if (origin?.startsWith('/member/') && origin !== here) {
+              if (previousPath() === origin && window.history.length > 1) navigate(-1);
+              else { markBack(origin); navigate(origin, { replace: true, state: null }); }
+              return;
+            }
             const target = backTarget(here);
             if (target) {
               // The browser's own previous page is the same screen: a real step back keeps history tidy.
@@ -124,7 +132,7 @@ export function PageTitle({
           Back
         </button>
       )}
-      <div className="flex items-start" style={{ gap: 12 }}>
+      <div className={`flex items-start member-title-row${artwork ? ' has-art' : ''}`} style={{ gap: 12 }}>
         <div className="min-w-0 flex-1">
           <h1 style={{
             fontSize: 'var(--text-display)', fontWeight: 700, letterSpacing: '-0.02em',
@@ -138,6 +146,7 @@ export function PageTitle({
             </p>
           )}
         </div>
+        {artwork && <img className="member-title-art" src={`/images/member-${artwork}.png`} alt="" aria-hidden="true" />}
         {action && <div className="flex-shrink-0 self-center">{action}</div>}
       </div>
       {hub && <HubStrip />}

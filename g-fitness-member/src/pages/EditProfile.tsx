@@ -205,7 +205,7 @@ export default function EditProfile() {
 
   return (
     <Page>
-      <PageTitle back fallback="/member/profile" title="Edit profile" subtitle="What the gym has on file — yours to keep current" />
+      <PageTitle back fallback="/member/profile" title="Edit profile" subtitle="Keep your name and contact details up to date." />
 
       {/* ── Photo and completeness ── */}
       <Panel glow={completeness.missing.length ? 'action' : 'structure'}>

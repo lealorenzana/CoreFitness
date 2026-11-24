@@ -157,11 +157,11 @@ export default function WorkoutHome() {
         <SectionHead title={t('Library')} />
         <div className="grid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, marginTop: 8 }}>
           {library.filter((d) => d.on).map((d) => {
-            const I = d.icon;
+
             return (
               <button key={d.path} type="button" onClick={() => navigate(d.path)} data-library-tile className="noc-press flex flex-col text-left"
                 style={{ gap: 4, alignItems: 'flex-start', padding: 14, borderRadius: 14, border: '1px solid var(--color-hairline)', background: 'var(--color-surface)' }}>
-                <I size={22} aria-hidden style={{ color: 'var(--color-primary-300)' }} />
+                <img className="member-library-art" src={d.path === '/member/programs' ? '/images/member-progress.png' : '/images/member-training.png'} alt="" aria-hidden="true" />
                 <span style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--color-text-primary)' }}>{t(d.label)}</span>
                 <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{t(d.blurb)}</span>
               </button>

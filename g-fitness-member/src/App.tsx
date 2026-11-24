@@ -449,6 +449,8 @@ function App() {
           {/* The Training tab opens Book a Session; this keeps the path alive. */}
           <Route path="training" element={<Navigate to="/member/book-class" replace />} />
           <Route path="membership" element={<MembershipHub />} />
+          <Route path="you" element={<Navigate to="/member/membership" replace />} />
+          <Route path="account" element={<Navigate to="/member/membership" replace />} />
           {/* Aliases for paths that exist only in notification rows.
 
               0030/0051-0055/0071 write `action_url` values that were never

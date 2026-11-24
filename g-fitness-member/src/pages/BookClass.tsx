@@ -33,6 +33,7 @@ import { weekRangeLabel } from '../utils/dates';
 import { useSetTabHeader } from '../components/layout/tabHeaderStore';
 import type { ClassLevel } from '../types/db';
 import { Page } from '../components/ui/page';
+import ArtCalendar from '../components/ui/ArtCalendar';
 import { Chip, LineRow, NocButton, Panel, ProgressBar, SectionHead, TextTabs } from '../components/ui/noc';
 
 /**
@@ -335,6 +336,8 @@ export default function BookClass({ mode }: { mode?: 'classes' | 'pt' } = {}) {
   const ptInstant = modes.ptMode === 'instant';
   const [weekOffset, setWeekOffset] = useState<0 | 7>(0);
   const [selected, setSelected] = useState<number | null>(null);
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date());
+  const [classDay, setClassDay] = useState<Date | null>(null);
 
   const cached = readCache<BookClassSnapshot>(CACHE_KEY);
   const [memberId, setMemberId] = useState<string | null>(cached?.memberId ?? null);
@@ -543,7 +546,8 @@ export default function BookClass({ mode }: { mode?: 'classes' | 'pt' } = {}) {
     .filter((i) => i >= 0)
     .sort((a, b) => a - b)[0] ?? 0;
   const day = selected ?? firstBusy;
-  const dayKey = week.keys[day];
+  const chosenDay = filter === 'classes' && classDay ? classDay : week.days[day];
+  const dayKey = dayKeyOf(chosenDay);
 
   const dayClasses = visibleClasses
     .filter((c) => dayKeyOf(new Date(c.scheduledAt)) === dayKey)
@@ -711,8 +715,30 @@ export default function BookClass({ mode }: { mode?: 'classes' | 'pt' } = {}) {
           {filter === 'pt' && selectedTrainer && slotsLoading && <SkeletonList count={2} />}
 
           {/* ── The matrix ── */}
-          {showMatrix && (
-            <div className="flex flex-col" style={{ gap: 12 }}>
+          {showMatrix && filter === 'classes' && (
+            <>
+              <ArtCalendar month={calendarMonth} label="Class calendar" selected={dayKey}
+                canPrevious={calendarMonth.getFullYear() > new Date().getFullYear() || (calendarMonth.getFullYear() === new Date().getFullYear() && calendarMonth.getMonth() > new Date().getMonth())}
+                onMonthChange={(month) => {
+                  setCalendarMonth(month);
+                  const firstClass = visibleClasses.find((c) => { const d = new Date(c.scheduledAt); return d.getFullYear() === month.getFullYear() && d.getMonth() === month.getMonth(); });
+                  setClassDay(firstClass ? new Date(firstClass.scheduledAt) : month);
+                }}
+                onSelect={setClassDay} dayState={(date) => {
+                  const matching = visibleClasses.filter((c) => dayKeyOf(new Date(c.scheduledAt)) === dayKeyOf(date));
+                  const today = new Date(); today.setHours(0, 0, 0, 0);
+                  return { disabled: date < today, marked: matching.length > 0, count: matching.length,
+                    description: `${matching.length} ${matching.length === 1 ? 'class' : 'classes'}${matching.some((c) => c.myStatus != null) ? ', you have a booking' : ''}` };
+                }} />
+              <p className="calendar-explainer">Numbers below dates show published classes. Pick a date to see its sessions.</p>
+              {level !== null && <div className="flex flex-wrap" style={{ gap: 8 }}>
+                <Chip label="For my level" icon={<Target size={14} weight="bold" />} on={recommendedOnly} onClick={() => setRecommendedOnly((v) => !v)} />
+                <Chip label={`You chose ${LEVEL_LABEL[level]} · change`} icon={<SlidersHorizontal size={14} weight="bold" />} onClick={() => setLevel(null)} />
+              </div>}
+            </>
+          )}
+          {showMatrix && filter !== 'classes' && (
+            <details className="member-secondary-fold"><summary>Choose another day or time</summary><div className="member-fold-content">
               <WeekMatrix week={week} selected={day} onSelect={setSelected} />
               <div className="flex items-center justify-between flex-wrap" style={{ gap: 10 }}>
                 <Legend />
@@ -730,16 +756,7 @@ export default function BookClass({ mode }: { mode?: 'classes' | 'pt' } = {}) {
                 )}
               </div>
 
-              {filter === 'classes' && level !== null && (
-                <div className="flex flex-wrap" style={{ gap: 8 }}>
-                  <Chip label="For my level" icon={<Target size={14} weight="bold" />} on={recommendedOnly} onClick={() => { setRecommendedOnly((v) => !v); setSelected(null); }} />
-                  {/* "You chose", not "your level": Achievements shows a
-                      different, *earned* level, and naming both "level" made
-                      the two screens look like they disagreed. */}
-                  <Chip label={`You chose ${LEVEL_LABEL[level]} · change`} icon={<SlidersHorizontal size={14} weight="bold" />} onClick={() => setLevel(null)} />
-                </div>
-              )}
-            </div>
+            </div></details>
           )}
 
           {/* ── The chosen day ── */}
@@ -747,7 +764,7 @@ export default function BookClass({ mode }: { mode?: 'classes' | 'pt' } = {}) {
             <section className="flex flex-col" style={{ gap: 4 }}>
               <div className="rule" style={{ marginBottom: 12 }} />
               <SectionHead
-                title={dayTitle(week.days[day])}
+                title={dayTitle(chosenDay)}
                 meta={filter === 'pt'
                   ? `${daySlots.length} open ${daySlots.length === 1 ? 'time' : 'times'}`
                   : `${dayClasses.length} ${dayClasses.length === 1 ? 'class' : 'classes'}`}
@@ -760,7 +777,7 @@ export default function BookClass({ mode }: { mode?: 'classes' | 'pt' } = {}) {
                       ? 'No classes on the timetable yet — the gym publishes it weekly.'
                       : recommendedOnly
                         ? 'Nothing at your level on this day. Turn off "For my level" to see every class.'
-                        : 'Nothing on this day. Pick another in the week above.'}
+                        : 'No classes on this date. Choose another day on the calendar.'}
                   </p>
                 ) : (
                   <div className="noc-rows">

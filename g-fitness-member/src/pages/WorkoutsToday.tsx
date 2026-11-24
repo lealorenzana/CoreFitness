@@ -176,7 +176,7 @@ export default function WorkoutsToday() {
   // ---- Today ----
   return (
     <Page>
-      <PageTitle back title="Workouts" subtitle="Today's workout, your routines, your programs" />
+      <PageTitle back title="Workouts" subtitle="Start a workout or open a saved plan." />
       {next ? (
         <Panel glow="action" filled>
           <Eyebrow>Today's workout</Eyebrow>

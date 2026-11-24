@@ -1,11 +1,11 @@
-import { GuideButton } from './guides/GuidePlayer';
 import { useEffect, useState } from 'react';
 import { BellRinging } from '@phosphor-icons/react';
-import { NocButton, Panel } from './ui/noc';
+import { NocButton } from './ui/noc';
 import { toast } from './ui/Toast';
 import { enablePush, isPushEnabled, pushSupport, refreshPushKey } from '../lib/api/push';
 import { errorMessage } from '../utils/errorMessage';
-import { useLanguage, useT } from '../lib/i18n';
+import { useT } from '../lib/i18n';
+import './push-prompt.css';
 
 /** "Not now" lasts until the app is opened again — memory only, never storage. */
 let dismissedThisSession = false;
@@ -22,7 +22,6 @@ let dismissedThisSession = false;
  */
 export default function PushPrompt() {
   const t = useT();
-  const lang = useLanguage();
   const [state, setState] = useState<'hidden' | 'ask' | 'blocked'>('hidden');
   const [busy, setBusy] = useState(false);
 
@@ -54,9 +53,9 @@ export default function PushPrompt() {
   };
 
   return (
-    <Panel glow="action" data-push-prompt>
-      <div className="flex items-start" style={{ gap: 12 }}>
-        <BellRinging size={22} weight="duotone" style={{ color: 'var(--color-secondary)', flex: 'none', marginTop: 2 }} />
+    <section className="member-push-prompt" data-push-prompt aria-label={t('Turn on notifications')}>
+      <div className="member-push-art" aria-hidden="true"><span /><BellRinging size={34} weight="duotone" /></div>
+      <div className="member-push-copy">
         <div className="min-w-0 flex-1">
           <p style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>
             {state === 'blocked' ? t('Notifications are blocked on this phone') : t('Turn on notifications')}
@@ -64,22 +63,21 @@ export default function PushPrompt() {
           <p style={{ fontSize: 12.5, marginTop: 3, lineHeight: 1.5, color: 'var(--color-text-secondary)' }}>
             {state === 'blocked'
               ? t('Open your phone’s Settings → Apps → this app → Notifications, and allow them. Until then everything still arrives in the bell.')
-              : t('Bookings, payments, coach notes, messages and reminders — on your phone, even when the app is closed.')}
+              : t('Booking updates, coach messages and gym reminders—even when the app is closed.')}
           </p>
           {state === 'ask' && (
-            <div className="flex" style={{ gap: 8, marginTop: 10 }}>
-              <NocButton variant="fill" disabled={busy} onClick={() => void turnOn()} style={{ height: 38, padding: '0 16px' }}>
+            <div className="member-push-actions">
+              <NocButton variant="fill" disabled={busy} onClick={() => void turnOn()} style={{ height: 44, padding: '0 18px' }}>
                 {busy ? t('Turning on…') : t('Turn on')}
               </NocButton>
-              <NocButton variant="ghost" disabled={busy} style={{ height: 38, padding: '0 14px' }}
+              <NocButton variant="ghost" disabled={busy} style={{ height: 44, padding: '0 14px' }}
                 onClick={() => { dismissedThisSession = true; setState('hidden'); }}>
                 {t('Not now')}
               </NocButton>
-              <GuideButton id="notifications" lang={lang} label={t('How?')} />
             </div>
           )}
         </div>
       </div>
-    </Panel>
+    </section>
   );
 }

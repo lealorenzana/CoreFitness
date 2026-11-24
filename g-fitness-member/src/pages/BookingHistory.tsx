@@ -327,7 +327,7 @@ export default function BookingHistory() {
         hub={false}
         fallback="/member/book-class?tab=coach"
         title="Your sessions"
-        subtitle="What's coming, what happened"
+        subtitle="See upcoming sessions and past bookings."
         action={
           <button
             onClick={() => navigate('/member/book-session')}

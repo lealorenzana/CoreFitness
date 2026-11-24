@@ -1,0 +1,38 @@
+.today-month-calendar { position: relative; isolation: isolate; padding: 24px 18px 16px; border-radius: 24px; border: 1px solid color-mix(in srgb, var(--color-primary) 30%, var(--color-hairline)); background: var(--raised-solid, var(--color-surface-raised)); box-shadow: 0 5px 0 -2px var(--color-surface), 0 6px 0 -2px var(--color-hairline); }
+.today-calendar-binding { position: absolute; inset: -10px 37px auto; display: flex; justify-content: space-between; pointer-events: none; }
+.today-calendar-binding i { width: 9px; height: 25px; border-radius: 7px; border: 1px solid color-mix(in srgb, var(--color-primary-300) 45%, var(--color-hairline)); background: var(--color-surface-high); box-shadow: inset 2px 0 2px #ffffff20, 0 2px 3px #0003; }
+.today-calendar-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.today-calendar-header > div > span { font-size: 12px; color: var(--color-text-secondary); }
+.today-calendar-header h3 { font-size: 27px; line-height: 1.2; font-weight: 800; letter-spacing: -.045em; margin-top: 5px; }
+.today-calendar-header h3 small { font-size: 15px; margin-left: 8px; font-weight: 500; letter-spacing: 0; color: var(--color-text-muted); }
+.today-calendar-nav { display: flex; gap: 3px; }
+.today-calendar-nav button { display: grid; place-items: center; width: 40px; height: 44px; border-radius: 12px; border: 1px solid var(--color-hairline); color: var(--color-text-secondary); background: var(--color-surface); }
+.today-calendar-meta { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 12px; color: var(--color-text-secondary); margin: 10px 0 12px; padding-bottom: 12px; border-bottom: 1px solid var(--color-hairline); }
+.today-calendar-meta button { min-height: 36px; padding: 6px 12px; border-radius: 10px; background: color-mix(in srgb, var(--color-primary) 14%, transparent); color: var(--color-primary-300); font-weight: 650; }
+.today-calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px 2px; }
+.today-calendar-weekday { text-align: center; font-size: 12px; color: var(--color-text-muted); padding-bottom: 8px; }
+.today-calendar-grid > button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-height: 45px; border-radius: 12px; color: var(--color-text-primary); border: 1px solid transparent; font-size: 14px; font-weight: 550; font-variant-numeric: tabular-nums; transition: background-color 180ms, transform 180ms; }
+.today-calendar-grid > button[aria-current="date"] { border-color: var(--color-primary-300); }
+.today-calendar-grid > button[aria-pressed="true"] { background: var(--fill-primary, var(--color-primary)); color: #fff; border-color: transparent; box-shadow: 0 4px 12px color-mix(in srgb, var(--color-primary) 22%, transparent); }
+.today-calendar-grid > button:active { transform: scale(.93); }
+.today-calendar-marks { display: flex; justify-content: center; gap: 3px; height: 5px; }
+.today-calendar-marks i, .today-calendar-legend i { display: inline-block; width: 5px; height: 5px; border-radius: 50%; }
+.today-month-calendar .is-visit { background: var(--color-secondary); }
+.today-month-calendar .is-booking { background: var(--color-primary-300); }
+.today-month-calendar .is-plan { border: 1px solid var(--color-text-muted); }
+.today-calendar-grid > button[aria-pressed="true"] .is-booking { background: #fff; }
+.today-calendar-grid > button[aria-pressed="true"] .is-plan { border-color: #fff; }
+.today-calendar-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 14px; padding: 16px 0; font-size: 11px; color: var(--color-text-secondary); }
+.today-calendar-legend span { display: flex; align-items: center; gap: 6px; }
+.today-calendar-agenda { border-radius: 16px; background: var(--color-surface); padding: 14px; border: 1px solid var(--color-hairline); min-height: 100px; }
+.today-calendar-agenda h4 { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+.today-calendar-agenda p { font-size: 12px; color: var(--color-text-secondary); line-height: 1.6; }
+.today-calendar-agenda button { display: flex; align-items: center; width: 100%; min-height: 44px; gap: 9px; text-align: left; font-size: 13px; color: var(--color-text-primary); }
+.today-calendar-agenda button > svg:first-child { color: var(--color-primary-300); flex: none; }
+.today-calendar-agenda button > span { flex: 1; min-width: 0; }
+.today-calendar-agenda small { display: block; font-size: 12px; color: var(--color-text-secondary); margin-top: 2px; }
+.today-calendar-retry { min-height: 44px; color: var(--color-secondary); font-size: 13px; }
+.today-month-calendar :is(button):focus-visible { outline: 2px solid var(--color-primary-300); outline-offset: 2px; }
+@media (prefers-reduced-motion: no-preference) { .today-calendar-grid { animation: today-calendar-page 240ms ease-out; } }
+@keyframes today-calendar-page { from { opacity: .3; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .today-calendar-grid > button { transition: none; } }

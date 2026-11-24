@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
 import { CaretRight, X } from '@phosphor-icons/react';
@@ -19,15 +19,27 @@ import { useT } from '../../lib/i18n';
  * Opening and closing live in history (`useHistorySheet`): Back closes it.
  */
 export default function EverythingSheet({ open, onClose, onGo }: { open: boolean; onClose: () => void; onGo: (path: string) => void }) {
+  const [query, setQuery] = useState('');
+  const dialog = useRef<HTMLDivElement>(null);
   const gymApp = useGymApp();
   const t = useT();
   const location = useLocation();
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const previousFocus = document.activeElement as HTMLElement | null;
+    dialog.current?.querySelector<HTMLInputElement>('input')?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key !== 'Tab') return;
+      const controls = Array.from(dialog.current?.querySelectorAll<HTMLElement>('button, input, a[href]') ?? []);
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+    };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    return () => { window.removeEventListener('keydown', onKey); if (previousFocus?.isConnected) previousFocus.focus(); };
   }, [open, onClose]);
 
   const root = document.getElementById('phone-overlay-root');
@@ -39,6 +51,7 @@ export default function EverythingSheet({ open, onClose, onGo }: { open: boolean
   // disappears with them, rather than leaving an empty heading.
   const groups = EVERYTHING
     .map(({ group, items }) => ({ group, items: visibleDestinations(items, gymApp) }))
+    .map(({ group, items }) => ({ group, items: items.filter((item) => `${t(item.label)} ${item.blurb ? t(item.blurb) : ''}`.toLowerCase().includes(query.trim().toLowerCase())) }))
     .filter(({ items }) => items.length > 0);
   // Colour and motion (the owner, 2026-11-07: "moving icons with colors"): each tile is a step on a scale
   // from the gym's main colour to its second (never a fixed hue), and its icon has its own idle motion.
@@ -70,10 +83,11 @@ export default function EverythingSheet({ open, onClose, onGo }: { open: boolean
 
   return createPortal(
     <div
+      ref={dialog}
       role="dialog"
       aria-modal="true"
       aria-label="More"
-      className="absolute inset-0 flex flex-col pointer-events-auto noc-sheet"
+      className="absolute inset-0 flex flex-col pointer-events-auto noc-sheet member-calm-more"
       style={{
         // Full-screen glass: the screen you came from stays, blurred, behind it.
         ...GLASS,
@@ -95,9 +109,12 @@ export default function EverythingSheet({ open, onClose, onGo }: { open: boolean
         </div>
       </div>
 
+      <div style={{ padding: '0 var(--gutter) 12px' }}><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find something..." aria-label="Search more features" /></div>
       <div className="flex-1 overflow-y-auto scrollbar-hide" style={{ padding: '4px var(--gutter) var(--stack)' }}>
+        {groups.length === 0 && <p style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>No matches. Try another word.</p>}
         {groups.map(({ group, items }) => (
           <section key={group} aria-label={t(group)}>
+            <h3 style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', marginTop: 18, marginBottom: 4 }}>{t(group)}</h3>
             {items.map((d) => row(d, d.path, groups.slice(0, groups.findIndex((g) => g.group === group)).reduce((n, g) => n + g.items.length, 0) + items.indexOf(d)))}
           </section>
         ))}

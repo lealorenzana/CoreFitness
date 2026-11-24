@@ -203,4 +203,5 @@ presentation-facing — **not specs**. Docs: [VERIFYING](docs/VERIFYING.md) ·
 - Do not modify or tamper with the G Fitness account; it is the gym owner's real account used in daily operations.
 - Make admin features configurable so each gym adapts the system to its own setup, not forcing gyms to fit fixed defaults.
 - When redesigning, never remove existing features unless the user explicitly asks to remove that specific feature.
+- Streak restores (0272, owner 2026-11-24): the streak stays in weeks, never days; a member restores a missed week on the Monday after, 1 a month rising to 5 (12, 26, 52, 104 weeks); not restored that day, it resets, like TikTok.
 <!-- end claude-reflect -->

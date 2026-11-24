@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="300" viewBox="0 0 240 300" fill="none">
+  <defs>
+    <linearGradient id="paper" x1="26" y1="18" x2="216" y2="286" gradientUnits="userSpaceOnUse"><stop stop-color="#fff"/><stop offset="1" stop-color="#e9e7f0"/></linearGradient>
+    <linearGradient id="fold" x1="172" y1="18" x2="211" y2="61" gradientUnits="userSpaceOnUse"><stop stop-color="#d2cedf"/><stop offset="1" stop-color="#faf9ff"/></linearGradient>
+    <filter id="shadow" x="0" y="0" width="240" height="300"><feDropShadow dx="0" dy="8" stdDeviation="7" flood-color="#000" flood-opacity=".16"/></filter>
+  </defs>
+  <g filter="url(#shadow)">
+    <path d="M39 16h132l41 42v210a12 12 0 0 1-12 12H39a12 12 0 0 1-12-12V28a12 12 0 0 1 12-12Z" fill="url(#paper)"/>
+    <path d="M171 16v31a12 12 0 0 0 12 12h29" fill="url(#fold)"/>
+    <path d="M171 16v31a12 12 0 0 0 12 12h29" stroke="#c8c4d4" stroke-opacity=".5"/>
+    <path d="M49 231h142M49 241h142M49 251h94" stroke="#b5b1c5" stroke-opacity=".55" stroke-width="3" stroke-linecap="round"/>
+    <path d="M49 214h142" stroke="#d4d0de" stroke-width="1"/>
+  </g>
+</svg>

@@ -32,10 +32,10 @@ import Ambient from './Ambient';
  * itself as a native app, and one that discarded whatever was on screen.
  */
 
-export default function PhoneChassis({ children }: { children: ReactNode }) {
+export default function PhoneChassis({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
     <div
-      className="relative w-full overflow-hidden"
+      className={`relative w-full overflow-hidden ${className}`}
       style={{ height: '100dvh', backgroundColor: 'var(--color-bg)', overscrollBehavior: 'none' }}
     >
       <Ambient />

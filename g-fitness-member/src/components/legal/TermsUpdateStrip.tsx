@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LineRow, SectionHead } from '../ui/noc';
+import { SectionHead } from '../ui/noc';
+import { ArrowUpRight, FileText, ShieldCheck, House } from '@phosphor-icons/react';
+import './update-papers.css';
 import { getGymContext } from '../../lib/gymContext';
 import { behind, CURRENT, getMyAgreements } from '../../lib/api/termsAcceptance';
 import { prettyVersion } from '../../lib/legalVersions';
@@ -38,11 +40,23 @@ export default function TermsUpdateStrip() {
   }, []);
   if (due.length === 0) return null;
   return (
-    <section>
+    <section className="today-update-papers">
       <SectionHead title="Updated for you to read" />
-      {due.map((d, i) => (
-        <LineRow key={d.path} title={d.title} meta={d.meta} last={i === due.length - 1} onClick={() => navigate(d.path)} />
-      ))}
+      <div className="today-paper-shelf" style={{ gridTemplateColumns: `repeat(${Math.min(2, due.length)}, minmax(0, 1fr))` }}>
+        {due.map((d, i) => {
+          const Icon = d.path.startsWith('/privacy') ? ShieldCheck : d.path.includes('house-rules') ? House : FileText;
+          return <button type="button" key={d.path} className="today-paper-card" onClick={() => navigate(d.path)}
+            aria-label={`${d.title}. ${d.meta}`} style={{ '--paper-tilt': `${i % 2 === 0 ? -3 : 3}deg` } as React.CSSProperties}>
+            <span className="today-paper-art">
+              <img src="/images/member-update-paper.svg" alt="" aria-hidden="true" />
+              <span className="today-paper-content"><Icon size={26} weight="duotone" aria-hidden="true" /><strong>{d.title}</strong><small>{d.meta.split(' — ')[0]}</small></span>
+              <span className="today-paper-new">New</span>
+            </span>
+            <span className="today-paper-action">Read and agree<ArrowUpRight size={14} aria-hidden="true" /></span>
+          </button>;
+        })}
+      </div>
     </section>
   );
 }
+

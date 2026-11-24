@@ -113,8 +113,8 @@ export default function Challenges({ completedOnly = false, embedded = false }: 
 
   const title = (
     completedOnly
-      ? <PageTitle back fallback="/member/rewards?tab=challenges" title="Completed challenges" subtitle="The ones you finished — kept as a record" />
-      : <PageTitle back title="Challenges" subtitle="Counted from your real check-ins — nothing to tick off" />
+      ? <PageTitle back fallback="/member/rewards?tab=challenges" title="Completed challenges" subtitle="Look back at the challenges you finished." />
+      : <PageTitle back title="Challenges" subtitle="Check in to make progress on a challenge." />
   );
 
   if (loading) return <Page dockClear={!embedded}>{!embedded && title}<SkeletonList count={3} /></Page>;

@@ -8,7 +8,7 @@ import { SkeletonList } from '../components/ui/Skeleton';
 import { Page } from '../components/ui/page';
 import { NocButton, ProgressBar, StatusPill } from '../components/ui/noc';
 import CheckInSheet from '../components/ui/CheckInSheet';
-import TodayStrip from '../components/home/TodayStrip';
+import TodayCalendar from '../components/home/TodayCalendar';
 import { useCheckedInToday } from '../hooks/useCheckedInToday';
 import ProgramNext from '../components/workout/ProgramNext';
 import { toast } from '../components/ui/Toast';
@@ -25,19 +25,22 @@ import { startPlannedRoutine } from '../lib/startPlannedRoutine';
 import { readCache, writeCache } from '../lib/pageCache';
 import { useGymApp } from '../hooks/useGymApp';
 import { moduleOn } from '../lib/gymApp';
+import GymWelcome from '../components/home/GymWelcome';
 import GymMark from '../components/ui/GymMark';
+import GymUpdatesPanel from '../components/home/GymUpdatesPanel';
+import WorkoutSwitcher from '../components/home/WorkoutSwitcher';
 import GymGoalStrip from '../components/workout/GymGoalStrip';
 import DueStrip from '../components/rooms/DueStrip';
 import TermsUpdateStrip from '../components/legal/TermsUpdateStrip';
 import FinishPlanCard from '../components/home/FinishPlanCard';
 import ReelsStrip from '../components/home/ReelsStrip';
-import { rampFor } from '../lib/gymTheme';
 import { useTour } from '../components/tour/Tour';
 import { tourFor } from '../lib/tours';
 import { useT } from '../lib/i18n';
 import { useBookingModes } from '../hooks/useBookingModes';
-import ThisWeekStrip from '../components/home/ThisWeekStrip';
+
 import BookTimeRow from '../components/home/BookTimeRow';
+import TodayStory, { TodayHero } from '../components/home/TodayStory';
 
 /** Cache slots for this screen — see lib/pageCache.ts. */
 const CACHE_KEY = 'member:home';
@@ -56,6 +59,7 @@ function isToday(iso: string): boolean {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return false;
   const now = new Date();
+
   return d.getFullYear() === now.getFullYear()
     && d.getMonth() === now.getMonth()
     && d.getDate() === now.getDate();
@@ -127,6 +131,8 @@ export default function Home() {
   const [extras, setExtras] = useState<TodayExtras | null>(() => readCache<TodayExtras>(EXTRAS_KEY) ?? null);
   const [loading, setLoading] = useState(cached === undefined);
   const [checkInOpen, setCheckInOpen] = useState(false);
+  const dayHeadingRef = useRef<HTMLDivElement>(null);
+  const t = useT();
   // The same answer the bar's check-in block shows — one source, so the two can
   // never disagree (they did, 2026-10-26).
   const [liveCheckedIn, refreshCheckedIn] = useCheckedInToday();
@@ -172,7 +178,7 @@ export default function Home() {
     return <Page><SkeletonList /></Page>;
   }
 
-  const now = new Date();
+
   const term = membershipTerm(home.daysLeft, home.neverExpires);
   const plan = home.planName;
   const shortDate = (key: string) =>
@@ -194,10 +200,6 @@ export default function Home() {
   // ── Week marks ──
   const planned = extras?.plannedDays ?? null;
   const today = home.todayIndex;
-  const nextPlanned = planned && planned.length > 0 && !planned.includes(today)
-    ? [...planned].sort((a, b) => ((a - today + 7) % 7) - ((b - today + 7) % 7))[0]
-    : null;
-
   // ── The agenda ──
   const entries: Entry[] = [];
 
@@ -230,9 +232,9 @@ export default function Home() {
     const booked = bookedToday ? '' : ' Nothing booked today.';
     entries.push({
       key: 'now', gutter: 'Now', live: true,
-      title: 'Not checked in yet',
+      title: 'Check in to your gym',
       meta: `${open}${booked}`.trim() || undefined,
-      action: 'Show my code', onClick: () => setCheckInOpen(true),
+      action: 'Show check-in code', onClick: () => setCheckInOpen(true),
     });
   }
 
@@ -314,33 +316,95 @@ export default function Home() {
     });
   }
 
-  const monthName = now.toLocaleDateString('en-US', { month: 'short' });
-  const remind = extras?.remindAt ? `at ${hourLabel(extras.remindAt)}` : null;
 
   return (
-    <Page>
+    <Page className="member-calm-home today-story-page">
+      <TodayStory>
+      <TodayHero checkedIn={liveCheckedIn ?? home.checkedInToday} unavailable={home.frozen || home.expired}
+        onContinue={() => {
+          dayHeadingRef.current?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+          dayHeadingRef.current?.focus({ preventScroll: true });
+        }} />
       {/* What changed in the app (0212), once. */}
       <WhatsNew app="member" />
-      {/* Whose gym this is, on the screen a member opens every day: the logo
-          (0067/0112) and the welcome line (0110), one strip. A gym with no logo
-          gets a monogram in its own colour, never the Core Fitness mark. */}
-      {gymApp && (
-        <div className="flex items-center" style={{ gap: 10 }}>
-          <GymMark name={gymApp.gymName} logoUrl={gymApp.logoUrl} accent={rampFor(gymApp.accent, 'violet').base} size={30} />
-          <div className="min-w-0">
-            <p className="truncate" style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)' }}>
-              {gymApp.shortName?.trim() || gymApp.gymName}
-            </p>
-            {gymApp.welcomeMessage && (
-              <p style={{ fontSize: 12, lineHeight: 1.4, marginTop: 1, color: 'var(--color-text-secondary)' }}>{gymApp.welcomeMessage}</p>
-            )}
-          </div>
-        </div>
-      )}
+      <GymWelcome gym={gymApp} />
 
       {/* The first open of the day (wave 1): streak and earned level, then it folds away. */}
-      <DailyArrival />
 
+      <div ref={dayHeadingRef} tabIndex={-1} className="today-chapter" data-today-reveal>
+        <span aria-hidden="true">01</span><div><h2>{t('Your next steps')}</h2><p>{t('A little movement starts here.')}</p></div>
+      </div>
+      {/* ── The day: Now, Today, a date, Later — each label once, at the top of its group ── */}
+      <section aria-label="Your day" className="noc-rows" data-today-timeline>
+        {entries.filter((entry) => entry.key !== 'end').map((e, i) => {
+          const head = i === 0 || entries[i - 1].gutter !== e.gutter;
+          const content = (
+            <>
+              <span className="block" style={{
+                fontSize: 15, fontWeight: 600,
+                color: e.titleMuted ? 'var(--color-text-muted)' : 'var(--color-text-primary)',
+              }}>
+                {e.title}
+              </span>
+              {e.meta && (
+                <span className="block" style={{ fontSize: 12.5, marginTop: 3, lineHeight: 1.45, color: 'var(--color-text-muted)' }}>
+                  {e.meta}
+                </span>
+              )}
+              {e.progress != null && <span className="block" style={{ marginTop: 8 }}><ProgressBar fraction={e.progress} /></span>}
+              {e.pill && <span className="block" style={{ marginTop: 8 }}><StatusPill {...e.pill} /></span>}
+              {e.action && (
+                <span className="inline-block" style={{ marginTop: 8, fontSize: 12.5, fontWeight: 600, color: 'var(--color-secondary)' }}>
+                  {e.action}
+                </span>
+              )}
+            </>
+          );
+          return (
+            <div key={e.key} className="flex" style={{ gap: 14 }} data-today-reveal data-timeline-group={head ? e.gutter : undefined}>
+              <span className="flex-none" style={{ width: 44, paddingTop: 2, fontSize: 12,
+                color: e.live ? 'var(--color-primary-300)' : 'var(--color-text-muted)', fontWeight: e.live ? 600 : 400 }}>
+                {head ? e.gutter : ''}
+              </span>
+              <div className="relative flex-1 min-w-0" style={{
+                borderLeft: '1px solid rgb(var(--hair-rgb, 233 233 237) / 0.12)',
+                paddingLeft: 16,
+                paddingBottom: i === entries.length - 1 ? 0 : 20,
+              }}>
+                <span aria-hidden className="absolute rounded-full" style={{
+                  left: -4, top: 6, width: 7, height: 7,
+                  background: e.live ? 'var(--color-primary)' : 'var(--color-surface-high)',
+                  boxShadow: e.live ? '0 0 9px var(--color-primary)' : '0 0 0 1px rgb(var(--hair-rgb, 233 233 237) / 0.18)',
+                }} />
+                {e.card ? (
+                  <WorkoutSwitcher programs={moduleOn(gymApp, 'programs')}>
+                  <div data-today-workout style={{ border: '1px solid var(--color-hairline)', borderRadius: 14,
+                    background: 'var(--color-surface)', padding: 12 }}>
+                    {content}
+                    <span className="block" style={{ marginTop: 10 }}>
+                      <NocButton variant="fill" className="w-full" onClick={e.onClick}
+                        icon={e.card.locked ? <Lock size={15} aria-label="Not on your plan" /> : <Barbell size={15} />}>
+                        {e.card.label}
+                      </NocButton>
+                    </span>
+                  </div>
+                  </WorkoutSwitcher>
+                ) : e.onClick
+                  ? <button onClick={e.onClick} className="w-full text-left block">{content}</button>
+                  : <div>{content}</div>}
+              </div>
+            </div>
+          );
+        })}
+      {!entries.some(e => e.card) && moduleOn(gymApp, 'programs') && <ProgramNext />}
+      </section>
+
+      <div data-today-reveal><BookTimeRow /></div>
+      <section className="today-story-section" aria-labelledby="today-week-title">
+      <div className="today-chapter" data-today-reveal><span aria-hidden="true">02</span><div><h2 id="today-week-title">{t('Your calendar and membership')}</h2><p>{t('Every visit is a step forward.')}</p></div></div>
+      <div className="member-home-fold-body" data-today-reveal>
+      <DailyArrival />
+      <TodayCalendar planned={planned} remindAt={extras?.remindAt} showStreak={moduleOn(gymApp, 'streaks')} slots={moduleOn(gymApp, 'slots')} />
       {/* ── The strip: membership, this month, this week, the streak ── */}
       <div className="flex flex-col" style={{ gap: 10 }}>
         {/* Your membership, one tap from home (owner, 2026-11-11: "I have a hard time finding it"). It was only a grey
@@ -357,13 +421,18 @@ export default function Home() {
           return (
             <button type="button" onClick={() => navigate('/member/membership?tab=membership')} data-today-membership data-urgent={urgent}
               aria-label={`${plan ? `${plan} membership` : 'Your membership'}: ${membershipMeta}. Open Membership`}
-              className="w-full text-left noc-press-soft"
+              className="w-full text-left noc-press-soft today-membership-pass"
               style={{
                 position: 'relative', overflow: 'hidden', borderRadius: 18, padding: '13px 14px 12px',
                 background: `linear-gradient(135deg, color-mix(in srgb, ${tint} 16%, var(--raised-solid, var(--color-surface-raised))) 0%, var(--raised-solid, var(--color-surface-raised)) 62%)`,
                 border: `1px solid color-mix(in srgb, ${tint} 34%, transparent)`,
               }}>
-              <span className="flex items-center" style={{ gap: 12 }}>
+              <span className="today-membership-pass-header">
+                <span>{gymApp ? <><GymMark name={gymApp.gymName} logoUrl={gymApp.logoUrl} size={25} /><span>{gymApp.shortName?.trim() || gymApp.gymName}</span></> : <IdentificationCard size={22} />}</span>
+                <span className="today-membership-state">{home.frozen ? 'Frozen' : home.expired ? 'Expired' : home.cancelled ? 'Cancelled' : home.expiringSoon ? 'Ending soon' : 'Active'}</span>
+              </span>
+              <span className="today-membership-pass-label">Your membership</span>
+              <span className="flex items-center today-membership-pass-main" style={{ gap: 12 }}>
                 <span aria-hidden className="grid place-items-center flex-none on-fill" data-tile
                   style={{ width: 42, height: 42, borderRadius: 13, color: '#fff',
                     background: urgent ? 'var(--amber-solid, var(--color-secondary))' : 'var(--fill-primary, var(--color-primary))',
@@ -372,7 +441,7 @@ export default function Home() {
                 </span>
                 <span className="flex-1 min-w-0">
                   <span className="block truncate" style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text-primary)' }}>
-                    {plan ? `${plan} membership` : 'Your membership'}
+                    {plan || 'Membership'}
                   </span>
                   <span className="block truncate" style={{ fontSize: 12.5, marginTop: 1, color: urgent ? 'var(--color-secondary)' : 'var(--color-text-secondary)' }}>
                     {membershipMeta}
@@ -391,21 +460,10 @@ export default function Home() {
                   <ProgressBar fraction={left} tone={urgent ? 'action' : 'structure'} />
                 </span>
               )}
+              <span className="today-membership-pass-footer"><span>View membership</span><CaretRight size={15} /></span>
             </button>
           );
         })()}
-        <TodayStrip
-          visitsThisMonth={home.checkInsThisMonth}
-          monthName={monthName}
-          week={home.weekCheckIns}
-          dayNumbers={home.weekDayNumbers}
-          todayIndex={today}
-          planned={planned}
-          nextPlanned={nextPlanned}
-          remindAt={remind}
-          showStreak={moduleOn(gymApp, 'streaks')}
-        />
-
         {/* What the plan holds back — one line, and the screen that lists it. */}
         {home.access && !home.access.isFullAccess && !home.frozen && (
           <button onClick={() => navigate('/member/membership?tab=membership')}
@@ -432,85 +490,26 @@ export default function Home() {
         )}
       </div>
 
-      {/* This week (gym styles phase 1): Monday to Sunday at a glance, the next thing named — opens the whole week. */}
-      <ThisWeekStrip />
-      {/* Time slots (0259): your next booked time, or Book a time — only at a gym that runs them. */}
-      <BookTimeRow />
-
-      {/* The gym's reels (0245): a line of tiles, nothing at all when it has none or the switch is off. */}
-      <ReelsStrip />
-
-      {/* ── The day: Now, Today, a date, Later — each label once, at the top of its group ── */}
-      <section aria-label="Your day" className="noc-rows" data-today-timeline>
-        {entries.map((e, i) => {
-          const head = i === 0 || entries[i - 1].gutter !== e.gutter;
-          const content = (
-            <>
-              <span className="block" style={{
-                fontSize: 15, fontWeight: 600,
-                color: e.titleMuted ? 'var(--color-text-muted)' : 'var(--color-text-primary)',
-              }}>
-                {e.title}
-              </span>
-              {e.meta && (
-                <span className="block" style={{ fontSize: 12.5, marginTop: 3, lineHeight: 1.45, color: 'var(--color-text-muted)' }}>
-                  {e.meta}
-                </span>
-              )}
-              {e.progress != null && <span className="block" style={{ marginTop: 8 }}><ProgressBar fraction={e.progress} /></span>}
-              {e.pill && <span className="block" style={{ marginTop: 8 }}><StatusPill {...e.pill} /></span>}
-              {e.action && (
-                <span className="inline-block" style={{ marginTop: 8, fontSize: 12.5, fontWeight: 600, color: 'var(--color-secondary)' }}>
-                  {e.action}
-                </span>
-              )}
-            </>
-          );
-          return (
-            <div key={e.key} className="flex" style={{ gap: 14 }} data-timeline-group={head ? e.gutter : undefined}>
-              <span className="flex-none" style={{ width: 44, paddingTop: 2, fontSize: 12,
-                color: e.live ? 'var(--color-primary-300)' : 'var(--color-text-muted)', fontWeight: e.live ? 600 : 400 }}>
-                {head ? e.gutter : ''}
-              </span>
-              <div className="relative flex-1 min-w-0" style={{
-                borderLeft: '1px solid rgb(var(--hair-rgb, 233 233 237) / 0.12)',
-                paddingLeft: 16,
-                paddingBottom: i === entries.length - 1 ? 0 : 20,
-              }}>
-                <span aria-hidden className="absolute rounded-full" style={{
-                  left: -4, top: 6, width: 7, height: 7,
-                  background: e.live ? 'var(--color-primary)' : 'var(--color-surface-high)',
-                  boxShadow: e.live ? '0 0 9px var(--color-primary)' : '0 0 0 1px rgb(var(--hair-rgb, 233 233 237) / 0.18)',
-                }} />
-                {e.card ? (
-                  <div data-today-workout style={{ border: '1px solid var(--color-hairline)', borderRadius: 14,
-                    background: 'var(--color-surface)', padding: 12 }}>
-                    {content}
-                    <span className="block" style={{ marginTop: 10 }}>
-                      <NocButton variant="fill" className="w-full" onClick={e.onClick}
-                        icon={e.card.locked ? <Lock size={15} aria-label="Not on your plan" /> : <Barbell size={15} />}>
-                        {e.card.label}
-                      </NocButton>
-                    </span>
-                  </div>
-                ) : e.onClick
-                  ? <button onClick={e.onClick} className="w-full text-left block">{content}</button>
-                  : <div>{content}</div>}
-              </div>
-            </div>
-          );
-        })}
-      </section>
+      </div></section>
+      <GymUpdatesPanel>
+        <ReelsStrip />
+        {moduleOn(gymApp, 'engagement') && <GymGoalStrip />}
+      </GymUpdatesPanel>
 
       {/* Things to read or finish, below the day: each renders nothing when it has nothing to say. */}
-      {moduleOn(gymApp, 'programs') && <ProgramNext />}
+      <div className="today-story-notices" data-today-reveal>
       {moduleOn(gymApp, 'rooms') && <DueStrip />}
-      {moduleOn(gymApp, 'engagement') && <GymGoalStrip />}
       <TermsUpdateStrip />
       <FinishPlanCard />
       <PushPrompt />
+      </div>
+      <p className="today-story-ending" data-today-reveal>{t('One day. Your own pace.')}</p>
+      </TodayStory>
 
       <CheckInSheet open={checkInOpen} onClose={() => { setCheckInOpen(false); refreshCheckedIn(); void load(true); }} />
     </Page>
   );
 }
+
+
+

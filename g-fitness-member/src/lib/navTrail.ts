@@ -36,6 +36,13 @@ const state = load();
 const save = () => { try { sessionStorage.setItem(KEY, JSON.stringify(state)); } catch { /* full or blocked: memory only */ } };
 
 const pathOnly = (p: string) => p.split('?')[0].split('#')[0];
+// Settings sections are pushed screens, while ?tab= changes replace a section.
+// Comparing only pathnames collapsed Settings → Account & app into one entry.
+const screenKey = (p: string) => {
+  const path = pathOnly(p);
+  const section = new URLSearchParams(p.split('?')[1]?.split('#')[0] ?? '').get('section');
+  return path.endsWith('/settings') && section ? `${path}?section=${section}` : path;
+};
 
 /** The tab a screen belongs to: a member bottom-bar tab, a coach area, or '_' for screens outside any tab. */
 export function areaOf(path: string): string {
@@ -48,6 +55,12 @@ export function areaOf(path: string): string {
 /** Set by Back just before it navigates, so the recorder treats that navigation as a step back. */
 let pendingBack: string | null = null;
 export function markBack(path: string): void { pendingBack = path; }
+
+/** A bottom tab is a predictable starting point, not an old detail screen. */
+export function resetTabTrail(path: string): void {
+  state.stacks[areaOf(path)] = [path];
+  save();
+}
 
 export function recordLocation(key: string, path: string, how: 'PUSH' | 'POP' | 'REPLACE'): void {
   // The visit's trail, in browser order.
@@ -68,7 +81,7 @@ export function recordLocation(key: string, path: string, how: 'PUSH' | 'POP' | 
   const cutTo = (target: string) => {
     // The last screen in this tab that is the same page (query aside) — back to it, with this exact address.
     for (let i = stack.length - 1; i >= 0; i--) {
-      if (pathOnly(stack[i]) === pathOnly(target)) { stack.length = i + 1; stack[i] = target; return true; }
+      if (screenKey(stack[i]) === screenKey(target)) { stack.length = i + 1; stack[i] = target; return true; }
     }
     return false;
   };
@@ -93,9 +106,9 @@ export function previousPath(): string | null {
 export function backTarget(path: string): string | null {
   const stack = state.stacks[areaOf(path)] ?? [];
   const at = stack.length - 1;
-  if (at < 1 || pathOnly(stack[at]) !== pathOnly(path)) {
+  if (at < 1 || screenKey(stack[at]) !== screenKey(path)) {
     // Not on top of its stack (a fresh start): the newest earlier screen in that tab, if any.
-    for (let i = stack.length - 1; i >= 0; i--) if (pathOnly(stack[i]) !== pathOnly(path)) return stack[i];
+    for (let i = stack.length - 1; i >= 0; i--) if (screenKey(stack[i]) !== screenKey(path)) return stack[i];
     return null;
   }
   return stack[at - 1];

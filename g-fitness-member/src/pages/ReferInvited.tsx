@@ -24,7 +24,7 @@ export default function ReferInvited() {
 
   return (
     <Page>
-      <PageTitle back fallback="/member/refer" title="Friends you invited" subtitle="Who joined through your link, and who has paid" />
+      <PageTitle back fallback="/member/refer" title="Friends you invited" subtitle="See who joined using your invite." />
       {list == null ? <SkeletonList />
         : list.length === 0 ? <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Nobody yet. Share your link to start.</p>
         : (

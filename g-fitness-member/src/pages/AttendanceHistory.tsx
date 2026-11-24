@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Barbell, CaretLeft, CaretRight, Check, Lightning } from '@phosphor-icons/react';
+import { Check } from '@phosphor-icons/react';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { getCurrentUser } from '../utils/auth';
 import { listMemberAttendance } from '../lib/api/attendance';
@@ -8,6 +8,7 @@ import type { AttendanceRow } from '../types/db';
 import { dateKey, localDateKey } from '../utils/dates';
 import { Page, PageTitle } from '../components/ui/page';
 import WeekMarks from '../components/ui/WeekMarks';
+import ArtCalendar from '../components/ui/ArtCalendar';
 import { Eyebrow, InlineStat, LineRow, SectionHead, SeeAll } from '../components/ui/noc';
 import GymTrafficCard from '../components/ui/GymTrafficCard';
 import DayWorkoutsSheet from '../components/ui/DayWorkoutsSheet';
@@ -15,8 +16,6 @@ import { listWorkoutDays } from '../lib/api/routines';
 import { useGymApp } from '../hooks/useGymApp';
 import { moduleOn } from '../lib/gymApp';
 
-const MONTH_FMT = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' });
-const DAY_HEADERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 /** 'YYYY-MM-DD' as local parts — `new Date('YYYY-MM-DD')` reads it as UTC. */
 function localDay(key: string): Date {
@@ -169,17 +168,6 @@ export default function AttendanceHistory() {
   const canGoForward = cursor.getFullYear() < now.getFullYear()
     || (cursor.getFullYear() === now.getFullYear() && cursor.getMonth() < now.getMonth());
 
-  const daysInMonth = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0).getDate();
-  const firstDay = cursor.getDay();
-  // Visit *days*, as the calendar draws them — two check-ins on one day are one orb.
-  const daysIn = (y: number, m: number) => [...visited].filter((d) => {
-    const x = localDay(d);
-    return x.getFullYear() === y && x.getMonth() === m;
-  }).length;
-  const monthVisits = daysIn(cursor.getFullYear(), cursor.getMonth());
-  const prevMonth = new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1);
-  const prevVisits = daysIn(prevMonth.getFullYear(), prevMonth.getMonth());
-  const delta = monthVisits - prevVisits;
 
   return (
     <Page>
@@ -201,93 +189,14 @@ export default function AttendanceHistory() {
             {streaksOn && <InlineStat value={longestStreak} label="longest run of days" />}
           </div>
 
-          {/* ── The month ── */}
-          <section>
-            <div className="flex items-center justify-between" style={{ gap: 12 }}>
-              <button onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))}
-                disabled={!canGoBack} aria-label="Previous month" className="grid place-items-center disabled:opacity-30"
-                style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid rgb(var(--hair-rgb, 233 233 237) / 0.14)', color: 'var(--color-text-secondary)' }}>
-                <CaretLeft size={15} />
-              </button>
-              <div className="text-center">
-                <p style={{ fontSize: 15, color: 'var(--color-text-primary)' }}>{MONTH_FMT.format(cursor)}</p>
-                <p style={{ fontSize: 12, marginTop: 2, color: 'var(--color-text-muted)' }}>
-                  {monthVisits} visit {monthVisits === 1 ? 'day' : 'days'}
-                  {(monthVisits > 0 || prevVisits > 0) && (
-                    <span style={{ color: delta > 0 ? 'var(--color-primary-300)' : 'var(--color-text-muted)' }}>
-                      {' · '}{delta === 0 ? 'same as' : delta > 0 ? `${delta} more than` : `${-delta} fewer than`}{' '}
-                      {prevMonth.toLocaleDateString('en-US', { month: 'short' })}
-                    </span>
-                  )}
-                </p>
-              </div>
-              <button onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))}
-                disabled={!canGoForward} aria-label="Next month" className="grid place-items-center disabled:opacity-30"
-                style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid rgb(var(--hair-rgb, 233 233 237) / 0.14)', color: 'var(--color-text-secondary)' }}>
-                <CaretRight size={15} />
-              </button>
-            </div>
-
-            {/* Keyed on the month, so paging replays the ripple. The cells are the
-                week strip's orb language: a visited day is the violet orb with a
-                tick, today (not yet visited) the turning ring with a bolt, the
-                rest frosted glass. */}
-            <div key={`${cursor.getFullYear()}-${cursor.getMonth()}`} className="grid"
-              style={{ gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 6, marginTop: 14 }}>
-              {DAY_HEADERS.map((d, i) => (
-                <div key={i} className="text-center" style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{d}</div>
-              ))}
-              {Array.from({ length: firstDay }).map((_, i) => <div key={`e${i}`} />)}
-              {Array.from({ length: daysInMonth }).map((_, i) => {
-                const day = new Date(cursor.getFullYear(), cursor.getMonth(), i + 1);
-                const attended = visited.has(dateKey(day));
-                const isToday = dateKey(day) === dateKey(now);
-                const future = day.getTime() > now.getTime();
-                const cls = [
-                  'orb-cell cal-cell relative flex flex-col items-center justify-center',
-                  attended ? 'orb-cell--on cal-cell--visited' : isToday ? 'orb-cell--ring orb-spin' : '',
-                ].join(' ');
-                const trained = workoutDays.has(dateKey(day));
-                return (
-                  <button key={i} type="button" disabled={future}
-                    onClick={() => openDaySheet(dateKey(day))}
-                    aria-label={`${day.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}${attended ? ', visited' : isToday ? ', today' : ''}${trained ? ', workout done' : ''}. Show the day`}
-                    className={cls}
-                    style={{
-                      height: 42, borderRadius: 10, gap: 1,
-                      // A diagonal ripple: row plus column, so the month fills in
-                      // from its top-left corner.
-                      animationDelay: `${(Math.floor((i + firstDay) / 7) + ((i + firstDay) % 7)) * 28}ms`,
-                      color: attended ? '#fff' : isToday ? 'var(--color-secondary)' : 'var(--color-text-muted)',
-                      opacity: future ? 0.32 : 1,
-                    }}>
-                    {attended ? (
-                      <Check aria-hidden size={13} weight="bold"
-                        style={{ filter: 'drop-shadow(0 0 4px rgba(255,255,255,0.7))' }} />
-                    ) : isToday ? (
-                      <Lightning aria-hidden size={12} weight="fill"
-                        style={{ color: 'var(--color-secondary-300)', filter: 'drop-shadow(0 0 5px color-mix(in srgb, var(--color-secondary) 70%, transparent))' }} />
-                    ) : null}
-                    <span style={{
-                      fontSize: attended || isToday ? 11 : 12.5, lineHeight: 1,
-                      fontWeight: attended || isToday ? 700 : 500,
-                    }}>
-                      {i + 1}
-                    </span>
-                    {/* A finished workout that day: a small barbell in the corner. */}
-                    {trained && (
-                      <Barbell aria-hidden size={10} weight="fill" className="absolute"
-                        style={{ top: 3, right: 4, color: attended ? '#fde68a' : 'var(--color-secondary)' }} />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
-          <p style={{ fontSize: 12, marginTop: -8, color: 'var(--color-text-muted)' }}>
-            Tap a day to see your check-in and the workout you finished.
-          </p>
+          <ArtCalendar month={cursor} onMonthChange={setCursor} label="Attendance calendar"
+            canPrevious={canGoBack} canNext={canGoForward} selected={openDay ?? undefined}
+            onSelect={(day) => openDaySheet(dateKey(day))}
+            dayState={(day) => ({
+              marked: visited.has(dateKey(day)), disabled: day.getTime() > now.getTime(),
+              description: [visited.has(dateKey(day)) ? 'Visited' : 'No check-in', workoutDays.has(dateKey(day)) ? 'Workout completed' : ''].filter(Boolean).join(', '),
+            })} />
+          <p className="calendar-explainer">A dot marks a visit. Tap a date to see your check-in and workout.</p>
 
           {/* ── Your habits ── */}
           {habits && (

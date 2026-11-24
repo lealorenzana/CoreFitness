@@ -45,7 +45,7 @@ export default function Programs() {
 
   return (
     <Page>
-      <PageTitle back fallback="/member/training" title="Programs" subtitle="Your gym's plans, week by week — follow one and the app shows the next day" />
+      <PageTitle back fallback="/member/training" title="Programs" subtitle="Pick a plan and follow your next workout." />
       {programs === null ? <SkeletonList count={3} /> : programs.length === 0 ? (
         <div style={{ padding: 18, borderRadius: 18, border: '1px solid var(--color-border)', background: 'var(--color-surface)' }}>
           <CalendarBlank size={24} style={{ color: 'var(--color-primary-300)' }} />

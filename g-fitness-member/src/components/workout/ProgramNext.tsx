@@ -13,7 +13,7 @@ import { getCurrentMemberId } from '../../services/bookingService';
  * done yet, how far through they are, and one button to start it — the same
  * start the program screen has. Renders nothing when they follow none.
  */
-export default function ProgramNext() {
+export default function ProgramNext({ onAvailable }: { onAvailable?: (available: boolean) => void } = {}) {
   const navigate = useNavigate();
   const [days, setDays] = useState<ProgressDay[] | null>(null);
   const [busy, setBusy] = useState(false);
@@ -25,10 +25,10 @@ export default function ProgramNext() {
       const me = await getCurrentMemberId();
       if (!me || !alive) return;
       setMemberId(me);
-      try { const d = await programProgress(me); if (alive) setDays(d); } catch { if (alive) setDays([]); }
+      try { const d = await programProgress(me); if (alive) { setDays(d); onAvailable?.(d.length > 0); } } catch { if (alive) { setDays([]); onAvailable?.(false); } }
     })();
     return () => { alive = false; };
-  }, []);
+  }, [onAvailable]);
 
   if (!memberId || !days || days.length === 0) return null;
   const done = days.filter((d) => d.done).length;

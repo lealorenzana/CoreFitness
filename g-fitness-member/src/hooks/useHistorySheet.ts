@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 /**
@@ -25,6 +25,8 @@ export function useHistorySheet(key: string) {
   const navigate = useNavigate();
   const state = location.state as { sheet?: string } | null;
   const open = state?.sheet === key;
+  const closing = useRef(false);
+  useEffect(() => { if (!open) closing.current = false; }, [open]);
 
   const show = useCallback(() => {
     if (open) return;
@@ -32,15 +34,14 @@ export function useHistorySheet(key: string) {
   }, [open, navigate, location.pathname, location.search, location.hash, state, key]);
 
   const close = useCallback(() => {
-    if (open) navigate(-1);
+    if (open && !closing.current) { closing.current = true; navigate(-1); }
   }, [open, navigate]);
 
-  // A destination opened from the sheet is pushed on top of it, not put in its place (the owner, 2026-11-07:
-  // going Back should land where you came from). Back from Inbox opened through More shows More again,
-  // instead of the page under it and a second tap on More.
+  // Replace the menu entry: Back returns to the screen beneath it, with no
+  // stale menu reopening. Keep unrelated navigation state out of the new page.
   const go = useCallback((path: string) => {
-    navigate(path);
-  }, [navigate]);
+    navigate(path, { replace: true, state: { memberBackTo: `${location.pathname}${location.search}` } });
+  }, [navigate, location.pathname, location.search]);
 
   return { open, show, close, go };
 }

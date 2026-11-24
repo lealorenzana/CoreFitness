@@ -113,11 +113,11 @@ export default function Layout() {
 
   // The gym's free trial has ended (0198): the app stops, said once, calmly.
   if (gym?.lockReason === 'trial_ended') {
-    return <PhoneChassis><GymPaused ctx={gym} role="member" /></PhoneChassis>;
+    return <PhoneChassis className="member-clean-shell"><GymPaused ctx={gym} role="member" /></PhoneChassis>;
   }
 
   return (
-    <PhoneChassis>
+    <PhoneChassis className="member-clean-shell">
       <Toaster />
       {/* A push while the app is open slides down from the top. */}
       <PushBanner />

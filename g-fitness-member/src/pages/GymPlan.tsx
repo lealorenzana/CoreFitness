@@ -5,6 +5,7 @@ import { ArrowCounterClockwise, BellSlash, CalendarCheck, Fire, Info, Lightbulb 
 import { SkeletonList } from '../components/ui/Skeleton';
 import { toast } from '../components/ui/Toast';
 import WeekMarks from '../components/ui/WeekMarks';
+import ArtCalendar from '../components/ui/ArtCalendar';
 import Disclosure from '../components/ui/Disclosure';
 import { Select } from '../components/ui/Field';
 import { errorMessage } from '../utils/errorMessage';
@@ -42,6 +43,7 @@ export default function GymPlan() {
   const [memberId, setMemberId] = useState<string | null>(null);
   const [view, setView] = useState<TrainingPlanView | null>(null);
   const [days, setDays] = useState<number[]>([]);
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date());
   const [remindAt, setRemindAt] = useState('17:00');
   const [routineByDay, setRoutineByDay] = useState<Record<number, string | null>>({});
   const [loading, setLoading] = useState(true);
@@ -182,36 +184,11 @@ export default function GymPlan() {
                 <Chip key={p.label} label={p.label} on={samePreset(p.days)} onClick={() => applyPreset(p.days)} />
               ))}
             </div>
-            <div className="grid" style={{ gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 6, marginTop: 12 }}>
-              {DAY_LABELS.map((label, d) => {
-                const on = days.includes(d);
-                const isToday = d === today;
-                return (
-                  <button
-                    key={d}
-                    onClick={() => toggleDay(d)}
-                    aria-pressed={on}
-                    aria-label={`${DAY_FULL[d]}${isToday ? ', today' : ''}`}
-                    className="flex flex-col items-center justify-center noc-press"
-                    style={{
-                      height: 56, gap: 3, borderRadius: 12, fontSize: 12.5, fontWeight: 600,
-                      background: on ? 'var(--color-primary)' : 'transparent',
-                      boxShadow: on ? '0 0 12px -4px var(--color-primary)' : 'none',
-                      border: `1px solid ${isToday ? 'var(--color-secondary)' : on ? 'var(--color-primary)' : 'var(--color-hairline)'}`,
-                      color: on ? '#fff' : 'var(--color-text-secondary)',
-                      transition: 'background-color 160ms ease, box-shadow 160ms ease',
-                    }}
-                  >
-                    {label}
-                    {/* A workout is planned for this day. */}
-                    {on && routineByDay[d] && <span aria-hidden data-day-planned style={{ width: 5, height: 5, borderRadius: 5, background: '#fff', opacity: 0.9 }} />}
-                    {isToday && (
-                      <span style={{ fontSize: 12, lineHeight: 1, color: on ? '#fff' : 'var(--color-secondary)' }}>today</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+            <ArtCalendar month={calendarMonth} onMonthChange={setCalendarMonth} label="Training days calendar"
+              onSelect={(day) => toggleDay(day.getDay())}
+              dayState={(day) => ({ marked: days.includes(day.getDay()), selected: days.includes(day.getDay()),
+                description: days.includes(day.getDay()) ? 'Weekly training day. Tap to remove this weekday' : 'Tap to train on this weekday each week' })} />
+            <p className="calendar-explainer">Choose a date to turn that weekday on or off for every week. Save below when you’re ready.</p>
             {!perDayRows && days.some(coachSet) && (
               <p style={{ fontSize: 12, marginTop: 10, color: 'var(--color-primary-300)' }}>
                 Set by the coach: {days.filter(coachSet).map((d) => DAY_LABELS[d]).join(' · ')}

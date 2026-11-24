@@ -1,0 +1,13 @@
+.member-push-prompt { position: relative; isolation: isolate; overflow: hidden; padding: 22px; border-radius: 23px; background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface)); border: 1px solid color-mix(in srgb, var(--color-primary) 20%, var(--color-hairline)); }
+.member-push-copy > div > p { max-width: calc(100% - 70px); }
+.member-push-copy > div > p:first-child { font-size: 17px !important; font-weight: 750 !important; letter-spacing: -.025em; }
+.member-push-copy > div > p:nth-child(2) { margin-top: 8px !important; line-height: 1.6 !important; }
+.member-push-art { position: absolute; right: 18px; top: 25px; display: grid; place-items: center; width: 58px; height: 64px; color: var(--color-secondary); transform: rotate(10deg); }
+.member-push-art::before { content: ''; position: absolute; inset: 4px 0; border-radius: 19px; background: color-mix(in srgb, var(--color-secondary) 12%, transparent); border: 1px solid color-mix(in srgb, var(--color-secondary) 22%, transparent); transform: rotate(-18deg); }
+.member-push-art > svg { position: relative; filter: drop-shadow(0 3px 4px #0002); transform-origin: 50% 15%; }
+.member-push-art > span { position: absolute; top: 0; right: 0; width: 9px; height: 9px; border: 2px solid var(--color-surface); border-radius: 50%; background: var(--color-secondary); }
+.member-push-actions { display: flex; align-items: center; gap: 10px; margin-top: 20px; }
+.member-push-actions > button:first-child { flex: 1; box-shadow: none !important; }
+.member-push-actions > button:last-child { border-color: transparent !important; background: transparent !important; color: var(--color-text-secondary) !important; }
+@media (prefers-reduced-motion: no-preference) { .member-push-art > svg { animation: member-push-bell 6s ease-in-out infinite; } }
+@keyframes member-push-bell { 0%, 70%, 100% { transform: rotate(0); } 75%, 85% { transform: rotate(12deg); } 80%, 90% { transform: rotate(-10deg); } }

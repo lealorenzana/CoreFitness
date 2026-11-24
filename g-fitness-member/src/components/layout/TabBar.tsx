@@ -4,7 +4,8 @@ import { DotsNine, QrCode } from '@phosphor-icons/react';
 import CheckInSheet from '../ui/CheckInSheet';
 import EverythingSheet from './EverythingSheet';
 import { useHistorySheet } from '../../hooks/useHistorySheet';
-import { TABS, tabForPath, tabPath, lastBarPath, rememberBarPath } from './memberNav';
+import { TABS, tabForPath, tabPath } from './memberNav';
+import { resetTabTrail } from '../../lib/navTrail';
 import { useGymApp } from '../../hooks/useGymApp';
 import { moduleOn } from '../../lib/gymApp';
 import { useT } from '../../lib/i18n';
@@ -50,8 +51,6 @@ export default function TabBar() {
   const scans = moduleOn(app, 'checkin');
 
   const active = tabForPath(location.pathname);
-  // Remember the screen open under this tab, for the next time the tab is tapped from elsewhere.
-  useEffect(() => { if (active) rememberBarPath(active, location.pathname + location.search); }, [active, location.pathname, location.search]);
   // The bar marks a tab only on its root. On a pushed screen the tab still
   // colours its icon — you are inside it — but the underline mark means "this
   // screen", and it would be untrue two levels down.
@@ -86,13 +85,12 @@ export default function TabBar() {
                 const here = location.pathname + location.search;
                 if (active === tab.id) {
                   // The tab you are in: to its main screen; already there, smoothly to the top.
-                  if (here !== to) navigate(to);
+                  if (here !== to) { resetTabTrail(to); navigate(to, { state: null }); }
                   else document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
                   return;
                 }
-                // Another tab: back to the screen last open there (2026-11-07), else its main screen.
-                const last = lastBarPath(tab.id);
-                navigate(last && last !== here ? last : to);
+                resetTabTrail(to);
+                navigate(to, { state: null });
               }}
               aria-current={isActive && onRoot ? 'page' : undefined}
               className="flex-1 flex flex-col items-center justify-start noc-press"
