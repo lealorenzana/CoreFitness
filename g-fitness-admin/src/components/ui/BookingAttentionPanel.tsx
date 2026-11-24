@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AlertTriangle, Bell, UserCog, XCircle, Clock } from 'lucide-react';
 import Modal from './Modal';
+import FloatingWindow from './FloatingWindow';
 import { EmptyState } from './kit';
 import { RdCard, RdButton } from './rd';
 import { showToast } from '../../utils/toast';
@@ -41,8 +42,14 @@ function when(iso: string): string {
   });
 }
 
-export default function BookingAttentionPanel({ onChanged }: { onChanged: () => void }) {
-  const [rows, setRows] = useState<AttentionRow[]>([]);
+/** Rows the rail card shows; the rest open in a window (a long side list never pushes the page). */
+const PREVIEW = 3;
+
+export default function BookingAttentionPanel({ onChanged, only }: { onChanged: () => void; only?: 'class' | 'pt' }) {
+  const [all, setAll] = useState<AttentionRow[]>([]);
+  // Class bookings shows class requests only, Personal training 1-on-1 only, so its count matches Waiting.
+  const rows = only ? all.filter((r) => r.kind === only) : all;
+  const [seeAll, setSeeAll] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
   // Reassignment
@@ -59,11 +66,11 @@ export default function BookingAttentionPanel({ onChanged }: { onChanged: () => 
 
   const load = useCallback(async () => {
     try {
-      setRows(await listBookingsNeedingAttention());
+      setAll(await listBookingsNeedingAttention());
     } catch {
       // Silent: this panel is an extra on top of the queue below it, and a
       // failure here must not make the page look broken when the queue loaded.
-      setRows([]);
+      setAll([]);
     }
   }, []);
 
@@ -152,33 +159,17 @@ export default function BookingAttentionPanel({ onChanged }: { onChanged: () => 
   };
 
   // Nothing waiting is the good outcome, and it says nothing at all.
-  if (rows.length === 0) return null;
-
-  return (
-    <>
-      {/* A rail card on Bookings (2026-10-12): rows stack, so it fits a 320px column. */}
-      <RdCard className="p-4" data-attention-panel>
-        <div className="flex items-center gap-2.5">
-          <AlertTriangle size={20} style={{ color: '#FBBF24' }} />
-          <h3 className="text-[16px] font-semibold text-white flex-1">Requires attention</h3>
-          <span className="text-[12.5px] font-semibold px-2 rounded-full" style={{ background: 'rgba(245,158,11,0.15)', color: '#FBBF24' }}>{rows.length}</span>
-        </div>
-        <p className="text-[12.5px] mt-1" style={{ color: 'var(--color-text-secondary)' }}>Bookings the coach has not answered, worst first.</p>
-        <div className="mt-3 flex flex-col gap-2">
-          {rows.map((row) => {
+  const card = (row: AttentionRow) => {
             const u = URGENCY[row.urgency];
             const working = busy === row.id;
             return (
               <div key={`${row.kind}:${row.id}`} className="rounded-xl p-3"
                 style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.07)' }}>
                 <span className="inline-block px-2 py-0.5 rounded-full text-[11.5px] font-semibold" style={{ background: u.bg, color: u.tone }}>{u.label}</span>
-                <p className="text-[13.5px] font-semibold text-white truncate mt-1.5">{row.member_name} — {row.what}</p>
+                <p className="text-[13.5px] font-semibold text-white truncate mt-1.5">{row.member_name} · {row.what}</p>
                 <p className="text-[12px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
                   {row.kind === 'pt' ? '1-on-1' : 'Class'} with {row.trainer_name ?? 'no coach assigned'}, {when(row.starts_at)}
-                </p>
-                <p className="text-[12px] mt-0.5 flex items-center gap-1" style={{ color: 'var(--color-text-muted)' }}>
-                  <Clock size={12} />
-                  Waiting {row.days_waiting === 0 ? 'less than a day' : `${row.days_waiting} day${row.days_waiting === 1 ? '' : 's'}`}
+                  <span className="inline-flex items-center gap-1"> · <Clock size={12} />waiting {row.days_waiting === 0 ? 'less than a day' : `${row.days_waiting} day${row.days_waiting === 1 ? '' : 's'}`}</span>
                 </p>
                 <div className="flex items-center gap-1 mt-2 flex-wrap">
                   <RdButton variant="ghost" size="sm" icon={Bell} disabled={working || !row.trainer_id} onClick={() => nudge(row)}>Remind</RdButton>
@@ -190,9 +181,30 @@ export default function BookingAttentionPanel({ onChanged }: { onChanged: () => 
                 </div>
               </div>
             );
-          })}
+  };
+
+  if (rows.length === 0) return null;
+
+  return (
+    <>
+      {/* A rail card on Bookings (2026-10-12): rows stack, so it fits a 320px column. */}
+      <RdCard className="p-4" data-attention-panel>
+        <div className="flex items-center gap-2.5">
+          <AlertTriangle size={20} style={{ color: '#FBBF24' }} />
+          <h3 className="text-[16px] font-semibold text-white flex-1">Requires attention</h3>
+          {rows.length > PREVIEW
+            ? <RdButton variant="secondary" size="sm" onClick={() => setSeeAll(true)} data-attention-see-all>See all {rows.length}</RdButton>
+            : <span className="text-[12.5px] font-semibold px-2 rounded-full" style={{ background: 'rgba(245,158,11,0.15)', color: '#FBBF24' }}>{rows.length}</span>}
+        </div>
+        <p className="text-[12.5px] mt-1" style={{ color: 'var(--color-text-secondary)' }}>Bookings the coach has not answered, worst first.</p>
+        <div className="mt-3 flex flex-col gap-2">
+          {rows.slice(0, PREVIEW).map(card)}
         </div>
       </RdCard>
+
+      <FloatingWindow open={seeAll} onClose={() => setSeeAll(false)} title="Requires attention" icon={AlertTriangle} count={rows.length} data-attention-window>
+        <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))' }}>{rows.map(card)}</div>
+      </FloatingWindow>
 
       {/* ── Move it to someone who is free ──────────────────────────────── */}
       <Modal

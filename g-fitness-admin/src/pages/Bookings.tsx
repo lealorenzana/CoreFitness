@@ -367,10 +367,10 @@ export default function Bookings({ scope, embedded = false }: { scope?: 'pt' | '
 
   const outcome = (row: QueueRow) => {
     if (row.status === 'pending' && !gymMayApprove(row)) return <span data-waiting-coach className="a-sub" style={{ color: 'var(--a-p300)' }}>Waiting for {row.trainerName ?? 'the coach'} to decide</span>;
-    if (row.coachOkName) return <span data-coach-ok className="a-sub" style={{ color: 'var(--a-p300)' }}>{row.coachOkName} accepted — your turn to confirm</span>;
+    if (row.coachOkName) return <span data-coach-ok className="a-sub" style={{ color: 'var(--a-p300)' }}>{row.coachOkName} accepted. Your turn to confirm</span>;
     if (row.decidedByRole) return (
-      <span className="a-sub">{row.decidedByRole === 'system' && row.status === 'approved' ? 'Confirmed automatically — your gym books instantly'
-        : row.decidedByRole === 'system' ? 'Expired — nobody answered in time'
+      <span className="a-sub">{row.decidedByRole === 'system' && row.status === 'approved' ? 'Confirmed automatically: your gym books instantly'
+        : row.decidedByRole === 'system' ? 'Expired: nobody answered in time'
           : `${row.status === 'approved' ? 'Accepted' : 'Declined'} by ${row.decidedByName ?? DECIDER_WORD[row.decidedByRole]}${row.decidedByName ? ` (${DECIDER_WORD[row.decidedByRole]})` : ''}`}</span>
     );
     return null;
@@ -436,7 +436,7 @@ export default function Bookings({ scope, embedded = false }: { scope?: 'pt' | '
       </div>
 
       {/* The rail gets real room (an empty list left dead space while the rail scrolled): side by side when wide. */}
-      <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0,1.35fr) minmax(380px,1fr)', flex: 1 }}>
+      <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0,1fr) 400px', flex: 1, minHeight: 0 }}>
         <div className="a-card" style={{ padding: '6px 14px 12px' }} data-queue>
           {selectablePending.length > 0 && (
             <div className="flex items-center gap-3 py-2" style={{ borderBottom: '1px solid var(--a-border)' }} data-bulk>
@@ -458,7 +458,7 @@ export default function Bookings({ scope, embedded = false }: { scope?: 'pt' | '
           {loading ? <SkelRows label="Loading bookings…" /> : (
             <div ref={fitRef} className="a-scroll" style={{ flex: 1 }} data-rd-table>
               {visible.length === 0 ? (
-                <p className="a-sub text-center" style={{ padding: 30 }}>{rows.length === 0 ? 'No bookings yet — members book from the phone app, or book one for them here.' : view === 'waiting' ? 'Nothing is waiting for a decision.' : 'Nothing matches — try another day or clear the search.'}</p>
+                <p className="a-sub text-center" style={{ padding: 30 }}>{rows.length === 0 ? 'No bookings yet. Members book from the phone app, or book one for them here.' : view === 'waiting' ? 'Nothing is waiting for a decision.' : 'Nothing matches — try another day or clear the search.'}</p>
               ) : groups.map((g) => (
                 <div key={g.key}>
                   <div className="a-daygroup"><CalendarDays size={13} />{g.key === 'none' ? 'Not scheduled' : dayTitle(g.key)} <em>{g.rows.length}</em></div>
@@ -474,7 +474,7 @@ export default function Bookings({ scope, embedded = false }: { scope?: 'pt' | '
                             )}
                           </td>
                           <td><div className="a-who"><Av name={row.memberName} small /><div className="min-w-0"><b className="block truncate">{row.memberName}</b>
-                            {row.warnings.length > 0 && <div className="a-sub truncate" style={{ color: 'var(--a-a300)' }} data-tip={row.warnings.map((w) => w.message).join(' — ')}><AlertTriangle size={11} className="inline" /> {row.warnings[0].message}</div>}</div></div></td>
+                            {row.warnings.length > 0 && <div className="a-sub truncate" style={{ color: 'var(--a-a300)' }} data-tip={row.warnings.map((w) => w.message).join(' · ')}><AlertTriangle size={11} className="inline" /> {row.warnings[0].message}</div>}</div></div></td>
                           <td><b className="block truncate">{row.title}</b>
                             <div className="a-sub truncate">{row.when ? fmtTime(row.when) : '—'}{row.trainerName ? ` · ${row.trainerName}` : ''}{row.seats ? <> · <span style={{ color: full ? 'var(--a-a300)' : undefined }}>{row.seats.taken}/{row.seats.capacity}</span></> : ' · 1-on-1'}{row.notes ? ` · “${row.notes}”` : ''}</div></td>
                           <td><span className={`a-pill ${row.status === 'approved' ? 'v' : row.status === 'pending' ? 'a' : ''}`}>{STATUS_BADGE[row.status]}</span>
@@ -489,7 +489,7 @@ export default function Bookings({ scope, embedded = false }: { scope?: 'pt' | '
                             ) : row.status === 'pending' ? (
                               <span className="inline-flex gap-1">
                                 <button type="button" className="a-btn violet sm" disabled={busyId === row.id} onClick={() => void decide(row, 'approved')}>{row.coachOkName ? 'Confirm' : 'Approve'}</button>
-                                {gymMayReject(row) && <button type="button" className="a-btn ghost sm" aria-label="Reject" data-tip="Reject — the member is told" disabled={busyId === row.id} onClick={() => void decide(row, 'rejected')}><XCircle size={14} /></button>}
+                                {gymMayReject(row) && <button type="button" className="a-btn ghost sm" aria-label="Reject" data-tip="Reject: the member is told" disabled={busyId === row.id} onClick={() => void decide(row, 'rejected')}><XCircle size={14} /></button>}
                               </span>
                             ) : canRepeat(row) ? (
                               <span className="inline-flex gap-1">
@@ -497,19 +497,19 @@ export default function Bookings({ scope, embedded = false }: { scope?: 'pt' | '
                                   data-tip="Book the same time every week">Repeat</button>
                                 {gymMayReverse(row) && (
                                   <button type="button" className="a-btn ghost sm" aria-label="Change decision" disabled={busyId === row.id} onClick={() => setToReverse(row)}
-                                    data-tip="Change decision — make it rejected"><RotateCcw size={14} /></button>
+                                    data-tip="Change decision: make it rejected"><RotateCcw size={14} /></button>
                                 )}
                               </span>
                             ) : canMark(row) ? (
                               <span className="inline-flex gap-1" data-mark-buttons>
                                 <button type="button" className={`a-btn sm ${row.attended === 'came' ? 'violet' : 'ghost'}`} disabled={busyId === row.id || row.attended === 'came'}
-                                  aria-label="Came" onClick={() => void mark(row, true)} data-tip={row.attended === 'no_show' ? 'They were here — undoes the no-show' : 'They came'}><CheckCircle size={14} /></button>
+                                  aria-label="Came" onClick={() => void mark(row, true)} data-tip={row.attended === 'no_show' ? 'They were here: undoes the no-show' : 'They came'}><CheckCircle size={14} /></button>
                                 <button type="button" className={`a-btn sm ${row.attended === 'no_show' ? 'soft' : 'ghost'}`} disabled={busyId === row.id || row.attended === 'no_show'}
-                                  aria-label="No-show" onClick={() => void mark(row, false)} data-tip="They did not come — your no-show rules apply"><XCircle size={14} /></button>
+                                  aria-label="No-show" onClick={() => void mark(row, false)} data-tip="They did not come: your no-show rules apply"><XCircle size={14} /></button>
                               </span>
                             ) : (row.status === 'approved' || row.status === 'rejected') && gymMayReverse(row) ? (
                               <button type="button" className="a-btn ghost sm" aria-label="Change decision" disabled={busyId === row.id} onClick={() => setToReverse(row)}
-                                data-tip={`Change decision — make it ${row.status === 'approved' ? 'rejected' : 'approved'}`}><RotateCcw size={14} /></button>
+                                data-tip={`Change decision: make it ${row.status === 'approved' ? 'rejected' : 'approved'}`}><RotateCcw size={14} /></button>
                             ) : null}
                           </td>
                         </tr>
@@ -528,9 +528,10 @@ export default function Bookings({ scope, embedded = false }: { scope?: 'pt' | '
           )}
         </div>
 
-        <div className="a-scroll" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gridAutoRows: 'max-content', alignContent: 'start', alignItems: 'start', gap: 12 }}>
+        <div className="a-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }} data-bookings-rail>
+          {/* What nobody answered comes first: it is the urgent part of the rail. */}
+          <BookingAttentionPanel onChanged={load} only={scope} />
           <DeskBookCard onBooked={() => void load()} focusKey={focusBook} only={scope} />
-          <BookingAttentionPanel onChanged={load} />
           {modes && (
             <div className="a-card" style={{ flexShrink: 0 }}>
               <div className="a-ct"><h3><ShieldCheck size={16} />Who decides here</h3><button type="button" className="a-btn ghost sm" onClick={() => navigate('/settings?tab=bookings&focus=booking-approval')}><Settings2 size={13} />Change</button></div>
@@ -549,7 +550,7 @@ export default function Bookings({ scope, embedded = false }: { scope?: 'pt' | '
         message={
           `${selectedPending.length} booking${selectedPending.length === 1 ? '' : 's'} will be ${bulk}, and every member is notified.` +
           (selectedPending.some((r) => r.warnings.length > 0)
-            ? ` ${selectedPending.filter((r) => r.warnings.length > 0).length} of them carry a warning — a full class, a lapsed membership or a plan that doesn't cover it.`
+            ? ` ${selectedPending.filter((r) => r.warnings.length > 0).length} of them carry a warning: a full class, a lapsed membership or a plan that doesn't cover it.`
             : '') +
           (bulkRunning ? ' Working…' : '')
         }

@@ -7,6 +7,7 @@ import { useMemo, useState, useEffect, useCallback } from 'react';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import Popover from '../components/ui/Popover';
+import DetailSheet from '../components/ui/DetailSheet';
 import TimePicker from '../components/ui/TimePicker';
 import DatePicker from '../components/ui/DatePicker';
 import { RdSelect, RdButton, RdField } from '../components/ui/rd';
@@ -65,16 +66,36 @@ const emptyTemplate = {
   name: '', trainerId: '', level: 'all_levels' as ClassLevel, capacity: '20',
   location: '', dayOfWeek: '1', startTime: '06:00', duration: '60',
 };
-const emptyHours = { trainerId: '', dayOfWeek: '1', start: '09:00', end: '17:00', slot: '60' };
+const emptyHours = { trainerId: '', days: [] as number[], start: '09:00', end: '17:00', slot: '60' };
+const mins = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
+/**
+ * One coach's week in words: days that share exactly the same windows become one line,
+ * "Mon to Sat · 7 to 11 AM, 3 to 7 PM", so the table reads instead of repeating a chip per day.
+ */
+function weekSummary(rows: TrainerAvailabilityRow[]): { days: string; hours: string }[] {
+  const byDay = new Map<number, string>();
+  for (const d of WEEK_ORDER) {
+    const w = rows.filter((a) => a.day_of_week === d).sort((a, b) => a.start_time.localeCompare(b.start_time));
+    if (w.length) byDay.set(d, w.map((a) => `${clock(a.start_time)} to ${clock(a.end_time)}`).join(', '));
+  }
+  const groups = new Map<string, number[]>();
+  for (const [d, h] of byDay) groups.set(h, [...(groups.get(h) ?? []), d]);
+  const short = (d: number) => DAY_NAMES[d].slice(0, 3);
+  const name = (ds: number[]) => {
+    const idx = ds.map((d) => WEEK_ORDER.indexOf(d));
+    const run = idx.every((v, i) => i === 0 || v === idx[i - 1] + 1);
+    return ds.length >= 3 && run ? `${short(ds[0])} to ${short(ds[ds.length - 1])}` : ds.map(short).join(', ');
+  };
+  return [...groups].map(([hours, ds]) => ({ days: name(ds), hours }));
+}
 
-const hhmm = (t: string) => t.slice(0, 5);
 /** 'HH:MM(:SS)' → '6:00 AM'. Wall-clock; never routed through a Date. */
 function clock(t: string): string {
   const [h, m] = t.split(':').map(Number);
   const hour = h % 12 === 0 ? 12 : h % 12;
   return `${hour}:${String(m ?? 0).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
 }
-const shortClock = (t: string) => clock(t).replace(':00 ', ' ').replace(' AM', 'a').replace(' PM', 'p');
 const timeOf = (iso: string) => new Date(iso).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
 const minutesOf = (iso: string) => { const d = new Date(iso); return d.getHours() * 60 + d.getMinutes(); };
 /** The Sunday a local date's week starts on. */
@@ -144,6 +165,9 @@ export default function Schedule() {
   const [editingTemplate, setEditingTemplate] = useState<ClassTemplateRow | null>(null);
   const [templateForm, setTemplateForm] = useState(emptyTemplate);
   const [hoursForm, setHoursForm] = useState(emptyHours);
+  /** The coach whose hours sheet is open. */
+  const [hoursFor, setHoursFor] = useState<string | null>(null);
+  const openHours = (id: string) => { setHoursForm({ ...emptyHours, trainerId: id }); setHoursFor(id); };
   const [toRetire, setToRetire] = useState<ClassTemplateRow | null>(null);
   const [toDeleteHours, setToDeleteHours] = useState<TrainerAvailabilityRow | null>(null);
 
@@ -281,17 +305,22 @@ export default function Schedule() {
   };
   const handleAddHours = async () => {
     if (!hoursForm.trainerId) return showToast('Pick a coach', 'error');
+    if (hoursForm.days.length === 0) return showToast('Pick at least one day', 'error');
     if (hoursForm.end <= hoursForm.start) return showToast('End time must be after start time', 'error');
-    const clash = hoursOverlap(availability, hoursForm.trainerId, Number(hoursForm.dayOfWeek), hoursForm.start, hoursForm.end);
-    if (clash) return showToast(`That overlaps hours already set for ${DAY_NAMES[clash.day_of_week]} ${hhmm(clash.start_time)}–${hhmm(clash.end_time)}`, 'error');
+    const free = hoursForm.days.filter((d) => !hoursOverlap(availability, hoursForm.trainerId, d, hoursForm.start, hoursForm.end));
+    const skipped = hoursForm.days.filter((d) => !free.includes(d));
+    if (free.length === 0) return showToast(`Those times overlap hours already set on ${skipped.map((d) => DAY_NAMES[d]).join(', ')}`, 'error');
     setSaving(true);
+    let added = 0;
     try {
-      await addAvailability({ trainer_id: hoursForm.trainerId, day_of_week: Number(hoursForm.dayOfWeek), start_time: `${hoursForm.start}:00`, end_time: `${hoursForm.end}:00`, slot_minutes: Number(hoursForm.slot) || 60 });
-      showToast('Hours added', 'success');
+      for (const d of free) {
+        await addAvailability({ trainer_id: hoursForm.trainerId, day_of_week: d, start_time: `${hoursForm.start}:00`, end_time: `${hoursForm.end}:00`, slot_minutes: Number(hoursForm.slot) || 60 });
+        added += 1;
+      }
+      showToast(`Hours added on ${added} day${added === 1 ? '' : 's'}${skipped.length ? `. Skipped ${skipped.map((d) => DAY_NAMES[d]).join(', ')}: they overlap hours already set` : ''}`, skipped.length ? 'info' : 'success');
       setHoursForm({ ...emptyHours, trainerId: hoursForm.trainerId });
-      await load();
-    } catch (err) { showToast(err instanceof Error ? err.message : 'Failed to add hours', 'error'); }
-    finally { setSaving(false); }
+    } catch (err) { showToast(`${added ? `Added ${added} day${added === 1 ? '' : 's'}, then: ` : ''}${err instanceof Error ? err.message : 'Failed to add hours'}`, 'error'); }
+    finally { setSaving(false); await load(); }
   };
   const handleDeleteHours = async (why?: string) => {
     if (!toDeleteHours) return;
@@ -536,7 +565,7 @@ export default function Schedule() {
               {noHours.slice(0, 2).map((t) => (
                 <div key={t.profile.id} className="a-row"><div className="a-ic" style={{ width: 30, height: 30 }}><ClockAlert size={14} /></div>
                   <div className="t"><b>{t.profile.first_name} has no 1-on-1 hours</b><small>members cannot book them</small></div>
-                  <button type="button" className="a-btn sm" onClick={() => { setHoursForm({ ...emptyHours, trainerId: t.profile.id }); setView('hours'); }}>Set</button></div>
+                  <button type="button" className="a-btn sm" onClick={() => { openHours(t.profile.id); setView('hours'); }}>Set</button></div>
               ))}
             </div>
           </div>
@@ -625,33 +654,29 @@ export default function Schedule() {
       ) : (
         <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0,1fr) 340px', flex: 1 }} data-hours>
           <div className="a-card">
-            <div className="a-ct"><h3><Clock size={16} />When members can book 1-on-1</h3><small>each coach's own hours · × removes a window</small></div>
+            <div className="a-ct"><h3><Clock size={16} />When members can book 1-on-1</h3><small>each coach's own hours</small></div>
             <div className="a-scroll grow" style={{ flex: 1 }}>
               <table className="a-table">
-                <thead><tr><th>Coach</th>{[1, 2, 3, 4, 5, 6, 0].map((d) => <th key={d}>{DAY_NAMES[d].slice(0, 3)}</th>)}<th>Week</th></tr></thead>
+                <thead><tr><th>Coach</th><th>Days and hours</th><th>Each session</th><th>Per week</th><th /></tr></thead>
                 <tbody>
                   {trainers.filter((t) => t.profile.status === 'active').map((t) => {
                     const rows = availability.filter((a) => a.trainer_id === t.profile.id);
-                    const total = rows.reduce((s, a) => s + (Number(a.end_time.slice(0, 2)) * 60 + Number(a.end_time.slice(3, 5)) - Number(a.start_time.slice(0, 2)) * 60 - Number(a.start_time.slice(3, 5))) / 60, 0);
+                    const total = rows.reduce((s, a) => s + (mins(a.end_time) - mins(a.start_time)) / 60, 0);
+                    const lengths = [...new Set(rows.map((a) => a.slot_minutes))].sort((a, b) => a - b);
                     return (
                       <tr key={t.profile.id} data-hours-row>
                         <td><div className="a-who"><Av name={`${t.profile.first_name} ${t.profile.last_name}`} photo={t.profile.photo_url} small /><b>{t.profile.first_name} {t.profile.last_name}</b></div></td>
                         {rows.length === 0 ? (
-                          <td colSpan={7}><span className="a-pill a"><AlertTriangle size={12} />No hours: members cannot book them</span></td>
-                        ) : [1, 2, 3, 4, 5, 6, 0].map((d) => (
-                          <td key={d} style={{ cursor: 'pointer' }} onClick={() => setHoursForm({ ...emptyHours, trainerId: t.profile.id, dayOfWeek: String(d) })}>
-                            <div className="flex flex-col gap-1">
-                              {rows.filter((a) => a.day_of_week === d).map((a) => (
-                                <span key={a.id} className="a-slot" style={{ display: 'inline-flex', gap: 4, alignItems: 'center', whiteSpace: 'nowrap' }}>
-                                  {shortClock(a.start_time)}–{shortClock(a.end_time)}
-                                  <button type="button" onClick={(e) => { e.stopPropagation(); setToDeleteHours(a); }} aria-label={`Remove ${DAY_NAMES[a.day_of_week]} ${clock(a.start_time)} hours`}><X size={11} /></button>
-                                </span>
-                              ))}
-                              {!rows.some((a) => a.day_of_week === d) && <span className="a-sub">—</span>}
-                            </div>
-                          </td>
-                        ))}
-                        <td>{rows.length === 0 ? <button type="button" className="a-btn amber sm" onClick={() => setHoursForm({ ...emptyHours, trainerId: t.profile.id })}>Set hours</button> : <b>{Math.round(total * 10) / 10} h</b>}</td>
+                          <td colSpan={3}><span className="a-pill a"><AlertTriangle size={12} />No hours: members cannot book them</span></td>
+                        ) : (<>
+                          <td>{weekSummary(rows).map((line) => <div key={line.days} className="whitespace-nowrap"><b>{line.days}</b><span className="a-sub"> · {line.hours}</span></div>)}</td>
+                          <td className="whitespace-nowrap">{lengths.map((m) => `${m} min`).join(' or ')}</td>
+                          <td className="whitespace-nowrap"><b>{Math.round(total * 10) / 10} hours</b></td>
+                        </>)}
+                        <td style={{ textAlign: 'right' }}>
+                          <button type="button" className={`a-btn sm ${rows.length === 0 ? 'amber' : ''}`} onClick={() => openHours(t.profile.id)} data-edit-hours={t.profile.id}>
+                            <Pencil size={12} />{rows.length === 0 ? 'Set hours' : 'Edit hours'}</button>
+                        </td>
                       </tr>
                     );
                   })}
@@ -659,32 +684,74 @@ export default function Schedule() {
               </table>
             </div>
           </div>
-          <div className="a-card glow" style={{ overflow: 'auto' }}>
-            <div className="a-ct"><h3><Plus size={16} />Add hours</h3></div>
-            <RdSelect label="Coach" value={hoursForm.trainerId} onChange={(v) => setHoursForm({ ...hoursForm, trainerId: v })} className="w-full">
-              <option value="">Select a coach…</option>
-              {trainers.filter((t) => t.profile.status === 'active').map((t) => <option key={t.profile.id} value={t.profile.id}>{t.profile.first_name} {t.profile.last_name}</option>)}
-            </RdSelect>
-            <div className="flex gap-1.5 flex-wrap" role="group" aria-label="Day of week" style={{ marginTop: 10 }}>
-              {[1, 2, 3, 4, 5, 6, 0].map((i) => (
-                <button key={i} type="button" onClick={() => setHoursForm({ ...hoursForm, dayOfWeek: String(i) })} aria-pressed={hoursForm.dayOfWeek === String(i)}
-                  className={`a-chip ${hoursForm.dayOfWeek === String(i) ? 'v' : ''}`}>{DAY_NAMES[i].slice(0, 3)}</button>
-              ))}
-            </div>
-            <div className="grid grid-cols-2 gap-2.5" style={{ marginTop: 10 }}>
-              <RdField label="From"><TimePicker value={hoursForm.start} onChange={(v) => setHoursForm({ ...hoursForm, start: v })} /></RdField>
-              <RdField label="Until"><TimePicker value={hoursForm.end} onChange={(v) => setHoursForm({ ...hoursForm, end: v })} /></RdField>
-            </div>
-            <RdField group label="Each booking is">
-              <div className="flex gap-1.5" style={{ marginTop: 2 }}>
-                {['30', '45', '60', '90'].map((m) => <button key={m} type="button" className={`a-chip ${hoursForm.slot === m ? 'on' : ''}`} onClick={() => setHoursForm({ ...hoursForm, slot: m })}>{m} min</button>)}
-              </div>
-            </RdField>
-            <button type="button" className="a-btn violet" style={{ marginTop: 12 }} onClick={() => void handleAddHours()} disabled={saving}><Plus size={14} />{saving ? 'Adding…' : 'Add these hours'}</button>
-            <div className="a-hint" style={{ marginTop: 12 }}><Info size={15} />Coaches usually set their own hours in the app; fix or add them here. A member booking 1-on-1 sees only times inside these hours that are not already taken.</div>
+          <div className="a-card" style={{ overflow: 'auto' }}>
+            <div className="a-ct"><h3><Info size={16} />How coach hours work</h3></div>
+            <p className="a-sub" style={{ lineHeight: 1.55 }}>These are the times each coach takes 1-on-1 sessions. A member booking 1-on-1 in the app sees only open times inside them, cut into sessions of the length you set.</p>
+            <p className="a-sub" style={{ lineHeight: 1.55, marginTop: 8 }}>Coaches usually set their own hours in the app. Use <b>Edit hours</b> to fix or add them for a coach.</p>
+            <p className="a-sub" style={{ lineHeight: 1.55, marginTop: 8 }}>Removing hours stops new bookings in them. Sessions already booked stay.</p>
+            {noHours.length > 0 && <div className="a-hint" style={{ marginTop: 12 }}><AlertTriangle size={15} /><span>{noHours.length} coach{noHours.length === 1 ? ' has' : 'es have'} no hours yet, so members cannot book them.</span></div>}
           </div>
         </div>
       )}
+
+      {/* One coach's week (2026-11-24): every window per day with its own Remove, and one form that adds to several days. */}
+      <DetailSheet open={!!hoursFor} onClose={() => setHoursFor(null)} width={500}
+        title={hoursFor ? `${trainerName(hoursFor)}'s 1-on-1 hours` : ''}
+        subtitle={hoursFor ? `${Math.round(availability.filter((a) => a.trainer_id === hoursFor).reduce((s, a) => s + (mins(a.end_time) - mins(a.start_time)) / 60, 0) * 10) / 10} hours a week` : undefined}>
+        {hoursFor && (
+          <div data-hours-sheet>
+            <p className="text-[11px] uppercase tracking-wider mb-1" style={{ color: 'var(--color-text-muted)' }}>This week</p>
+            {[1, 2, 3, 4, 5, 6, 0].map((d) => {
+              const day = availability.filter((a) => a.trainer_id === hoursFor && a.day_of_week === d).sort((a, b) => a.start_time.localeCompare(b.start_time));
+              return (
+                <div key={d} className="flex items-start gap-3 py-2" style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.07)' }} data-hours-day={d}>
+                  <span className="text-[13px] font-semibold w-24 flex-none pt-1" style={{ color: 'var(--color-text-primary)' }}>{DAY_NAMES[d]}</span>
+                  <div className="flex-1 min-w-0 flex flex-col gap-1">
+                    {day.length === 0 ? <span className="text-[12.5px] pt-1" style={{ color: 'var(--color-text-muted)' }}>No hours</span>
+                      : day.map((a) => (
+                        <div key={a.id} className="flex items-center gap-2">
+                          <span className="text-[13px] flex-1" style={{ color: 'var(--color-text-primary)' }}>{clock(a.start_time)} to {clock(a.end_time)}
+                            <span style={{ color: 'var(--color-text-muted)' }}> · {a.slot_minutes} min sessions</span></span>
+                          <RdButton variant="ghost" size="sm" icon={Trash2} onClick={() => setToDeleteHours(a)} aria-label={`Remove ${DAY_NAMES[a.day_of_week]} ${clock(a.start_time)} hours`}>Remove</RdButton>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              );
+            })}
+
+            <p className="text-[11px] uppercase tracking-wider mt-5 mb-2" style={{ color: 'var(--color-text-muted)' }}>Add hours</p>
+            <RdField group label="On these days">
+              <div className="flex gap-1.5 flex-wrap" role="group" aria-label="Days">
+                {[1, 2, 3, 4, 5, 6, 0].map((i) => {
+                  const on = hoursForm.days.includes(i);
+                  return <RdButton key={i} size="sm" variant={on ? 'primary' : 'secondary'} aria-pressed={on}
+                    onClick={() => setHoursForm({ ...hoursForm, days: on ? hoursForm.days.filter((x) => x !== i) : [...hoursForm.days, i] })}>{DAY_NAMES[i].slice(0, 3)}</RdButton>;
+                })}
+              </div>
+              <div className="flex gap-1.5 flex-wrap mt-1.5">
+                {([['Weekdays', [1, 2, 3, 4, 5]], ['Mon to Sat', [1, 2, 3, 4, 5, 6]], ['Every day', [1, 2, 3, 4, 5, 6, 0]], ['Clear', []]] as const).map(([label, ds]) => (
+                  <RdButton key={label} size="sm" variant="ghost" onClick={() => setHoursForm({ ...hoursForm, days: [...ds] })}>{label}</RdButton>
+                ))}
+              </div>
+            </RdField>
+            <div className="grid grid-cols-2 gap-2.5 mt-2">
+              <RdField label="From"><TimePicker value={hoursForm.start} onChange={(v) => setHoursForm({ ...hoursForm, start: v })} /></RdField>
+              <RdField label="Until"><TimePicker value={hoursForm.end} onChange={(v) => setHoursForm({ ...hoursForm, end: v })} /></RdField>
+            </div>
+            <RdField group label="Each session lasts">
+              <div className="flex gap-1.5">
+                {['30', '45', '60', '90'].map((m) => <RdButton key={m} size="sm" variant={hoursForm.slot === m ? 'primary' : 'secondary'} aria-pressed={hoursForm.slot === m} onClick={() => setHoursForm({ ...hoursForm, slot: m })}>{m} min</RdButton>)}
+              </div>
+            </RdField>
+            <RdButton variant="primary" icon={Plus} className="w-full mt-3" onClick={() => void handleAddHours()} disabled={saving || hoursForm.days.length === 0} data-add-hours>
+              {saving ? 'Adding…' : hoursForm.days.length === 0 ? 'Pick at least one day'
+                : `Add ${clock(hoursForm.start)} to ${clock(hoursForm.end)} on ${hoursForm.days.length === 1 ? DAY_NAMES[hoursForm.days[0]] : `${hoursForm.days.length} days`}`}
+            </RdButton>
+            <p className="text-[12px] mt-2" style={{ color: 'var(--color-text-muted)' }}>A day where these times overlap hours already set is skipped and named.</p>
+          </div>
+        )}
+      </DetailSheet>
 
       <ConfirmDialog isOpen={!!toRetire} onClose={() => setToRetire(null)} onConfirm={(why) => void handleRetire(why)} reason={toRetire?.active ? REASON_FIELD : undefined}
         title={toRetire?.active ? 'Retire class' : 'Put the class back'}

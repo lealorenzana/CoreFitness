@@ -184,12 +184,16 @@ async (page) => {
   has('coach hours: a row per coach, and who has none', (await page.locator('[data-hours-row]').count()) === 3 && /No hours: members cannot book them/.test(t));
   has('…and the page still does not scroll', await noScroll());
   await page.screenshot({ path: 'shots/ops-schedule-hours.png' });
-  await page.getByRole('combobox', { name: 'Coach' }).click();
-  await page.waitForTimeout(200);
-  has('coach hours: the coach list is the dark dropdown', (await page.getByRole('listbox', { name: 'Coach' }).getByRole('option').count()) === 4);
-  await page.screenshot({ path: 'shots/ops-schedule-coach-dropdown.png' });
-  await page.getByRole('option', { name: 'Jen Lacsamana' }).click();
-  has('…and picking a coach shows them in the box', /Jen Lacsamana/.test(await page.getByRole('combobox', { name: 'Coach' }).innerText()));
+  // 2026-11-24: one summary row per coach; Edit hours opens that coach's week in a sheet.
+  has('coach hours: each row reads as days and hours, no per-day chips', (await page.locator('[data-hours] .a-slot').count()) === 0);
+  await page.locator('[data-edit-hours]').first().click();
+  await page.waitForTimeout(500);
+  has('Edit hours opens the coach week, a line per day', (await page.locator('[data-hours-sheet] [data-hours-day]').count()) === 7);
+  await page.getByRole('button', { name: 'Weekdays' }).click();
+  has('…and Weekdays picks five days for one add', /on 5 days/.test(await page.locator('[data-add-hours]').innerText()));
+  await page.screenshot({ path: 'shots/ops-schedule-hours-sheet.png' });
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
 
   // ── Bookings (rebuilt to the approved mock-up, 2026-10-20). Since the simplify (2026-10-28) the
   //    same page is drawn twice: Class bookings (/bookings/classes) and Personal training → Sessions. ──
@@ -211,7 +215,7 @@ async (page) => {
   const waitN = await page.locator('[data-waiting-coach]').count();
   has('waiting classes: Confirm only on what the coach accepted, Remind on the rest', (await page.locator('[data-booking-row]').count()) === 2
     && approveN === 1 && waitN === 1 && (await page.locator('[data-remind-coach]').count()) === waitN, `approve ${approveN}, waiting ${waitN}`);
-  has('coach then desk: "accepted — your turn to confirm"', /Bianca Soriano accepted — your turn to confirm/.test(t));
+  has('coach then desk: "accepted. Your turn to confirm"', /Bianca Soriano accepted\. Your turn to confirm/.test(t));
   has('bulk: select all — only what the gym may decide', new RegExp(`Select all ${approveN} pending`).test(t));
   const classWarnings = t;
   has('no row runs past the edge of the queue', await page.evaluate(() => { const b = document.querySelector('[data-queue]'); const r = b && b.getBoundingClientRect();
@@ -221,7 +225,7 @@ async (page) => {
   await page.waitForTimeout(300);
   await page.getByLabel('Status').selectOption('rejected');
   await page.waitForTimeout(300);
-  has('an expiry is worded as an event', /Expired — nobody answered in time/.test(await text()));
+  has('an expiry is worded as an event', /Expired: nobody answered in time/.test(await text()));
   await page.getByLabel('Status').selectOption('all');
   await page.waitForTimeout(300);
   await page.screenshot({ path: 'shots/ops-bookings-all.png' });
