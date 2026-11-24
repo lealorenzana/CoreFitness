@@ -16,6 +16,8 @@ import {
   loadTrainingPlan, suggestReminder, DAY_PRESETS, TIME_PRESETS, type TrainingPlanView,
 } from '../services/trainingPlanService';
 import { Page, PageTitle } from '../components/ui/page';
+import { useGymApp } from '../hooks/useGymApp';
+import { moduleOn } from '../lib/gymApp';
 import { Chip, Eyebrow, LineRow, NocButton, Panel, SectionHead } from '../components/ui/noc';
 
 /**
@@ -35,6 +37,7 @@ import { Chip, Eyebrow, LineRow, NocButton, Panel, SectionHead } from '../compon
  * calendar. Colour roles: a chosen day is violet, today an amber edge, Save amber.
  */
 export default function GymPlan() {
+  const streaksOn = moduleOn(useGymApp(), 'streaks');
   const navigate = useNavigate();
   const [memberId, setMemberId] = useState<string | null>(null);
   const [view, setView] = useState<TrainingPlanView | null>(null);
@@ -132,7 +135,7 @@ export default function GymPlan() {
             <Panel glow="structure">
               <div className="flex items-center justify-between" style={{ gap: 10 }}>
                 <Eyebrow>This week</Eyebrow>
-                {view.streakWeeks != null && view.streakWeeks > 0 && (
+                {streaksOn && view.streakWeeks != null && view.streakWeeks > 0 && (
                   <span className="inline-flex items-center" style={{ gap: 5, fontSize: 12, fontWeight: 600, color: 'var(--color-secondary)' }}>
                     <Fire size={14} weight="fill" /> {view.streakWeeks} {view.streakWeeks === 1 ? 'week' : 'weeks'} in a row
                   </span>

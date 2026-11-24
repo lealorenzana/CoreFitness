@@ -12,6 +12,8 @@ import { Eyebrow, InlineStat, LineRow, SectionHead, SeeAll } from '../components
 import GymTrafficCard from '../components/ui/GymTrafficCard';
 import DayWorkoutsSheet from '../components/ui/DayWorkoutsSheet';
 import { listWorkoutDays } from '../lib/api/routines';
+import { useGymApp } from '../hooks/useGymApp';
+import { moduleOn } from '../lib/gymApp';
 
 const MONTH_FMT = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' });
 const DAY_HEADERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -72,6 +74,7 @@ function computeStreaks(dateStrings: string[]): { current: number; longest: numb
 const WEEKDAY = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 export default function AttendanceHistory() {
+  const streaksOn = moduleOn(useGymApp(), 'streaks');
   const navigate = useNavigate();
   const now = new Date();
   // Read once — Date.now() inside a memo is impure (react-hooks/purity).
@@ -194,8 +197,8 @@ export default function AttendanceHistory() {
 
           <div className="flex flex-wrap" style={{ gap: 24 }}>
             <InlineStat value={records.length} label="check-ins in all" />
-            <InlineStat value={currentStreak} label={currentStreak === 1 ? 'day in a row, now' : 'days in a row, now'} />
-            <InlineStat value={longestStreak} label="longest run of days" />
+            {streaksOn && <InlineStat value={currentStreak} label={currentStreak === 1 ? 'day in a row, now' : 'days in a row, now'} />}
+            {streaksOn && <InlineStat value={longestStreak} label="longest run of days" />}
           </div>
 
           {/* ── The month ── */}

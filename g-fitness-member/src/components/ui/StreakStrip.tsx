@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { FlameMark } from './lively';
-import { CaretRight, Flame, HourglassMedium, Snowflake } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, CaretRight, Flame, HourglassMedium, Pause, Snowflake } from '@phosphor-icons/react';
 import { ProgressBar } from './noc';
 import { toast } from './Toast';
 import StreakOrb from '../streak/StreakOrb';
 import StreakSheet from '../streak/StreakSheet';
 import {
-  MILESTONES, TIER_LABEL, flameTier, myStreak, setStreakTarget, settleMyStreak, streakLine, type StreakCard,
+  MILESTONES, TIER_LABEL, flameTier, myStreak, restoreMyStreak, setStreakTarget, settleMyStreak, streakLine, type StreakCard,
 } from '../../lib/api/streak';
 
 /** Weeks already celebrated in this app session — memory only, never storage (CLAUDE.md). */
@@ -75,6 +75,24 @@ export default function StreakStrip({ compact = false }: { compact?: boolean }) 
     }
   };
 
+  const restore = async () => {
+    try {
+      const c = await restoreMyStreak();
+      setCard(c);
+      toast.success(`Restored. Your streak is ${c.current} ${c.current === 1 ? 'week' : 'weeks'}.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not restore it.');
+    }
+  };
+  // A missed week to restore today, or a lapsed membership's grace: said on Today, not only in the sheet.
+  const restorable = !!card.restore && card.restore.left > 0;
+  const lapsed = !!card.lapse?.inGrace && !card.frozen;
+  const stateChip = restorable ? (
+    <span className="streak-chip streak-chip--risk"><ArrowCounterClockwise size={12} weight="bold" aria-hidden /> Restore today</span>
+  ) : lapsed ? (
+    <span className="streak-chip"><Pause size={11} weight="fill" aria-hidden /> Paused</span>
+  ) : null;
+
   if (compact) {
     // Two short lines: the count with its warning and this week against the
     // target, then the advice. The orb, the twelve weeks and the road are the sheet.
@@ -90,7 +108,7 @@ export default function StreakStrip({ compact = false }: { compact?: boolean }) 
           <span className="min-w-0 flex-1 block">
             <span className="flex items-center flex-wrap" style={{ gap: 7 }}>
               <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text-primary)' }}>
-                {card.current > 0 ? `${card.current}-week streak · ${TIER_LABEL[tier]}` : 'No streak yet'}
+                {card.current > 0 ? `${card.current}-week streak · ${TIER_LABEL[tier]}` : restorable ? `${card.restore!.lost}-week streak` : 'No streak yet'}
               </span>
               {card.atRisk && (
                 <span className="streak-chip streak-chip--risk">
@@ -101,6 +119,7 @@ export default function StreakStrip({ compact = false }: { compact?: boolean }) 
               {card.frozen && (
                 <span className="streak-chip"><Snowflake size={12} weight="bold" aria-hidden /> Paused</span>
               )}
+              {stateChip}
               <span className="tabular-nums" style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--color-text-muted)' }}>
                 {card.daysThisWeek} of {card.target} this week
               </span>
@@ -109,7 +128,7 @@ export default function StreakStrip({ compact = false }: { compact?: boolean }) 
           </span>
           <CaretRight size={14} aria-hidden style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
         </button>
-        <StreakSheet open={open} onClose={() => setOpen(false)} card={card} onSave={save} />
+        <StreakSheet open={open} onClose={() => setOpen(false)} card={card} onSave={save} onRestore={restore} />
       </>
     );
   }
@@ -141,7 +160,8 @@ export default function StreakStrip({ compact = false }: { compact?: boolean }) 
                 <Snowflake size={12} weight="bold" aria-hidden /> Paused
               </span>
             )}
-            {!card.atRisk && !card.frozen && card.current > 0 && (
+            {stateChip}
+            {!card.atRisk && !card.frozen && !stateChip && card.current > 0 && (
               <span className={`streak-chip streak-tier--${tier}`}>{TIER_LABEL[tier]}</span>
             )}
           </span>
@@ -160,7 +180,7 @@ export default function StreakStrip({ compact = false }: { compact?: boolean }) 
         <CaretRight size={16} aria-hidden style={{ color: 'var(--color-text-muted)', flex: 'none', alignSelf: 'center' }} />
       </button>
 
-      <StreakSheet open={open} onClose={() => setOpen(false)} card={card} onSave={save} />
+      <StreakSheet open={open} onClose={() => setOpen(false)} card={card} onSave={save} onRestore={restore} />
     </>
   );
 }

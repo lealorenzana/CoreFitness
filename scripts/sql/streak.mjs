@@ -289,14 +289,14 @@ await asOwner();
 await db.exec(`update gym_settings set closing_time = null where gym_id = '${GYM_A}'`);
 const sqNow = await (async () => { await as(M[0]); return (await one(`select my_squad_streak() as c`)).c; })();
 await as(STAFF);
+// 0272 dropped the squad loop (squads go in 0273): no squad nudge, ever.
 const swept = (await db.query(`select * from streak_nudge_sweep()`)).rows.filter((r) => /streak ends tonight/.test(r.title));
-check(sqNow.at_risk ? 'a squad at risk tells each of its members once' : 'a squad not at risk tells nobody',
-  sqNow.at_risk ? swept.length === 2 && swept.every((r) => /Iron Barkada's/.test(r.title)) : swept.length === 0, JSON.stringify({ at_risk: sqNow.at_risk, swept }));
-check('…and never twice', (await db.query(`select * from streak_nudge_sweep()`)).rows.filter((r) => /streak ends tonight/.test(r.title)).length === 0);
+check('no squad nudge since 0272', swept.length === 0, JSON.stringify({ at_risk: sqNow?.at_risk, swept }));
 await asOwner();
 await db.exec(`update gym_settings set closed_days = '{}', closing_time = null where gym_id = '${GYM_A}'`);
 const report53 = (await tryExec(readFileSync(`${REPO}/scripts/sql/verify/verify0153.sql`, 'utf8'))) ?? '';
-check('verify0153 reports every line OK', /REPORT 0153/.test(report53) && !/NOT OK/.test(report53), report53);
+// 0272 replaced 0153's sweep (no squad loop), so that one line is expected to say NOT OK.
+check('verify0153 reports every line OK but the squad sweep (0272)', /REPORT 0153/.test(report53) && !/NOT OK/.test(report53.replace(/sweep includes squads=f NOT OK/, '')), report53);
 
 // ---- 8. tenancy and the paste-after verification -----------------------------------------
 check('streak_milestones is on the tenancy list', (await one(`select 'streak_milestones' = any(tenancy_gym_tables()) as x`)).x);

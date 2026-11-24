@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Flame, Snowflake } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, Flame, Pause, Snowflake } from '@phosphor-icons/react';
 import type { StreakWeek } from '../../lib/api/streak';
 
 const weekLabel = (iso: string) =>
@@ -13,7 +13,7 @@ const weekLabel = (iso: string) =>
 export default function StreakWeeks({ weeks, words, unit = 'training' }: {
   weeks: StreakWeek[];
   /** What each state means, in this context ("Target reached", "Frozen — …"). */
-  words: Record<StreakWeek['state'], string>;
+  words: Partial<Record<StreakWeek['state'], string>>;
   /** "training" for a member, "squad" for a squad's summed days. */
   unit?: 'training' | 'squad';
 }) {
@@ -27,17 +27,19 @@ export default function StreakWeeks({ weeks, words, unit = 'training' }: {
         {weeks.map((w, i) => (
           <button key={w.week} role="listitem" onClick={() => setPicked(picked === i ? null : i)}
             className={`streak-week streak-week--${w.state}${picked === i ? ' is-picked' : ''}`}
-            aria-label={`Week of ${weekLabel(w.week)}: ${words[w.state]}, ${days(w.days)}`}
+            aria-label={`Week of ${weekLabel(w.week)}: ${words[w.state] ?? ''}, ${days(w.days)}`}
             style={{ ['--i' as string]: i }}>
             {w.state === 'hit' ? <Flame size={15} weight="fill" />
               : w.state === 'frozen' ? <Snowflake size={14} weight="bold" />
+              : w.state === 'restored' ? <ArrowCounterClockwise size={13} weight="bold" />
+              : w.state === 'paused' ? <Pause size={12} weight="fill" />
               : w.state === 'current' ? <span className="streak-week__dot" />
               : null}
           </button>
         ))}
       </div>
       <p style={{ minHeight: 18, marginTop: 8, fontSize: 12.5, color: 'var(--color-text-secondary)' }}>
-        {pw ? `Week of ${weekLabel(pw.week)} · ${days(pw.days)} · ${words[pw.state]}` : 'Tap a week to see it.'}
+        {pw ? `Week of ${weekLabel(pw.week)} · ${days(pw.days)} · ${words[pw.state] ?? ''}` : 'Tap a week to see it.'}
       </p>
     </>
   );

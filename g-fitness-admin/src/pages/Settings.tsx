@@ -13,6 +13,7 @@ import BookingApproval from '../components/BookingApproval';
 import CoachingSettings from '../components/CoachingSettings';
 import GymLocationPicker from '../components/GymLocationPicker';
 import DayPassSettings from '../components/DayPassSettings';
+import StreakSettings from '../components/StreakSettings';
 import DoorSettings from '../components/DoorSettings';
 import WalkInGuide from '../components/WalkInGuide';
 import Button from '../components/ui/Button';
@@ -20,7 +21,7 @@ import { getGymContext } from '../lib/gymContext';
 import Avatar from '../components/ui/Avatar';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import TimePicker from '../components/ui/TimePicker';
-import { Download, User, Shield, Building2, UserPlus, Eye, EyeOff, Camera, Trash2, Check, Banknote, FileSignature, ScrollText, Smartphone, CalendarCheck, Handshake, Footprints, Clock, DoorOpen, Tag, Tags, ArrowUpRight, Palette, Phone, ListChecks, CircleCheck, CircleDashed, type LucideIcon } from 'lucide-react';
+import { Download, User, Shield, Building2, UserPlus, Eye, EyeOff, Camera, Trash2, Check, Banknote, FileSignature, ScrollText, Smartphone, CalendarCheck, Handshake, Footprints, Clock, DoorOpen, Tag, Tags, ArrowUpRight, Flame, Palette, Phone, ListChecks, CircleCheck, CircleDashed, type LucideIcon } from 'lucide-react';
 import OnlinePaymentsTab from '../components/OnlinePaymentsTab';
 import { showToast } from '../utils/toast';
 import {
@@ -69,7 +70,7 @@ import SkelRows from '../components/ui/SkelRows';
  * nothing. They are gone rather than left as buttons that appear to work.
  */
 
-type TabId = 'export' | 'profile' | 'gym' | 'hours' | 'checkin' | 'bookings' | 'slots' | 'coaching' | 'walk-ins' | 'refunds' | 'payments' | 'waiver' | 'house-rules' | 'security' | 'staff';
+type TabId = 'export' | 'profile' | 'gym' | 'hours' | 'checkin' | 'bookings' | 'slots' | 'coaching' | 'walk-ins' | 'refunds' | 'streaks' | 'payments' | 'waiver' | 'house-rules' | 'security' | 'staff';
 
 const VIOLET = 'var(--color-primary)';
 const TEXT_MUTED = 'var(--color-text-muted)';
@@ -94,6 +95,7 @@ const SECTIONS: Section[] = [
   { id: 'coaching', label: 'Personal training', icon: Handshake, words: ['coach', 'trainer', '1-on-1', 'price'] },
   { id: 'walk-ins', label: 'Walk-ins', icon: Footprints, words: ['day pass', 'guest', 'visit pack'] },
   { id: 'refunds', label: 'Refunds', icon: Banknote, words: ['refund', 'cancel', 'fee'] },
+  { id: 'streaks', label: 'Streaks', icon: Flame, words: ['streak', 'restore', 'grace', 'weeks'] },
   { id: 'payments', label: 'Online payments', icon: Smartphone, words: ['gcash', 'maya', 'qr', 'bank', 'pay'] },
   { href: '/membership-plans', label: 'Plans', icon: Tag, words: ['plan', 'price', 'membership'] },
   { group: 'Team and you', label: '', icon: Building2, words: [] },
@@ -593,6 +595,7 @@ export default function Settings() {
               }</SectionGuard></section>
               <section className="st-sec" data-ya-sec="refunds" id="st-refunds" hidden={activeTab !== 'refunds'}><SectionGuard>{<>{head('Refunds', 'Set the minimum refund and any documented processing fee.')}<RefundPolicyTab /></>
               }</SectionGuard></section>
+              <section className="st-sec" data-ya-sec="streaks" id="st-streaks" hidden={activeTab !== 'streaks'}><SectionGuard>{<>{head('Streaks', 'Weeks in a row a member reaches their own target')}<StreakSettings /></>}</SectionGuard></section>
               <section className="st-sec" data-ya-sec="payments" id="st-payments" hidden={activeTab !== 'payments'}><SectionGuard>{<>{head('Online payments', 'Manage how members pay your gym online.')}<OnlinePaymentsTab /></>
               }</SectionGuard></section>
               <section className="st-sec" data-ya-sec="waiver" id="st-waiver" hidden={activeTab !== 'waiver'}><SectionGuard>{<><div style={{ margin: '0 0 10px' }}><PageGuide id="waiver" /></div><WaiverTab /></>

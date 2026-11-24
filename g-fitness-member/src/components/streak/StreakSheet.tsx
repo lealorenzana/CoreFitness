@@ -1,31 +1,37 @@
 import { useState } from 'react';
-import { Check } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, Check } from '@phosphor-icons/react';
 import GlassSheet from '../ui/GlassSheet';
-import { Chip, NocButton } from '../ui/noc';
+import { Chip, NocButton, Panel } from '../ui/noc';
 import StreakOrb from './StreakOrb';
 import StreakWeeks from './StreakWeeks';
-import { MILESTONES, TIER_LABEL, closedDaysLabel, flameTier, type StreakCard, type StreakWeek } from '../../lib/api/streak';
+import StreakCalendar from './StreakCalendar';
+import { MILESTONES, TIER_LABEL, closedDaysLabel, flameTier, streakLine, type StreakCard, type StreakWeek } from '../../lib/api/streak';
 
 const STATE_WORDS: Record<StreakWeek['state'], string> = {
-  hit: 'Target reached', frozen: 'Frozen — it did not break the streak', miss: 'Target missed',
-  before: 'Before you joined', current: 'This week — still going',
+  hit: 'Target reached', frozen: 'Frozen, it did not break the streak', miss: 'Target missed',
+  restored: 'Restored', paused: 'Paused, it did not break the streak',
+  before: 'Before you joined', current: 'This week, still going', future: '',
 };
+const REASON: Record<string, string> = { sick: 'sick', injury: 'injury', gym_closed: 'gym closed', other: 'other' };
+const shortDate = (iso: string) => new Date(`${iso.slice(0, 10)}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
 
 /**
  * The streak, opened (0151/0152): the flame large, the last twelve weeks as
  * tokens to tap, the road to the next milestone, and the member's own target.
  */
 export default function StreakSheet({
-  open, onClose, card, onSave,
+  open, onClose, card, onSave, onRestore,
 }: {
   open: boolean;
   onClose: () => void;
   card: StreakCard;
   onSave: (target: number, nudges: boolean) => Promise<void>;
+  onRestore: () => Promise<void>;
 }) {
   const [target, setTarget] = useState(card.target);
   const [nudges, setNudges] = useState(card.nudges);
   const [saving, setSaving] = useState(false);
+  const [restoring, setRestoring] = useState(false);
   // A sheet reopened for a changed card starts from the card, not stale edits.
   const [shownFor, setShownFor] = useState(card);
   if (shownFor !== card) { setShownFor(card); setTarget(card.target); setNudges(card.nudges); }
@@ -42,6 +48,13 @@ export default function StreakSheet({
     try { await onSave(target, nudges); } finally { setSaving(false); }
   };
 
+  const restore = async () => {
+    setRestoring(true);
+    try { await onRestore(); } finally { setRestoring(false); }
+  };
+  const line = streakLine(card);
+  const offer = card.restore;
+
   return (
     <GlassSheet open={open} onClose={onClose} title="Your gym streak" subtitle="Weeks in a row at your target"
       footer={<NocButton className="w-full" onClick={() => void save()} disabled={saving}>{saving ? 'Saving…' : 'Save'}</NocButton>}>
@@ -56,9 +69,41 @@ export default function StreakSheet({
           {card.current === 1 ? 'week in a row' : 'weeks in a row'} · <span className={`streak-tier streak-tier--${tier}`}>{TIER_LABEL[tier]}</span>
         </p>
         <p style={{ marginTop: 2, fontSize: 12, color: 'var(--color-text-muted)' }}>
-          Best {best} {best === 1 ? 'week' : 'weeks'} · {card.daysThisWeek} of {card.target} days this week (Mon–Sun)
+          Best {best} {best === 1 ? 'week' : 'weeks'} · {card.daysThisWeek} of {card.target} days this week
         </p>
+        {!offer && (
+          <p style={{ marginTop: 10, fontSize: 13.5, fontWeight: 600,
+            color: line.tone === 'action' ? 'var(--color-secondary)' : line.tone === 'state' ? 'var(--color-primary-300)' : 'var(--color-text-secondary)' }}>
+            {line.text}
+          </p>
+        )}
       </div>
+
+      {/* A missed week, today only (0272). */}
+      {offer && (
+        <Panel glow="action" style={{ marginTop: 16 }} ariaLabel="Restore your streak">
+          <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text-primary)' }}>
+            Your {offer.lost}-week streak broke
+          </p>
+          <p style={{ marginTop: 4, fontSize: 13, color: 'var(--color-text-secondary)' }}>
+            {offer.left > 0
+              ? `Restore it today or it resets tonight. ${offer.left} of ${offer.allowance} left this month.`
+              : `No restores left this month. It resets tonight.`}
+          </p>
+          {offer.left > 0 && (
+            <NocButton className="w-full" icon={<ArrowCounterClockwise size={16} weight="bold" />}
+              onClick={() => void restore()} disabled={restoring} style={{ marginTop: 12 }}>
+              {restoring ? 'Restoring…' : `Restore ${offer.restoredTo} ${offer.restoredTo === 1 ? 'week' : 'weeks'}`}
+            </NocButton>
+          )}
+        </Panel>
+      )}
+
+      {/* The calendar: every training day, and how each week ended. */}
+      <section style={{ marginTop: 22 }} aria-label="Your training calendar">
+        <p className="eyebrow">Your training</p>
+        <StreakCalendar key={`${card.current}:${card.daysThisWeek}:${card.restores.length}`} />
+      </section>
 
       {/* The last twelve weeks, tap one to read it. */}
       {card.history.length > 0 && (
@@ -96,11 +141,11 @@ export default function StreakSheet({
       {/* The member's own target. */}
       <section style={{ marginTop: 22 }} aria-label="Your weekly target">
         <p className="eyebrow">Your weekly target</p>
-        <p style={{ marginTop: 6, fontSize: 13, lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>
-          A training day is a day you check in or log a workout. Reach your target every week — Monday to
-          Sunday — to keep your streak going. The week in progress never breaks it, and neither does a
-          week your membership is frozen.
-        </p>
+        <ul className="streak-rules">
+          <li>Check in or log a workout on {card.target} days, Monday to Sunday.</li>
+          <li>Rest days never break it. Frozen weeks pause it.</li>
+          <li>Missed a week? Restore it the next day.</li>
+        </ul>
         {planTarget && planTarget !== target && (
           <button onClick={() => setTarget(planTarget)} className="streak-plan-hint">
             Your training plan has {card.planDays} days a week — <b>use {planTarget}</b>
@@ -127,6 +172,16 @@ export default function StreakSheet({
           </span>
         </label>
       </section>
+      {card.restores.length > 0 && (
+        <section style={{ marginTop: 22 }} aria-label="Restores">
+          <p className="eyebrow">Restores</p>
+          {card.restores.map((r) => (
+            <p key={r.week} style={{ marginTop: 6, fontSize: 12.5, color: 'var(--color-text-secondary)' }}>
+              Week of {shortDate(r.week)} · {r.kind === 'member' ? 'by you' : `by the desk${r.reason ? ` (${REASON[r.reason]})` : ''}`}
+            </p>
+          ))}
+        </section>
+      )}
     </GlassSheet>
   );
 }
