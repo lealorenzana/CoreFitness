@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, ArrowUp, CalendarClock, Check, FileDown, FileText, ListChecks, Lock, Receipt, ShieldCheck, Wallet } from 'lucide-react';
+import {
+  AlertTriangle, ArrowUpRight, CalendarClock, Check, CircleHelp, Cloud, Dumbbell,
+  FileDown, FileText, Infinity as InfinityIcon, ListChecks, Lock, Pause, Play,
+  Receipt, ShieldCheck, Sparkles, Users, UsersRound, Wallet,
+} from 'lucide-react';
 import './attendance/att.css';
 import './subscription.css';
 import GymReceiptSheet from '../components/GymReceiptSheet';
@@ -52,11 +56,11 @@ function explain(sub: GymSubscription): State {
  * Core Fitness has not priced — how to pay, and a receipt for every payment.
  * Owner only; the reminders that link here go to owners only.
  *
- * Laid out to the owner's approved mock-up (2026-10-25, account-v1.html → Your
- * plan): the state across the top, three tiles, payments beside what the plan
- * includes. The countdown ring went with it — the state line says the days.
+ * The website's animated mascot and a highlighted entitlement column bring the
+ * owner's Discord reference into the existing gym theme and billing flow.
  */
 export default function Subscription() {
+  const [motionPaused, setMotionPaused] = useState(false);
   const [sub, setSub] = useState<GymSubscription | null | undefined>(null);
   const [payments, setPayments] = useState<GymReceiptRow[]>([]);
   const [features, setFeatures] = useState<GymFeature[]>([]);
@@ -104,7 +108,7 @@ export default function Subscription() {
     const pct = cap !== null && cap > 0 ? Math.min(100, (used / cap) * 100) : null;
     return (
       <div className="sp-meter" data-meter={key}>
-        <span className="a-lbl">{label}</span>
+        <span className="sp-meter-head"><span className="sp-meter-icon">{key === 'members' ? <Users size={17} /> : <UsersRound size={17} />}</span><span className="a-lbl">{label}</span>{cap === null && <InfinityIcon size={19} className="sp-unlimited" aria-label="Unlimited" />}</span>
         <b>{used}{cap !== null ? <small> of {cap}</small> : <small> · no limit</small>}</b>
         {pct !== null && <span className="sp-bar"><i style={{ width: `${pct}%`, background: used >= cap! ? 'var(--a-amber)' : undefined }} /></span>}
         <small className="a-sub">{cap === null ? 'this plan has no ceiling' : used >= cap ? 'full: ask Core Fitness for a bigger plan' : `${cap - used} more ${unit}${cap - used === 1 ? '' : 's'} on this plan`}</small>
@@ -113,10 +117,11 @@ export default function Subscription() {
   };
 
   return (
-    <div className="att sp" data-your-plan>
+    <div className={`att sp${motionPaused ? ' sp-paused' : ''}`} data-your-plan>
       {receipt && <GymReceiptSheet receipt={receipt} onClose={() => setReceipt(null)} />}
-      <div className="a-head">
-        <div className="min-w-0"><h1>Your plan</h1><p>What this gym pays Core Fitness, what it includes, and a receipt for every payment</p></div>
+      <div className="a-head sp-head">
+        <div className="min-w-0"><h1>Your plan<span className="sp-title-spark" aria-hidden="true"><Sparkles size={20} /></span></h1><p>A little more power for your everyday. Your plan, perks, and payments.</p></div>
+        <button type="button" className="sp-motion" aria-pressed={motionPaused} onClick={() => setMotionPaused((paused) => !paused)}>{motionPaused ? <Play size={13} /> : <Pause size={13} />}{motionPaused ? 'Resume animation' : 'Pause animation'}</button>
       </div>
 
       {/* One scrolling column (owner, 2026-11-23, after a plan page that felt alive): the plan as a hero in the
@@ -125,11 +130,22 @@ export default function Subscription() {
         <section className="sp-top">
           <div className={`sp-hero ${warn ? 'warn' : ''}`} data-plan-state>
             <span className="sp-hero-glow" aria-hidden />
-            <span className="sp-kicker">Your Core Fitness plan</span>
-            <h2>{sub.plan_name ?? 'Not set'}</h2>
-            <div className="sp-hero-price">
-              {priced ? <><b>{peso(sub.price_monthly ?? 0)}</b><span>a month</span></> : sub.price_monthly !== null ? <b>Free</b>
-                : <span>Core Fitness has not put a price on this plan: ask in <Link to="/help">Help</Link>.</span>}
+            <div className="sp-hero-art" aria-hidden="true">
+              <span className="sp-orbit sp-orbit-one" />
+              <span className="sp-orbit sp-orbit-two" />
+              <Sparkles className="sp-art-spark sp-art-spark-one" />
+              <Sparkles className="sp-art-spark sp-art-spark-two" />
+              <div className="sp-mascot" />
+              <span className="sp-art-sticker"><Dumbbell size={14} />Made for your gym</span>
+            </div>
+            <div className="sp-hero-copy">
+              <span className="sp-kicker"><Sparkles size={13} />Your Core Fitness plan</span>
+              <h2>{sub.plan_name ?? 'Not set'}<span className="sp-plan-dot">.</span></h2>
+              <p className="sp-hero-tagline">Your people. Your progress.<br />One connected gym.</p>
+              <div className="sp-hero-price">
+                {priced ? <><b>{peso(sub.price_monthly ?? 0)}</b><span>a month</span></> : sub.price_monthly !== null ? <b>Free</b>
+                  : <span>Core Fitness has not put a price on this plan: ask in <Link to="/help">Help</Link>.</span>}
+              </div>
             </div>
             <div className="sp-state">
               <span className="sp-state-ic">{warn ? <AlertTriangle size={15} /> : billed ? <CalendarClock size={15} /> : <ShieldCheck size={15} />}</span>
@@ -138,14 +154,20 @@ export default function Subscription() {
             <div className="sp-hero-foot">
               <span>{sub.on_trial ? `Free trial until ${sub.paid_until ? day(sub.paid_until) : 'its last day'}`
                 : billed ? `Covered until ${day(sub.paid_until!)}${payments[0]?.method ? ` · last paid by ${payments[0].method}` : ''}` : 'No billing for this gym'}</span>
-              <a href="https://corefitness-site.vercel.app/#pricing" target="_blank" rel="noreferrer" className="sp-ghost"><ArrowUp size={13} />Compare plans</a>
+              <a href="https://corefitness-site.vercel.app/#pricing" target="_blank" rel="noreferrer" className="sp-ghost">Compare plans<ArrowUpRight size={15} /></a>
             </div>
           </div>
 
           <div className="sp-pay" id="pay">
-            <h3><Wallet size={16} />Pay for the plan</h3>
+            <div className="sp-pay-heading"><span className="sp-meter-icon"><Wallet size={18} /></span><div><span className="sp-eyebrow">The billing corner</span><h3>Pay for the plan</h3></div></div>
             {billed ? <PayOnline onPaid={reloadAfterPay} />
-              : <p className="a-sub">Nothing to pay. If Core Fitness starts billing this gym, how to pay appears here with the amount.</p>}
+              : <div className="sp-pay-clear">
+                <span className="sp-clear-art" aria-hidden="true"><Receipt size={34} /><span><Check size={14} /></span></span>
+                <b>You're all clear.</b>
+                <p>Nothing to pay right now. If billing starts, your amount and payment options will appear here.</p>
+                <span className="sp-clear-status"><i />No payment due</span>
+              </div>}
+            <Link to="/help" className="sp-billing-help"><CircleHelp size={14} />Have a billing question?<ArrowUpRight size={14} /></Link>
           </div>
         </section>
 
@@ -154,7 +176,7 @@ export default function Subscription() {
           {meter('Owners and front desk', sub.staff, sub.max_staff, 'seat', 'staff')}
           {store && (
             <div className="sp-meter" data-plan-storage>
-              <span className="a-lbl">Storage</span>
+              <span className="sp-meter-head"><span className="sp-meter-icon"><Cloud size={17} /></span><span className="a-lbl">Storage</span>{store.limitBytes === null && <InfinityIcon size={19} className="sp-unlimited" aria-label="Unlimited" />}</span>
               <b>{bytesWords(store.usedBytes)}{store.limitBytes !== null ? <small> of {bytesWords(store.limitBytes)}</small> : <small> · no limit</small>}</b>
               {store.limitBytes !== null && store.limitBytes > 0 && <span className="sp-bar"><i style={{ width: `${Math.min(100, (store.usedBytes / store.limitBytes) * 100)}%`, background: store.usedBytes >= store.limitBytes ? 'var(--a-amber)' : undefined }} /></span>}
               <small className="a-sub">{store.limitBytes === null ? 'this plan has no ceiling'
@@ -165,12 +187,13 @@ export default function Subscription() {
         </section>
 
         <section className="sp-sec">
-          <h3><ListChecks size={16} />{sub.plan_name ?? 'Your plan'} includes</h3>
+          <div className="sp-section-heading"><div><span className="sp-eyebrow">The good stuff</span><h3><ListChecks size={16} />{sub.plan_name ?? 'Your plan'} includes</h3></div><span className="sp-feature-count">{included.length > 0 ? `${included.length} included features` : 'Your plan benefits'}</span></div>
           {features.length === 0 && <p className="a-sub">What the plan includes could not be loaded: a connection problem, not an empty plan.</p>}
           <div className="sp-cmp" role="table" aria-label="What the plan includes">
+            <div className="sp-cmp-row sp-cmp-head" role="row"><div role="columnheader">Built for your everyday</div><div role="columnheader" className="sp-cmp-col"><Sparkles size={14} /><b>{sub.plan_name ?? 'Your plan'}</b><small>YOUR PLAN</small></div></div>
             {(sub.max_members !== null || sub.max_staff !== null) && (
               <div className="sp-cmp-row" role="row"><div role="cell"><b>{sub.max_members !== null ? `Up to ${sub.max_members} members` : 'Any number of members'}, {sub.max_staff !== null ? `${sub.max_staff} staff` : 'any number of staff'}</b></div>
-                <div role="cell" className="sp-cmp-col"><Check size={16} /></div></div>
+                <div role="cell" className="sp-cmp-col"><Check size={16} aria-label="included" /></div></div>
             )}
             {included.map((f) => (
               <div key={f.feature_key} className="sp-cmp-row" role="row"><div role="cell"><b>{f.label}</b>{f.description ? <small>{f.description}</small> : null}</div>
@@ -185,8 +208,8 @@ export default function Subscription() {
 
         <section className="sp-sec">
           <h3><Receipt size={16} />Payments to Core Fitness</h3>
-          {payments.length === 0 ? <p className="a-sub">No payment has been recorded for this gym yet.</p> : (
-            <table className="a-table">
+          {payments.length === 0 ? <div className="sp-empty-payments"><span className="sp-meter-icon"><Receipt size={19} /></span><div><b>A home for every receipt</b><p className="a-sub">No payment has been recorded yet. Your payments and downloadable receipts will appear here.</p></div></div> : (
+            <div className="sp-payment-table"><table className="a-table">
               <thead><tr><th>Paid</th><th>Covers</th><th>How</th><th>Receipt</th><th style={{ textAlign: 'right' }}>Amount</th></tr></thead>
               <tbody>
                 {payments.map((p) => (
@@ -202,7 +225,7 @@ export default function Subscription() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           )}
         </section>
 
