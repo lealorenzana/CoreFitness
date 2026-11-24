@@ -42,7 +42,7 @@ export default function TermsUpdateStrip() {
   return (
     <section className="today-update-papers">
       <SectionHead title="Updated for you to read" />
-      <div className="today-paper-shelf" style={{ gridTemplateColumns: `repeat(${Math.min(2, due.length)}, minmax(0, 1fr))` }}>
+      <div className="today-paper-shelf" style={{ gridTemplateColumns: `repeat(${Math.min(2, due.length)}, minmax(0, 220px))` }}>
         {due.map((d, i) => {
           const Icon = d.path.startsWith('/privacy') ? ShieldCheck : d.path.includes('house-rules') ? House : FileText;
           return <button type="button" key={d.path} className="today-paper-card" onClick={() => navigate(d.path)}
