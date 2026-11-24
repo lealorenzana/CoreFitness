@@ -2,10 +2,10 @@ import { signupState } from '../lib/api/google';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Building2 } from 'lucide-react';
-import { Page, PageTitle } from '../components/ui/page';
-import { LineRow, NocButton, SectionHead } from '../components/ui/noc';
+import { ArrowLeft, DeviceMobile, MagnifyingGlass, MapTrifold, NavigationArrow } from '@phosphor-icons/react';
+import { Page } from '../components/ui/page';
+import './joinGym.css';
 import EmptyState from '../components/ui/EmptyState';
-import { TextInput } from '../components/ui/Field';
 import { toast } from '../components/ui/Toast';
 import { errorMessage } from '../utils/errorMessage';
 import {
@@ -204,15 +204,24 @@ export default function JoinGym() {
     .slice(0, 10) : [];
 
   return (
-    <Page>
-      <PageTitle title="Find your gym" subtitle="Every gym on Core Fitness" back fallback="/choose-gym" />
+    <Page className="gp fg" dockClear={false}>
+      {/* Mock-up 02 look (2026-11-24): the website's title face, loaded only here (React hoists it into <head>). */}
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" precedence="default" />
+      <button type="button" className="fg-back" onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/choose-gym'))}>
+        <ArrowLeft size={18} aria-hidden />Back</button>
 
-      {/* A gym that is not listed — "only with your link or code" — is found
-          here. Members who have the installed app and no link need this. */}
-      {!slug && <form className="mb-4" onSubmit={(e) => { e.preventDefault(); void findByCode(); }}>
-        <SectionHead title="Have a join code?" />
-        <div className="flex gap-2 items-stretch">
-          <TextInput className="flex-1 min-w-0"
+      <header className="fg-hero">
+        <img className="fg-mascot" src="/mockup-art/phone-journey-mascot.webp" alt="" width={132} height={132} />
+        <p className="fg-eyebrow">Core Fitness</p>
+        <h1 className="gp-title fg-title">Find your gym</h1>
+        <p className="fg-lede">Every gym on Core Fitness. Join with your gym’s code, search by name or town, or look on the map.</p>
+      </header>
+
+      {/* A gym that is not listed ("only with your link or code") is found here. Members who have the installed app and no link need this. */}
+      {!slug && <form className="fg-card" onSubmit={(e) => { e.preventDefault(); void findByCode(); }}>
+        <h2 className="fg-h2">Have a join code?</h2>
+        <div className="fg-code">
+          <input className="fg-input fg-input--code"
             value={code}
             onChange={(e) => { setCode(e.target.value.toUpperCase()); setCodeError(null); }}
             placeholder="e.g. PPDSSJ"
@@ -220,18 +229,24 @@ export default function JoinGym() {
             autoCapitalize="characters"
             maxLength={12}
           />
-          <NocButton type="submit" className="shrink-0" style={{ width: 96 }} disabled={!code.trim() || codeBusy}>{codeBusy ? 'Finding…' : 'Find'}</NocButton>
+          <button type="submit" className="gp-cta fg-pill" disabled={!code.trim() || codeBusy}>{codeBusy ? 'Finding…' : 'Find'}</button>
         </div>
-        {codeError && <p className="mt-2 text-sm" style={{ color: 'var(--color-secondary)' }}>{codeError}</p>}
+        {codeError && <p className="fg-error">{codeError}</p>}
       </form>}
 
       {!slug && (
-        <TextInput
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by name or town"
-          aria-label="Search gyms"
-        />
+        <div className="fg-card">
+          <h2 className="fg-h2">Or look for it</h2>
+          <label className="fg-search"><MagnifyingGlass size={18} aria-hidden />
+            <input className="fg-input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name or town" aria-label="Search gyms" />
+          </label>
+          <div className="fg-two">
+            {canAsk && !here && (
+              <button type="button" className="gp-cta gp-cta--quiet fg-pill" onClick={() => void askHere()}><NavigationArrow size={16} aria-hidden />Use my location</button>
+            )}
+            <button type="button" className="gp-cta gp-cta--quiet fg-pill" onClick={() => navigate('/join/map', { state: { here } })}><MapTrifold size={16} aria-hidden />Map</button>
+          </div>
+        </div>
       )}
 
       {gyms && gyms.length === 0 && (
@@ -242,19 +257,11 @@ export default function JoinGym() {
         />
       )}
 
-      {!slug && (
-        <div className="flex" style={{ gap: 8 }}>
-          {canAsk && !here && (
-            <NocButton variant="ghost" className="flex-1" onClick={() => void askHere()}>Use my location</NocButton>
-          )}
-          <NocButton variant="structure" className="flex-1" onClick={() => navigate('/join/map', { state: { here } })}>Map</NocButton>
-        </div>
-      )}
-
       {sorted.length > 0 && (
-        <div data-finder>
-          <SectionHead title={slug ? 'Your gym' : here ? 'Nearest first' : 'Gyms'} />
-          {sorted.map((gym, i) => {
+        <section className="fg-list" data-finder>
+          <h2 className="fg-h2 fg-h2--out">{slug ? 'Your gym' : here ? 'Nearest first' : 'Gyms'}</h2>
+          <ul>
+          {sorted.map((gym) => {
             const km = here && gym.latitude != null && gym.longitude != null
               ? distanceKm(here, { lat: gym.latitude, lng: gym.longitude }) : null;
             const ref = refFromUrl();
@@ -266,52 +273,58 @@ export default function JoinGym() {
               : action === 'Directions' ? () => window.open(directionsUrl(gym), '_blank', 'noopener')
               : action === 'Have a code?' ? () => document.querySelector<HTMLInputElement>('input[aria-label="Join code"]')?.focus()
               : () => void join(gym);
+            // Where it is and how far, then the gym's own line. "You are already here" wins: it answers the question a tap would ask.
+            const meta = mine.has(gym.id) ? 'You are already here'
+              : [km != null ? `${km < 10 ? km.toFixed(1) : Math.round(km)} km` : null,
+                 gym.join_policy === 'closed' ? 'Joins at the front desk' : gym.join_policy === 'code' ? 'Joins with its code' : null,
+                 gym.tagline || gym.address].filter(Boolean).join(' · ');
+            const body = (<>
+              {/* The gym's own mark. A gym that uploaded none gets its initial, never the Core Fitness logo: this is a list of gyms. */}
+              {gym.logo_url
+                ? <img className="fg-logo" src={gym.logo_url} alt="" width={44} height={44} />
+                : <span className="fg-logo fg-logo--initial" aria-hidden>{gym.name.trim().charAt(0).toUpperCase()}</span>}
+              <span className="fg-row__body">
+                <b>{gym.name}{gym.is_demo && <em className="fg-demo">Demo</em>}</b>
+                {meta && <span>{meta}</span>}
+              </span>
+              {action && <span className={`fg-go ${action === 'Join' || action === 'Switch' ? 'fg-go--main' : ''}`}>{action}</span>}
+            </>);
             return (
-              <LineRow
-                key={gym.id}
-                // The gym's own mark, at the size the row already reserves. A gym
-                // that uploaded none gets nothing here rather than the Core
-                // Fitness logo: this is a list of gyms, and every one of them
-                // wearing the platform's mark is the opposite of what it is for.
-                gutter={gym.logo_url
-                  ? <img src={gym.logo_url} alt="" width={36} height={36}
-                      style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }} />
-                  : undefined}
-                gutterWidth={gym.logo_url ? 48 : undefined}
-                title={gym.is_demo ? `${gym.name} · Demo` : gym.name}
-                // Where it is and how far, then the gym's own line. "You are
-                // already here" wins: it answers the question a tap would ask.
-                meta={mine.has(gym.id) ? 'You are already here'
-                  : [km != null ? `${km < 10 ? km.toFixed(1) : Math.round(km)} km` : null,
-                     gym.join_policy === 'closed' ? 'Joins at the front desk' : gym.join_policy === 'code' ? 'Joins with its code' : null,
-                     gym.tagline || gym.address].filter(Boolean).join(' · ') || undefined}
-                action={action}
-                dim={mine.has(gym.id)}
-                onClick={onClick}
-                last={i === sorted.length - 1}
-              />
+              <li key={gym.id}>
+                {onClick ? <button type="button" className="fg-row" onClick={onClick}>{body}</button>
+                  : <div className="fg-row fg-row--dim">{body}</div>}
+              </li>
             );
           })}
-        </div>
+          </ul>
+        </section>
       )}
 
       {!slug && nearbyOsm.length > 0 && (
-        <div data-osm>
-          <SectionHead title="Not on Core Fitness yet" />
-          {nearbyOsm.map((g, i) => (
-            <LineRow key={g.osm_id} title={g.name ?? 'A gym'} last={i === nearbyOsm.length - 1}
-              meta={[here ? `${(() => { const k = distanceKm(here, { lat: g.latitude, lng: g.longitude }); return k < 10 ? k.toFixed(1) : Math.round(k); })()} km` : null, g.address].filter(Boolean).join(' · ') || undefined}
-              action={suggested.has(g.osm_id) ? 'Suggested' : 'Suggest'} actionTone={suggested.has(g.osm_id) ? 'muted' : 'action'}
-              onClick={suggested.has(g.osm_id) ? undefined : () => void suggest(g)} />
-          ))}
-          <p style={{ fontSize: 12, marginTop: 6, color: 'var(--color-text-muted)' }}>Gym data © OpenStreetMap contributors.</p>
-        </div>
+        <section className="fg-list" data-osm>
+          <h2 className="fg-h2 fg-h2--out">Not on Core Fitness yet</h2>
+          <ul>
+          {nearbyOsm.map((g) => {
+            const meta = [here ? `${(() => { const k = distanceKm(here, { lat: g.latitude, lng: g.longitude }); return k < 10 ? k.toFixed(1) : Math.round(k); })()} km` : null, g.address].filter(Boolean).join(' · ');
+            const done = suggested.has(g.osm_id);
+            const body = (<>
+              <span className="fg-logo fg-logo--initial fg-logo--osm" aria-hidden>{(g.name ?? 'A').trim().charAt(0).toUpperCase()}</span>
+              <span className="fg-row__body"><b>{g.name ?? 'A gym'}</b>{meta && <span>{meta}</span>}</span>
+              <span className={`fg-go ${done ? '' : 'fg-go--main'}`}>{done ? 'Suggested' : 'Suggest'}</span>
+            </>);
+            return <li key={g.osm_id}>{done ? <div className="fg-row fg-row--dim">{body}</div> : <button type="button" className="fg-row" onClick={() => void suggest(g)}>{body}</button>}</li>;
+          })}
+          </ul>
+          <p className="fg-fine">Gym data © OpenStreetMap contributors.</p>
+        </section>
       )}
 
-      {signedIn === false && (
-        <NocButton variant="ghost" onClick={() => navigate('/login')}>I already have an account</NocButton>
-      )}
-      <NocButton variant="ghost" onClick={() => navigate('/get-app')}>Install the app on your phone</NocButton>
+      <div className="fg-foot">
+        {signedIn === false && (
+          <button type="button" className="gp-cta gp-cta--quiet fg-pill" onClick={() => navigate('/login')}>I already have an account</button>
+        )}
+        <button type="button" className="gp-cta gp-cta--quiet fg-pill" onClick={() => navigate('/get-app')}><DeviceMobile size={16} aria-hidden />Install the app on your phone</button>
+      </div>
     </Page>
   );
 }
