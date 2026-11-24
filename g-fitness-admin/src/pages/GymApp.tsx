@@ -12,7 +12,7 @@ import PreferencesNav, { type PreferenceItem } from '../components/PreferencesNa
 import { showToast } from '../utils/toast';
 import {
   getGymApp, getGymModules,
-  saveGymLook, saveGymVocabulary, saveGymWords, setGymModule, setGymSlug, setJoinPolicy,
+  saveGymLook, saveGymVocabulary, saveGymWords, saveTodayWords, setGymModule, setGymSlug, setJoinPolicy,
   getJoinSettings, setJoinSettings,
   type GymApp as App, type GymModule, type GymVocabulary, type JoinPolicy, type JoinSettings,
 } from '../lib/api/gymApp';
@@ -85,6 +85,9 @@ const MODULE_ICONS: Record<string, LucideIcon> = {
   events: CalendarHeart, reels: Clapperboard, gym_chat: MessagesSquare,
 };
 
+/** The member app's own Today hero (components/home/TodayStory.tsx), shown while a box is empty. */
+const HERO_DEFAULT = { kicker: 'One step at a time', lead: 'Make today', accent: 'your day.', line: 'Show up. Find your rhythm. Keep going.' };
+
 export default function GymApp() {
   const [params, setParams] = useSearchParams();
   const tab = (APP_TABS.some(([k]) => k === params.get('tab')) ? params.get('tab') : 'look') as AppTab;
@@ -93,6 +96,9 @@ export default function GymApp() {
   /** What you run: the part the owner is pointing at, played on the right (FeatureShow). */
   const [pointed, setPointed] = useState<string | null>(null);
   const [words, setWords] = useState({ points_name: '', points_name_short: '', welcome_message: '' });
+  /** The Today hero (0277). Offered only once the database returns it, so the form never saves into nothing. */
+  const [hero, setHero] = useState({ kicker: '', lead: '', accent: '', line: '' });
+  const heroOn = !!app && 'today_lead' in app;
   /** The nouns (0114). The server always returns all six, so an empty box means "the English word". */
   const [vocab, setVocab] = useState<GymVocabulary | null>(null);
   /** Both colour roles and the logo, edited together because they are one look. */
@@ -131,6 +137,7 @@ export default function GymApp() {
     if (a) {
       setWords({ points_name: a.points_name, points_name_short: a.points_name_short, welcome_message: a.welcome_message ?? '' });
       setVocab(a.vocabulary ?? null);
+      setHero({ kicker: a.today_kicker ?? '', lead: a.today_lead ?? '', accent: a.today_accent ?? '', line: a.today_line ?? '' });
       setLook({ accent: a.accent || 'violet', action: a.accent_action ?? '', logo_url: a.logo_url ?? '' });
       setSlug(null);
     }
@@ -157,6 +164,7 @@ export default function GymApp() {
       });
       // One Save to the owner, so both go together. A blank box is stored as nothing — the English word.
       if (vocab) await saveGymVocabulary(vocab);
+      if (heroOn) await saveTodayWords(hero);
       await load();
       refreshGymWords(); // the sidebar's nouns repaint now, not on the next reload
       if (!quiet) showToast('Saved. Your members see this next time they open the app.', 'success');
@@ -210,7 +218,9 @@ export default function GymApp() {
   }, []);
   const lookDirty = !!app && (look.accent !== (app.accent || 'violet') || look.action !== (app.accent_action ?? '') || look.logo_url !== (app.logo_url ?? ''));
   const wordsDirty = !!app && (words.points_name !== app.points_name || (words.points_name_short ?? '') !== (app.points_name_short ?? '')
-    || words.welcome_message !== (app.welcome_message ?? '') || JSON.stringify(vocab ?? null) !== JSON.stringify(app.vocabulary ?? null));
+    || words.welcome_message !== (app.welcome_message ?? '') || JSON.stringify(vocab ?? null) !== JSON.stringify(app.vocabulary ?? null)
+    || (heroOn && (hero.kicker !== (app.today_kicker ?? '') || hero.lead !== (app.today_lead ?? '')
+      || hero.accent !== (app.today_accent ?? '') || hero.line !== (app.today_line ?? ''))));
   const slugDirty = !!app && slug !== null && slug.trim() !== app.slug;
   const resetPage = () => { void load(); };
   useEffect(() => { register('look', { label: 'Look', dirty: lookDirty, save: saveLook, reset: resetPage }); });
@@ -388,6 +398,15 @@ export default function GymApp() {
       {(
         <Split active={open} sec="words" preview={(
           <Phone cap="Live preview · your words in place">
+            {heroOn && (
+              <div className="a-phcard" data-today-hero-preview style={{ padding: 14, background: 'color-mix(in srgb, var(--color-primary) 18%, var(--a-surface, #141414))', borderColor: 'color-mix(in srgb, var(--color-primary) 35%, transparent)' }}>
+                <div className="a-sub" style={{ color: 'var(--a-a300)' }}>{hero.kicker.trim() || HERO_DEFAULT.kicker}</div>
+                <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1.02, letterSpacing: '-.04em', marginTop: 6, color: '#fff' }}>
+                  {hero.lead.trim() || HERO_DEFAULT.lead}<br /><em style={{ color: 'var(--a-a300)' }}>{hero.accent.trim() || HERO_DEFAULT.accent}</em>
+                </div>
+                <div className="a-sub" style={{ marginTop: 6 }}>{hero.line.trim() || HERO_DEFAULT.line}</div>
+              </div>
+            )}
             {words.welcome_message.trim() && <div className="a-phcard" style={{ background: 'var(--color-primary-light)', borderColor: 'color-mix(in srgb, var(--color-primary) 30%, transparent)' }}><span className="a-sub">📣 {words.welcome_message.trim()}</span></div>}
             <div className="a-phcard"><b>You earned <span style={{ color: 'var(--a-a300)' }}>{pointsShort}</span></b><div className="a-sub">for checking in</div></div>
             <div className="a-phcard"><b>Book a <span style={{ color: 'var(--a-a300)' }}>{v('class', 'class')}</span></b><div className="a-sub">with one of our <span style={{ color: 'var(--a-a300)' }}>{v('trainers', 'coaches')}</span></div></div>
@@ -432,6 +451,29 @@ export default function GymApp() {
             <input id="wm" className="a-in" maxLength={280} value={words.welcome_message} placeholder="Open 5am–10pm. Ask the desk about the new squat racks."
               onChange={(e) => setWords({ ...words, welcome_message: e.target.value })} />
           </div>
+          {heroOn && (
+            <div data-today-hero-fields style={{ marginTop: 16 }}>
+              <div className="flex items-center justify-between" style={{ marginBottom: 6 }}>
+                <h4 className="a-lbl" style={{ color: '#fff', fontSize: 12.5 }}>The top of everyone's Today screen</h4>
+                {(hero.kicker || hero.lead || hero.accent || hero.line) && (
+                  <button type="button" className="a-sub" style={{ color: 'var(--a-a300)' }} onClick={() => setHero({ kicker: '', lead: '', accent: '', line: '' })}>Use the standard words</button>
+                )}
+              </div>
+              <p className="a-sub" style={{ marginBottom: 8 }}>Leave a box empty for the app's own words. After a check-in, and when a membership is paused or ended, the last line tells the member where they stand instead.</p>
+              {([
+                ['kicker', 'Small line on top', 40, HERO_DEFAULT.kicker],
+                ['lead', 'Big line', 22, HERO_DEFAULT.lead],
+                ['accent', 'Big line, in your colour', 22, HERO_DEFAULT.accent],
+                ['line', 'The sentence under it', 120, HERO_DEFAULT.line],
+              ] as const).map(([key, label, max, ph]) => (
+                <div key={key} className="a-fld" style={{ marginTop: 8 }}>
+                  <label htmlFor={`hero-${key}`}>{label} <span style={{ fontWeight: 500 }}>· {hero[key].length}/{max}</span></label>
+                  <input id={`hero-${key}`} className="a-in" maxLength={max} value={hero[key]} placeholder={ph}
+                    onChange={(e) => setHero({ ...hero, [key]: e.target.value })} />
+                </div>
+              ))}
+            </div>
+          )}
         </Split>
       )}
 

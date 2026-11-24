@@ -75,6 +75,19 @@ export interface GymApp {
   join_code: string | null;
   /** feature_key → whether this gym runs it. */
   modules: Record<string, boolean>;
+  /** The Today hero in the gym's words (0277). Absent before 0277; null means the app's default line. */
+  today_kicker?: string | null;
+  today_lead?: string | null;
+  today_accent?: string | null;
+  today_line?: string | null;
+}
+
+/** The Today hero (0277): four lines, each blank for the app's own default. Owner only, checked in SQL. */
+export async function saveTodayWords(w: { kicker: string; lead: string; accent: string; line: string }): Promise<void> {
+  const { error } = await supabase.rpc('save_today_words', {
+    p_kicker: w.kicker, p_lead: w.lead, p_accent: w.accent, p_line: w.line,
+  });
+  if (error) throw new Error(error.message);
 }
 
 export async function getGymApp(): Promise<GymApp | null> {

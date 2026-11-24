@@ -1,5 +1,6 @@
-.member-assistant { --assistant-edge: color-mix(in srgb, var(--color-primary) 18%, var(--color-hairline)); width: 100%; max-width: 880px; margin-inline: auto; min-width: 0; isolation: isolate; overflow: clip; }
-.assistant-backdrop { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.member-assistant { --assistant-edge: color-mix(in srgb, var(--color-primary) 18%, var(--color-hairline)); width: 100%; max-width: 880px; margin-inline: auto; min-width: 0; isolation: isolate; overflow: clip; overflow-clip-margin: var(--gutter, 20px); }
+/* The glow reaches the screen edges: inside the gutter it left black strips down both sides (2026-11-25). */
+.assistant-backdrop { position: absolute; inset: 0 calc(-1 * var(--gutter, 20px)); z-index: -1; overflow: hidden; pointer-events: none; }
 .assistant-backdrop::before { content: ''; position: absolute; width: 520px; height: 520px; right: -260px; top: 20%; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--color-primary) 13%, transparent), transparent 68%); }
 .assistant-backdrop > i, .assistant-backdrop > span { position: absolute; width: 380px; height: 380px; border: 1px solid color-mix(in srgb, var(--color-primary-300) 7%, transparent); border-radius: 50%; right: -270px; top: 15%; transform: rotate(-25deg); }
 .assistant-backdrop > span { width: 500px; height: 500px; right: -320px; top: 12%; border-style: dashed; }

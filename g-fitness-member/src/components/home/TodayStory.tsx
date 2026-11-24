@@ -207,6 +207,9 @@ export function TodayHero({ checkedIn, unavailable, onContinue }: {
   checkedIn: boolean; unavailable: boolean; onContinue: () => void;
 }) {
   const t = useT();
+  // The gym's own words when the owner wrote them (0277, Your app → Words); the app's defaults otherwise.
+  // A state line (checked in, paused or ended) always wins: it tells the member where they stand.
+  const own = useGymApp()?.todayWords;
   return <section className="today-hero" data-today-hero aria-labelledby="today-hero-title">
     <div className="today-hero-atmosphere" aria-hidden="true" />
     <div className="today-hero-orbit" aria-hidden="true" />
@@ -214,9 +217,9 @@ export function TodayHero({ checkedIn, unavailable, onContinue }: {
     <span className="today-hero-spark is-two" aria-hidden="true"><Sparkle weight="fill" /></span>
     <span className="today-hero-weight" aria-hidden="true"><Barbell size={27} weight="duotone" /></span>
     <div className="today-hero-copy">
-      <span className="today-hero-kicker">{t('One step at a time')}</span>
-      <h2 id="today-hero-title">{t('Make today')}<br /><em>{t('your day.')}</em></h2>
-      <p>{t(unavailable ? 'Your next chapter starts here.' : checkedIn ? 'You showed up. Take it from here.' : 'Show up. Find your rhythm. Keep going.')}</p>
+      <span className="today-hero-kicker">{own?.kicker ?? t('One step at a time')}</span>
+      <h2 id="today-hero-title">{own?.lead ?? t('Make today')}<br /><em>{own?.accent ?? t('your day.')}</em></h2>
+      <p>{unavailable ? t('Your next chapter starts here.') : checkedIn ? t('You showed up. Take it from here.') : own?.line ?? t('Show up. Find your rhythm. Keep going.')}</p>
     </div>
     <TodayCompanion />
     <div className="today-hero-footer">

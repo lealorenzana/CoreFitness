@@ -82,6 +82,8 @@ export interface GymApp {
   tagline: string | null;
   vocabulary: GymVocabulary;
   modules: Partial<Record<FeatureKey, boolean>>;
+  /** The Today hero in the gym's own words (0277). Each null means the app's default line. */
+  todayWords: { kicker: string | null; lead: string | null; accent: string | null; line: string | null };
 }
 
 interface Row {
@@ -92,6 +94,8 @@ interface Row {
   tagline: string | null;
   vocabulary: Partial<GymVocabulary> | null;
   modules: Partial<Record<FeatureKey, boolean>> | null;
+  // Absent before 0277.
+  today_kicker?: string | null; today_lead?: string | null; today_accent?: string | null; today_line?: string | null;
 }
 
 /**
@@ -107,6 +111,7 @@ const FALLBACK: Omit<GymApp, 'gymId' | 'gymName' | 'slug'> = {
   pointsName: 'Points', pointsNameShort: 'points', welcomeMessage: null,
   tagline: null, vocabulary: DEFAULT_WORDS,
   modules: {},
+  todayWords: { kicker: null, lead: null, accent: null, line: null },
 };
 
 let cached: Promise<GymApp | null> | null = null;
@@ -135,6 +140,10 @@ async function load(): Promise<GymApp | null> {
     // object would put an empty string where a noun belongs.
     vocabulary: { ...DEFAULT_WORDS, ...(row.vocabulary ?? {}) },
     modules: row.modules ?? {},
+    todayWords: {
+      kicker: row.today_kicker ?? null, lead: row.today_lead ?? null,
+      accent: row.today_accent ?? null, line: row.today_line ?? null,
+    },
   };
 }
 
