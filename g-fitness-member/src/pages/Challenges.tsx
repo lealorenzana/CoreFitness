@@ -97,9 +97,8 @@ export default function Challenges({ completedOnly = false, embedded = false }: 
    * gym decides what is featured, and re-sorting here would quietly override
    * that.
    */
-  // Weekly quests and the season each have their own switch (0141).
+  // Weekly quests have their own switch (0141).
   const quests = moduleOn(gymApp, 'quests');
-  const seasons = moduleOn(gymApp, 'seasons');
   const done = items.filter((c) => c.completedOn != null && (quests || !c.isQuest));
   const renderGroups = completedOnly
     ? [{ key: 'done', label: 'Completed', rows: done, collapsed: false }]
@@ -128,14 +127,7 @@ export default function Challenges({ completedOnly = false, embedded = false }: 
           of the two screens CLAUDE.md names for exactly that. */}
       <FeatureLock feature="challenges" context={null}>
         <div className="flex flex-col" style={{ gap: 'var(--stack)' }}>
-          {!completedOnly && !embedded && seasons && (
-            <Panel onClick={() => navigate('/member/season')} ariaLabel="This month's season">
-              <Eyebrow>This month's season</Eyebrow>
-              <p style={{ fontSize: 13, marginTop: 4, color: 'var(--color-text-secondary)' }}>
-                Your points this month, the tiers and their rewards, and the record wall.
-              </p>
-            </Panel>
-          )}
+
           {error && (
             <p className="flex items-start" style={{ gap: 8, fontSize: 12.5, lineHeight: 1.5, color: 'var(--color-secondary)' }}>
               <WarningCircle size={15} className="flex-none" style={{ marginTop: 1 }} /> {error}

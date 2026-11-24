@@ -2,7 +2,7 @@ import PageGuide from '../components/guides/PageGuide';
 import { useEffect, useMemo, useState } from 'react';
 import {
   Plus, Gift, Check, X, AlertTriangle, Clock, History, Coins, Package, HandHeart, Pin, Pencil, Star, Eye, EyeOff,
-  CalendarClock, Repeat, Sparkles, Trophy, UserPlus, Copy, TrendingUp,
+  CalendarClock, Repeat, Sparkles, UserPlus, Copy, TrendingUp,
 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import Modal from '../components/ui/Modal';
@@ -10,7 +10,6 @@ import ConfirmDialog from '../components/ui/ConfirmDialog';
 import DatePicker from '../components/ui/DatePicker';
 import PhotoPicker from '../components/ui/PhotoPicker';
 import EarningRules from '../components/rewards/EarningRules';
-import SeasonSection from '../components/SeasonSection';
 import ReferralsSection from '../components/ReferralsSection';
 import {
   RdHeader, RdCard, StatTile, PageTabs, FilterChips, SearchField, RdSelect, RdButton, Pill, DotMenu, EmptyBlock,
@@ -107,8 +106,8 @@ const MUTED = 'var(--color-text-muted)';
 const LINE = '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.06)';
 
 type CatalogueFilter = 'all' | 'live' | 'hidden' | 'out' | 'featured';
-type Tab = 'requests' | 'catalogue' | 'earning' | 'season' | 'referrals' | 'history';
-const TAB_KEYS: Tab[] = ['requests', 'catalogue', 'earning', 'season', 'referrals', 'history'];
+type Tab = 'requests' | 'catalogue' | 'earning' | 'referrals' | 'history';
+const TAB_KEYS: Tab[] = ['requests', 'catalogue', 'earning', 'referrals', 'history'];
 
 const shortDate = (iso: string) => new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'short' });
 const ymdWords = (ymd: string) => new Date(`${ymd}T00:00:00`).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -545,7 +544,6 @@ export default function Rewards() {
             { key: 'requests', label: 'Requests', count: pending.length + ready.length, icon: Clock },
             { key: 'catalogue', label: 'Catalogue', icon: Gift },
             { key: 'earning', label: 'How members earn', icon: Coins },
-            { key: 'season', label: 'Monthly season', icon: Trophy },
             { key: 'referrals', label: 'Referrals', icon: UserPlus },
             { key: 'history', label: 'History', icon: History },
           ]} />
@@ -624,8 +622,6 @@ export default function Rewards() {
 
       {/* How points are earned (0051's point_rules, 0159's two more) — admin-only by RLS. */}
       {tab === 'earning' && <EarningRules />}
-      {/* The monthly season (0123): tiers and the rewards waiting at the desk. */}
-      {tab === 'season' && <RdCard className="flex flex-col min-h-0 overflow-hidden rd-fit-fill" data-season-tab><div className="rd-fit-scroll p-4"><SeasonSection isAdmin /></div></RdCard>}
       {/* Who brought whom (0125). */}
       {tab === 'referrals' && <ReferralsSection />}
 

@@ -113,8 +113,7 @@ export const DETAIL: Record<string, Detail> = {
     steps: ['The database awards badges for milestones.', 'The streak counts training days, week by week.', 'A frozen week never breaks it.'] },
   'Challenges and quests': { who: 'Members.',
     steps: ['Monthly challenges and weekly quests.', 'Progress is counted by the system, never typed in.', 'Points and rewards in one place.'] },
-  'Seasons, if you want them': { who: 'Members.', optional: true,
-    steps: ['Switch on a monthly season board.', 'Points earned that month rank members, with tiers and prizes.'] },
+
   'Invite a friend': { who: 'Members, and the desk.',
     steps: ['A member shares their invite.', 'The friend joins and pays.', 'Only then are both rewarded.'] },
   'Win-back messages': { who: 'Automatic. The owner sees who is at risk.',

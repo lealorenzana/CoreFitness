@@ -13,7 +13,7 @@ import Modal from '../components/ui/Modal';
 import GlassSheet from '../components/ui/GlassSheet';
 import { ExerciseGuideFor } from '../components/workout/ExerciseGuide';
 import { getGymWorkoutRoutine, getProgramDayRoutine } from '../lib/api/programs';
-import { setWasRecord } from '../lib/api/season';
+import { setWasRecord } from '../lib/api/records';
 import { toast } from '../components/ui/Toast';
 import { Confetti, CountRing, Stepper, WorkoutBackdrop } from '../components/workout/WorkoutParts';
 import { beep, buzz, glassCard, iconFor, useWakeLock } from '../components/workout/workoutFx';

@@ -6,9 +6,9 @@ import { listRecentBroadcasts } from './notifications';
  * Everything the lobby TV shows, read in one pass (/tv).
  *
  * Every panel reads what the members' own screens read — the same definer
- * functions (pr_wall, season_board, current_gym_goal), so the
- * TV cannot show more than a member could: the record wall and the season
- * board list only members who opted in (0123), and check-ins are a **count**, never names.
+ * functions (pr_wall, current_gym_goal), so the
+ * TV cannot show more than a member could: the record wall lists only
+ * members who opted in (0123), and check-ins are a **count**, never names.
  *
  * Each panel is null when it cannot be read or does not apply (before its
  * migration, or nothing running), and the TV skips it — a lobby screen with an
@@ -20,7 +20,6 @@ export interface TvData {
   checkinsToday: number | null;
   goal: { title: string; metric: string; target: number; progress: number; contributors: number; reached: boolean; rewardPoints: number } | null;
   wall: { name: string; exercise: string; value: string }[];
-  season: { name: string; score: number }[];
   classes: { name: string; at: string; booked: number; capacity: number }[];
   announcement: { title: string; message: string; sentAt: string } | null;
 }
@@ -46,13 +45,12 @@ export async function loadTv(settle = true): Promise<TvData> {
   const start = `${day}T00:00:00+08:00`;
   const end = `${day}T23:59:59+08:00`;
 
-  const [app, checkins, goalRows, wallRows, seasonRows, classRows, broadcasts] = await Promise.all([
+  const [app, checkins, goalRows, wallRows, classRows, broadcasts] = await Promise.all([
     safe(getGymApp(), null),
     safe(supabase.from('attendance').select('id', { count: 'exact', head: true }).gte('check_in_time', start).lte('check_in_time', end)
       .then((r) => (r.error ? null : r.count ?? 0)), null),
     safe(rpcRows<{ title: string; metric: string; target: number; progress: number; contributors: number; reached: boolean; reward_points: number }>('current_gym_goal'), []),
     safe(rpcRows<{ first_name: string; last_initial: string; exercise_name: string; kind: string; value: number }>('pr_wall'), []),
-    safe(rpcRows<{ first_name: string; last_initial: string; score: number }>('season_board'), []),
     safe(supabase.from('classes').select('id, name, scheduled_at, capacity').gte('scheduled_at', new Date().toISOString())
       .lte('scheduled_at', end).order('scheduled_at').limit(6)
       .then((r) => (r.error ? [] : (r.data ?? []) as { id: string; name: string; scheduled_at: string; capacity: number }[])), []),
@@ -81,7 +79,6 @@ export async function loadTv(settle = true): Promise<TvData> {
     goal: g ? { title: g.title, metric: g.metric, target: g.target, progress: Number(g.progress),
       contributors: Number(g.contributors), reached: g.reached, rewardPoints: g.reward_points } : null,
     wall: wallRows.slice(0, 8).map((w) => ({ name: `${w.first_name} ${w.last_initial}.`, exercise: w.exercise_name, value: fmtValue(w.kind, w.value) })),
-    season: seasonRows.slice(0, 8).map((s) => ({ name: `${s.first_name} ${s.last_initial}.`, score: Number(s.score) })),
     classes: classRows.map((c) => ({ name: c.name, at: c.scheduled_at, booked: booked.get(c.id) ?? 0, capacity: c.capacity })),
     announcement: b ? { title: b.title, message: b.message, sentAt: b.sentAt } : null,
   };
@@ -90,7 +87,7 @@ export async function loadTv(settle = true): Promise<TvData> {
 // ---- the gym's design for its screen (0209) ----------------------------------------------------------------
 
 export type TvTheme = 'dark' | 'brand' | 'light';
-export type TvPanel = 'goal' | 'wall' | 'season' | 'classes' | 'news';
+export type TvPanel = 'goal' | 'wall' | 'classes' | 'news';
 export interface TvDesign {
   theme?: TvTheme;
   background_url?: string | null;
@@ -105,7 +102,6 @@ export interface TvDesign {
 export const TV_PANELS: { key: TvPanel; label: string; hint: string }[] = [
   { key: 'goal', label: 'The gym goal', hint: 'the whole gym’s target and how close it is' },
   { key: 'wall', label: 'Personal records', hint: 'this week’s records, members who opted in' },
-  { key: 'season', label: 'The season board', hint: 'this month’s points leaders, opted in' },
   { key: 'classes', label: 'Classes today', hint: 'what is on, and the spots left' },
   { key: 'news', label: 'Your latest announcement', hint: 'the last one sent to everyone' },
 ];

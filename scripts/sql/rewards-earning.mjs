@@ -1,11 +1,11 @@
 /**
- * 0159: rewards that cannot run out silently, two new ways to earn, the season overview.
+ * 0159: rewards that cannot run out silently, two new ways to earn (the season
+ * overview it also added went with 0275).
  *
  *   - approving the last reward twice says "out of stock", and changes nothing;
  *   - declining still needs a reason the member reads;
  *   - shop_purchase and membership_paid ship OFF, pay nothing until turned on,
  *     pay once, and a void takes the shop points back;
- *   - season_overview() is the owner's and desk's, never a member's.
  *
  *   node <repo>/scripts/sql/rewards-earning.mjs "<repo>"   (from a dir with pglite installed)
  */
@@ -115,18 +115,6 @@ await db.exec(`update payments set status = 'completed' where member_id = '${M2}
 check('completing it pays the rule once', (await pts(M2, 'membership_paid')) === 50, String(await pts(M2, 'membership_paid')));
 await db.exec(`update payments set status = 'completed' where member_id = '${M2}' and amount = 1500`);
 check('touching it again pays nothing more', (await pts(M2, 'membership_paid')) === 50);
-
-// ---- 4. the season overview -------------------------------------------------------------------------------
-await asOwner();
-await db.exec(`insert into season_tiers (gym_id, name, points_needed) values ('${GYM_A}', 'Bronze', 100), ('${GYM_A}', 'Gold', 10000)`);
-await as(M1);
-check('a member cannot read the overview', !!(await tryExec(`select season_overview()`)));
-await as(DESK);
-const ov = (await one(`select season_overview() as v`)).v;
-const bronze = ov.tiers.find((t) => t.name === 'Bronze');
-const gold = ov.tiers.find((t) => t.name === 'Gold');
-check('the desk reads it: tiers with who reached them', bronze && gold && Number(bronze.reached) >= 2 && Number(gold.reached) === 0, JSON.stringify(ov.tiers));
-check('and the top of the month, by name', ov.top.length >= 2 && ov.top.some((t) => /mia/.test(t.name)), JSON.stringify(ov.top));
 
 // ---- 5. a challenge settles from a member's own screen ----------------------------------------------------
 await asOwner();

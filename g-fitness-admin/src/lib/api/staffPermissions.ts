@@ -14,7 +14,7 @@ export const STAFF_AREAS: { key: StaffArea; label: string; what: string }[] = [
   { key: 'bookings', label: 'Bookings', what: 'Book, move and cancel classes and 1-on-1 sessions for members.' },
   { key: 'shop', label: 'Shop', what: 'Sell at the counter, void today’s sales; sees shop sales.' },
   { key: 'communications', label: 'Announcements & events', what: 'Send and recall announcements; create and edit events.' },
-  { key: 'rewards', label: 'Rewards hand-over', what: 'Mark rewards and season prizes as handed over.' },
+  { key: 'rewards', label: 'Rewards hand-over', what: 'Mark rewards as handed over.' },
 ];
 
 /** user id → areas; a person missing from the map has the whole desk. Null before 0161. */

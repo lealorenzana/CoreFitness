@@ -309,9 +309,10 @@ CHECKS = [
     ('0268', 'rpc migration_0268_applied',     lambda: rpc('migration_0268_applied')),
     ('0269', 'rpc migration_0269_applied',     lambda: rpc('migration_0269_applied')),
     ('0270', 'rpc migration_0270_applied',     lambda: rpc('migration_0270_applied')),
-    # 0273/0274 remove squads and members' own goals; only their markers prove they ran.
+    # 0273/0274/0275 remove squads, members' own goals and the monthly season; only their markers prove they ran.
     ('0273', 'rpc migration_0273_applied',     lambda: rpc('migration_0273_applied')),
     ('0274', 'rpc migration_0274_applied',     lambda: rpc('migration_0274_applied')),
+    ('0275', 'rpc migration_0275_applied',     lambda: rpc('migration_0275_applied')),
 ]
 
 # The platform home's Migrations card checks 0074..LAST (it was admin's System page until 2026-10-04). It read 117 while 0118 and 0119

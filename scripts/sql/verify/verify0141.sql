@@ -2,14 +2,14 @@
 -- Paste into the Supabase SQL editor right after 0141. Read-only: it changes
 -- nothing and ends in an error that *is* the report.
 --
--- The finer switches (ten until 0273 removed squads), each inside a parent; a switch is on only while its
+-- The finer switches (ten until 0273 and 0275 removed squads and seasons), each inside a parent; a switch is on only while its
 -- parent is; the owner's list says so; both colour roles take a code; codes
 -- are stored in one case.
 do $$
 declare v_kids int; v_orphans int; v_parent_clause int; v_cols int; v_accent int; v_action int; v_trg int;
 begin
   select count(*) into v_kids from platform_features
-   where key in ('shop','requests','chat','rooms','programs','photos','seasons','quests','referrals')
+   where key in ('shop','requests','chat','rooms','programs','photos','quests','referrals')
      and parent_key is not null;
   -- A parent that does not exist would leave its child on forever.
   select count(*) into v_orphans from platform_features f
@@ -27,8 +27,8 @@ begin
      and pg_get_constraintdef(oid) like '%accent_action%';
   select count(*) into v_trg from pg_trigger
    where tgrelid = 'gym_settings'::regclass and tgname = 'gym_colour_case';
-  raise exception 'REPORT 0141: switches with a parent=% of 10 % | orphans=% % | parent rule in gym_module_on=% % | owner list has parent_key=% % | accent takes a code=% % | action checks=% (want 1) % | one-case trigger=% %',
-    v_kids, case when v_kids = 9 then 'OK' else 'NOT OK' end,
+  raise exception 'REPORT 0141: switches with a parent=% of 8 % | orphans=% % | parent rule in gym_module_on=% % | owner list has parent_key=% % | accent takes a code=% % | action checks=% (want 1) % | one-case trigger=% %',
+    v_kids, case when v_kids = 8 then 'OK' else 'NOT OK' end,
     v_orphans, case when v_orphans = 0 then 'OK' else 'NOT OK - STOP' end,
     v_parent_clause, case when v_parent_clause = 1 then 'OK' else 'NOT OK - STOP' end,
     v_cols, case when v_cols = 1 then 'OK' else 'NOT OK' end,

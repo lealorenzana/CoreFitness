@@ -204,7 +204,7 @@ async (page) => {
     // Every tab past the first too (owner, 2026-11-07: Your app → Words and Settings → Staff accounts were never looked at).
     ...['words', 'runs', 'join', 'coach', 'pay', 'tv', 'moments'].map((t) => `/gym-app?tab=${t}`),
     ...['gym', 'hours', 'checkin', 'bookings', 'coaching', 'walk-ins', 'refunds', 'payments', 'waiver', 'house-rules', 'security', 'staff', 'profile'].map((t) => `/settings?tab=${t}`),
-    ...['catalogue', 'earning', 'season', 'referrals', 'history'].map((t) => `/rewards?tab=${t}`),
+    ...['catalogue', 'earning', 'referrals', 'history'].map((t) => `/rewards?tab=${t}`),
     '/challenges?tab=gg',
     ...['ideas', 'rate', 'tours'].map((t) => `/help?tab=${t}`),
     '/trainers?view=pay', '/trainers?view=credentials', '/kiosk'];

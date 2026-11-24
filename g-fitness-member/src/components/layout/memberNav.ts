@@ -82,7 +82,7 @@ const TAB_PATHS: string[][] = [
   // account (simplify, 2026-10-28) — and Rewards, which More opens.
   ['/member/membership', '/member/renew', '/member/renew-membership',
    '/member/progress', '/member/body', '/member/progress-photos', '/member/workout-history',
-   '/member/achievements', '/member/challenges', '/member/season',
+   '/member/achievements', '/member/challenges', '/member/records',
    '/member/payments', '/member/attendance-history', '/member/rewards', '/member/shop',
    '/member/profile', '/member/settings', '/member/change-password',
    '/member/change-email', '/member/activity', '/member/visits', '/member/help'],

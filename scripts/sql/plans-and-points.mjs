@@ -102,7 +102,6 @@ check('points off: nothing is earned, wherever it comes from', (await one(`selec
 await db.exec(`insert into point_ledger (gym_id, member_id, rule_key, points, source_table, source_id)
   values ('${GYM}', '${PAID}', '${RULE}', -5, 'test', gen_random_uuid())`);
 check('…a spend is still honoured', (await one(`select count(*)::int n from point_ledger where member_id = '${PAID}'`)).n === before + 1);
-check('…and seasons, which run on points, are off with it', (await one(`select gym_module_on('${GYM}', 'seasons') is_on`)).is_on === false);
 check('…while challenges stay on', (await one(`select gym_module_on('${GYM}', 'engagement') is_on`)).is_on === true);
 await db.exec(`update gym_modules set enabled = true where gym_id = '${GYM}' and feature_key = 'points'`);
 await db.exec(`insert into point_ledger (gym_id, member_id, rule_key, points, source_table, source_id)

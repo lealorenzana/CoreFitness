@@ -53,7 +53,6 @@ const PLACES: Place[] = [
   { title: 'Reward requests', href: '/rewards?tab=requests', page: '/rewards', tag: 'Tab', words: 'redeem approve points' },
   { title: 'Rewards catalogue', href: '/rewards?tab=catalogue', page: '/rewards', tag: 'Tab', words: 'prizes items' },
   { title: 'How members earn points', href: '/rewards?tab=earning', page: '/rewards', tag: 'Tab', words: 'point rules' },
-  { title: 'Monthly season', href: '/rewards?tab=season', page: '/rewards', tag: 'Tab', words: 'leaderboard ranking' },
   { title: 'Referrals', href: '/rewards?tab=referrals', page: '/rewards', tag: 'Tab', words: 'invite a friend refer' },
   { title: 'Points history', href: '/rewards?tab=history', page: '/rewards', tag: 'Tab', words: 'ledger' },
   // Communications

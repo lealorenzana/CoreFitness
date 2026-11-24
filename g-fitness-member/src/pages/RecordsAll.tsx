@@ -6,13 +6,13 @@ import { SkeletonList } from '../components/ui/Skeleton';
 import Pager from '../components/ui/Pager';
 import { usePaged } from '../hooks/usePaging';
 import { getCurrentMemberId } from '../services/bookingService';
-import { personalRecords, recordValue, type Record_ } from '../lib/api/season';
+import { personalRecords, recordValue, type Record_ } from '../lib/api/records';
 
 /**
- * Every best you have beaten, newest first, twenty to a page — "See all" from
- * Season, which shows the latest five (redesign, 2026-10-27).
+ * Every best you have beaten, newest first, twenty to a page: "See all" from
+ * Records, which shows the latest five (redesign, 2026-10-27).
  */
-export default function SeasonRecords() {
+export default function RecordsAll() {
   /** undefined while loading; null when they could not be read. */
   const [records, setRecords] = useState<Record_[] | null | undefined>(undefined);
   useEffect(() => {
@@ -28,7 +28,7 @@ export default function SeasonRecords() {
 
   return (
     <Page>
-      <PageTitle back fallback="/member/season" title="Your records" subtitle="Every best you have beaten, newest first" />
+      <PageTitle back fallback="/member/records" title="Your records" subtitle="Every best you have beaten, newest first" />
       {records === undefined ? <SkeletonList />
         : records === null ? <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Your records could not be loaded just now.</p>
         : records.length === 0 ? <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>None yet.</p>

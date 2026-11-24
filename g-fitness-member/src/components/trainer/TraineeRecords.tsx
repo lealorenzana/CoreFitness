@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { personalRecords, recordValue, type Record_ } from '../../lib/api/season';
+import { personalRecords, recordValue, type Record_ } from '../../lib/api/records';
 
 /**
  * A trainee's latest personal records (0123), for their coach.

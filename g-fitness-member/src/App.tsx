@@ -26,10 +26,10 @@ const Workouts = lazyPage(() => import('./pages/Workouts'));
 const WorkoutsToday = lazyPage(() => import('./pages/WorkoutsToday'));
 const Program = lazyPage(() => import('./pages/Program'));
 const Programs = lazyPage(() => import('./pages/Programs'));
-const Season = lazyPage(() => import('./pages/Season'));
+const Records = lazyPage(() => import('./pages/Records'));
 const Refer = lazyPage(() => import('./pages/Refer'));
 const ReferInvited = lazyPage(() => import('./pages/ReferInvited'));
-const SeasonRecords = lazyPage(() => import('./pages/SeasonRecords'));
+const RecordsAll = lazyPage(() => import('./pages/RecordsAll'));
 const BodyReadings = lazyPage(() => import('./pages/progress/BodyReadings'));
 const Room = lazyPage(() => import('./pages/rooms/Room'));
 const AssignmentDetail = lazyPage(() => import('./pages/rooms/AssignmentDetail'));
@@ -412,8 +412,11 @@ function App() {
           <Route path="rewards/requests" element={<RewardRequests />} />
           {/* Challenges are a tab of Rewards (simplify, 2026-10-28). */}
           <Route path="challenges" element={<Navigate to="/member/rewards?tab=challenges" replace />} />
-          <Route path="season" element={<Season />} />
-          <Route path="season/records" element={<SeasonRecords />} />
+          <Route path="records" element={<Records />} />
+          <Route path="records/all" element={<RecordsAll />} />
+          {/* The monthly season went with 0275; its records stayed. Old links (and record notifications) land on Records. */}
+          <Route path="season" element={<Navigate to="/member/records" replace />} />
+          <Route path="season/records" element={<Navigate to="/member/records/all" replace />} />
           {/* Friends (0217) were removed by 0220: an old link lands on Today. */}
           <Route path="friends/*" element={<Navigate to="/member/home" replace />} />
           <Route path="refer" element={<Refer />} />

@@ -1,7 +1,7 @@
 /**
  * 0220: simplify. The world before it (class and group rooms, a room for someone who never had a
  * package, a group coaching term, Friends, Classes switched on) is seeded first, then 0220 runs:
- * classes, seasons and events are off by default and come back with the owner's switch;
+ * classes and events are off by default and come back with the owner's switch;
  * events follow their switch for members; only package rooms remain (an ended package's archived,
  * never deleted); sync_gym_rooms makes rooms for running packages only; Friends is gone; 0220 can
  * run twice.
@@ -77,8 +77,8 @@ check('0220 runs', err === null, err ?? '');
 // ── 1. Switches ──────────────────────────────────────────────────────────────
 await owner();
 const on = async (k) => (await one(`select gym_module_on('${GYM}', '${k}') v`)).v;
-const offs = await Promise.all(['classes', 'seasons', 'events'].map(on));
-check('classes, seasons and events are off by default', offs.every((v) => v === false), JSON.stringify(offs));
+const offs = await Promise.all(['classes', 'events'].map(on));
+check('classes and events are off by default', offs.every((v) => v === false), JSON.stringify(offs));
 const ons = await Promise.all(['coaching', 'push', 'points', 'chat', 'rooms'].map(on));
 check('coaching, push, points, chat and rooms stay on', ons.every((v) => v === true), JSON.stringify(ons));
 check('a gym that had Classes switched on is back to the default (its row is gone)',

@@ -33,7 +33,7 @@ const ROUTES: [string, FeatureKey][] = [
   ['/member/rewards', 'engagement'],
   ['/member/challenges', 'engagement'],
   ['/member/achievements', 'engagement'],
-  ['/member/season', 'seasons'],
+  ['/member/records', 'engagement'],
   ['/member/refer', 'referrals'],
   ['/member/pause-or-cancel', 'requests'],
   // 0245: the gym's short videos — watching, and a coach posting.
@@ -67,6 +67,6 @@ export const MODULE_NAMES: Record<FeatureKey, string> = {
   push: 'announcements', analytics: 'analytics', shop: 'the shop', requests: 'freeze and cancel requests in the app',
   online_pay: 'online payments', chat: 'coach chat', rooms: 'coaching rooms', programs: 'programs', photos: 'progress photos',
   equipment: 'the equipment list', points: 'points and rewards', events: 'gym events',
-  seasons: 'seasons', quests: 'weekly quests', referrals: 'inviting friends',
+  quests: 'weekly quests', referrals: 'inviting friends',
   reels: 'reels', gym_chat: 'the gym chat', slots: 'time slots',
 };

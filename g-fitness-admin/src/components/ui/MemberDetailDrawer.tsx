@@ -21,7 +21,7 @@ import {
 } from '../../lib/api/achievements';
 import { recordPayment } from '../../lib/api/payments';
 import { memberProgramProgress, type ProgressDay } from '../../lib/api/programs';
-import { memberRecords, recordValue, removeRecord, type MemberRecord } from '../../lib/api/season';
+import { memberRecords, recordValue, removeRecord, type MemberRecord } from '../../lib/api/records';
 import { memberRoomsSummary } from '../../lib/api/rooms';
 import { memberStreak, type MemberStreak } from '../../lib/api/streak';
 import {

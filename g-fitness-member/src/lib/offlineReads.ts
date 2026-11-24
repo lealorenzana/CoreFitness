@@ -41,10 +41,10 @@ const READ_RPCS = new Set([
   'my_coaches', 'my_coachings', 'my_conversations', 'my_day_pass', 'my_due_classwork', 'my_features',
   'my_gym_app', 'my_gym_context', 'my_gyms', 'my_house_rules', 'my_invitation', 'my_member_checkouts',
   'my_membership_request', 'my_payment_account', 'my_referral_code', 'my_referrals', 'my_room_photos',
-  'my_rooms', 'my_season', 'my_signup_state', 'my_streak',
+  'my_rooms', 'my_signup_state', 'my_streak',
   'my_trainer_ratings', 'my_waiver_status', 'my_whats_new', 'parq_questions', 'plan_allows', 'pr_wall',
   'program_day_targets', 'program_progress', 'public_plans', 'refund_quote', 'room_badges',
-  'room_classwork', 'room_people', 'room_progress', 'room_stream', 'season_board', 'shop_catalog',
+  'room_classwork', 'room_people', 'room_progress', 'room_stream', 'shop_catalog',
   'trainee_progress_photos', 'trainer_review_queue',
   'workout_session_summary',
 ]);

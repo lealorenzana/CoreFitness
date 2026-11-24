@@ -1,6 +1,6 @@
 /**
- * 0124's gym-wide goal, and 0273/0274: squads and members' own goals removed
- * while the gym goal stays.
+ * 0124's gym-wide goal, and 0273/0274/0275: squads, members' own goals and the
+ * monthly season removed while the gym goal and personal records stay.
  *
  * Ways it could go wrong, each checked:
  *   - a gym goal paid twice, or paid to someone who did nothing toward it;
@@ -112,7 +112,7 @@ check('the Teams switch and the squad points rule are gone',
   && (await count(`select 1 from gym_modules where feature_key = 'squads'`)) === 0
   && (await count(`select 1 from point_rules where key = 'squad_week'`)) === 0);
 check('the TV refuses a squads panel', !!(await tryExec(`update gym_settings set tv_design = '{"panels":["squads"]}' where gym_id = '${GYM_A}'`)));
-check('…and still takes the others', !(await tryExec(`update gym_settings set tv_design = '{"panels":["goal","season","classes"]}' where gym_id = '${GYM_A}'`)));
+check('…and still takes the others', !(await tryExec(`update gym_settings set tv_design = '{"panels":["goal","wall","classes"]}' where gym_id = '${GYM_A}'`)));
 
 // ---- 0274: members' own goals removed ------------------------------------------------------------
 await asOwner();
@@ -143,5 +143,18 @@ check('sharing has no goals switch', (await count(`select 1 from information_sch
 check('a trainer is still told about workouts the member shares',
   /share_workouts/.test((await one(`select prosrc from pg_proc where proname = 'trainer_may_see'`)).prosrc));
 
-console.log(failures ? `\n${failures} FAILED` : '\nall gym goal, 0273 and 0274 checks passed');
+// ---- 0275: the monthly season removed --------------------------------------------------------------------
+await asOwner();
+check('no season table is left', (await count(`select 1 from pg_class where relnamespace = 'public'::regnamespace and relname ilike '%season%'`)) === 0);
+const seasonLeft = (await db.query(`select proname from pg_proc where pronamespace = 'public'::regnamespace and (proname ~* 'season' or prosrc ~* 'season')`)).rows;
+check('no function names or mentions the season', seasonLeft.length === 0, JSON.stringify(seasonLeft));
+check('the record wall and records stay', (await count(`select 1 from pg_proc where pronamespace = 'public'::regnamespace
+  and proname in ('pr_wall', 'member_personal_records', 'set_show_on_boards', 'trg_detect_personal_record')`)) === 4);
+check('a record now links to Records', /\/member\/records/.test((await one(`select prosrc from pg_proc where proname = 'trg_detect_personal_record'`)).prosrc));
+check('the Seasons switch is gone', (await count(`select 1 from platform_features where key = 'seasons'`)) === 0);
+check('the TV refuses a season panel', !!(await tryExec(`update gym_settings set tv_design = '{"panels":["season"]}' where gym_id = '${GYM_A}'`)));
+check('the tenancy list names neither season table',
+  (await one(`select not tenancy_gym_tables() && array['season_tiers','season_claims'] as ok`)).ok);
+
+console.log(failures ? `\n${failures} FAILED` : '\nall gym goal, 0273, 0274 and 0275 checks passed');
 process.exit(failures ? 1 : 0);

@@ -312,7 +312,7 @@
       "app": "member"
     },
     {
-      "file": "season-check.js",
+      "file": "records-check.js",
       "app": "member"
     },
     {
@@ -576,7 +576,7 @@
       "app": "admin"
     },
     {
-      "file": "admin-season-check.js",
+      "file": "admin-quests-check.js",
       "app": "admin"
     },
     {

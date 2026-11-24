@@ -61,7 +61,6 @@ export default function TvBoard({ data, design, rotate = true }: { data: TvData 
       ) });
     }
     if (want.has('wall') && data.wall.length) list.push({ key: 'wall', title: 'Personal records this week', body: <Rows accent={accent} muted={muted} line={line} rows={data.wall.map((w) => [w.name, w.exercise, w.value])} /> });
-    if (want.has('season') && data.season.length) list.push({ key: 'season', title: `${now.toLocaleDateString('en-US', { month: 'long' })} season`, body: <Rows accent={accent} muted={muted} line={line} ranked rows={data.season.map((s) => [s.name, '', `${s.score.toLocaleString()} pts`])} /> });
     if (want.has('classes') && data.classes.length) list.push({ key: 'classes', title: 'Classes today', body: <Rows accent={accent} muted={muted} line={line} rows={data.classes.map((c) => [
       new Date(c.at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }), c.name,
       c.booked >= c.capacity ? 'Full' : `${c.capacity - c.booked} spots left`])} /> });
@@ -72,7 +71,7 @@ export default function TvBoard({ data, design, rotate = true }: { data: TvData 
       </div>
     ) });
     return list;
-  }, [data, d.panels, accent, now, muted, soft, line, track]);
+  }, [data, d.panels, accent, muted, soft, line, track]);
 
   const current = panels.length ? panels[slide % panels.length] : null;
   const app = data?.app;

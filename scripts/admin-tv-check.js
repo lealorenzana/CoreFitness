@@ -3,7 +3,7 @@
  *
  *   - the gym's own name, logo slot, and join QR code, always on screen;
  *   - today's check-ins as a count (never names);
- *   - every panel in the rotation: gym goal, records, season, classes
+ *   - every panel in the rotation: gym goal, records, classes
  *     with spots, and the latest announcement;
  *   - never a personal notification: a newer "New personal record" sent to one
  *     member must not appear as the gym's announcement.
@@ -56,7 +56,7 @@ async (page) => {
         target: 1000, starts_on: '2026-10-01', ends_on: '2026-10-31', reward_points: 50, reached: false, progress: 412,
         contributors: 88, mine: 0 }]);
       if (fn === 'pr_wall') return json([{ first_name: 'Ana', last_initial: 'R', exercise_name: 'Deadlift', kind: 'weight', value: 140, achieved_at: minute }]);
-      if (fn === 'season_board') return json([{ first_name: 'Lea', last_initial: 'L', score: 900, is_me: false }]);
+
       return json(fn === 'my_gym_modules' || fn === 'my_support_grant' ? [] : null);
     }
     if (!path.startsWith('/rest/v1/')) return json([]);
@@ -102,7 +102,7 @@ async (page) => {
   }
   out.push('gym goal panel: ' + (/1,000 training days in October/.test(seen) && /412 of 1,000 training days/.test(seen) ? 'shown' : 'MISSING'));
   out.push('record wall: ' + (/Ana R\./.test(seen) && /140 kg/.test(seen) ? 'shown' : 'MISSING'));
-  out.push('season board: ' + (/Lea L\./.test(seen) && /900 pts/.test(seen) ? 'shown' : 'MISSING'));
+
   out.push('classes with spots: ' + (/HIIT Circuit/.test(seen) && /3 spots left/.test(seen) ? 'shown' : 'MISSING'));
   out.push('the announcement: ' + (/Closed on Monday/.test(seen) ? 'shown' : 'MISSING'));
   out.push('never a personal notification: ' + (/New personal record|Back Squat: 100 kg/.test(seen) ? 'MISSING (a member’s private message was on the TV)' : 'never'));

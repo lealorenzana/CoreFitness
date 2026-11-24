@@ -30,10 +30,10 @@ export type FeatureKey =
   | 'engagement' | 'progress' | 'assistant' | 'push' | 'analytics'
   // 0141: each lives inside a parent above, and is on only while it is.
   | 'shop' | 'requests' | 'online_pay' | 'chat' | 'rooms' | 'programs' | 'photos'
-  | 'seasons' | 'quests' | 'referrals'
+  | 'quests' | 'referrals'
   // 0184: the gym's equipment list.
   | 'equipment'
-  // 0186: points (earning and the rewards shop), a child of Engagement; Seasons live under it.
+  // 0186: points (earning and the rewards shop), a child of Engagement.
   | 'points'
   // 0220: one-off gym events members sign up for, a child of Push; off unless the gym turns it on.
   | 'events'
@@ -168,7 +168,7 @@ export function moduleOn(app: GymApp | null, key: FeatureKey | undefined): boole
 /** Each 0141 switch and the switch it lives inside (the same pairs as platform_features.parent_key). */
 export const PARENT: Partial<Record<FeatureKey, FeatureKey>> = {
   shop: 'front_desk', requests: 'front_desk', chat: 'coaching', rooms: 'coaching',
-  programs: 'progress', photos: 'progress', points: 'engagement', seasons: 'points',
+  programs: 'progress', photos: 'progress', points: 'engagement',
   quests: 'engagement', referrals: 'engagement', events: 'push',
 };
 

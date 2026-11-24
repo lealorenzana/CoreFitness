@@ -45,7 +45,7 @@ const ACTION_GROUPS: Record<ActivityGroup, string[]> = {
   shop:        ['shop.'],
   // 0245: reel.posted, reel.removed. 0246: the gym chat's moderation (chat.removed, chat.silenced, chat.unsilenced, chat.mode) sits beside the rooms'.
   coaching:    ['room.', 'classwork.', 'program.', 'ai.', 'reel.', 'chat.'],
-  engagement:  ['reward.', 'referral.', 'season.', 'streak.', 'winback.', 'achievement.'],
+  engagement:  ['reward.', 'referral.', 'streak.', 'winback.', 'achievement.'],
   team:        ['credential.', 'gym.'],
 };
 
@@ -211,8 +211,7 @@ export function activityHref(row: ActivityFeedRow): string | null {
     case 'room':
     case 'room_assignment': return '/rooms';
     case 'program':        return '/programs';
-    case 'reward':
-    case 'season_tier':    return '/rewards';
+    case 'reward':         return '/rewards';
     case 'trainer_credential': return '/trainers?view=credentials';
     default:               return null;
   }

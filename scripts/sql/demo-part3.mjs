@@ -102,7 +102,6 @@ check('a room, a check-in turned in, a chat', (await c('room_submissions')) === 
 check('a program, two days in', (await c('program_enrolments')) === 1 && (await c('workout_logs', `member_id = '${LEA}' and program_day_id is not null`)) === 2);
 check('the shop sold for three months, stock adds up', (await c('shop_sales', `gym_id = '${GYM}'`)) >= 140
   && (await one(`select bool_and(stock = (select sum(change) from stock_moves m where m.product_id = p.id)) ok from shop_products p where id::text like '5eed3138-%'`)).ok);
-check('season tiers and the member\'s claims', (await c('season_tiers', `gym_id = '${GYM}'`)) >= 3 && (await c('season_claims')) === 3);
 check('challenges, events, rewards, streaks, an inbox', (await c('challenge_participants')) === 3 && (await c('event_registrations')) >= 6
   && (await c('reward_redemptions')) === 3 && (await c('streak_milestones')) === 4 && (await c('notifications', `user_id = '${LEA}'`)) >= 12);
 

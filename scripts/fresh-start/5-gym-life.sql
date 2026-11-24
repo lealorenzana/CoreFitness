@@ -6,13 +6,13 @@
 -- (mf.jgabrielle+coach@gmail.com) as their coach. Re-runnable.
 -- ============================================================================
 
--- Demo data part 3 — BLOCK 3 of 3 — the gym's shop, seasons, and the
+-- Demo data part 3 — BLOCK 3 of 3 — the gym's shop and the
 -- member's place in them
 --
 -- After blocks 1 and 2. Re-runnable. Expect a NOTICE starting "Part 3 block 3:".
 --
 -- The shop stocked and selling for three months (some of it to the member),
--- three season tiers with the member's claimed rewards, the gym's challenges and events with the member in them, rewards
+-- the gym's challenges and events with the member in them, rewards
 -- redeemed, streak milestones, and a real-looking notification inbox. Every
 -- row has a demo id (5eed3___-…) for Remove demo data.
 do $seed$
@@ -41,8 +41,6 @@ begin
   alter table shop_sales          disable trigger user;
   alter table shop_sale_items     disable trigger user;
   alter table stock_moves         disable trigger user;
-  alter table season_tiers        disable trigger user;
-  alter table season_claims       disable trigger user;
   alter table challenge_participants disable trigger user;
   alter table reward_redemptions  disable trigger user;
   alter table event_registrations disable trigger user;
@@ -94,23 +92,6 @@ begin
   on conflict do nothing;
   update shop_products p set stock = greatest(0, (select coalesce(sum(m.change), 0) from stock_moves m where m.product_id = p.id))
    where p.id::text like '5eed3138-%';
-
-  -- ── Seasons: three tiers, the member's last three months claimed ─────────────
-  insert into season_tiers (id, gym_id, name, points_needed, reward_id, sort_order, created_at)
-  select format(id_of, '136', lpad(x.n::text, 12, '0'))::uuid, v_gym, x.name, x.pts,
-         (select id from rewards where gym_id = v_gym and is_active order by cost_points offset x.n - 1 limit 1), x.n, (v_today - 200) at time zone 'Asia/Manila'
-    from (values (1, 'Bronze', 300), (2, 'Silver', 700), (3, 'Gold', 1200)) x(n, name, pts)
-   where not exists (select 1 from season_tiers t where t.gym_id = v_gym and lower(t.name) = lower(x.name))
-  on conflict do nothing;
-  insert into season_claims (id, gym_id, member_id, tier_id, season_start, claimed_at, handed_over_at, handed_by)
-  select format(id_of, '137', lpad(m::text, 12, '0'))::uuid, v_gym, v_me, t.id,
-         (date_trunc('month', v_today)::date - (m || ' months')::interval)::date,
-         (date_trunc('month', v_today)::date - (m || ' months')::interval + interval '20 days'),
-         case when m > 1 then (date_trunc('month', v_today)::date - (m || ' months')::interval + interval '25 days') end,
-         case when m > 1 then v_owner end
-    from generate_series(1, 3) m
-    join lateral (select id from season_tiers where gym_id = v_gym order by sort_order offset (m % 3) limit 1) t on true
-  on conflict do nothing;
 
   -- ── The member in the gym's challenges, events and rewards ──────────────────────
   insert into challenge_participants (gym_id, challenge_id, member_id, joined_at, completed_on)
@@ -165,8 +146,6 @@ begin
   alter table shop_sales          enable trigger user;
   alter table shop_sale_items     enable trigger user;
   alter table stock_moves         enable trigger user;
-  alter table season_tiers        enable trigger user;
-  alter table season_claims       enable trigger user;
   alter table challenge_participants enable trigger user;
   alter table reward_redemptions  enable trigger user;
   alter table event_registrations enable trigger user;

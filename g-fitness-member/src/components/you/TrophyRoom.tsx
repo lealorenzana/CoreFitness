@@ -7,7 +7,7 @@ import { tierStyle, type AchievementDef } from '../../data/achievements';
 import {
   achievementByKey, catalogFor, getProgression, LEVEL_ACCENT, levelLabel, listUnlocks, loadCatalogue, type Progression,
 } from '../../lib/api/achievements';
-import { personalRecords, recordValue, type Record_ } from '../../lib/api/season';
+import { personalRecords, recordValue, type Record_ } from '../../lib/api/records';
 import { storedSession } from '../../lib/offlineReads';
 import { useGymApp } from '../../hooks/useGymApp';
 import { moduleOn } from '../../lib/gymApp';
@@ -126,7 +126,7 @@ export default function TrophyRoom({ part }: { part: 'level' | 'shelf' }) {
       {part === 'shelf' && d.records.length > 0 && (
         <section className="lv-in" style={{ ['--i' as string]: 2 }} data-trophy-records>
           <SectionHead title="Your records" meta="See all" />
-          <button type="button" onClick={() => navigate('/member/season/records')} className="grid w-full text-left"
+          <button type="button" onClick={() => navigate('/member/records/all')} className="grid w-full text-left"
             style={{ gridTemplateColumns: `repeat(${d.records.length}, minmax(0, 1fr))`, gap: 8, marginTop: 10 }}>
             {d.records.map((r) => (
               <span key={r.id} style={{ padding: 12, borderRadius: 16, border: '1px solid var(--color-hairline)', background: 'var(--color-surface)' }}>

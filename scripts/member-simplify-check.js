@@ -2,8 +2,9 @@
  * The member app's simplify (2026-10-28), the cross-cutting parts: Friends
  * removed (old links land on Today; no strip), the AI called "Assistant" and
  * never "AI coach", "level" only for the earned level (the self-declared one
- * is "how much you train"), Rewards holding challenges, and Season, Team and
- * Gym events shown only where the gym switches them on.
+ * is "how much you train"), Rewards holding challenges and the Records row, and
+ * Gym events shown only where the gym switches them on (Team and Season went
+ * with 0273 and 0275).
  *
  * Fixture from member-train-check.js (itself from member-coach-term-check.js).
  */
@@ -329,13 +330,13 @@ async (page) => {
   t = await body();
   say('You calls the earned level a level, and never says experience level', /earned level/i.test(t) && !/experience level/i.test(t), t.slice(0, 200));
 
-  // ── Switches: Season and Events appear only when the gym turns them on ──
-  STATE.modules = { classes: false, seasons: false, events: false };
+  // ── Switches: Events appear only when the gym turns them on; there is no Season (0275) ──
+  STATE.modules = { classes: false, events: false };
   await go('/member/rewards');
   t = await body();
   const rtabs = (await page.getByRole('tab').allInnerTexts()).map((x) => x.trim());
   say('Rewards: Rewards · Challenges in one place', rtabs.includes('Rewards') && rtabs.includes('Challenges'), JSON.stringify(rtabs));
-  say('…no Season while it is off', (await page.locator('[data-rewards-extras]').count()) === 0);
+  say('…and no Season row', !/Season/.test(await page.locator('[data-rewards-extras]').innerText().catch(() => '')));
   await page.getByRole('tab', { name: 'Challenges' }).click();
   await page.waitForTimeout(1200);
   say('…Challenges is a tab, in the address', /tab=challenges/.test(page.url()), page.url());
@@ -346,12 +347,12 @@ async (page) => {
   await go('/member/events');
   say('/member/events says not at this gym while off', /Not at this gym/.test(await body()));
   await go('/member/season');
-  say('/member/season says not at this gym while off', /Not at this gym/.test(await body()));
+  say('an old /member/season link opens Records (0275)', /\/member\/records$/.test(page.url()), page.url());
 
-  STATE.modules = { classes: false, seasons: true, events: true, points: true };
+  STATE.modules = { classes: false, events: true, points: true };
   await go('/member/rewards');
   const extras = await page.locator('[data-rewards-extras]').innerText().catch(() => '');
-  say('switched on: a Season row in Rewards, and no Team row (0273)', /Season/.test(extras) && !/Team/.test(extras), extras);
+  say('a Records row in Rewards, and no Team or Season row (0273, 0275)', /Records/.test(extras) && !/Team|Season/.test(extras), extras);
   await page.screenshot({ path: 'shots/member-rewards-on.png' });
   await go('/member/home');
   say('switched on: Today shows the gym event', /Saturday fun run/.test(await body()));

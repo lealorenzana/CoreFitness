@@ -137,10 +137,10 @@ async (page) => {
     ],
   };
   // Off: classes, rooms, chat, shop, quests, the assistant and QR check-in.
-  // On: engagement (so Challenges stays), seasons and referrals inside it.
+  // On: engagement (so Challenges stays) and referrals inside it.
   const MODULES = { front_desk: true, checkin: false, classes: false, coaching: true, engagement: true,
     progress: true, assistant: false, push: true, analytics: true, shop: false, requests: true, chat: false,
-    rooms: false, programs: true, photos: true, seasons: true, quests: false, referrals: true };
+    rooms: false, programs: true, photos: true, quests: false, referrals: true };
   const RPC = {
     my_gym_app: [{ gym_id: 'gym-1', gym_name: 'Harbour Strength', slug: 'harbour', short_name: null, logo_url: null,
       accent: '#1F8A70', accent_action: '#FFEE00', points_name: 'Points', points_name_short: 'points',
@@ -291,7 +291,7 @@ async (page) => {
   await page.waitForTimeout(700);
   t = await text();
   const gone = ['Shop', 'Messages', 'Rooms', 'Team', 'My bookings'].filter((l) => new RegExp('\\b' + l + '\\b').test(t));
-  // More is ten rows since the simplify (2026-10-28); Challenges and Season live in Rewards.
+  // More is ten rows since the simplify (2026-10-28); Challenges and Records live in Rewards.
   const kept = ['Rewards', 'Invite a friend', 'Equipment', 'Settings'].filter((l) => !t.includes(l));
   out.push('More drops what is off: ' + (gone.length ? 'STILL SHOWN ' + gone.join(', ') : 'yes'));
   out.push('More keeps what is on: ' + (kept.length ? 'MISSING ' + kept.join(', ') : 'yes'));

@@ -161,20 +161,6 @@ export const FEATURE_SHOWS: Record<string, FeatureShow> = {
       { en: 'When the friend first pays, both are rewarded — points, or your desk reward if you run no points.', fil: 'Kapag unang nagbayad ang kaibigan, pareho silang may reward — points, o ang desk reward mo kung walang points.' },
     ],
   },
-  seasons: {
-    frame: 'phone',
-    screen: [
-      { t: 'head', text: 'November season' },
-      { t: 'row', text: '1  Leo', pill: '1,420', hit: 1 },
-      { t: 'row', text: '2  Mia', pill: '1,380' },
-      { t: 'row', text: '3  You', pill: '1,250', hit: 2 },
-    ],
-    steps: [
-      { en: 'Each month is a season with its own boards.', fil: 'Bawat buwan ay isang season na may sariling boards.' },
-      { en: 'Only members who choose to join are shown.', fil: 'Ang mga sumali lang ang ipapakita.' },
-      { en: 'At the end, you hand over the rewards.', fil: 'Sa dulo, ikaw ang mag-aabot ng rewards.' },
-    ],
-  },
   equipment: {
     frame: 'phone',
     screen: [

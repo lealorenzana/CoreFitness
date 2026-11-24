@@ -1517,23 +1517,6 @@ img { -webkit-user-drag: none; user-select: none; }
   border: 1px solid var(--color-hairline); color: var(--color-text-secondary); }
 .pill-left--close { border-color: color-mix(in srgb, var(--color-secondary) 50%, transparent); color: var(--color-secondary-300); background: var(--color-secondary-light); }
 
-/* the season ladder and podium (components/season/SeasonParts.tsx) */
-.season-ladder { position: relative; padding-left: 48px; margin-top: 4px; }
-.season-ladder::before { content: ""; position: absolute; left: 19px; top: 18px; bottom: 18px; width: 3px; border-radius: 2px; background: var(--color-surface-high); }
-.season-ladder__fill { position: absolute; left: 19px; bottom: 0; width: 3px; border-radius: 2px; background: linear-gradient(0deg, var(--color-primary), var(--color-primary-300)); transition: height 1.2s cubic-bezier(.3, 0, .2, 1); }
-.season-ladder__rung { position: relative; }
-.season-ladder__rung::before { content: ""; position: absolute; left: -35px; top: 50%; margin-top: -7px; width: 13px; height: 13px; border-radius: 50%; background: var(--color-surface-high); border: 2px solid var(--color-bg); z-index: 1; }
-.season-ladder__rung.is-reached::before { background: var(--color-primary-300); }
-.season-ladder__you { position: absolute; left: 6px; z-index: 2; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 800;
-  background: var(--color-secondary); color: #1a1205; box-shadow: 0 0 0 3px var(--color-bg), 0 0 16px color-mix(in srgb, var(--color-secondary) 60%, transparent); transition: bottom 1.2s cubic-bezier(.3, 0, .2, 1); }
-.season-podium { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 1fr); align-items: end; gap: 8px; margin: 12px 0 6px; text-align: center; }
-.season-podium__av { width: 46px; height: 46px; border-radius: 50%; margin: 0 auto; display: grid; place-items: center; font-weight: 800; font-size: 14px;
-  background: var(--color-surface-high); color: var(--color-text-primary); border: 2px solid var(--metal); }
-.season-podium__blk { display: flex; flex-direction: column; justify-content: center; margin-top: 8px; border-radius: 14px 14px 4px 4px; padding: 8px 4px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--metal) 30%, var(--color-surface)), var(--color-surface)); border: 1px solid color-mix(in srgb, var(--metal) 45%, transparent); }
-.season-podium__blk b { font-size: 13.5px; color: var(--color-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.season-podium__blk small { font-size: 12px; color: var(--color-text-secondary); }
-.season-me { border: 1px solid var(--color-secondary); background: var(--color-secondary-light); border-radius: 14px; padding: 0 12px; margin-top: 6px; }
 
 /* a turning coin */
 .lv-coin { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; color: #3a2600; flex: none;

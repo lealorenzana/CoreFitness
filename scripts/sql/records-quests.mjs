@@ -1,15 +1,14 @@
 /**
- * 0123: personal records, weekly quests (repeating challenges), monthly seasons.
+ * 0123: personal records and weekly quests (repeating challenges). The monthly
+ * season 0123 also made was removed by 0275.
  *
  * Each check is a way the feature could reward the wrong thing:
  *   - a first-ever set, a tie, or a custom exercise counted as a PR;
  *   - PR points without the weekly cap (weights are self-typed);
  *   - a removed PR that keeps its points, or keeps blocking real PRs;
  *   - a weekly quest rolled twice, enrolling the desk, or paying twice;
- *   - a season reward claimed twice, below its tier, or handed over by a member;
- *   - a board that shows somebody who never opted in.
  *
- *   node <repo>/scripts/sql/records-seasons.mjs "<repo>"   (from a dir with pglite installed)
+ *   node <repo>/scripts/sql/records-quests.mjs "<repo>"   (from a dir with pglite installed)
  */
 import { liveDb, describe } from './lib/live-db.mjs';
 
@@ -170,42 +169,12 @@ check('m1 trained today, so the quest pays once',
 check('m2 did not, so it does not', (await count(`select 1 from point_ledger where member_id = '${P.m2}' and rule_key = 'challenge_complete'`)) === 0);
 check('the template itself is never joined', (await count(`select 1 from challenge_participants where challenge_id = '${tmpl}'`)) === 0);
 
-// ---- seasons ------------------------------------------------------------------------------
-await as(P.admin);
-const reward = (await one(`insert into rewards (name, cost_points) values ('Protein shake', 100) returning id`)).id;
-const bronze = (await one(`insert into season_tiers (name, points_needed, reward_id) values ('Bronze', 50, '${reward}') returning id`)).id;
-const gold = (await one(`insert into season_tiers (name, points_needed) values ('Gold', 100000) returning id`)).id;
-await as(P.m1);
-const s = await one(`select * from my_season()`);
-const monthSum = Number((await one(`select coalesce(sum(points),0)::int as n from point_ledger where member_id = '${P.m1}'
-  and created_at >= date_trunc('month', now() at time zone 'Asia/Manila') at time zone 'Asia/Manila'`)).n);
-check("the season score is this month's points", Number(s.score) === monthSum && monthSum >= 50, `${s.score} vs ${monthSum}`);
-check('a reached tier can be claimed', !(await tryExec(`select claim_season_reward('${bronze}')`)));
-check('once', !!(await tryExec(`select claim_season_reward('${bronze}')`)));
-check('a tier not reached cannot be', !!(await tryExec(`select claim_season_reward('${gold}')`)));
-check('a claim costs no points', Number((await one(`select member_points_balance('${P.m1}') as b`)).b) === monthSum);
-const claim = (await one(`select id from season_claims where member_id = '${P.m1}'`)).id;
-check('a member cannot mark it handed over', !!(await tryExec(`select hand_over_season_claim('${claim}')`)));
-await as(P.staff);
-check('the desk sees it waiting', (await count(`select * from open_season_claims()`)) === 1);
-await db.exec(`select hand_over_season_claim('${claim}')`);
-check('and hands it over', (await count(`select * from open_season_claims()`)) === 0);
-await as(P.m2);
-const board = (await db.query(`select * from season_board()`)).rows;
-check('the season board shows opted-in members only', board.length >= 1 && board.every((b) => b.first_name === 'm1'), JSON.stringify(board));
-const mine = await one(`select * from my_season()`);
-check('a member not on the board still sees their own rank', mine.rank !== null && mine.rank !== undefined, JSON.stringify(mine));
-await as(P.memberB);
-check("gym B sees none of gym A's tiers", (await count(`select 1 from season_tiers`)) === 0);
-await as(P.m1);
-check('a member cannot create tiers', !!(await tryExec(`insert into season_tiers (name, points_needed) values ('Mine', 1)`)));
-
 // ---- rules as queries -------------------------------------------------------------------
 await asOwner();
 check('the new tables are in the tenancy list',
-  (await one(`select tenancy_gym_tables() @> array['personal_records','season_tiers','season_claims'] as ok`)).ok);
-check('no write policy on PRs or claims',
-  (await count(`select 1 from pg_policies where tablename in ('personal_records','season_claims')
+  (await one(`select tenancy_gym_tables() @> array['personal_records'] as ok`)).ok);
+check('no write policy on PRs',
+  (await count(`select 1 from pg_policies where tablename in ('personal_records')
     and cmd in ('INSERT','UPDATE','DELETE','ALL') and permissive = 'PERMISSIVE'`)) === 0);
 
 console.log(failures ? `\n${failures} FAILED` : '\nall 0123 checks passed');

@@ -1066,6 +1066,7 @@ check('every part of the system starts switched on but the four 0220 switched of
   (await db.query("select feature_key from my_gym_modules() where state <> 'on' order by 1")).rows.map((r) => r.feature_key).join()
     === ['classes', 'events', 'gym_chat', 'noshows', 'reels', 'repeats', 'seasons', 'slots', 'squads']
       .filter((k) => k !== 'squads' || (process.env.BEFORE && process.env.BEFORE <= '0273'))
+      .filter((k) => k !== 'seasons' || (process.env.BEFORE && process.env.BEFORE <= '0275'))
       .filter((k) => k !== 'slots' || !process.env.BEFORE || process.env.BEFORE > '0259')
       .filter((k) => !['noshows', 'repeats'].includes(k) || !process.env.BEFORE || process.env.BEFORE > '0260').join());
 

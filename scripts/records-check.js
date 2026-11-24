@@ -1,9 +1,8 @@
 /**
- * 0123 in the member app: the season, quests, and a record celebrated.
+ * 0123 in the member app: records, quests, and a record celebrated.
  *
- *   - Season: this month's score, own rank, points to the next tier, Claim
- *     (then "At the desk"), the record wall, your records, and the board —
- *     which lists you only after you opt in.
+ *   - Records (the Season page until 0275 removed the monthly season): the
+ *     record wall, your records, and the opt-in switch for the wall.
  *   - Challenges: this week's quest shown, its template never, no Leave on it.
  *   - Player: a logged set the database calls a record gets its celebration.
  *
@@ -91,11 +90,7 @@ async (page) => {
         repeats_weekly: false, parent_id: 'qT', achievement_metrics: { label: 'Training days' } },
     ],
     challenge_participants: [{ challenge_id: 'qW', member_id: 'm1', completed_on: null }],
-    season_tiers: [
-      { id: 'tB', name: 'Bronze', points_needed: 100, rewards: { name: 'Protein shake' } },
-      { id: 'tS', name: 'Silver', points_needed: 500, rewards: { name: 'Gym shirt' } },
-    ],
-    season_claims: [],
+
     personal_records: [],
     gym_settings: [{ id: true, gym_name: 'Core Fitness', address: 'Mamburao', phone: null, email: null,
       opening_time: '06:00', closing_time: '21:00', logo_url: null, short_name: 'CF', tagline: null,
@@ -132,13 +127,9 @@ async (page) => {
   let onBoards = false;
   const FN = {
     roll_weekly_quests: () => 1,
-    claim_season_reward: (b) => { DB.season_claims.push({ tier_id: b.p_tier, handed_over_at: null, season_start: dstr(0).slice(0, 8) + '01' }); return 'c1'; },
+
     set_show_on_boards: (b) => { onBoards = b.p_on; DB.member_profiles[0].show_on_boards = b.p_on; return null; },
-    my_season: () => [{ season_start: dstr(0).slice(0, 8) + '01', season_end: dstr(20), score: 320, rank: 3, members_ranked: 40 }],
-    season_board: () => [
-      { first_name: 'Ana', last_initial: 'R', score: 900, is_me: false },
-      ...(onBoards ? [{ first_name: 'Lea', last_initial: 'L', score: 320, is_me: true }] : []),
-    ],
+
     pr_wall: () => [{ first_name: 'Ana', last_initial: 'R', exercise_name: 'Deadlift', kind: 'weight', value: 140, achieved_at: new Date().toISOString() }],
     member_personal_records: () => [{ id: 'r1', exercise_name: 'Barbell Squat', kind: 'weight', value: 80, previous: 70, achieved_at: new Date().toISOString() }],
     request_renewal: (b) => { DB.renewal_requests.forEach((r) => { if (r.status === 'open') r.status = 'withdrawn'; });
@@ -247,26 +238,17 @@ async (page) => {
 
   const text = async () => (await page.locator('main').innerText()).replace(/\s+/g, ' ');
 
-  // 1 - the season page.
+  // 1 - the records page (and an old /member/season link lands on it).
   await go('/member/season');
+  out.push('an old season link opens Records: ' + (/\/member\/records$/.test(page.url()) ? 'yes' : 'MISSING ' + page.url()));
   let t = await text();
-  out.push('season score: ' + (/320\s*points this month/.test(t) ? '320' : 'MISSING'));
-  out.push('own rank: ' + (/#3 of 40/.test(t) ? '#3 of 40' : 'MISSING'));
-  out.push('next tier: ' + (/180 to Silver · Gym shirt/.test(t) ? '180 to Silver' : 'MISSING'));
+  out.push('no season left: ' + (/points this month|Tiers|Claim/.test(t) ? 'MISSING (season shown)' : 'gone'));
   out.push('record wall: ' + (/Ana R\. · Deadlift/.test(t) && /140 kg/.test(t) ? 'shown' : 'MISSING'));
   out.push('your records: ' + (/Barbell Squat/.test(t) && /up from 70 kg/.test(t) ? 'shown' : 'MISSING'));
-  out.push('not on the board until opted in: ' + (/Lea L\./.test(t) ? 'MISSING (listed)' : 'absent'));
-  await page.getByRole('button', { name: 'Claim' }).first().click();
-  await page.waitForTimeout(1200);
-  out.push('claim sent: ' + (CALLS.claim_season_reward?.p_tier === 'tB' ? 'Bronze' : 'MISSING'));
-  t = await text();
-  out.push('claimed tier waits at the desk: ' + (/At the desk/.test(t) ? 'shown' : 'MISSING'));
-  await page.getByLabel('Show me on the boards').click();
+  await page.getByLabel('Show me on the record wall').click();
   await page.waitForTimeout(1200);
   out.push('opt-in sent: ' + (CALLS.set_show_on_boards?.p_on === true ? 'on' : 'MISSING'));
-  t = await text();
-  out.push('then on the board: ' + (/Lea L\. \(you\)/.test(t) ? 'listed' : 'MISSING'));
-  await page.screenshot({ path: 'shots/season.png', fullPage: true });
+  await page.screenshot({ path: 'shots/records.png', fullPage: true });
 
   // 2 - quests on the challenges page.
   await go('/member/challenges');
@@ -275,8 +257,8 @@ async (page) => {
   out.push('template hidden: ' + (/\(template\)/.test(t) ? 'MISSING (template shown)' : 'hidden'));
   out.push('no Leave on a quest: ' + ((await page.getByRole('button', { name: 'Leave' }).count()) === 0 ? 'none' : 'MISSING (Leave shown)'));
   out.push('quests rolled on load: ' + ('roll_weekly_quests' in CALLS ? 'yes' : 'MISSING'));
-  // Since the simplify (2026-10-28) the season is a row on Rewards, above its Challenges tab.
-  out.push('season linked: ' + ((await page.locator('[data-rewards-extras]').getByRole('button', { name: /Season/ }).count()) === 1 ? 'yes' : 'MISSING'));
+  // Records is a row on Rewards, above its Challenges tab (the season's place until 0275).
+  out.push('records linked: ' + ((await page.locator('[data-rewards-extras]').getByRole('button', { name: /Records/ }).count()) === 1 ? 'yes' : 'MISSING'));
 
   // 3 - a record, celebrated in the player.
   await go('/member/track/session/L1');
@@ -287,7 +269,7 @@ async (page) => {
   await page.waitForTimeout(1500);
   const body = (await page.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ');
   out.push('record celebrated: ' + (/New personal record — Barbell Squat/.test(body) ? 'shown' : 'MISSING'));
-  await page.screenshot({ path: 'shots/season-pr-toast.png' });
+  await page.screenshot({ path: 'shots/records-pr-toast.png' });
 
   return out.join('\n');
 }

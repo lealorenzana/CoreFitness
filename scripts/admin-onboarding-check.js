@@ -1,6 +1,6 @@
 /**
  * Guides G2 (2026-10-31): the owner's setup asks what the gym runs as plain
- * Yes/No questions — group classes, points, teams, a season, events, online
+ * Yes/No questions — group classes, points, events, online
  * payments, a lobby TV, celebrations — only for parts its Core Fitness plan
  * includes; each answer writes that switch at once (celebrations: the gym's
  * moments and sounds), an unanswered question writes nothing, and the full
@@ -35,13 +35,13 @@ async (page) => {
     { id: 'p-prem', name: 'Premium', tier: 'premium', price: 999, duration_days: 30, is_active: true },
     { id: 'p-trial', name: 'Free Trial', tier: 'premium', price: 0, duration_days: 30, is_active: true },
   ];
-  // The defaults since 0220: classes, seasons and events off; the lobby TV not on this gym's plan.
+  // The defaults since 0220: classes and events off; the lobby TV not on this gym's plan.
   const mod = (feature_key, label, state, enabled, sort_order, parent_key = null) => ({ feature_key, label, description: label, state, enabled, sort_order, parent_key });
   const MODULES = [
     mod('classes', 'Classes', 'off', false, 1),
     mod('engagement', 'Engagement', 'on', true, 2),
     mod('points', 'Points', 'on', true, 3, 'engagement'),
-    mod('seasons', 'Seasons', 'off', false, 5, 'points'),
+
     mod('push', 'Announcements', 'on', true, 6),
     mod('events', 'Events', 'off', false, 7, 'push'),
     mod('online_pay', 'Online payments', 'off', false, 8),
@@ -114,12 +114,12 @@ async (page) => {
   say('the Run chapter starts with how the gym works', /How your gym works/.test(await text()));
   await next();                                       // → runs
   const asked = await page.locator('[data-run-question]').evaluateAll((els) => els.map((e) => e.getAttribute('data-run-question')));
-  say('What you run asks questions, only for what the plan includes', JSON.stringify(asked) === JSON.stringify(['classes', 'points', 'seasons', 'events', 'gym_chat', 'reels', 'online_pay', 'moments']), JSON.stringify(asked));
+  say('What you run asks questions, only for what the plan includes', JSON.stringify(asked) === JSON.stringify(['classes', 'points', 'events', 'gym_chat', 'reels', 'online_pay', 'moments']), JSON.stringify(asked));
   let t = await text();
   say('…each with one line on what it does, and where to change it later', /Do you run group classes\?/.test(t) && /personal training only/.test(t) && /Your app → What you run/.test(t));
   const pressed = async (key) => page.locator(`[data-run-question="${key}"] [aria-checked="true"]`).innerText();
-  say("…showing today's answers (classes, seasons and events off)", (await pressed('classes')) === 'No' && (await pressed('points')) === 'Yes' && (await pressed('events')) === 'No');
-  say('…a part whose section is on can be answered (seasons, inside points)', (await page.locator('[data-run-question="seasons"] [data-answer="yes"]').isEnabled()));
+  say("…showing today's answers (classes and events off)", (await pressed('classes')) === 'No' && (await pressed('points')) === 'Yes' && (await pressed('events')) === 'No');
+  say('…a part whose section is on can be answered (events, inside announcements)', (await page.locator('[data-run-question="events"] [data-answer="yes"]').isEnabled()));
   await page.screenshot({ path: 'shots/admin-onboarding-questions.png' });
 
   const before = CALLS.length;
@@ -135,7 +135,7 @@ async (page) => {
   say('Yes to classes, No to points, Yes to events each write that switch', JSON.stringify(sets) === JSON.stringify(['classes=true', 'points=false', 'events=true']), JSON.stringify(sets));
   say('No to celebrations turns the moments and their sounds off', PATCHES.some((p) => p.celebrations === false && p.celebration_sounds === false), JSON.stringify(PATCHES));
   say('…and the answer shows at once', (await pressed('classes')) === 'Yes' && (await pressed('moments')) === 'No');
-  say('a question not answered writes nothing (seasons, online payments)', !CALLS.some(([f, b]) => f === 'set_gym_module' && (b.p_feature === 'seasons' || b.p_feature === 'online_pay')));
+  say('a question not answered writes nothing (online payments)', !CALLS.some(([f, b]) => f === 'set_gym_module' && b.p_feature === 'online_pay'));
   // 0245/0246: the gym chat and reels are asked too, and start at No.
   say('the gym chat and reels are asked, and start at No', (await pressed('gym_chat')) === 'No' && (await pressed('reels')) === 'No'
     && /group chat for your gym/.test(await text()) && /YouTube, TikTok, Facebook or Instagram/.test(await text()));

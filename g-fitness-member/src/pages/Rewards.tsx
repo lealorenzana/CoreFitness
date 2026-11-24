@@ -45,7 +45,7 @@ type RewardsTab = 'rewards' | 'challenges';
  * Rewards (simplify, 2026-10-28): points, challenges and spending them, one
  * place — **Rewards** (the balance, what you are saving for, the rewards, your
  * requests, how you earn) and **Challenges** (with this week's quests where the
- * gym runs them). Season and Team are rows here only where the gym runs them.
+ * gym runs them). The record wall is a row here while the gym runs engagement.
  */
 export default function Rewards() {
   const gymApp = useGymApp();
@@ -58,7 +58,7 @@ export default function Rewards() {
   const askedTab = params.get('tab') as RewardsTab | null;
   const rtab: RewardsTab = askedTab && offeredTabs.includes(askedTab) ? askedTab : offeredTabs[0] ?? 'rewards';
   const extras = [
-    { label: 'Season', path: '/member/season', on: moduleOn(gymApp, 'seasons'), icon: Ranking, meta: 'This month’s standings' },
+    { label: 'Records', path: '/member/records', on: moduleOn(gymApp, 'engagement'), icon: Ranking, meta: 'This week’s record wall, and yours' },
   ].filter((x) => x.on);
   const { features } = useFeatures();
   const mayRedeem = isEnabled(features, 'points_redeem');

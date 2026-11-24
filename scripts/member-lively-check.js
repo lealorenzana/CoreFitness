@@ -1,10 +1,9 @@
 /**
  * Wave 2 of the lively member app (2026-10-27, mock-up approved): Today's
  * points chip and tiered flame, Train's week ring and last workout, You as a
- * trophy room (earned level, badges as medals, records), the season ladder
- * with "You" placed by the real score, the podium and your own row, and a
- * challenge you are close to said in amber. Every number from the fixture's
- * real-shaped rows. Setup copied from season-check.js. Member dev server on :5173.
+ * trophy room (earned level, badges as medals, records), and a challenge you
+ * are close to said in amber (the season ladder and podium went with 0275).
+ * Every number from the fixture's real-shaped rows. Setup copied from records-check.js. Member dev server on :5173.
  */
 async (page) => {
   await page.unrouteAll({ behavior: 'ignoreErrors' });
@@ -98,12 +97,6 @@ async (page) => {
     achievement_unlocks: [
       { member_id: 'm1', achievement_key: 'iron', unlocked_on: dstr(-1), seen: true },
       { member_id: 'm1', achievement_key: 'first', unlocked_on: dstr(-40), seen: true }],
-    season_tiers: [
-      { id: 'tB', name: 'Bronze', points_needed: 100, rewards: { name: 'Protein shake' } },
-      { id: 'tS', name: 'Silver', points_needed: 500, rewards: { name: 'Gym shirt' } },
-      { id: 'tG', name: 'Gold', points_needed: 900, rewards: null },
-    ],
-    season_claims: [],
     personal_records: [],
     gym_settings: [{ id: true, gym_name: 'Core Fitness', address: 'Mamburao', phone: null, email: null,
       opening_time: '06:00', closing_time: '21:00', logo_url: null, short_name: 'CF', tagline: null,
@@ -140,16 +133,7 @@ async (page) => {
   let onBoards = false;
   const FN = {
     roll_weekly_quests: () => 1,
-    claim_season_reward: (b) => { DB.season_claims.push({ tier_id: b.p_tier, handed_over_at: null, season_start: dstr(0).slice(0, 8) + '01' }); return 'c1'; },
     set_show_on_boards: (b) => { onBoards = b.p_on; DB.member_profiles[0].show_on_boards = b.p_on; return null; },
-    my_season: () => [{ season_start: dstr(0).slice(0, 8) + '01', season_end: dstr(20), score: 320, rank: 3, members_ranked: 40 }],
-    season_board: () => [
-      { first_name: 'Ben', last_initial: 'C', score: 980, is_me: false },
-      { first_name: 'Ana', last_initial: 'R', score: 900, is_me: false },
-      { first_name: 'Mia', last_initial: 'S', score: 640, is_me: false },
-      { first_name: 'Joy', last_initial: 'T', score: 410, is_me: false },
-      { first_name: 'Lea', last_initial: 'L', score: 320, is_me: true },
-    ],
     pr_wall: () => [{ first_name: 'Ana', last_initial: 'R', exercise_name: 'Deadlift', kind: 'weight', value: 140, achieved_at: new Date().toISOString() }],
     member_personal_records: () => [{ id: 'r1', exercise_name: 'Barbell Squat', kind: 'weight', value: 80, previous: 70, achieved_at: new Date().toISOString() }],
     request_renewal: (b) => { DB.renewal_requests.forEach((r) => { if (r.status === 'open') r.status = 'withdrawn'; });
@@ -262,7 +246,6 @@ async (page) => {
 
   const text = async () => (await page.locator('main').innerText()).replace(/\s+/g, ' ');
 
-  // 1 - the season page.
   // The finished workouts the hero reads its last one from.
   DB.workout_logs.push({ id: 'Lw', member_id: 'm1', activity: 'Push day', routine_id: 'r1', gym_workout_id: null, program_day_id: null,
     created_at: iso(-2, 18, 0), completed_at: iso(-2, 19, 0), duration_minutes: 40, performed_on: dstr(-2) });
@@ -317,28 +300,5 @@ async (page) => {
   out.push('…and one you are close to says so: ' + (/1 more and it is yours/.test(t) ? 'yes' : 'NO'));
   await page.screenshot({ path: 'shots/lively-challenges.png' });
 
-  // 7. Season: the ladder, "You" between Bronze (100) and Silver (500) at 320; the podium; your own row.
-  await go('/member/season');
-  await page.waitForTimeout(2200);
-  const ladder = await page.evaluate(() => {
-    const you = document.querySelector('.season-ladder__you')?.getBoundingClientRect();
-    const rung = (n) => document.querySelector(`[data-rung="${n}"]`)?.getBoundingClientRect();
-    const b = rung(100), s = rung(500);
-    if (!you || !b || !s) return 'missing';
-    const mid = you.top + you.height / 2;
-    return mid < b.top + b.height / 2 && mid > s.top + s.height / 2 ? 'between' : 'outside';
-  });
-  out.push('the season ladder places you between Bronze and Silver: ' + (ladder === 'between' ? 'yes' : 'NO ' + ladder));
-  t = await text();
-  out.push('…the top three stand on a podium: ' + ((await page.locator('[data-podium] .season-podium__step').count()) === 3 && /1\. Ben/.test(t) ? 'yes' : 'NO'));
-  out.push('…and your own row is lit: ' + ((await page.locator('[data-board-me]').count()) === 1 ? 'yes' : 'NO'));
-  await page.screenshot({ path: 'shots/lively-season.png', fullPage: true });
-
-  // 8. Reduced motion: the same screens arrive finished.
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await go('/member/season');
-  await page.waitForTimeout(1200);
-  out.push('with reduced motion the ladder is already placed: ' + ((await page.locator('.season-ladder__you').count()) === 1 ? 'yes' : 'NO'));
-  await page.emulateMedia({ reducedMotion: 'no-preference' });
   return out.join('\n');
 }
