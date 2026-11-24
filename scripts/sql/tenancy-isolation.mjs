@@ -142,6 +142,8 @@ const GLOBAL = [
   'platform_billing', 'platform_receipt_counters', 'platform_capacity_snapshots',
   // 0238: the register of demo gyms for the load test; 0241: the website's words — both the platform's alone.
   'demo_gyms', 'site_texts', 'push_endpoint',
+  // 0262 the gym documents' versions, the maintenance switch, appeals against a platform suspension: no gym_id.
+  'gym_document_versions', 'platform_maintenance', 'platform_appeals',
   'profiles', 'push_subscriptions', 'notification_prefs', 'features', 'achievement_metrics',
   'exercises', 'workout_resources', 'client_errors', 'gyms', 'gym_roles', 'platform_admins', 'gym_applications',
   'platform_events', 'gym_payments', 'platform_plans', 'platform_features', 'platform_plan_features',
