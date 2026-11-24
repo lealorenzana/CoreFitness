@@ -284,3 +284,22 @@
 .today-membership-pass-main > .tabular-nums > span:first-child { font-size: 30px !important; }
 .today-membership-pass-main > svg:last-child { display: none; }
 .today-membership-pass-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 13px; margin-top: 16px; border-top: 1px dashed var(--color-hairline); font-size: 12px; font-weight: 650; color: var(--color-primary-300); }
+
+.today-points-card { display: flex; align-items: center; gap: 12px; width: 100%; padding: 15px 17px; border-radius: 19px; border: 1px solid color-mix(in srgb, var(--color-secondary) 24%, var(--color-hairline)); background: color-mix(in srgb, var(--color-secondary) 6%, var(--color-surface)); text-align: left; }
+.today-points-icon { display: grid; place-items: center; width: 43px; height: 43px; border-radius: 13px; color: var(--color-secondary); background: color-mix(in srgb, var(--color-secondary) 10%, transparent); }
+.today-points-card > span:nth-child(2) { flex: 1; }
+.today-points-card small { display: block; font-size: 12px; color: var(--color-text-secondary); }
+.today-points-card strong { display: block; font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.3; }
+.today-points-link { display: flex; align-items: center; gap: 6px; color: var(--color-secondary); font-size: 12px; font-weight: 650; }
+.today-shop-preview { min-width: 0; }
+.today-shop-preview > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.today-shop-preview h3, .today-shop-preview header button { display: flex; align-items: center; gap: 7px; }
+.today-shop-preview h3 { font-size: 15px; font-weight: 750; }
+.today-shop-preview header button { min-height: 44px; font-size: 12px; color: var(--color-primary-300); }
+.today-shop-items { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+.today-shop-items > button { text-align: left; min-width: 0; padding: 8px; border: 1px solid var(--color-hairline); border-radius: 15px; background: var(--color-surface); }
+.today-shop-image { display: grid; place-items: center; width: 100%; height: 76px; overflow: hidden; border-radius: 10px; color: var(--color-primary-300); background: color-mix(in srgb, var(--color-primary) 9%, var(--color-surface-raised)); }
+.today-shop-image img { width: 100%; height: 100%; object-fit: cover; }
+.today-shop-items strong { display: block; font-size: 12px; line-height: 1.4; margin-top: 9px; overflow-wrap: anywhere; }
+.today-shop-items small { display: block; font-size: 12px; color: var(--color-text-secondary); margin-top: 4px; }
+.today-shop-preview > p { margin-top: 10px; font-size: 12px; color: var(--color-text-secondary); line-height: 1.5; }

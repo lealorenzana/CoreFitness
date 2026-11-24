@@ -1,0 +1,64 @@
+.member-gym-plan { --plan-edge: color-mix(in srgb, var(--color-primary) 22%, var(--color-hairline)); }
+.member-gym-plan .gym-plan-week { border-radius: 21px; border-color: var(--plan-edge); background: var(--color-surface); box-shadow: none; padding: 17px; }
+.gym-plan-days, .gym-plan-routines, .gym-plan-reminder { padding: 18px 16px; border-radius: 22px; border: 1px solid var(--plan-edge); background: var(--color-surface); }
+.gym-plan-days > .flex-wrap, .gym-plan-reminder > .flex-wrap { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px !important; }
+.member-gym-plan .orb-cell { min-height: 44px; white-space: normal; font-size: 12px !important; line-height: 1.4; border-radius: 12px !important; }
+.member-gym-plan .orb-cell[aria-pressed="true"] { background: var(--fill-primary, var(--color-primary)); color: #fff !important; border-color: transparent; }
+.member-gym-plan .art-calendar--gym { max-width: none; margin-top: 20px; color: var(--color-text-primary); }
+.member-gym-plan .art-calendar-content { padding: 0; }
+.member-gym-plan .art-calendar-nav { padding: 12px 0; margin-bottom: 12px; border-top: 1px solid var(--color-hairline); border-bottom: 1px solid var(--color-hairline); }
+.member-gym-plan .art-calendar-nav h2 { color: var(--color-text-primary); font-size: 19px; }
+.member-gym-plan .art-calendar-nav button { border-radius: 12px; background: var(--color-surface-raised); color: var(--color-primary-300); border: 1px solid var(--color-hairline); }
+.member-gym-plan .art-calendar-grid { background: none !important; gap: 3px; }
+.member-gym-plan .art-calendar-weekday { color: var(--color-text-secondary); font-size: 11px; }
+.member-gym-plan .art-calendar-day { color: var(--color-text-primary); border-radius: 11px; }
+.member-gym-plan .art-calendar-day.is-marked { background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface)); }
+.member-gym-plan .art-calendar-day.is-selected { background: var(--fill-primary, var(--color-primary)); color: #fff; }
+.member-gym-plan .art-calendar-day[aria-current="date"] { outline-color: var(--color-primary-300); }
+.member-gym-plan .art-calendar-hint { color: var(--color-text-muted); font-size: 11px; }
+.member-gym-plan .calendar-explainer { font-size: 12px; line-height: 1.6; color: var(--color-text-secondary); }
+.member-gym-plan .plan-day { border-radius: 15px; border-color: var(--plan-edge); background: var(--color-surface-raised); padding: 13px; }
+.member-gym-plan .plan-day__tile { border-radius: 11px; box-shadow: none; }
+.member-gym-plan .plan-day__select { border-radius: 10px; min-height: 44px; }
+.member-gym-plan .gym-plan-reminder > label { border-radius: 13px !important; min-height: 54px; }
+.member-gym-plan .gym-plan-reminder input { font-variant-numeric: tabular-nums; }
+.member-gym-plan [aria-label="Unsaved changes"] { background: var(--raised-solid, var(--color-surface-raised)) !important; border-color: var(--plan-edge) !important; }
+.member-gym-plan button:focus-visible { outline: 2px solid var(--color-primary-300); outline-offset: 3px; }
+@media (min-width: 700px) { .gym-plan-days, .gym-plan-routines, .gym-plan-reminder { padding: 22px; } .gym-plan-days > .flex-wrap { grid-template-columns: repeat(4, minmax(0, 1fr)); } .member-gym-plan .art-calendar-grid { grid-template-rows: 24px repeat(6, 50px); } }
+@media (prefers-reduced-motion: reduce) { .member-gym-plan * { animation: none !important; transition: none !important; } }
+
+/* The planner uses the same compact title/action row and glass as Today. */
+.member-clean-shell .member-gym-plan > .member-page-header { display: flex; flex-direction: row; align-items: center; gap: 9px; top: 0; margin-top: 0; padding-top: 10px; padding-bottom: 12px; }
+.member-clean-shell .member-gym-plan > .member-page-header > button { width: 32px; min-height: 44px; flex: none; font-size: 0 !important; justify-content: center; gap: 0 !important; }
+.member-clean-shell .member-gym-plan > .member-page-header > button svg { width: 18px; height: 18px; }
+.member-clean-shell .member-gym-plan > .member-page-header > .member-title-row { flex: 1; min-width: 0; }
+.member-clean-shell .member-gym-plan > .member-page-header h1 { font-size: 20px !important; }
+.member-clean-shell .member-gym-plan > .member-page-header .member-title-row p { font-size: 11px !important; }
+.gym-plan-header-actions { display: flex; align-items: center; gap: 10px; }
+.gym-plan-intro { position: relative; display: flex; align-items: center; min-height: 185px; isolation: isolate; }
+.gym-plan-intro > div:first-child { max-width: 58%; }
+.gym-plan-intro > div > span { font-size: 12px; color: var(--color-primary-300); font-weight: 550; }
+.gym-plan-intro h2 { margin-top: 9px; font-size: clamp(26px, 7vw, 34px); line-height: 1.08; letter-spacing: -.045em; font-weight: 850; text-wrap: balance; }
+.gym-plan-intro p { font-size: 12px; line-height: 1.6; color: var(--color-text-secondary); margin-top: 12px; }
+.gym-plan-mascot { position: absolute; right: -2px; top: 10px; width: 43%; height: 165px; border: 0; background: transparent; border-radius: 20px; }
+.gym-plan-mascot-image { display: block; position: relative; width: 100%; height: 100%; isolation: isolate; }
+.gym-plan-mascot-image img { width: 100%; height: 100%; object-fit: contain; filter: grayscale(1); }
+.gym-plan-mascot-image > span { position: absolute; inset: 0; background: var(--color-primary); mix-blend-mode: color; mask: url('/images/planner-calendar-companion.png') center / contain no-repeat; -webkit-mask: url('/images/planner-calendar-companion.png') center / contain no-repeat; }
+.gym-plan-mascot > i { position: absolute; top: 22px; right: 8px; width: 5px; height: 5px; background: var(--color-secondary); border-radius: 2px; transform: rotate(35deg); }
+.gym-plan-mascot > i:last-child { top: auto; bottom: 20px; left: 8px; width: 4px; height: 4px; }
+@media (min-width: 700px) { .gym-plan-intro { min-height: 210px; } .gym-plan-mascot { right: 12%; width: 190px; height: 200px; top: 0; } .gym-plan-intro h2 { max-width: 13ch; } }
+@media (prefers-reduced-motion: no-preference) { .gym-plan-mascot-image { animation: planner-idle 4.4s ease-in-out infinite; } .gym-plan-mascot > i { animation: planner-spark 3s ease-in-out infinite alternate; } }
+@keyframes planner-idle { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-7px) rotate(2deg); } }
+@keyframes planner-spark { from { opacity: .25; scale: .7; } to { opacity: 1; scale: 1.2; } }
+
+.gym-plan-days-intro { margin-top: 9px; font-size: 12px; line-height: 1.65; color: var(--color-text-secondary); max-width: 58ch; }
+.gym-plan-calendar-key { display: flex; flex-wrap: wrap; gap: 9px 16px; margin: 15px 0; font-size: 11px; color: var(--color-text-secondary); }
+.gym-plan-calendar-key > span { display: flex; align-items: center; gap: 6px; }
+.gym-plan-calendar-key i { width: 12px; height: 12px; border-radius: 4px; background: var(--color-surface-raised); border: 1px solid var(--color-hairline); }
+.gym-plan-calendar-key .is-training { background: var(--fill-primary, var(--color-primary)); border-color: transparent; }
+.gym-plan-calendar-key .is-today { background: transparent; border-color: var(--color-primary-300); }
+.gym-plan-selection { display: flex; align-items: flex-start; gap: 10px; padding: 13px; border-radius: 14px; border: 1px solid var(--plan-edge); background: color-mix(in srgb, var(--color-primary) 7%, var(--color-surface-raised)); }
+.gym-plan-selection > svg { color: var(--color-primary-300); flex: none; margin-top: 2px; }
+.gym-plan-selection strong { font-size: 13px; font-weight: 700; line-height: 1.5; }
+.gym-plan-selection p { margin-top: 3px; font-size: 12px; line-height: 1.5; color: var(--color-text-secondary); }
+.gym-plan-booking-note { margin-top: 12px; font-size: 12px; line-height: 1.6; color: var(--color-text-muted); }

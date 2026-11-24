@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import './routines.css';
 import { agoLabel as ago } from '../utils/dates';
 import { supabase } from '../lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
@@ -101,8 +102,12 @@ export default function Routines() {
 
   return (
     <FeatureLock feature="workout_tracker" context={<Page>{title}</Page>}>
-      <Page>
+      <Page className="member-routines">
         {title}
+        <section className="routines-welcome" aria-label="Your workout library">
+          <div><span>Your workout library</span><h2>Ready to repeat.</h2><p>Build a workout once. Keep your exercises, sets, and reps ready for next time.</p></div>
+          <div className="routines-welcome-art" aria-hidden="true"><img src="/images/train-free-workouts.png" alt="" /><span /></div>
+        </section>
 
         {error && <p role="alert" style={{ fontSize: 13, color: 'var(--color-secondary)' }}>{error}</p>}
 
@@ -111,7 +116,7 @@ export default function Routines() {
             {/* A workout already under way comes first — it is the one thing
                 the member most likely came back for. */}
             {open && (
-              <Panel glow="action">
+              <Panel glow="action" className="routines-active-session">
                 <Eyebrow tone="action">In progress</Eyebrow>
                 <p className="flex items-center" style={{ gap: 8, marginTop: 6, fontSize: 18, fontWeight: 700, color: 'var(--color-text-primary)' }}>
                   <Lightning size={18} weight="fill" style={{ color: 'var(--color-secondary)' }} />
@@ -133,8 +138,9 @@ export default function Routines() {
               </Panel>
             )}
 
-            <section>
+            <section className="routines-list-section">
               <SectionHead title="Your routines" meta={routines.length > 0 ? `${routines.length}` : undefined} />
+              <NocButton variant="action" className="w-full routines-create" icon={<Plus size={16} weight="bold" />} onClick={() => navigate('/member/track/routine/new')}>New routine</NocButton>
               {routines.length === 0 ? (
                 <div style={{ padding: '14px 0 4px' }}>
                   <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>No routines yet</p>
@@ -147,7 +153,7 @@ export default function Routines() {
                 <div className="noc-rows" style={{ marginTop: 6 }}>
                   {routines.map((r, i) => (
                     <div key={r.id}>
-                      <div className="flex items-center" style={{ gap: 12, padding: '13px 0' }}>
+                      <div className="flex items-center routines-item-row" style={{ gap: 12, padding: '13px 0' }}>
                         <button onClick={() => navigate(`/member/track/routine/${r.id}`)}
                           className="flex-1 min-w-0 flex items-center text-left noc-row" style={{ gap: 12 }}>
                           <span className="flex-none grid place-items-center orb-cell orb-cell--busy"
@@ -189,14 +195,9 @@ export default function Routines() {
               )}
             </section>
 
-            <NocButton variant="action" className="w-full" icon={<Plus size={16} weight="bold" />}
-              onClick={() => navigate('/member/track/routine/new')}>
-              New routine
-            </NocButton>
-
             {/* The free-form log, kept for a session that follows no routine. */}
             <button onClick={() => navigate('/member/track/log')}
-              className="w-full flex items-center justify-between text-left noc-row"
+              className="w-full flex items-center justify-between text-left noc-row routines-free-log"
               style={{ padding: '12px 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>
               <span>Log a workout without a routine</span>
               <CaretRight size={14} />

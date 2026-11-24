@@ -28,7 +28,8 @@ export default function EverythingSheet({ open, onClose, onGo }: { open: boolean
   useEffect(() => {
     if (!open) return;
     const previousFocus = document.activeElement as HTMLElement | null;
-    dialog.current?.querySelector<HTMLInputElement>('input')?.focus();
+    // Keep focus inside the sheet without opening the phone's keyboard.
+    dialog.current?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
       if (e.key !== 'Tab') return;

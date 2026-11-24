@@ -21,3 +21,7 @@
 /* Assistant owns its compact toolbar and keeps its composer in a fixed column. */
 .member-clean-shell .member-assistant .member-page-header { position: static; margin: 0; padding: 0; border: 0; background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; }
 :root[data-mode="light"] .member-clean-shell { --member-header-glass: color-mix(in srgb, var(--color-bg) 65%, transparent); }
+
+.member-header-points { display: inline-flex; align-items: center; justify-content: center; gap: 5px; flex: none; align-self: center; min-height: 32px; padding: 4px 9px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--color-secondary) 23%, transparent); color: var(--color-secondary); background: color-mix(in srgb, var(--color-secondary) 7%, transparent); }
+.member-header-points strong { font-size: 12px; line-height: 1; font-weight: 750; font-variant-numeric: tabular-nums; }
+.member-header-points:focus-visible { outline: 2px solid var(--color-secondary); outline-offset: 2px; }

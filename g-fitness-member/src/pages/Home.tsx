@@ -1,3 +1,4 @@
+import { TodayShopPreview } from '../components/home/TodayExtrasCards';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import DailyArrival from '../components/moments/DailyArrival';
 import WhatsNew from '../components/WhatsNew';
@@ -319,90 +320,12 @@ export default function Home() {
   return (
     <Page className="member-calm-home today-story-page">
       <TodayStory>
+
       <TodayHero checkedIn={liveCheckedIn ?? home.checkedInToday} unavailable={home.frozen || home.expired}
         onContinue={() => {
           dayHeadingRef.current?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
           dayHeadingRef.current?.focus({ preventScroll: true });
         }} />
-      {/* What changed in the app (0212), once. */}
-      <WhatsNew app="member" />
-
-      {/* The first open of the day (wave 1): streak and earned level, then it folds away. */}
-
-      <div ref={dayHeadingRef} tabIndex={-1} className="today-chapter" data-today-reveal>
-        <span aria-hidden="true">01</span><div><h2>{t('Your next steps')}</h2><p>{t('A little movement starts here.')}</p></div>
-      </div>
-      {/* ── The day: Now, Today, a date, Later — each label once, at the top of its group ── */}
-      <section aria-label="Your day" className="noc-rows" data-today-timeline>
-        {entries.filter((entry) => entry.key !== 'end').map((e, i) => {
-          const head = i === 0 || entries[i - 1].gutter !== e.gutter;
-          const content = (
-            <>
-              <span className="block" style={{
-                fontSize: 15, fontWeight: 600,
-                color: e.titleMuted ? 'var(--color-text-muted)' : 'var(--color-text-primary)',
-              }}>
-                {e.title}
-              </span>
-              {e.meta && (
-                <span className="block" style={{ fontSize: 12.5, marginTop: 3, lineHeight: 1.45, color: 'var(--color-text-muted)' }}>
-                  {e.meta}
-                </span>
-              )}
-              {e.progress != null && <span className="block" style={{ marginTop: 8 }}><ProgressBar fraction={e.progress} /></span>}
-              {e.pill && <span className="block" style={{ marginTop: 8 }}><StatusPill {...e.pill} /></span>}
-              {e.action && (
-                <span className="inline-block" style={{ marginTop: 8, fontSize: 12.5, fontWeight: 600, color: 'var(--color-secondary)' }}>
-                  {e.action}
-                </span>
-              )}
-            </>
-          );
-          return (
-            <div key={e.key} className="flex" style={{ gap: 14 }} data-today-reveal data-timeline-group={head ? e.gutter : undefined}>
-              <span className="flex-none" style={{ width: 44, paddingTop: 2, fontSize: 12,
-                color: e.live ? 'var(--color-primary-300)' : 'var(--color-text-muted)', fontWeight: e.live ? 600 : 400 }}>
-                {head ? e.gutter : ''}
-              </span>
-              <div className="relative flex-1 min-w-0" style={{
-                borderLeft: '1px solid rgb(var(--hair-rgb, 233 233 237) / 0.12)',
-                paddingLeft: 16,
-                paddingBottom: i === entries.length - 1 ? 0 : 20,
-              }}>
-                <span aria-hidden className="absolute rounded-full" style={{
-                  left: -4, top: 6, width: 7, height: 7,
-                  background: e.live ? 'var(--color-primary)' : 'var(--color-surface-high)',
-                  boxShadow: e.live ? '0 0 9px var(--color-primary)' : '0 0 0 1px rgb(var(--hair-rgb, 233 233 237) / 0.18)',
-                }} />
-                {e.card ? (
-                  <WorkoutSwitcher programs={moduleOn(gymApp, 'programs')}>
-                  <div data-today-workout style={{ border: '1px solid var(--color-hairline)', borderRadius: 14,
-                    background: 'var(--color-surface)', padding: 12 }}>
-                    {content}
-                    <span className="block" style={{ marginTop: 10 }}>
-                      <NocButton variant="fill" className="w-full" onClick={e.onClick}
-                        icon={e.card.locked ? <Lock size={15} aria-label="Not on your plan" /> : <Barbell size={15} />}>
-                        {e.card.label}
-                      </NocButton>
-                    </span>
-                  </div>
-                  </WorkoutSwitcher>
-                ) : e.onClick
-                  ? <button onClick={e.onClick} className="w-full text-left block">{content}</button>
-                  : <div>{content}</div>}
-              </div>
-            </div>
-          );
-        })}
-      {!entries.some(e => e.card) && moduleOn(gymApp, 'programs') && <ProgramNext />}
-      </section>
-
-      <div data-today-reveal><BookTimeRow /></div>
-      <section className="today-story-section" aria-labelledby="today-week-title">
-      <div className="today-chapter" data-today-reveal><span aria-hidden="true">02</span><div><h2 id="today-week-title">{t('Your calendar and membership')}</h2><p>{t('Every visit is a step forward.')}</p></div></div>
-      <div className="member-home-fold-body" data-today-reveal>
-      <DailyArrival />
-      <TodayCalendar planned={planned} remindAt={extras?.remindAt} showStreak={moduleOn(gymApp, 'streaks')} slots={moduleOn(gymApp, 'slots')} />
       {/* ── The strip: membership, this month, this week, the streak ── */}
       <div className="flex flex-col" style={{ gap: 10 }}>
         {/* Your membership, one tap from home (owner, 2026-11-11: "I have a hard time finding it"). It was only a grey
@@ -488,9 +411,89 @@ export default function Home() {
         )}
       </div>
 
+      {/* What changed in the app (0212), once. */}
+      <WhatsNew app="member" />
+
+      {/* The first open of the day (wave 1): streak and earned level, then it folds away. */}
+
+      <div ref={dayHeadingRef} tabIndex={-1} className="today-chapter" data-today-reveal>
+        <span aria-hidden="true">01</span><div><h2>{t('Your next steps')}</h2><p>{t('A little movement starts here.')}</p></div>
+      </div>
+      {/* ── The day: Now, Today, a date, Later — each label once, at the top of its group ── */}
+      <section aria-label="Your day" className="noc-rows" data-today-timeline>
+        {entries.filter((entry) => entry.key !== 'end').map((e, i) => {
+          const head = i === 0 || entries[i - 1].gutter !== e.gutter;
+          const content = (
+            <>
+              <span className="block" style={{
+                fontSize: 15, fontWeight: 600,
+                color: e.titleMuted ? 'var(--color-text-muted)' : 'var(--color-text-primary)',
+              }}>
+                {e.title}
+              </span>
+              {e.meta && (
+                <span className="block" style={{ fontSize: 12.5, marginTop: 3, lineHeight: 1.45, color: 'var(--color-text-muted)' }}>
+                  {e.meta}
+                </span>
+              )}
+              {e.progress != null && <span className="block" style={{ marginTop: 8 }}><ProgressBar fraction={e.progress} /></span>}
+              {e.pill && <span className="block" style={{ marginTop: 8 }}><StatusPill {...e.pill} /></span>}
+              {e.action && (
+                <span className="inline-block" style={{ marginTop: 8, fontSize: 12.5, fontWeight: 600, color: 'var(--color-secondary)' }}>
+                  {e.action}
+                </span>
+              )}
+            </>
+          );
+          return (
+            <div key={e.key} className="flex" style={{ gap: 14 }} data-today-reveal data-timeline-group={head ? e.gutter : undefined}>
+              <span className="flex-none" style={{ width: 44, paddingTop: 2, fontSize: 12,
+                color: e.live ? 'var(--color-primary-300)' : 'var(--color-text-muted)', fontWeight: e.live ? 600 : 400 }}>
+                {head ? e.gutter : ''}
+              </span>
+              <div className="relative flex-1 min-w-0" style={{
+                borderLeft: '1px solid rgb(var(--hair-rgb, 233 233 237) / 0.12)',
+                paddingLeft: 16,
+                paddingBottom: i === entries.length - 1 ? 0 : 20,
+              }}>
+                <span aria-hidden className="absolute rounded-full" style={{
+                  left: -4, top: 6, width: 7, height: 7,
+                  background: e.live ? 'var(--color-primary)' : 'var(--color-surface-high)',
+                  boxShadow: e.live ? '0 0 9px var(--color-primary)' : '0 0 0 1px rgb(var(--hair-rgb, 233 233 237) / 0.18)',
+                }} />
+                {e.card ? (
+                  <WorkoutSwitcher programs={moduleOn(gymApp, 'programs')}>
+                  <div data-today-workout style={{ border: '1px solid var(--color-hairline)', borderRadius: 14,
+                    background: 'var(--color-surface)', padding: 12 }}>
+                    {content}
+                    <span className="block" style={{ marginTop: 10 }}>
+                      <NocButton variant="fill" className="w-full" onClick={e.onClick}
+                        icon={e.card.locked ? <Lock size={15} aria-label="Not on your plan" /> : <Barbell size={15} />}>
+                        {e.card.label}
+                      </NocButton>
+                    </span>
+                  </div>
+                  </WorkoutSwitcher>
+                ) : e.onClick
+                  ? <button onClick={e.onClick} className="w-full text-left block">{content}</button>
+                  : <div>{content}</div>}
+              </div>
+            </div>
+          );
+        })}
+      {!entries.some(e => e.card) && moduleOn(gymApp, 'programs') && <ProgramNext />}
+      </section>
+
+      <div data-today-reveal><BookTimeRow /></div>
+      <section className="today-story-section" aria-labelledby="today-week-title">
+      <div className="today-chapter" data-today-reveal><span aria-hidden="true">02</span><div><h2 id="today-week-title">{t('Your calendar')}</h2><p>{t('Every visit is a step forward.')}</p></div></div>
+      <div className="member-home-fold-body" data-today-reveal>
+      <DailyArrival />
+      <TodayCalendar planned={planned} remindAt={extras?.remindAt} showStreak={moduleOn(gymApp, 'streaks')} slots={moduleOn(gymApp, 'slots')} />
       </div></section>
       <GymUpdatesPanel>
         <ReelsStrip />
+        {gymApp && moduleOn(gymApp, 'shop') && <TodayShopPreview />}
         {moduleOn(gymApp, 'engagement') && <GymGoalStrip />}
       </GymUpdatesPanel>
 
@@ -508,6 +511,3 @@ export default function Home() {
     </Page>
   );
 }
-
-
-

@@ -1,4 +1,7 @@
 import type { ReactNode } from 'react';
+import { TodayPoints } from '../home/TodayExtrasCards';
+import { useGymApp } from '../../hooks/useGymApp';
+import { moduleOn } from '../../lib/gymApp';
 import { useNavigate } from 'react-router-dom';
 import { ChatsCircle, GearSix } from '@phosphor-icons/react';
 import Notifications from '../Notifications';
@@ -85,6 +88,7 @@ export function IconButton({
  * Only on the three roots: a pushed screen has its own "Back" header.
  */
 export default function TabHeader({ tab }: { tab: Tab }) {
+  const gymApp = useGymApp();
   const navigate = useNavigate();
   const override = useTabHeaderOverride(tab.id);
   const now = new Date();
@@ -150,6 +154,7 @@ export default function TabHeader({ tab }: { tab: Tab }) {
           </span>
         </h1>
         {!isToday && <div style={{ paddingTop: 22 }}>{actions}</div>}
+        {isToday && gymApp && moduleOn(gymApp, 'points') && <TodayPoints />}
         {/* Wave 2: the member's points beside the date, counting up when they changed. */}
 
       </div>

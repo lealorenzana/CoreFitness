@@ -1,6 +1,9 @@
+import './gym-plan.css';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowCounterClockwise, BellSlash, CalendarCheck, Fire, Info, Lightbulb } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, BellSlash, CalendarCheck, Fire, Info, Lightbulb, GearSix } from '@phosphor-icons/react';
+import Notifications from '../components/Notifications';
+import { IconButton } from '../components/layout/TabHeader';
 
 import { SkeletonList } from '../components/ui/Skeleton';
 import { toast } from '../components/ui/Toast';
@@ -122,19 +125,26 @@ export default function GymPlan() {
   const suggestion = view?.usualCheckIn ? suggestReminder(view.usualCheckIn) : null;
 
   return (
-    <Page>
+    <Page className="member-gym-plan">
       <PageTitle back fallback="/member/book-class?tab=workout" title="Plan your week"
         subtitle={loading ? 'Pick your days and when to be reminded'
           : saved.length === 0 ? 'No days chosen yet'
-          : `${saved.length} ${saved.length === 1 ? 'day' : 'days'} a week · reminder at ${formatRemindAt(view!.remindAt)}`} />
+          : `${saved.length} ${saved.length === 1 ? 'day' : 'days'} a week · reminder at ${formatRemindAt(view!.remindAt)}`}
+        action={<div className="gym-plan-header-actions"><Notifications /><IconButton label="Settings" onClick={() => navigate('/member/settings')}><GearSix size={17} /></IconButton></div>} />
 
       {loading || !view ? (
         <SkeletonList count={4} />
       ) : (
         <>
+          <section className="gym-plan-intro" aria-label="Your weekly rhythm">
+            <div><span>Your rhythm</span><h2>A week that works for you</h2><p>Choose your days. Find your routine. We’ll remind you.</p></div>
+            <button type="button" className="gym-plan-mascot" aria-label="Animate your calendar companion" onClick={event => {
+              if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) event.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'translateY(-9px) rotate(5deg) scale(1.05)' }, { transform: 'scale(1)' }], { duration: 550, easing: 'ease-in-out' });
+            }}><span className="gym-plan-mascot-image"><img src="/images/planner-calendar-companion.png" alt="" /><span /></span><i /><i /></button>
+          </section>
           {/* ── This week ── */}
           {saved.length > 0 ? (
-            <Panel glow="structure">
+            <Panel glow="structure" className="gym-plan-week">
               <div className="flex items-center justify-between" style={{ gap: 10 }}>
                 <Eyebrow>This week</Eyebrow>
                 {streaksOn && view.streakWeeks != null && view.streakWeeks > 0 && (
@@ -163,7 +173,7 @@ export default function GymPlan() {
               )}
             </Panel>
           ) : (
-            <Panel glow="action">
+            <Panel glow="action" className="gym-plan-week">
               <Eyebrow tone="action">Start a habit</Eyebrow>
               <p style={{ fontSize: 17, fontWeight: 700, marginTop: 8, color: 'var(--color-text-primary)' }}>
                 Pick the days you train
@@ -176,19 +186,23 @@ export default function GymPlan() {
           )}
 
           {/* ── Days ── */}
-          <section>
-            <SectionHead title="Days" meta={`${days.length} a week`} />
+          <section className="gym-plan-days">
+            <SectionHead title="Your training days" meta={`${days.length} selected`} />
+            <p className="gym-plan-days-intro">Pick the weekdays you want to train. Your choices repeat every week. Use a quick schedule below, or tap a date to change its weekday.</p>
             {/* Wrapping, not a sideways scroll: "Every day" was cut off at the edge (2026-11-07). */}
             <div className="flex flex-wrap" style={{ gap: 8, marginTop: 12 }}>
               {DAY_PRESETS.map((p) => (
                 <Chip key={p.label} label={p.label} on={samePreset(p.days)} onClick={() => applyPreset(p.days)} />
               ))}
             </div>
-            <ArtCalendar month={calendarMonth} onMonthChange={setCalendarMonth} label="Training days calendar"
+            <ArtCalendar appearance="gym" month={calendarMonth} onMonthChange={setCalendarMonth} label="Training days calendar"
+                caption="Tap a date to select or remove that weekday every week."
               onSelect={(day) => toggleDay(day.getDay())}
               dayState={(day) => ({ marked: days.includes(day.getDay()), selected: days.includes(day.getDay()),
                 description: days.includes(day.getDay()) ? 'Weekly training day. Tap to remove this weekday' : 'Tap to train on this weekday each week' })} />
-            <p className="calendar-explainer">Choose a date to turn that weekday on or off for every week. Save below when you’re ready.</p>
+            <div className="gym-plan-calendar-key" aria-label="Calendar legend"><span><i className="is-training" />Training day</span><span><i className="is-today" />Today</span><span><i />Not selected</span></div>
+            <div className="gym-plan-selection" aria-live="polite"><CalendarCheck size={21} weight="duotone" aria-hidden="true" /><div><strong>{days.length ? `Every ${days.map(d => DAY_LABELS[d]).join(' · ')}` : 'Choose your training days'}</strong><p>{days.length ? `${days.length} ${days.length === 1 ? 'day' : 'days'} each week. ${dirty ? 'Save plan below to keep your changes.' : 'Your schedule is saved.'}` : 'Tap a date or quick schedule to start.'}</p></div></div>
+            <p className="gym-plan-booking-note">This is your personal training schedule. Classes and coach sessions are booked separately.</p>
             {!perDayRows && days.some(coachSet) && (
               <p style={{ fontSize: 12, marginTop: 10, color: 'var(--color-primary-300)' }}>
                 Set by the coach: {days.filter(coachSet).map((d) => DAY_LABELS[d]).join(' · ')}
@@ -203,7 +217,7 @@ export default function GymPlan() {
 
           {/* ── What you train on each day (0089) ── */}
           {days.length > 0 && view.routinesSupported && (
-            <section>
+            <section className="gym-plan-routines">
               <SectionHead title="On each day" meta="Optional" />
               {routines && routines.length > 0 ? (
                 <>
@@ -251,7 +265,7 @@ export default function GymPlan() {
           )}
 
           {/* ── Reminder ── */}
-          <section>
+          <section className="gym-plan-reminder">
             <SectionHead title="Reminder" meta="Same time every chosen day" />
             <div className="flex flex-wrap" style={{ gap: 8, marginTop: 12 }}>
               {TIME_PRESETS.map((t) => (

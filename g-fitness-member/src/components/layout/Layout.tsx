@@ -151,7 +151,7 @@ export default function Layout() {
           paddingLeft: immersive ? 0 : 'var(--gutter)',
           paddingRight: immersive ? 0 : 'var(--gutter)',
           // A root's header already ends in the rail's own padding.
-          paddingTop: immersive ? 0 : root ? 4 : 'var(--gutter)',
+          paddingTop: immersive ? 0 : root ? 4 : 0,
           // The floating bubble parks over the bottom-right corner; room under the
           // last row means scrolling to the end always uncovers it (0213).
           paddingBottom: floating && !fills && !immersive ? 72 : undefined,

@@ -47,10 +47,11 @@ export default function ArtCalendar({ month, onMonthChange, selected, onSelect, 
         }} onClickCapture={(e) => { if (swiped.current) { e.preventDefault(); e.stopPropagation(); swiped.current = false; } }}>
         <AnimatePresence initial={false} custom={direction} mode="popLayout">
           <motion.div key={key} data-calendar-month={key} custom={direction} className="art-calendar-grid" aria-labelledby={titleId}
+            style={appearance === 'gym' ? { gridTemplateRows: `24px repeat(${Math.ceil((first.getDay() + total) / 7)}, minmax(44px, auto))` } : undefined}
             variants={{ enter: (d: number) => ({ x: reduce ? 0 : `${d * 100}%`, opacity: 0 }), center: { x: 0, opacity: 1 }, exit: (d: number) => ({ x: reduce ? 0 : `${d * -100}%`, opacity: 0 }) }}
             initial="enter" animate="center" exit="exit" transition={{ duration: reduce ? 0 : .3, ease: [.22, 1, .36, 1] }}>
             {DAYS.map((name) => <span key={name} className="art-calendar-weekday">{name}</span>)}
-            {Array.from({ length: 42 }, (_, cell) => {
+            {Array.from({ length: appearance === 'gym' ? Math.ceil((first.getDay() + total) / 7) * 7 : 42 }, (_, cell) => {
               const n = cell - first.getDay() + 1;
               if (n < 1 || n > total) return <span key={`blank-${cell}`} aria-hidden="true" />;
               const day = new Date(month.getFullYear(), month.getMonth(), n);
