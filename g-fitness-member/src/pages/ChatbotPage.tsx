@@ -1,7 +1,9 @@
 import { usePointsOn } from '../hooks/usePointsOn';
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PaperPlaneRight, Trash } from '@phosphor-icons/react';
+import { PaperPlaneRight, Trash, Plus, ChatsCircle, SlidersHorizontal, Sparkle, X } from '@phosphor-icons/react';
+import { TodayCompanion } from '../components/home/TodayStory';
+import './assistant.css';
 import RichText from '../components/ui/RichText';
 import { PageTitle } from '../components/ui/page';
 import { Chip } from '../components/ui/noc';
@@ -499,17 +501,19 @@ function Assistant() {
   return (
     // flex-1 against Layout's page column; min-h-0 is what lets the transcript
     // scroll rather than stretching the page and stranding the composer.
-    <div className="flex-1 min-h-0 flex flex-col relative">
-      <div className="flex-shrink-0" style={{ paddingBottom: 10 }}>
+    <div className="flex-1 min-h-0 flex flex-col relative member-assistant">
+      <div className="assistant-backdrop" aria-hidden="true"><i /><span /><div className="assistant-brand-art"><TodayCompanion /></div></div>
+      <div className="flex-shrink-0 assistant-header" style={{ paddingBottom: 10 }}>
         {/* Rule-based first, and says so: it answers from a fixed set of topics
             plus your own membership data — calling that "AI" oversells it. */}
-        <PageTitle back title="Assistant"
+        <div className="assistant-title-area"><PageTitle back hub={false} title="Assistant"
           subtitle={coach?.allowed ? 'Gym answers from the app · training help from the assistant' : 'Answers about your account and the gym'} />
-        <div className="flex flex-wrap items-center" style={{ columnGap: 18, rowGap: 0, marginTop: 10, fontSize: 13 }}>
-          <button onClick={startNew} style={{ height: 32, color: 'var(--color-secondary)' }}>New chat</button>
+          </div>
+        <div className="flex flex-wrap items-center assistant-tools" style={{ columnGap: 18, rowGap: 0, marginTop: 10, fontSize: 13 }}>
+          <button onClick={startNew} style={{ height: 32, color: 'var(--color-secondary)' }}><Plus size={15} aria-hidden="true" />New chat</button>
           <button onClick={() => { setConfirmDelete(null); setHistoryOpen(true); }}
             style={{ height: 32, color: 'var(--color-primary-300)' }}>
-            Saved chats{conversations.length > 0 ? ` · ${conversations.length}` : ''}
+            <ChatsCircle size={15} aria-hidden="true" />Saved chats{conversations.length > 0 ? ` · ${conversations.length}` : ''}
           </button>
           {coach?.allowed && coach.onboarded && !setupOpen && (
             <button onClick={() => { setSetupFailed(false); setRedoSetup(true); }}
@@ -520,12 +524,10 @@ function Assistant() {
               non-member or a gym with the coach switched off has nothing here. */}
           {coach && coach.reason !== 'not_member' && coach.reason !== 'switched_off' && (
             <button onClick={() => setChangesOpen(true)}
-              style={{ height: 32, color: 'var(--color-primary-300)' }}>Changes from the assistant</button>
-          )}
-          {coach?.allowed && (
-            <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{coach.used_today} of {coach.daily_limit} assistant messages today</span>
+              aria-label="Changes from the assistant" style={{ height: 32, color: 'var(--color-primary-300)' }}><SlidersHorizontal size={15} aria-hidden="true" />Changes</button>
           )}
         </div>
+        {coach?.allowed && <p className="assistant-usage">{coach.used_today} of {coach.daily_limit} assistant messages today</p>}
         <div className="rule" style={{ marginTop: 8 }} />
       </div>
 
@@ -537,7 +539,7 @@ function Assistant() {
         </p>
       )}
 
-      <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto scrollbar-hide flex flex-col" style={{ gap: 12, padding: '4px 0' }}
+      <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto scrollbar-hide flex flex-col assistant-transcript" style={{ gap: 12, padding: '4px 0' }}
         onScroll={(e) => {
           const el = e.currentTarget;
           atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
@@ -560,11 +562,11 @@ function Assistant() {
                 <div className="w-full flex flex-col items-start" style={{ gap: 10 }}>
                   {working[m.id] && <CoachWorking label={working[m.id]!} />}
                   {m.text && (
-                    <div className="max-w-[88%]" style={{
+                    <div className="max-w-[88%] assistant-message" style={{
                       paddingLeft: 12, fontSize: 13.5, lineHeight: 1.6, color: 'var(--color-text-secondary)',
                       borderLeft: '2px solid var(--color-primary)',
                     }}>
-                      <RichText text={m.text} />
+                      <span className="assistant-message-label"><Sparkle size={12} weight="fill" aria-hidden="true" />Assistant</span><RichText text={m.text} />
                     </div>
                   )}
                   {(cards[m.id] ?? []).map((p) => (
@@ -574,7 +576,7 @@ function Assistant() {
                   {m.reading && <ReadingCard reading={m.reading} />}
                 </div>
               ) : (
-                <div className="max-w-[80%]" style={{
+                <div className="max-w-[80%] assistant-user-message" style={{
                   padding: '9px 13px', fontSize: 13.5, lineHeight: 1.5, color: 'var(--color-text-primary)',
                   background: 'color-mix(in srgb, var(--color-primary) 16%, var(--color-surface))',
                   border: '1px solid var(--color-primary-800)',
@@ -604,7 +606,7 @@ function Assistant() {
         )}
       </div>
 
-      <div className="flex-shrink-0" style={{ paddingTop: 10, paddingBottom: 12 }}>
+      <div className="flex-shrink-0 assistant-composer" style={{ paddingTop: 10, paddingBottom: 12 }}>
         {showSuggestions && (
           // Personal suggestions only appear when the data behind them loaded —
           // never a chip that leads to "I couldn't load that".
@@ -615,7 +617,7 @@ function Assistant() {
           </div>
         )}
 
-        <div className="flex items-center" style={{ gap: 8 }}>
+        <div className="flex items-center assistant-input-row" style={{ gap: 8 }}>
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -673,25 +675,26 @@ function Assistant() {
                 initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 16 }}
                 transition={{ type: 'spring', stiffness: 320, damping: 30 }}
                 role="dialog" aria-modal="true" aria-label="Saved conversations"
-                className="absolute left-0 right-0 bottom-0 max-h-[75%] flex flex-col"
+                className="absolute left-0 right-0 bottom-0 max-h-[75%] flex flex-col assistant-history-panel"
                 style={{
                   ...GLASS,
                   borderBottom: 'none',
                   borderRadius: '16px 16px 0 0',
-                  margin: '0 calc(var(--gutter) * -1)',
+                  margin: 0,
                 }}
               >
-                <div className="flex items-center flex-shrink-0" style={{ gap: 16, padding: '16px var(--gutter) 10px' }}>
+                <div className="flex items-center flex-shrink-0 assistant-history-header" style={{ gap: 16, padding: '16px var(--gutter) 10px' }}>
                   <h2 className="flex-1" style={{ fontSize: 'var(--text-title)', fontWeight: 600, color: 'var(--color-text-primary)' }}>
                     Saved chats
+                    <small>{conversations.length} saved</small>
                   </h2>
-                  <button onClick={startNew} style={{ fontSize: 13, height: 36, color: 'var(--color-secondary)' }}>New chat</button>
-                  <button onClick={() => setHistoryOpen(false)} style={{ fontSize: 13, height: 36, color: 'var(--color-text-secondary)' }}>
-                    Close
+                  <button className="assistant-history-new" onClick={startNew} style={{ fontSize: 13, height: 36, color: 'var(--color-secondary)' }}><Plus size={14} aria-hidden="true" />New chat</button>
+                  <button aria-label="Close saved chats" className="assistant-history-close" onClick={() => setHistoryOpen(false)} style={{ fontSize: 13, height: 36, color: 'var(--color-text-secondary)' }}>
+                    <X size={18} />
                   </button>
                 </div>
 
-                <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide" style={{ padding: '0 var(--gutter) 24px' }}>
+                <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide assistant-history-list" style={{ padding: '0 var(--gutter) 24px' }}>
                   {conversations.length === 0 && (
                     <p className="text-center" style={{ fontSize: 13, padding: '24px 0', color: 'var(--color-text-muted)' }}>
                       Nothing saved yet. Ask something and it will be kept here.
@@ -700,8 +703,8 @@ function Assistant() {
                   {conversations.map((c, i) => {
                     const current = c.id === conversationId;
                     return (
-                      <div key={c.id}>
-                        <div className="flex items-center" style={{ gap: 10, padding: '10px 0' }}>
+                      <div key={c.id} className="assistant-history-entry" data-current={current || undefined}>
+                        <div className="flex items-center assistant-history-row" style={{ gap: 10, padding: '10px 0' }}>
                           <button onClick={() => openThread(c.id)} className="flex-1 min-w-0 text-left">
                             <span className="block truncate" style={{ fontSize: 14.5, color: current ? 'var(--color-primary-300)' : 'var(--color-text-primary)' }}>
                               {c.title || 'New chat'}

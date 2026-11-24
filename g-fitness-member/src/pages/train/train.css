@@ -1,0 +1,67 @@
+.member-train { --train-edge: color-mix(in srgb, var(--color-primary) 22%, var(--color-hairline)); min-width: 0; position: relative; }
+.member-train > div:first-child > [role="tablist"] { display: flex; width: 100%; gap: 4px !important; border-radius: 14px; padding: 5px; background: var(--color-surface); border-color: var(--train-edge); }
+.member-train > div:first-child [role="tab"] { flex: 1; justify-content: center; min-width: 0; min-height: 44px !important; }
+.train-welcome { position: relative; isolation: isolate; display: flex; align-items: center; min-height: 180px; padding: 16px 0 22px; overflow: hidden; }
+.train-welcome::before { content: ''; position: absolute; z-index: -1; inset: 0 -10px; background: radial-gradient(ellipse at 85% 50%, color-mix(in srgb, var(--color-primary) 16%, transparent), transparent 65%); }
+.train-welcome > div:first-child { max-width: 67%; }
+.train-welcome > div > span { display: block; font-size: 12px; color: var(--color-primary-300); font-weight: 550; margin-bottom: 9px; }
+.train-welcome h2 { color: var(--color-text-primary); font-size: clamp(27px, 7vw, 36px); letter-spacing: -.05em; line-height: 1.08; font-weight: 850; text-wrap: balance; }
+.train-welcome p { margin-top: 12px; max-width: 30ch; font-size: 12px; line-height: 1.6; color: var(--color-text-secondary); }
+.train-welcome-companion { position: absolute; right: 20px; top: 21px; width: 108px; height: 145px; pointer-events: none; }
+.member-train .train-welcome-companion .today-companion { --buddy-base: var(--color-secondary); position: absolute; left: 0; top: 0; right: auto; scale: 1; transform: scale(.65) !important; transform-origin: top left; }
+.member-train [data-your-plan] { border: 1px solid var(--train-edge); border-radius: 22px; padding: 18px 16px 5px; background: var(--color-surface); }
+.member-train [data-your-plan] .noc-row { padding-inline: 0 !important; padding-block: 17px !important; }
+.member-train [data-your-plan] [data-train-today] { margin-inline: -4px; padding-inline: 10px; border-radius: 16px; background: color-mix(in srgb, var(--color-primary) 7%, var(--color-surface-raised)); border: 1px solid var(--train-edge); }
+.member-train [data-your-plan] [data-train-today] .noc-row { border-bottom: 0; }
+.member-train [data-library] { padding-top: 3px; }
+.member-train [data-library-tile] { padding: 15px !important; border-radius: 20px !important; gap: 7px !important; border-color: var(--train-edge) !important; }
+.train-library-art { position: relative; overflow: hidden; display: grid; place-items: center; width: 100%; height: 94px; margin-bottom: 7px; border-radius: 13px; color: var(--color-primary-300); background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface-raised)); }
+.train-library-art::before { content: ''; position: absolute; width: 110px; height: 110px; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--color-primary) 15%, transparent); right: -28px; top: -36px; box-shadow: 0 0 0 15px color-mix(in srgb, var(--color-primary) 3%, transparent); }
+.member-train [data-library-tile]:last-child .train-library-art { color: var(--color-secondary); background: color-mix(in srgb, var(--color-secondary) 7%, var(--color-surface-raised)); }
+.member-train [data-coach-sessions] { padding: 18px 16px 5px; border: 1px solid var(--train-edge); border-radius: 22px; background: var(--color-surface); }
+.member-train .eyebrow { text-transform: none; letter-spacing: 0; font-family: inherit; font-weight: 700; font-size: 15px; }
+.member-train button:focus-visible { outline: 2px solid var(--color-primary-300); outline-offset: 3px; }
+@media (min-width: 700px) { .train-welcome { min-height: 190px; padding-left: 12px; } .train-welcome-companion { right: 12%; } .train-welcome h2 { max-width: 14ch; } .train-library-art { height: 105px; } }
+@media (max-width: 360px) { .train-welcome-companion { right: 4px; top: 35px; } .member-train .train-welcome-companion .today-companion { transform: scale(.56) !important; } }
+@media (prefers-reduced-motion: reduce) { .member-train * { animation: none !important; transition: none !important; } }
+
+
+/* Equal columns avoid an unused gap at the end of the tab rail. */
+.member-clean-shell .member-train [role="tablist"] { display: grid !important; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); width: 100%; gap: 4px !important; }
+.member-clean-shell .member-train [role="tablist"] [role="tab"] { width: 100%; padding-inline: 5px !important; transition: background-color 220ms, color 220ms; }
+.train-library-art--workouts { --train-art-accent: var(--color-primary); --train-art-source: url('/images/train-free-workouts.png'); }
+.train-library-art--programs { --train-art-accent: var(--color-secondary); --train-art-source: url('/images/train-programs.png'); }
+.member-train .train-library-art { height: 125px; background: color-mix(in srgb, var(--train-art-accent) 8%, var(--color-surface-raised)) !important; }
+.train-library-illustration { display: block; position: absolute; inset: 0; isolation: isolate; }
+.train-library-illustration img { width: 100%; height: 100%; object-fit: contain; filter: grayscale(1); pointer-events: none; }
+.train-library-tint { position: absolute; inset: 0; background: var(--train-art-accent); mix-blend-mode: color; mask-image: var(--train-art-source); -webkit-mask-image: var(--train-art-source); mask-size: contain; -webkit-mask-size: contain; mask-repeat: no-repeat; -webkit-mask-repeat: no-repeat; mask-position: center; -webkit-mask-position: center; pointer-events: none; }
+.train-library-badge { position: absolute; bottom: 7px; right: 7px; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 9px; color: var(--color-primary-300); background: var(--color-surface); border: 1px solid var(--train-edge); }
+.train-welcome::after { content: ''; position: absolute; z-index: -1; width: 160px; height: 100px; right: -40px; top: 44px; border: 1px solid color-mix(in srgb, var(--color-primary) 18%, transparent); border-radius: 50%; transform: rotate(-25deg); box-shadow: 0 0 0 20px color-mix(in srgb, var(--color-primary) 3%, transparent); }
+.member-train [data-library-tile] { transition: transform 180ms ease, border-color 180ms ease; }
+.member-train [data-library-tile]:active { transform: scale(.97); }
+@media (hover: hover) { .member-train [data-library-tile]:hover { transform: translateY(-3px); border-color: var(--color-primary-300) !important; } }
+@media (prefers-reduced-motion: no-preference) {
+  .train-library-illustration { animation: train-art-idle 5s ease-in-out infinite; }
+  .train-library-art--programs .train-library-illustration { animation-delay: -2.5s; }
+}
+@keyframes train-art-idle { 0%, 100% { transform: translateY(1px) rotate(-1deg); } 50% { transform: translateY(-4px) rotate(1deg); } }
+@media (min-width: 700px) { .member-train .train-library-art { height: 150px; } }
+
+/* A dumbbell companion specifically for the training hero. */
+.today-dumbbell-companion .today-companion-body { left: 36px; top: 73px; width: 96px; height: 91px; border-radius: 22px; }
+.today-dumbbell-plate { position: absolute; top: 56px; width: 35px; height: 120px; border-radius: 14px; background: linear-gradient(100deg, var(--buddy-light), var(--buddy-base) 65%, var(--buddy-dark)); box-shadow: inset 3px 2px 5px #fff5, inset -4px -3px 5px #0003, 0 8px 12px #0002; }
+.today-dumbbell-plate.is-left { left: 7px; }
+.today-dumbbell-plate.is-right { right: 5px; }
+.today-dumbbell-plate::after { content: ''; position: absolute; top: 10px; bottom: 10px; left: 10px; right: 10px; border-radius: 8px; border-left: 2px solid #fff3; border-right: 2px solid #0002; }
+.today-dumbbell-companion .today-companion-face { left: 10px; top: 14px; width: 76px; height: 39px; border-radius: 16px; }
+.today-dumbbell-companion .today-companion-eye { top: 8px; width: 8px; height: 12px; }
+.today-dumbbell-companion .today-companion-eye.is-left { left: 18px; }
+.today-dumbbell-companion .today-companion-eye.is-right { right: 18px; }
+.today-dumbbell-companion .today-companion-cheek { top: 25px; width: 8px; }
+.today-dumbbell-companion .today-companion-smile { left: 31px; top: 23px; width: 13px; height: 8px; }
+.member-train .today-dumbbell-companion .today-companion-emblem { left: 35px; bottom: 5px; }
+.today-dumbbell-companion .today-companion-foot.is-left { left: 24px; }
+.today-dumbbell-companion .today-companion-foot.is-right { right: 20px; }
+.today-dumbbell-companion .today-companion-arm.is-left { left: -5px; top: 110px; }
+.today-dumbbell-companion .today-companion-arm.is-wave { right: -10px; top: 107px; }
+.member-clean-shell .member-train [role="tab"][aria-selected="true"] { color: var(--color-text-primary) !important; background: color-mix(in srgb, var(--color-primary) 18%, var(--color-surface-raised)) !important; font-weight: 700; }

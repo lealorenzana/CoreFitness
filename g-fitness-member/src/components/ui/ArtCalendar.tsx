@@ -8,11 +8,12 @@ const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 /** Real date controls mapped onto original generated calendar stationery. */
 export default function ArtCalendar({ month, onMonthChange, selected, onSelect, dayState,
-  canPrevious = true, canNext = true, label = 'Calendar', caption,
+  canPrevious = true, canNext = true, label = 'Calendar', caption, appearance = 'paper',
 }: {
   month: Date; onMonthChange: (month: Date) => void; selected?: string;
   onSelect: (day: Date) => void; dayState?: (day: Date) => DayState;
   canPrevious?: boolean; canNext?: boolean; label?: string; caption?: string;
+  appearance?: 'paper' | 'gym';
 }) {
   const titleId = useId();
   const [direction, setDirection] = useState(1);
@@ -28,8 +29,8 @@ export default function ArtCalendar({ month, onMonthChange, selected, onSelect, 
     setDirection(by);
     onMonthChange(new Date(month.getFullYear(), month.getMonth() + by, 1));
   };
-  return <section className="art-calendar" aria-label={label} data-art-calendar>
-    <img className="art-calendar-paper" src="/images/member-calendar-paper.webp" alt="" aria-hidden="true" draggable={false} />
+  return <section className={`art-calendar${appearance === 'gym' ? ' art-calendar--gym' : ''}`} aria-label={label} data-art-calendar>
+    {appearance === 'paper' && <img className="art-calendar-paper" src="/images/member-calendar-paper.webp" alt="" aria-hidden="true" draggable={false} />}
     <div className="art-calendar-content">
       <div className="art-calendar-nav">
         <button type="button" aria-label="Previous month" disabled={!canPrevious} onClick={() => move(-1)}><CaretLeft size={18} /></button>

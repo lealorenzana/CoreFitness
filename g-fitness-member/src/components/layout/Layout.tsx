@@ -1,4 +1,6 @@
 import PushBanner from '../PushBanner';
+import './member-header.css';
+import { useLayoutEffect } from 'react';
 import { useSyncExternalStore } from 'react';
 import { subscribeSaved, syncTick } from '../../lib/offlineReads';
 import { Suspense } from 'react';
@@ -84,6 +86,16 @@ export default function Layout() {
   }, [navigateForChecks]);
   useEffect(() => { recordLocation(location.key, location.pathname + location.search, how); }, [location.key, location.pathname, location.search, how]);
   const root = tabRootFor(location.pathname);
+  useLayoutEffect(() => {
+    const screen = mainRef.current?.closest<HTMLElement>('#phone-screen');
+    const header = screen?.querySelector<HTMLElement>(':scope > .member-tab-header');
+    if (!screen || !header) return;
+    const measure = () => screen.style.setProperty('--member-header-height', `${header.offsetHeight}px`);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(header);
+    return () => { observer.disconnect(); screen.style.removeProperty('--member-header-height'); };
+  }, [root?.id, location.pathname]);
   // A routine being run takes the whole screen (2026-09-19): no bar, no chat
   // head, no gutter — the page draws its own chrome, and its way out is its own
   // close button (the session stays open and Today offers to resume it).
@@ -117,7 +129,7 @@ export default function Layout() {
   }
 
   return (
-    <PhoneChassis className="member-clean-shell">
+    <PhoneChassis className={`member-clean-shell${root ? ' member-tabbed' : ''}${location.pathname === '/member/home' ? ' member-today-shell' : ''}`}>
       <Toaster />
       {/* A push while the app is open slides down from the top. */}
       <PushBanner />

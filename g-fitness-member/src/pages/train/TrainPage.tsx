@@ -1,4 +1,5 @@
-import MemberScene from '../../components/ui/MemberScene';
+import { TodayCompanion } from '../../components/home/TodayStory';
+import './train.css';
 import { useEffect } from 'react';
 import { Navigate, useLocation, useSearchParams } from 'react-router-dom';
 import { Barbell, ChalkboardTeacher, UsersThree } from '@phosphor-icons/react';
@@ -65,7 +66,7 @@ export default function TrainPage() {
   if (deepLinkTrainer) return <Navigate to="/member/book-session" replace state={{ trainerId: deepLinkTrainer }} />;
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col member-train">
       {offered.length > 1 && (
         <div style={{ marginBottom: 14 }}>
           <TextTabs<TrainTab>
@@ -81,7 +82,7 @@ export default function TrainPage() {
         </div>
       )}
 
-      {active === 'workout' && <Page><MemberScene kind="training" title="Find your next workout" description="Follow your plan or choose something to try." /><WorkoutHome /></Page>}
+      {active === 'workout' && <Page><section className="train-welcome" aria-label={t('Your training')}><div><span>{t('Your training')}</span><h2>{t('Find your next workout')}</h2><p>{t('Follow your plan or choose something to try.')}</p></div><div className="train-welcome-companion" aria-hidden="true"><TodayCompanion dumbbell /></div></section><WorkoutHome /></Page>}
       {active === 'classes' && <BookClass mode="classes" />}
       {active === 'coach' && <Page><CoachHome /></Page>}
     </div>

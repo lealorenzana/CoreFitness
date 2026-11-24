@@ -180,12 +180,12 @@ export default function TodayStory({ children }: { children: ReactNode }) {
 
 /** A layered, gym-colored kettlebell companion. Its face, wave and float are
  * separate CSS layers, so it stays crisp without video or animation downloads. */
-export function TodayCompanion({ booking = false }: { booking?: boolean }) {
+export function TodayCompanion({ booking = false, dumbbell = false }: { booking?: boolean; dumbbell?: boolean }) {
   const gym = useGymApp();
-  return <div className={`today-companion${booking ? ' today-clock-companion' : ''}`} aria-hidden="true">
+  return <div className={`today-companion${booking ? ' today-clock-companion' : ''}${dumbbell ? ' today-dumbbell-companion' : ''}`} aria-hidden="true">
     <div className="today-companion-shadow" />
     <div className="today-companion-float">
-      {booking ? <><div className="today-clock-bell is-left" /><div className="today-clock-bell is-right" /></> : <div className="today-companion-handle" />}
+      {dumbbell ? <><div className="today-dumbbell-plate is-left" /><div className="today-dumbbell-plate is-right" /></> : booking ? <><div className="today-clock-bell is-left" /><div className="today-clock-bell is-right" /></> : <div className="today-companion-handle" />}
       <div className="today-companion-arm is-left" />
       <div className="today-companion-arm is-wave" />
       <div className="today-companion-foot is-left" />

@@ -39,7 +39,7 @@
 .today-clock-companion .today-companion-cheek { display: none; }
 .today-story .today-clock-companion .today-companion-emblem { left: 56px; bottom: -5px; }
 .today-story .today-booking-companion .today-companion { left: 0; top: 0; right: auto; scale: 1; transform: scale(.32) !important; transform-origin: top left; }
-.member-clean-shell:has(.today-story-page) #phone-screen {
+.member-clean-shell.member-today-shell #phone-screen {
   background-color: var(--color-bg);
   background-image: radial-gradient(ellipse at 65% 12%, color-mix(in srgb, var(--color-primary) 48%, transparent), transparent 70%), linear-gradient(to bottom, color-mix(in srgb, var(--color-primary) 22%, var(--color-bg)), var(--color-bg));
   background-size: 100% 620px;
@@ -153,7 +153,7 @@
 }
 
 /* The welcome is one open scene with the greeting and date above it. */
-.member-clean-shell:has(.today-story-page) #phone-screen > header {
+.member-clean-shell.member-today-shell #phone-screen > header {
   padding-top: 10px !important;
   position: relative;
   z-index: 2;
@@ -163,12 +163,12 @@
   box-shadow: inset 0 1px 0 rgb(255 255 255 / .08), 0 8px 24px rgb(0 0 0 / .05);
   border-bottom: 1px solid color-mix(in srgb, var(--color-primary-200) 12%, transparent);
 }
-.member-clean-shell:has(.today-story-page) #phone-screen > header > div:first-child { margin-bottom: 8px !important; }
-.member-clean-shell:has(.today-story-page) #phone-screen > header h1 { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 8px; row-gap: 2px; }
-.member-clean-shell:has(.today-story-page) #phone-screen > header .screen-title { font-size: 18px; line-height: 1.25; letter-spacing: -.025em; }
-.member-clean-shell:has(.today-story-page) #phone-screen > header .screen-title + .screen-title { font-size: 15px; font-weight: 500; }
-.member-clean-shell:has(.today-story-page) #phone-screen > header > div:last-child { height: 9px !important; }
-.member-clean-shell:has(.today-story-page) #phone-screen > main {
+.member-clean-shell.member-today-shell #phone-screen > header > div:first-child { margin-bottom: 8px !important; }
+.member-clean-shell.member-today-shell #phone-screen > header h1 { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 8px; row-gap: 2px; }
+.member-clean-shell.member-today-shell #phone-screen > header .screen-title { font-size: 18px; line-height: 1.25; letter-spacing: -.025em; }
+.member-clean-shell.member-today-shell #phone-screen > header .screen-title + .screen-title { font-size: 15px; font-weight: 500; }
+.member-clean-shell.member-today-shell #phone-screen > header > div:last-child { height: 9px !important; }
+.member-clean-shell.member-today-shell #phone-screen > main {
   margin-top: calc(-1 * var(--today-header-height, 0px));
   padding-top: calc(var(--today-header-height, 0px) + 4px) !important;
   scroll-padding-top: calc(var(--today-header-height, 0px) + 18px);
@@ -192,7 +192,7 @@
   .today-story .today-companion { right: 14px; }
 }
 .today-story .today-hero-atmosphere { display: none; }
-:root[data-mode="light"] .member-clean-shell:has(.today-story-page) #phone-screen {
+:root[data-mode="light"] .member-clean-shell.member-today-shell #phone-screen {
   /* Light is solid (owner, 2026-11-06): the same tint as the gradient's top, flat, no gradient behind words. */
   background-image: none;
   background-color: color-mix(in srgb, var(--color-primary) 13%, var(--color-bg));

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CalendarCheck, ChatCircleText, HourglassMedium } from '@phosphor-icons/react';
+import { CalendarCheck, ChatCircleText, HourglassMedium, ChalkboardTeacher } from '@phosphor-icons/react';
+import './coach.css';
 import { LineRow, SeeAll, SectionHead } from '../../components/ui/noc';
 import SuggestedTimes from '../../components/coaching/SuggestedTimes';
 import { SkeletonList } from '../../components/ui/Skeleton';
@@ -59,9 +60,13 @@ export default function CoachHome() {
     : nextWithCoach ? `${when(nextWithCoach.startsAt)} · ${t(STATE[nextWithCoach.status])}` : null;
 
   return (
-    <div className="flex flex-col" style={{ gap: 18 }}>
-      <div>
-        <SectionHead title={pkg ? t('Your coach') : t('Train with a coach')} />
+    <div className="flex flex-col member-coach" style={{ gap: 22 }}>
+      <section className="coach-welcome" aria-label={t('Your coaching')}>
+        <div><span>{t('Personal training')}</span><h2>{t('Support for your next step')}</h2><p>{t('Find your coach, plan a session, and stay connected.')}</p></div>
+        <div className="coach-welcome-art" aria-hidden="true"><span className="coach-art-orbit" /><span className="coach-art-board"><ChalkboardTeacher size={43} weight="duotone" /><i /><i /></span><span className="coach-art-chat"><ChatCircleText size={25} weight="duotone" /></span></div>
+      </section>
+      <div className="coach-package-section">
+        <SectionHead title={pkg ? t('Your coach') : t('Choose how to train')} />
         <MyPackage next={pkg ? nextWords : undefined} onCurrent={setPkg} />
       </div>
 

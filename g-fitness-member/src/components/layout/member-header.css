@@ -1,0 +1,23 @@
+/* Shared member chrome. Trainer and full-screen activity shells stay separate. */
+.member-clean-shell { --member-header-glass: color-mix(in srgb, var(--color-bg) 35%, transparent); --member-header-line: color-mix(in srgb, var(--color-primary-300) 13%, transparent); }
+.member-clean-shell .member-tab-header { position: relative; z-index: 3; padding-top: 10px !important; background: var(--member-header-glass); -webkit-backdrop-filter: blur(24px) saturate(150%); backdrop-filter: blur(24px) saturate(150%); border-bottom: 1px solid var(--member-header-line); box-shadow: inset 0 1px 0 rgb(255 255 255 / .06); }
+.member-clean-shell.member-tabbed #phone-screen > main { margin-top: calc(-1 * var(--member-header-height, 0px)); padding-top: calc(var(--member-header-height, 0px) + 8px) !important; scroll-padding-top: calc(var(--member-header-height, 0px) + 18px); }
+.member-clean-shell .member-tab-header > div:first-child { margin-bottom: 8px !important; }
+.member-clean-shell .member-tab-header > div:last-child { height: 9px !important; }
+.member-clean-shell .member-tab-header .screen-title { font-size: 20px; font-weight: 750; line-height: 1.25; letter-spacing: -.03em; }
+.member-clean-shell .member-tab-header .screen-title + .screen-title { margin-top: 3px; font-size: 12px; line-height: 1.4; font-weight: 400; letter-spacing: 0; }
+.member-clean-shell .member-tab-header .screen-title[data-empty="true"] { display: none; }
+.member-clean-shell .member-tab-header .eyebrow { display: none; }
+.member-clean-shell .member-tab-header > .justify-between > div { padding-top: 0 !important; }
+.member-clean-shell .member-tab-header[data-header-tab="today"] h1 { display: flex; align-items: baseline; gap: 8px; }
+.member-clean-shell .member-tab-header[data-header-tab="today"] .screen-title + .screen-title { font-size: 15px; font-weight: 500; }
+.member-clean-shell .member-page-header { position: sticky; top: -1px; z-index: 4; margin-inline: calc(-1 * var(--gutter)); padding: 10px var(--gutter) 14px; gap: 7px; background: var(--member-header-glass); -webkit-backdrop-filter: blur(24px) saturate(150%); backdrop-filter: blur(24px) saturate(150%); border-bottom: 1px solid var(--member-header-line); }
+.member-clean-shell .member-page-header > button { margin: 0 !important; height: 36px !important; }
+.member-clean-shell .member-page-header .member-title-row { min-height: 0; align-items: center; }
+.member-clean-shell .member-page-header .member-title-row h1 { font-size: 22px !important; line-height: 1.2 !important; letter-spacing: -.035em !important; }
+.member-clean-shell .member-page-header .member-title-row p { margin-top: 5px !important; font-size: 12px !important; line-height: 1.5 !important; }
+.member-clean-shell .member-page-header .member-title-row.has-art { padding: 0; min-height: 0; border: 0; border-radius: 0; background: transparent; }
+.member-clean-shell .member-page-header .member-title-art { width: 64px; height: 56px; object-fit: contain; }
+/* Assistant owns its compact toolbar and keeps its composer in a fixed column. */
+.member-clean-shell .member-assistant .member-page-header { position: static; margin: 0; padding: 0; border: 0; background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; }
+:root[data-mode="light"] .member-clean-shell { --member-header-glass: color-mix(in srgb, var(--color-bg) 65%, transparent); }

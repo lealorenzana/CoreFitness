@@ -1,4 +1,5 @@
 import PauseNotice from '../components/booking/PauseNotice';
+import './classes.css';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useUrlState } from '../hooks/useUrlState';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -600,8 +601,12 @@ export default function BookClass({ mode }: { mode?: 'classes' | 'pt' } = {}) {
   const showMatrix = filter === 'classes' || (filter === 'pt' && selectedTrainer !== null && !slotsLoading);
 
   return (
-    <Page>
+    <Page className={filter === 'classes' ? 'member-classes' : undefined}>
       <PauseNotice />
+      {filter === 'classes' && <section className="classes-welcome" aria-label="Group classes">
+        <div><span>Train together</span><h2>Find your next class</h2><p>Pick a date and join a session that fits you.</p></div>
+        <div className="classes-welcome-art" aria-hidden="true"><img src="/images/train-programs.png" alt="" /><span /></div>
+      </section>}
       {!mode && <TextTabs<Filter>
         label="What to show"
         tabs={[
@@ -619,7 +624,7 @@ export default function BookClass({ mode }: { mode?: 'classes' | 'pt' } = {}) {
               on an uncapped plan the count still means something, a full bar
               would not. */}
           {filter === 'classes' && entitlement && !classBlock && (
-            <div>
+            <div className="classes-allowance">
               <div className="flex justify-between" style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
                 <span>
                   {entitlement.classesPerWeek == null
@@ -716,8 +721,8 @@ export default function BookClass({ mode }: { mode?: 'classes' | 'pt' } = {}) {
 
           {/* ── The matrix ── */}
           {showMatrix && filter === 'classes' && (
-            <>
-              <ArtCalendar month={calendarMonth} label="Class calendar" selected={dayKey}
+            <section className="classes-calendar-card" aria-label="Choose a class date">
+              <ArtCalendar appearance="gym" month={calendarMonth} label="Class calendar" selected={dayKey}
                 canPrevious={calendarMonth.getFullYear() > new Date().getFullYear() || (calendarMonth.getFullYear() === new Date().getFullYear() && calendarMonth.getMonth() > new Date().getMonth())}
                 onMonthChange={(month) => {
                   setCalendarMonth(month);
@@ -735,7 +740,7 @@ export default function BookClass({ mode }: { mode?: 'classes' | 'pt' } = {}) {
                 <Chip label="For my level" icon={<Target size={14} weight="bold" />} on={recommendedOnly} onClick={() => setRecommendedOnly((v) => !v)} />
                 <Chip label={`You chose ${LEVEL_LABEL[level]} · change`} icon={<SlidersHorizontal size={14} weight="bold" />} onClick={() => setLevel(null)} />
               </div>}
-            </>
+            </section>
           )}
           {showMatrix && filter !== 'classes' && (
             <details className="member-secondary-fold"><summary>Choose another day or time</summary><div className="member-fold-content">
@@ -761,7 +766,7 @@ export default function BookClass({ mode }: { mode?: 'classes' | 'pt' } = {}) {
 
           {/* ── The chosen day ── */}
           {showMatrix && (
-            <section className="flex flex-col" style={{ gap: 4 }}>
+            <section className="flex flex-col classes-day-sessions" style={{ gap: 4 }}>
               <div className="rule" style={{ marginBottom: 12 }} />
               <SectionHead
                 title={dayTitle(chosenDay)}

@@ -1,0 +1,36 @@
+.member-classes { --class-edge: color-mix(in srgb, var(--color-primary) 22%, var(--color-hairline)); }
+.classes-welcome { position: relative; isolation: isolate; min-height: 155px; display: flex; align-items: center; overflow: hidden; padding: 10px 0 18px; }
+.classes-welcome > div:first-child { max-width: 63%; }
+.classes-welcome > div > span { font-size: 12px; font-weight: 550; color: var(--color-primary-300); }
+.classes-welcome h2 { font-size: clamp(27px, 7vw, 36px); font-weight: 850; letter-spacing: -.05em; line-height: 1.1; text-wrap: balance; margin-top: 9px; }
+.classes-welcome p { margin-top: 10px; font-size: 12px; line-height: 1.6; color: var(--color-text-secondary); max-width: 27ch; }
+.classes-welcome-art { position: absolute; width: 138px; height: 120px; right: -3px; top: 20px; isolation: isolate; pointer-events: none; }
+.classes-welcome-art img { width: 100%; height: 100%; object-fit: contain; filter: grayscale(1); }
+.classes-welcome-art > span { position: absolute; inset: 0; background: var(--color-primary); mix-blend-mode: color; mask: url('/images/train-programs.png') center / contain no-repeat; -webkit-mask: url('/images/train-programs.png') center / contain no-repeat; }
+.classes-allowance { padding: 14px 16px; border-radius: 16px; background: var(--color-surface); border: 1px solid var(--class-edge); }
+.classes-calendar-card { min-width: 0; border: 1px solid var(--class-edge); border-radius: 23px; padding: 17px 15px; background: var(--raised-solid, var(--color-surface-raised)); }
+.member-classes .art-calendar--gym { max-width: none; color: var(--color-text-primary); }
+.art-calendar--gym .art-calendar-content { padding: 0; }
+.art-calendar--gym .art-calendar-nav { padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--color-hairline); }
+.art-calendar--gym .art-calendar-nav h2 { color: var(--color-text-primary); font-size: 19px; }
+.art-calendar--gym .art-calendar-nav button { border-radius: 12px; background: var(--color-surface); color: var(--color-primary-300); border: 1px solid var(--color-hairline); }
+.art-calendar--gym .art-calendar-grid { background: none !important; gap: 3px; }
+.art-calendar--gym .art-calendar-weekday { color: var(--color-text-secondary); font-size: 11px; }
+.art-calendar--gym .art-calendar-day { color: var(--color-text-primary); border-radius: 11px; }
+.art-calendar--gym .art-calendar-day.is-marked { background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface)); }
+.art-calendar--gym .art-calendar-day.is-selected { background: var(--fill-primary, var(--color-primary)); color: #fff; }
+.art-calendar--gym .art-calendar-day[aria-current="date"] { outline-color: var(--color-primary-300); }
+.art-calendar--gym .art-calendar-day small { color: var(--color-secondary); font-size: 10px; }
+.art-calendar--gym .art-calendar-day.is-selected small { color: #fff; }
+.art-calendar--gym .art-calendar-hint { color: var(--color-text-muted); font-size: 11px; }
+.classes-calendar-card .calendar-explainer { margin: 13px 0; font-size: 12px; color: var(--color-text-secondary); }
+.classes-calendar-card .orb-cell { min-height: 42px; font-size: 12px !important; border-radius: 11px !important; }
+.member-classes .classes-day-sessions { border-radius: 22px; border: 1px solid var(--class-edge); background: var(--color-surface); padding: 17px 15px 5px; }
+.classes-day-sessions > .rule { display: none; }
+.classes-day-sessions .noc-row { min-height: 80px; padding-block: 17px !important; }
+.classes-day-sessions .noc-row > :first-child { color: var(--color-primary-300); font-variant-numeric: tabular-nums; }
+.member-classes button:focus-visible { outline: 2px solid var(--color-primary-300); outline-offset: 3px; }
+@media (min-width: 700px) { .classes-welcome { min-height: 180px; } .classes-welcome-art { width: 190px; height: 150px; right: 10%; top: 10px; } .classes-welcome h2 { max-width: 13ch; } .classes-calendar-card { padding: 22px; } .art-calendar--gym .art-calendar-grid { grid-template-rows: 24px repeat(6, 52px); } }
+@media (prefers-reduced-motion: no-preference) { .classes-welcome-art { animation: class-art-idle 5s ease-in-out infinite; } }
+@keyframes class-art-idle { 0%, 100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-5px) rotate(1deg); } }
+@media (prefers-reduced-motion: reduce) { .member-classes * { animation: none !important; transition: none !important; } }

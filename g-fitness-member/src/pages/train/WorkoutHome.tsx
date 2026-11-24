@@ -1,3 +1,4 @@
+import './train.css';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Barbell, Books, CalendarCheck, CalendarDots, ListChecks, Lock, type Icon } from '@phosphor-icons/react';
@@ -157,11 +158,18 @@ export default function WorkoutHome() {
         <SectionHead title={t('Library')} />
         <div className="grid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, marginTop: 8 }}>
           {library.filter((d) => d.on).map((d) => {
-
+            const image = d.path === '/member/programs' ? '/images/train-programs.png' : '/images/train-free-workouts.png';
+            const accent = d.path === '/member/programs' ? 'var(--color-secondary)' : 'var(--color-primary)';
             return (
               <button key={d.path} type="button" onClick={() => navigate(d.path)} data-library-tile className="noc-press flex flex-col text-left"
                 style={{ gap: 4, alignItems: 'flex-start', padding: 14, borderRadius: 14, border: '1px solid var(--color-hairline)', background: 'var(--color-surface)' }}>
-                <img className="member-library-art" src={d.path === '/member/programs' ? '/images/member-progress.png' : '/images/member-training.png'} alt="" aria-hidden="true" />
+                <span className={`train-library-art train-library-art--${d.path === '/member/programs' ? 'programs' : 'workouts'}`} aria-hidden="true">
+                  <span className="train-library-illustration" style={{ position: 'absolute', inset: 0, isolation: 'isolate' }}>
+                    <img src={image} alt="" draggable={false} style={{ width: '100%', height: '100%', objectFit: 'contain', filter: 'grayscale(1)' }} />
+                    <span className="train-library-tint" style={{ position: 'absolute', inset: 0, background: accent, mixBlendMode: 'color', maskImage: `url(${image})`, WebkitMaskImage: `url(${image})`, maskSize: 'contain', WebkitMaskSize: 'contain', maskRepeat: 'no-repeat', WebkitMaskRepeat: 'no-repeat', maskPosition: 'center', WebkitMaskPosition: 'center', pointerEvents: 'none' }} />
+                  </span>
+                  <span className="train-library-badge"><d.icon size={15} weight="duotone" /></span>
+                </span>
                 <span style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--color-text-primary)' }}>{t(d.label)}</span>
                 <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{t(d.blurb)}</span>
               </button>

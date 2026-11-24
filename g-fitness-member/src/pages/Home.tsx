@@ -25,7 +25,6 @@ import { startPlannedRoutine } from '../lib/startPlannedRoutine';
 import { readCache, writeCache } from '../lib/pageCache';
 import { useGymApp } from '../hooks/useGymApp';
 import { moduleOn } from '../lib/gymApp';
-import GymWelcome from '../components/home/GymWelcome';
 import GymMark from '../components/ui/GymMark';
 import GymUpdatesPanel from '../components/home/GymUpdatesPanel';
 import WorkoutSwitcher from '../components/home/WorkoutSwitcher';
@@ -327,7 +326,6 @@ export default function Home() {
         }} />
       {/* What changed in the app (0212), once. */}
       <WhatsNew app="member" />
-      <GymWelcome gym={gymApp} />
 
       {/* The first open of the day (wave 1): streak and earned level, then it folds away. */}
 

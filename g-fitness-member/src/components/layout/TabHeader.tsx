@@ -119,7 +119,7 @@ export default function TabHeader({ tab }: { tab: Tab }) {
   );
 
   return (
-    <header className="flex-none" style={{ padding: `${isToday ? 20 : 18}px var(--gutter) 0` }}>
+    <header className="flex-none member-tab-header" data-header-tab={tab.id} style={{ padding: `${isToday ? 20 : 18}px var(--gutter) 0` }}>
       {isToday && (
         <div className="flex items-center justify-between" style={{ gap: 12, marginBottom: 16 }}>
           <button onClick={() => navigate('/member/profile')} className="flex items-center min-w-0 text-left noc-press"
@@ -145,7 +145,7 @@ export default function TabHeader({ tab }: { tab: Tab }) {
           <span className="screen-title block">{line1}</span>
           {/* A non-breaking space holds the line's height while You's plan name
               loads, so the rail does not jump up and then down. */}
-          <span className="screen-title block" style={{ color: 'var(--color-text-muted)' }}>
+          <span className="screen-title block" data-empty={!line2 || undefined} style={{ color: 'var(--color-text-muted)' }}>
             {line2 || ' '}
           </span>
         </h1>

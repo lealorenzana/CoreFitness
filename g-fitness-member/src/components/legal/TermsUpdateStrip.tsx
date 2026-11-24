@@ -25,10 +25,10 @@ export default function TermsUpdateStrip() {
       if (!alive || ctx?.role !== 'member') return;
       const rows = [];
       if (mine && behind(mine.member_terms, CURRENT.member_terms)) {
-        rows.push({ path: '/terms#agreement', title: 'Terms of Service', meta: `Updated ${prettyVersion(CURRENT.member_terms)} — read and agree` });
+        rows.push({ path: '/terms', title: 'Terms of Service', meta: `Updated ${prettyVersion(CURRENT.member_terms)} — read and agree` });
       }
       if (mine && behind(mine.member_privacy, CURRENT.member_privacy)) {
-        rows.push({ path: '/privacy#agreement', title: 'Privacy Policy', meta: `Updated ${prettyVersion(CURRENT.member_privacy)} — read and agree` });
+        rows.push({ path: '/privacy', title: 'Privacy Policy', meta: `Updated ${prettyVersion(CURRENT.member_privacy)} — read and agree` });
       }
       // The gym's own rules (0157), when it has some in effect that this member has not agreed to.
       if (rules && houseRulesDue(rules)) {
