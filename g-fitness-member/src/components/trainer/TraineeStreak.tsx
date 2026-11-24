@@ -21,8 +21,10 @@ export default function TraineeStreak({ memberId, firstName }: { memberId: strin
 
   if (!card) return null;
   const week = card.frozen ? 'frozen this week'
+    : card.restore ? `missed last week, ${card.restore.left > 0 ? 'can restore it today' : 'no restores left'}`
+    : card.lapse?.inGrace ? 'paused, membership ended'
     : card.needed === 0 ? 'this week reached'
-    : card.atRisk ? `needs ${card.needed} more — every day left`
+    : card.atRisk ? `needs ${card.needed} more, every day left`
     : card.outOfReach ? 'this week is out of reach'
     : `${card.daysThisWeek} of ${card.target} days this week`;
   return (
@@ -31,7 +33,7 @@ export default function TraineeStreak({ memberId, firstName }: { memberId: strin
       <p style={{ fontSize: 13.5, marginTop: 4, color: 'var(--color-text-primary)' }}>
         {card.current > 0 ? `${card.current} ${card.current === 1 ? 'week' : 'weeks'} running` : 'No streak right now'}
         {' · '}
-        <span style={{ color: card.atRisk ? 'var(--color-secondary)' : 'var(--color-text-secondary)' }}>{week}</span>
+        <span style={{ color: card.atRisk || card.restore ? 'var(--color-secondary)' : 'var(--color-text-secondary)' }}>{week}</span>
       </p>
       <p style={{ fontSize: 12, marginTop: 2, color: 'var(--color-text-muted)' }}>
         {firstName} aims for {card.target} days a week · best {card.best} {card.best === 1 ? 'week' : 'weeks'}

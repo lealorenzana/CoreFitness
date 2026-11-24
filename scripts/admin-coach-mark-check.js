@@ -7,6 +7,10 @@
  * Setup copied from admin-rewards-check.js. Admin dev server on :5174.
  */
 async (page) => {
+  let STREAK_CARD = { target: 3, current: 6, best: 9, days_this_week: 3, needed: 0,
+    days_left: 2, week: [], today_index: 5, frozen: false, at_risk: false, out_of_reach: false, next_milestone: 12, nudges: true,
+    desk_restore: { week: '2026-11-16', lost: 8, restored_to: 8, until: '2026-12-06', allowance: 1, used: 0, left: 1 }, restore: null, restores: [], lapse: null };
+  let RESTORE_CALL = null;
   await page.unrouteAll({ behavior: 'ignoreErrors' });
   const REF = 'ifwxtekyjgeljerslnzr';
   const KEY = `sb-${REF}-auth-token`;
@@ -146,8 +150,14 @@ async (page) => {
           accent: 'violet', gym_count: 1 }] : []);
       }
       // The member's gym streak (0151), for the drawer's Progress tab.
-      if (fn === 'member_streak') return json({ target: 3, current: 6, best: 9, days_this_week: 3, needed: 0,
-        days_left: 2, week: [], today_index: 5, frozen: false, at_risk: false, out_of_reach: false, next_milestone: 12, nudges: true });
+      // 0272: a missed week the desk may restore, and the restore once made.
+      if (fn === 'member_streak') return json(STREAK_CARD);
+      if (fn === 'restore_member_streak') {
+        RESTORE_CALL = JSON.parse(route.request().postData() || '{}');
+        STREAK_CARD = { ...STREAK_CARD, current: 8, desk_restore: null,
+          restores: [{ week: '2026-11-16', kind: 'desk', reason: RESTORE_CALL.p_reason, note: RESTORE_CALL.p_note, weeks: 8, at: new Date().toISOString(), by: 'Desk Person' }] };
+        return json(STREAK_CARD);
+      }
       return json(fn in RPC ? RPC[fn] : []);
     }
     if (pathname.startsWith('/rest/v1/')) {
@@ -197,6 +207,18 @@ async (page) => {
   out.push('Monday is not: ' + (await rowWith('Mon: Leg day', 'Set by the coach').count() === 0 ? 'yes' : 'NO, tagged'));
   await page.getByText('Saved routines').first().scrollIntoViewIfNeeded().catch(() => {});
   await page.screenshot({ path: 'shots/admin-coach-mark.png' });
+
+  // 0272: the desk restores a missed week, for a reason, from the drawer.
+  out.push('the drawer offers the desk restore: ' + (/Missed the week of .* a 8-week streak\. You can restore it until/.test(t) ? 'yes' : 'MISSING'));
+  await page.getByRole('button', { name: 'Restore streak' }).click();
+  await page.locator('aside select').filter({ has: page.locator('option[value="gym_closed"]') }).selectOption('gym_closed');
+  await page.getByRole('button', { name: 'Restore', exact: true }).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: 'shots/admin-streak-restore.png' });
+  await page.getByRole('button', { name: 'Restore', exact: true }).click();
+  await page.waitForTimeout(800);
+  t = await text();
+  out.push('the restore is sent with its reason: ' + (RESTORE_CALL?.p_reason === 'gym_closed' ? 'gym_closed' : 'MISSING ' + JSON.stringify(RESTORE_CALL)));
+  out.push('…and the drawer lists who restored it and why: ' + (/By Desk Person, gym closed/.test(t) && /8 weeks/.test(t) ? 'yes' : 'MISSING'));
 
   BEFORE_0145 = true;
   await openProgress();

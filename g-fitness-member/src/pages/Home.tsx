@@ -403,7 +403,7 @@ export default function Home() {
           planned={planned}
           nextPlanned={nextPlanned}
           remindAt={remind}
-          showStreak={moduleOn(gymApp, 'progress')}
+          showStreak={moduleOn(gymApp, 'streaks')}
         />
 
         {/* What the plan holds back — one line, and the screen that lists it. */}

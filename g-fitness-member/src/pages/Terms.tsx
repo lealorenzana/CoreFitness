@@ -188,8 +188,19 @@ const buildSections = (state: RefundTermsState, booking: BookingRules | null): L
     body: 'When the gym closes your account it is archived, not deleted: your attendance and payment history are the gym\'s own records and it has to keep them. You can delete your own account yourself, in Settings → Your data: it is locked at once and erased after 7 days, unless you sign back in and keep it. Erased means your name, contact details, photo, workouts, measurements, photos, chats, assistant conversations and health answers are gone; your payments and visits stay in the gym\'s records under "Deleted member". Your future bookings are cancelled when you ask. If your account is suspended, the reason is recorded, and you are told what it is rather than being met with a locked door and no explanation. Core Fitness, which runs the app, can also suspend an account in every gym at once — for fraud, abuse or a legal order. You are shown the reason when you sign in and by email; your gym is told only that Core Fitness suspended it, and only Core Fitness can lift it.',
   },
   {
+    // 0272: the streak's rules, where the gym runs streaks. The grace is the gym's setting, read on the streak itself.
+    id: 'streaks',
+    title: '10. Your streak',
+    body: [
+      'Where your gym runs streaks, a week counts when you check in or log a workout on your own target of days, Monday to Sunday. Rest days never break it.',
+      'A week your membership is frozen pauses the streak. After your membership ends, it waits for the number of weeks your gym sets, shown on your streak; renew in that time and it carries on.',
+      'Missed a week? You can restore it yourself on the Monday after, free: once a month, rising to five a month as your streak grows (12, 26, 52 and 104 weeks). Not restored that day, it resets to zero. The front desk can also restore a missed week within 14 days, for a reason it records.',
+      'A restored week keeps your streak but adds no week to it. Streak points and badges come only from weeks you reached.',
+    ],
+  },
+  {
     id: 'changes',
-    title: '10. Changes to these terms',
+    title: '11. Changes to these terms',
     body: 'These terms can change. Significant changes are announced in the app rather than quietly edited in, and the date above is updated when they are.',
   },
 ];

@@ -35,6 +35,7 @@ const sections: LegalSection[] = [
       'Anything you choose to log: workouts, measurements, goals, and how you rate a coach.',
       'If your gym asks you to sign its waiver: which version you signed and when, and your answers to the seven health questions that come with it. Health answers are sensitive personal information under RA 10173, and are treated as such below.',
       'If your gym runs a gym chat: the messages and photos you post there, your reactions, and any message you report. If it posts reels: which ones you liked.',
+      'If your streak is restored: which week, whether you or the front desk restored it, and the reason and note the desk gives. Your coaches see that a week was restored, never why: a reason such as sick or injury is health information, so it stays with the owner and the front desk.',
       'If you turn on notifications, the token your phone needs to receive them. You can turn it off again in Settings.',
     ],
   },

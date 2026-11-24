@@ -7,8 +7,26 @@ import { supabase } from '../supabaseClient';
  * never breaks it. Everything is decided in SQL — this module asks and reads.
  */
 
-/** One week in the last twelve (0152): reached, frozen, missed, before joining, or this week in progress. */
-export interface StreakWeek { week: string; days: number; state: 'hit' | 'frozen' | 'miss' | 'before' | 'current' }
+/**
+ * One week (0152, 0272): reached, frozen, restored, paused (a lapsed membership's grace, or a week the
+ * whole gym was closed), missed, before joining, this week in progress, or still to come.
+ */
+export interface StreakWeek {
+  week: string; days: number;
+  state: 'hit' | 'frozen' | 'restored' | 'paused' | 'miss' | 'before' | 'current' | 'future';
+}
+
+/** A missed week that can still be restored (0272). `until` is the last day to do it. */
+export interface StreakRestoreOffer {
+  week: string; lost: number; restoredTo: number; until: string; allowance: number; used: number; left: number;
+}
+/** A restore already made: by the member, or by the desk for a reason. */
+export interface StreakRestore {
+  week: string; kind: 'member' | 'desk'; reason: 'sick' | 'injury' | 'gym_closed' | 'other' | null;
+  note: string | null; weeks: number; at: string; by: string | null;
+}
+/** No membership today (0272): when it ended, and the last day a renewal keeps the streak. */
+export interface StreakLapse { endedOn: string; renewBy: string; inGrace: boolean; graceWeeks: number }
 
 export interface StreakCard {
   target: number;
@@ -33,6 +51,13 @@ export interface StreakCard {
   planDays: number;
   /** Days the gym is closed, 0 = Sunday (0153). */
   closedDays: number[];
+  /** The member's own restore, today only (0272). null before 0272 or when there is none. */
+  restore: StreakRestoreOffer | null;
+  /** What the desk could restore, within 14 days. */
+  deskRestore: StreakRestoreOffer | null;
+  /** The last five restores, newest first. */
+  restores: StreakRestore[];
+  lapse: StreakLapse | null;
 }
 
 type Row = {
@@ -40,7 +65,13 @@ type Row = {
   week: boolean[]; today_index: number; frozen: boolean; at_risk: boolean; out_of_reach: boolean;
   next_milestone: number | null; nudges: boolean; history?: StreakWeek[];
   plan_days?: number; closed_days?: number[];
+  restore?: OfferRow | null; desk_restore?: OfferRow | null; restores?: StreakRestore[];
+  lapse?: { ended_on: string; renew_by: string; in_grace: boolean; grace_weeks: number } | null;
 };
+type OfferRow = { week: string; lost: number; restored_to: number; until: string; allowance: number; used: number; left: number };
+const toOffer = (o: OfferRow | null | undefined): StreakRestoreOffer | null => o ? {
+  week: o.week, lost: o.lost, restoredTo: o.restored_to, until: o.until, allowance: o.allowance, used: o.used, left: o.left,
+} : null;
 
 export const toStreak = (r: Row): StreakCard => ({
   target: r.target, current: r.current, best: r.best, daysThisWeek: r.days_this_week, needed: r.needed,
@@ -49,7 +80,29 @@ export const toStreak = (r: Row): StreakCard => ({
   history: Array.isArray(r.history) ? r.history : [],
   planDays: r.plan_days ?? 0,
   closedDays: Array.isArray(r.closed_days) ? r.closed_days : [],
+  restore: toOffer(r.restore),
+  deskRestore: toOffer(r.desk_restore),
+  restores: Array.isArray(r.restores) ? r.restores : [],
+  lapse: r.lapse ? { endedOn: r.lapse.ended_on, renewBy: r.lapse.renew_by, inGrace: r.lapse.in_grace, graceWeeks: r.lapse.grace_weeks } : null,
 });
+
+/** The member restores their own streak (0272). Returns the new card. Throws the database's reason. */
+export async function restoreMyStreak(): Promise<StreakCard> {
+  const { data, error } = await supabase.rpc('restore_my_streak');
+  if (error || !data) throw new Error(error?.message.replace(/^.*?: /, '') ?? 'Could not restore it.');
+  return toStreak(data as Row);
+}
+
+/** One month of the calendar (0272): each day, and each week that touches the month. */
+export interface StreakMonth { month: string; days: { d: string; checkin: boolean; logged: boolean }[]; weeks: StreakWeek[] }
+/** null when Streaks are off here, or before 0272. `month` is any date in it, YYYY-MM-DD. */
+export async function myStreakMonth(month: string): Promise<StreakMonth | null> {
+  const { data, error } = await supabase.rpc('my_streak_month', { p_month: month });
+  if (error || !data) return null;
+  return data as StreakMonth;
+}
+
+const shortDate = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
 
 /**
  * How the flame looks for a run — it grows the way a streak should feel like it
@@ -94,15 +147,17 @@ export async function memberStreak(memberId: string): Promise<StreakCard | null>
 
 /** The one sentence under the streak — what this week still needs, said plainly. */
 export function streakLine(s: StreakCard): { text: string; tone: 'state' | 'action' | 'muted' } {
-  if (s.frozen) return { text: 'Paused while your membership is frozen — it will not break.', tone: 'muted' };
-  if (s.needed === 0) return { text: `This week's target is reached${s.current > 0 ? ' — your streak is safe' : ''}.`, tone: 'state' };
+  if (s.frozen) return { text: 'Paused while your membership is frozen. It will not break.', tone: 'muted' };
+  if (s.restore && s.restore.left > 0) return { text: `Restore your ${s.restore.lost}-week streak today.`, tone: 'action' };
+  if (s.lapse?.inGrace && s.current > 0) return { text: `Paused. Renew by ${shortDate(s.lapse.renewBy)} to keep it.`, tone: 'action' };
+  if (s.needed === 0) return { text: `This week's target is reached${s.current > 0 ? '. Your streak is safe' : ''}.`, tone: 'state' };
   if (s.outOfReach) {
     return s.current > 0
       ? { text: 'This week is out of reach now. Start a new streak on Monday.', tone: 'muted' }
       : { text: `Train ${s.target} days in a week to start a streak.`, tone: 'muted' };
   }
   if (s.atRisk) {
-    return { text: s.needed === 1 ? 'Train today to keep your streak.' : `Train every day left this week to keep it — ${s.needed} more.`, tone: 'action' };
+    return { text: s.needed === 1 ? 'Train today to keep your streak.' : `Train every day left this week to keep it: ${s.needed} more.`, tone: 'action' };
   }
   return {
     text: `${s.needed} more training ${s.needed === 1 ? 'day' : 'days'} this week ${s.current > 0 ? 'keeps it going' : 'starts a streak'}.`,

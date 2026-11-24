@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { getProgression, type Progression } from '../../lib/api/achievements';
 import { myStreak } from '../../lib/api/streak';
+import { useGymApp } from '../../hooks/useGymApp';
+import { moduleOn } from '../../lib/gymApp';
 import { Skeleton } from './Skeleton';
 import { InlineStat, Panel } from './noc';
 
@@ -44,6 +46,8 @@ function daysSince(isoDate: string | null): string {
 }
 
 export default function ProgressRail() {
+  // Streaks switched off at this gym (0272): no streak panel, the counts stay.
+  const streaksOn = moduleOn(useGymApp(), 'streaks');
   const [prog, setProg] = useState<Progression | null>(null);
   /** The member's own weekly target (0151); 2 — the rule before targets — until it loads. */
   const [target, setTarget] = useState(2);
@@ -75,7 +79,7 @@ export default function ProgressRail() {
 
   return (
     <div className="flex flex-col" style={{ gap: 16 }}>
-      <Panel glow={live ? 'structure' : undefined}>
+      {streaksOn && <Panel glow={live ? 'structure' : undefined}>
         <p className="eyebrow">Gym streak</p>
         <p className="flex items-baseline" style={{ gap: 8, marginTop: 8 }}>
           <span style={{
@@ -97,7 +101,7 @@ export default function ProgressRail() {
             : `${target} or more training days — check-ins or logged workouts — in each of those weeks.`}
           {prog.bestWeekStreak > current && ` Your best is ${prog.bestWeekStreak}.`}
         </p>
-      </Panel>
+      </Panel>}
 
       {/* Three even columns, so the figures line up instead of the third
           wrapping under the first. */}

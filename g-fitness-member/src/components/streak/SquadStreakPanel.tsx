@@ -4,7 +4,7 @@ import StreakOrb from './StreakOrb';
 import StreakWeeks from './StreakWeeks';
 import type { SquadStreak, StreakWeek } from '../../lib/api/streak';
 
-const WORDS: Record<StreakWeek['state'], string> = {
+const WORDS: Partial<Record<StreakWeek['state'], string>> = {
   hit: 'Team target reached', frozen: 'Frozen', miss: 'Team target missed',
   before: 'Before the team began', current: 'This week — still going',
 };
