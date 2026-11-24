@@ -601,7 +601,7 @@ create or replace function tenancy_gym_tables() returns text[] language sql immu
   select array['account_status_events','achievement_unlocks','achievements','activity_log',
     'ai_coach_profiles','ai_meal_guides','ai_proposals','ai_usage_days',
     'assistant_conversations','assistant_messages','attendance','body_measurements','bookings',
-    'cancellation_reasons','cash_closeouts','challenge_participants','challenges','checkin_picks','class_templates',
+    'cancellation_reasons','cash_closeouts','cash_outs','challenge_participants','challenges','checkin_picks','class_templates',
     'class_waitlist','classes','coach_checkins','coaching_prices','coaching_standins','coachings','conversations',
     'equipment_exercises','equipment_reports','event_registrations','events','fitness_goals','freemium_trials',
     'goal_templates','guest_visits','guests','gym_equipment','gym_exercise_media','gym_goals','gym_house_rules','gym_invitations','gym_modules','gym_payment_methods','gym_photos','gym_plans',
