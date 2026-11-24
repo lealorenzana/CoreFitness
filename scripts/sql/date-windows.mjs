@@ -85,14 +85,7 @@ check('a reading dated next week is refused',
   refused(await code(`insert into body_measurements (gym_id, member_id, measured_on) values ('${GYM}', '${MEMBER}', ${d(7)})`)));
 check('a progress photo taken tomorrow is refused',
   refused(await code(`insert into progress_photos (gym_id, member_id, path, taken_on) values ('${GYM}', '${MEMBER}', 'x', ${d(1)})`)));
-check('a target date in the past is refused',
-  refused(await code(`insert into fitness_goals (gym_id, member_id, title, target_date) values ('${GYM}', '${MEMBER}', 'Run', ${d(-2)})`)));
-// 0250: the check above passed for two months while every real goal failed — 0171's shared
-// trigger read NEW.due_on on fitness_goals. A good goal must actually SAVE, not merely "not 22008".
-const goodGoal = await code(`insert into fitness_goals (gym_id, member_id, title, target_date) values ('${GYM}', '${MEMBER}', 'Run 5k', ${d(30)})`);
-check('a member saves a goal with a target next month', goodGoal === 'ok', goodGoal);
-const noDate = await code(`insert into fitness_goals (gym_id, member_id, title) values ('${GYM}', '${MEMBER}', 'Feel stronger')`);
-check('…and one with no target date', noDate === 'ok', noDate);
+// A goal's target date was checked here until 0274 removed members' own goals.
 
 // ---- birth dates, for everyone ----
 check('a member born tomorrow is refused',

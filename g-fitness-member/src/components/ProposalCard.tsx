@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Eyebrow, NocButton, Panel, StatusPill } from './ui/noc';
 import {
   applyProposal, discardProposal, undoProposal,
-  type GoalPayload, type ProposalNames, type ProposalStatus, type RoutinePayload, type SchedulePayload,
+  type ProposalNames, type ProposalStatus, type RoutinePayload, type SchedulePayload,
 } from '../lib/api/aiProposals';
 import { formatRemindAt } from '../lib/api/gymPlans';
 import { errorMessage } from '../utils/errorMessage';
@@ -29,7 +29,6 @@ const KIND_LABEL: Record<string, string> = {
   'routine.create': 'New routine',
   'routine.replace': 'Change a routine',
   'schedule.set': 'Weekly plan',
-  'goal.create': 'New target',
   'meals.set': 'Meal guide',
   // 0177: the coach can book, cancel, plan weeks ahead and log what you did.
   'booking.create': 'Book a class',
@@ -46,13 +45,6 @@ const REASON: Record<string, string> = {
 const WEEK = [1, 2, 3, 4, 5, 6, 0];
 const DAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const UNIT: Record<string, (v: number, t: T) => string> = {
-  weight_kg: (v) => `${v} kg`,
-  body_fat_pct: (v, t) => `${v}% ${t('body fat')}`,
-  waist_cm: (v, t) => `${v} cm ${t('waist')}`,
-  workouts_per_week: (v, t) => `${v} ${v === 1 ? t('workout a week') : t('workouts a week')}`,
-  custom: (v) => `${v}`,
-};
 
 // What apply_ai_proposal stores when the coach named no reminder time (gym_plans' default).
 const DEFAULT_REMIND_AT = '17:00';
@@ -90,19 +82,6 @@ function detailLines(kind: string, payload: unknown, names: ProposalNames, t: T,
         return `${t(DAY[d])} — ${what} · ${t('reminder')} ${formatRemindAt(day.remind_at || DEFAULT_REMIND_AT)}`;
       }),
     };
-  }
-  if (kind === 'goal.create') {
-    const p = obj(payload) as unknown as GoalPayload;
-    const fmt = UNIT[p.metric] ?? UNIT.custom;
-    const lines: string[] = [];
-    if (p.target_value != null) {
-      const by = p.target_date ? ` ${t('by')} ${date(p.target_date)}` : '';
-      lines.push(`${t('Target:')} ${fmt(p.target_value, t)}${by}`);
-    } else if (p.target_date) {
-      lines.push(`${t('By')} ${date(p.target_date)}`);
-    }
-    if (p.start_value != null) lines.push(`${t('Starting from')} ${fmt(p.start_value, t)}`);
-    return { lead: typeof p.title === 'string' ? p.title : undefined, lines };
   }
   if (kind === 'booking.create') {
     return { lines: [t('The gym’s booking rules still apply — some bookings wait for approval.')] };

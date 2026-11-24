@@ -27,11 +27,9 @@ const WorkoutsToday = lazyPage(() => import('./pages/WorkoutsToday'));
 const Program = lazyPage(() => import('./pages/Program'));
 const Programs = lazyPage(() => import('./pages/Programs'));
 const Season = lazyPage(() => import('./pages/Season'));
-const Squad = lazyPage(() => import('./pages/Squad'));
 const Refer = lazyPage(() => import('./pages/Refer'));
 const ReferInvited = lazyPage(() => import('./pages/ReferInvited'));
 const SeasonRecords = lazyPage(() => import('./pages/SeasonRecords'));
-const ReachedTargets = lazyPage(() => import('./pages/progress/ReachedTargets'));
 const BodyReadings = lazyPage(() => import('./pages/progress/BodyReadings'));
 const Room = lazyPage(() => import('./pages/rooms/Room'));
 const AssignmentDetail = lazyPage(() => import('./pages/rooms/AssignmentDetail'));
@@ -54,7 +52,6 @@ const VisitHistory = lazyPage(() => import('./pages/VisitHistory'));
 const RewardRequests = lazyPage(() => import('./pages/RewardRequests'));
 const ProgressHub = lazyPage(() => import('./pages/progress/ProgressHub'));
 const BodyPage = lazyPage(() => import('./pages/progress/BodyPage'));
-const TargetsPage = lazyPage(() => import('./pages/progress/TargetsPage'));
 const Profile = lazyPage(() => import('./pages/Profile'));
 const Settings = lazyPage(() => import('./pages/Settings'));
 const ChangePassword = lazyPage(() => import('./pages/ChangePassword'));
@@ -419,7 +416,6 @@ function App() {
           <Route path="season/records" element={<SeasonRecords />} />
           {/* Friends (0217) were removed by 0220: an old link lands on Today. */}
           <Route path="friends/*" element={<Navigate to="/member/home" replace />} />
-          <Route path="squad" element={<Squad />} />
           <Route path="refer" element={<Refer />} />
           {/* Reels (0245): the gym's short videos, full screen. */}
           <Route path="reels" element={<Reels />} />
@@ -431,8 +427,9 @@ function App() {
           <Route path="workout-history" element={<WorkoutHistory />} />
           <Route path="progress" element={<ProgressHub />} />
           <Route path="body" element={<BodyPage />} />
-          <Route path="targets" element={<TargetsPage />} />
-          <Route path="progress/reached" element={<ReachedTargets />} />
+          {/* Targets (personal goals) were removed by 0274: old links land on You → Progress. */}
+          <Route path="targets" element={<Navigate to="/member/membership?tab=progress" replace />} />
+          <Route path="progress/reached" element={<Navigate to="/member/membership?tab=progress" replace />} />
           <Route path="progress/readings" element={<BodyReadings />} />
           <Route path="achievements" element={<Achievements />} />
           <Route path="notifications" element={<NotificationsAll />} />

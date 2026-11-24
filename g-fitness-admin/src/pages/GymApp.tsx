@@ -80,7 +80,7 @@ const KINDS: { name: string; v: GymVocabulary }[] = [
 
 const MODULE_ICONS: Record<string, LucideIcon> = {
   classes: Calendar, coaching: HeartHandshake, progress: NotebookPen, workouts: NotebookPen, photos: Camera, progress_photos: Camera,
-  meals: Salad, meal_plans: Salad, engagement: Coins, points: Coins, challenges: Flag, squads: Users, seasons: Trophy,
+  meals: Salad, meal_plans: Salad, engagement: Coins, points: Coins, challenges: Flag, seasons: Trophy,
   shop: ShoppingBag, referrals: UserPlus, push: Bell, assistant: Bot, rooms: MessageSquare, equipment: Dumbbell, lobby_tv: Tv,
   events: CalendarHeart, reels: Clapperboard, gym_chat: MessagesSquare,
 };

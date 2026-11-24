@@ -74,7 +74,7 @@ async (page) => {
     memberships: [], membership_plans: [], notifications: [], attendance: [],
     trainer_availability: [], trainer_credentials: [], trainer_feedback: [],
     trainer_ratings: [], trainer_busy_slots: [], workout_logs: [], body_measurements: [],
-    fitness_goals: [], achievements: [], achievement_unlocks: [], member_share_prefs: [],
+    achievements: [], achievement_unlocks: [], member_share_prefs: [],
     gym_settings: [{ id: true, gym_name: 'Core Fitness', address: 'Mamburao', phone: '+63 917 555 0101',
       email: 'hello@corefitness.ph', opening_time: '06:00', closing_time: '21:00', logo_url: null,
       short_name: 'CF', tagline: null, activity_options: [], updated_at: iso(0, 9, 0), updated_by: null }],

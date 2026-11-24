@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  CalendarCheck, CheckCircle2, Coins, Dumbbell, Flag, Flame, Handshake, Plus, Power, ShoppingBag, Target, Trophy, UserPlus, Users,
+  CalendarCheck, CheckCircle2, Coins, Dumbbell, Flag, Flame, Handshake, Plus, Power, ShoppingBag, Trophy, UserPlus, Users,
   BookOpen, Banknote, type LucideIcon,
 } from 'lucide-react';
 import Modal from '../ui/Modal';
@@ -20,10 +20,8 @@ const WHEN: Record<string, string> = {
   workout_logged: 'When they finish a workout in the app.',
   class_attended: 'A booked class they attended.',
   pt_session: 'A completed 1-on-1 session with a coach.',
-  goal_achieved: 'A goal with a number, reached — the app checks it; a hand-ticked goal earns nothing.',
   challenge_complete: 'Finishing a challenge.',
   personal_record: 'A new personal record on a lift — at most three a week, since weights are typed in.',
-  squad_week: 'Their team reaches its weekly target.',
   gym_goal: 'The whole gym reaches its goal — everyone who helped.',
   referral: 'A friend they invited pays for a membership — at most five a month.',
   referral_welcome: 'Joining through a friend, once they first pay.',
@@ -33,8 +31,8 @@ const WHEN: Record<string, string> = {
   membership_paid: 'When a membership payment above ₱0 is completed at the desk.',
 };
 const ICON: Record<string, LucideIcon> = {
-  checkin: CalendarCheck, workout_logged: Dumbbell, class_attended: Users, pt_session: Handshake, goal_achieved: Target,
-  challenge_complete: Flag, personal_record: Trophy, squad_week: Users, gym_goal: Trophy, referral: UserPlus, referral_welcome: UserPlus,
+  checkin: CalendarCheck, workout_logged: Dumbbell, class_attended: Users, pt_session: Handshake,
+  challenge_complete: Flag, personal_record: Trophy, gym_goal: Trophy, referral: UserPlus, referral_welcome: UserPlus,
   classwork_on_time: BookOpen, streak_milestone: Flame, shop_purchase: ShoppingBag, membership_paid: Banknote,
 };
 const per = (r: PointRule) => (r.key === 'shop_purchase' ? ' per ₱100' : '');

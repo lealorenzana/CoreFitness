@@ -161,20 +161,6 @@ export const FEATURE_SHOWS: Record<string, FeatureShow> = {
       { en: 'When the friend first pays, both are rewarded — points, or your desk reward if you run no points.', fil: 'Kapag unang nagbayad ang kaibigan, pareho silang may reward — points, o ang desk reward mo kung walang points.' },
     ],
   },
-  squads: {
-    frame: 'phone',
-    screen: [
-      { t: 'head', text: 'Team · Iron Four' },
-      { t: 'row', text: 'Mia · Leo · Ana · Jo', sub: '4 friends, one weekly target' },
-      { t: 'bar', label: 'Team week', from: 0.4, to: 1, at: 1, note: '10 of 10 workouts' },
-      { t: 'bar', label: 'Whole gym goal', from: 0.5, to: 0.62, at: 2, note: '310 of 500 days' },
-    ],
-    steps: [
-      { en: 'Two to five friends make a team.', fil: 'Dalawa hanggang lima ang bubuo ng team.' },
-      { en: 'Every workout adds to the team’s weekly target.', fil: 'Bawat workout ay dagdag sa weekly target ng team.' },
-      { en: 'And one goal for the whole gym, everyone adding to it.', fil: 'At isang goal para sa buong gym, lahat ay nag-aambag.' },
-    ],
-  },
   seasons: {
     frame: 'phone',
     screen: [
@@ -326,20 +312,6 @@ export const FEATURE_SHOWS: Record<string, FeatureShow> = {
       { en: 'You build programs that run for weeks.', fil: 'Gagawa ka ng programs na tumatagal nang ilang linggo.' },
       { en: 'Members follow them day by day.', fil: 'Susundan ito ng members araw-araw.' },
       { en: 'Each day opens as a workout to log.', fil: 'Bawat araw ay bubukas bilang workout na itatala.' },
-    ],
-  },
-  targets: {
-    frame: 'phone',
-    screen: [
-      { t: 'head', text: 'Targets' },
-      { t: 'row', text: 'Squat 80 kg', sub: 'by December' },
-      { t: 'bar', label: 'Best so far', from: 0.7, to: 1, at: 1, note: '80 of 80 kg' },
-      { t: 'tick', text: 'Reached — the app checked it', at: 2 },
-    ],
-    steps: [
-      { en: 'A member sets a target: a weight, a lift, visits a week.', fil: 'Magtatakda ang member ng target: timbang, buhat, o pagpunta bawat linggo.' },
-      { en: 'Their logs move it on by themselves.', fil: 'Kusang uusad ito mula sa mga tala nila.' },
-      { en: 'The app marks it reached — not a hand-ticked box.', fil: 'Ang app ang magmamarka na naabot — hindi mano-manong tsek.' },
     ],
   },
   push: {

@@ -21,7 +21,7 @@ set, and it is gated in SQL. The rest of this document is kept below as history.
   rule 6 makes the coach refer the member to a professional. The Privacy page says so.
 - **Training tools (0145, Phase 3).** The coach has six tools: `find_exercises`,
   `get_my_routines` and `get_my_schedule` (the last two need the history consent),
-  and `propose_routine`, `propose_schedule`, `propose_goal`. **Nothing changes
+  and `propose_routine`, `propose_schedule` (`propose_goal` went with 0274). **Nothing changes
   without the member's Apply**: a proposal is a row in `ai_proposals`, written by
   SQL, and only `apply` touches routines, schedule or goals. A member can discard a
   proposal or **undo** an applied one. Undo **never overwrites anything real**, and

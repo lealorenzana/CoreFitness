@@ -477,21 +477,3 @@ export interface TrainerCredentialRow {
   review_note: string | null;
 }
 
-/**
- * A preset goal that tracks itself (0055).
- *
- * `measured_as` is the rule in plain language and is shown on the card — a goal
- * whose definition is hidden is one you cannot trust when it says you failed.
- */
-export interface GoalTemplateRow {
-  key: string;
-  label: string;
-  description: string;
-  measured_as: string;
-  metric: string;
-  /** Rolling window in days. 56 = the last eight weeks. */
-  period_days: number;
-  target_default: number;
-  is_active: boolean;
-  sort_order: number;
-}

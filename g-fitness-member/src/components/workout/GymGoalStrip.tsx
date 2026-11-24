@@ -2,7 +2,7 @@ import { usePointsOn } from '../../hooks/usePointsOn';
 import { useEffect, useState } from 'react';
 import { UsersThree } from '@phosphor-icons/react';
 import { Panel, ProgressBar } from '../ui/noc';
-import { currentGymGoal, GOAL_UNIT, settleSquadsAndGoals, type GymGoal } from '../../lib/api/squads';
+import { currentGymGoal, GOAL_UNIT, settleGymGoals, type GymGoal } from '../../lib/api/gymGoal';
 
 /**
  * The gym-wide goal (0124), where members see it: one shared bar, and their own
@@ -19,7 +19,7 @@ export default function GymGoalStrip() {
   useEffect(() => {
     let alive = true;
     void (async () => {
-      await settleSquadsAndGoals();
+      await settleGymGoals();
       const g = await currentGymGoal();
       if (alive) setGoal(g);
     })();

@@ -33,19 +33,19 @@ const MAX_AGE_MS = 30 * 86_400_000;
 /** RPCs that only read. A name missing here is never answered from the phone. */
 const READ_RPCS = new Set([
   'achievement_progress', 'achievement_rarity', 'ai_coach_status', 'assignment_detail', 'challenge_progress',
-  'class_waitlist_status', 'coach_timeline', 'coaching_settings', 'current_gym_goal', 'goal_current_value',
-  'goal_progress', 'gym_join_rules', 'gym_online_pay', 'gym_photo_usage', 'gym_reels_feed', 'gym_traffic', 'list_gyms',
+  'class_waitlist_status', 'coach_timeline', 'coaching_settings', 'current_gym_goal',
+  'gym_join_rules', 'gym_online_pay', 'gym_photo_usage', 'gym_reels_feed', 'gym_traffic', 'list_gyms',
   'may_rate_trainer', 'member_commitments', 'member_exercise_history', 'member_last_sets',
-  'member_personal_records', 'member_points_balance', 'member_progression', 'member_squad',
-  'member_squad_streak', 'member_streak', 'my_ai_proposals', 'my_booking_modes', 'my_coach_setup',
+  'member_personal_records', 'member_points_balance', 'member_progression',
+  'member_streak', 'my_ai_proposals', 'my_booking_modes', 'my_coach_setup',
   'my_coaches', 'my_coachings', 'my_conversations', 'my_day_pass', 'my_due_classwork', 'my_features',
   'my_gym_app', 'my_gym_context', 'my_gyms', 'my_house_rules', 'my_invitation', 'my_member_checkouts',
   'my_membership_request', 'my_payment_account', 'my_referral_code', 'my_referrals', 'my_room_photos',
-  'my_rooms', 'my_season', 'my_signup_state', 'my_squad', 'my_squad_streak', 'my_streak',
+  'my_rooms', 'my_season', 'my_signup_state', 'my_streak',
   'my_trainer_ratings', 'my_waiver_status', 'my_whats_new', 'parq_questions', 'plan_allows', 'pr_wall',
   'program_day_targets', 'program_progress', 'public_plans', 'refund_quote', 'room_badges',
   'room_classwork', 'room_people', 'room_progress', 'room_stream', 'season_board', 'shop_catalog',
-  'squad_board', 'squad_streaks', 'trainee_progress_photos', 'trainer_review_queue',
+  'trainee_progress_photos', 'trainer_review_queue',
   'workout_session_summary',
 ]);
 

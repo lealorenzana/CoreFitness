@@ -27,7 +27,7 @@ export default function StreakOrb({
   const stroke = Math.max(5, Math.round(size / 14));
   const r = (size - stroke) / 2 - 2;
   const c = 2 * Math.PI * r;
-  // A segment per target day up to ten; past that (a squad's target can be 35)
+  // A segment per target day up to ten; past that (a target can be set higher)
   // segments would be slivers, so the ring becomes one arc filled by the fraction.
   const continuous = target > 10;
   const n = continuous ? 1 : Math.max(1, target);

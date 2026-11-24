@@ -61,8 +61,6 @@ async (page) => {
     trainer_feedback: [{ id: 'f1', trainer_id: 't1', member_id: 'm1', created_at: iso(-2),
       note: 'Knee tracks well now.', recommendation: 'Add one mobility session a week.',
       seen_at: iso(-1), done_at: null }],
-    fitness_goals: [{ id: 'g1', member_id: 'm1', title: 'Squat 80 kg', metric: 'lift_kg', start_value: 50,
-      target_value: 80, target_date: null, achieved_on: null, created_at: iso(-20), template_key: null, exercise_id: 'e1' }],
     // A term that started 10 days ago: 3 visit days (two check-ins on one), one
     // class that has happened and one that has not, one finished workout and
     // one still open. Expected: 3 visit days, 1 class, 0 1-on-1, 1 workout.
@@ -83,9 +81,7 @@ async (page) => {
       { key: 'checkin', label: 'Checked in at the gym', points: 10, is_active: true, sort_order: 1 },
       { key: 'workout_logged', label: 'Logged a workout', points: 15, is_active: true, sort_order: 2 },
       { key: 'challenge_complete', label: 'Finished a challenge', points: 250, is_active: false, sort_order: 3 }],
-    goal_templates: [{ key: 'stay_active', label: 'Maintain an active routine', description: 'Keep ticking over.',
-      measured_as: 'Days you trained in the last 30 days.', metric: 'training_days', period_days: 30, target_default: 12, is_active: true, sort_order: 1 }],
-    fitness_goals: [{ id: 'fg1', member_id: 'm1', template_key: 'stay_active', achieved_on: null }],
+
     challenges: [{ id: 'c1', title: 'September sprint', description: 'x', metric_key: 'training_days', target: 12,
       starts_on: '2026-09-01', ends_on: '2026-09-30', reward_points: 250, is_active: true, image_url: null }],
     challenge_participants: [{ challenge_id: 'c1', completed_on: null }, { challenge_id: 'c1', completed_on: '2026-09-15' }],
@@ -98,7 +94,6 @@ async (page) => {
     achievement_rarity: [],
     resource_save_counts: [{ resource_id: 'w1', saved: 12, done: 5 }],
     exercise_routine_counts: [{ exercise_id: 'e1', routines: 3, members: 2 }],
-    goal_current_value: 65,
   };
 
   await page.route(`**://${REF}.supabase.co/**`, async (route) => {
@@ -189,14 +184,10 @@ async (page) => {
   await page.getByText('How members earn points').scrollIntoViewIfNeeded();
   await page.screenshot({ path: 'shots/admin-point-rules.png' });
 
-  // Challenges: standings + goal templates
+  // Challenges: standings (the goal list members picked from went with 0274)
   await page.goto('http://localhost:5174/challenges', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(2500);
-  // The four ideas are the page's tabs (2026-10-20).
-  await page.locator('[data-idea="gp"]').click();
-  await page.waitForTimeout(600);
-  t = await text();
-  out.push('goal templates: ' + grab(t, 'The goals on your list', 160));
+  out.push('no goal list (0274): ' + ((await page.locator('[data-idea="gp"]').count()) === 0 ? 'yes' : 'STILL SHOWN'));
   await page.locator('[data-idea="ch"]').click();
   await page.waitForTimeout(400);
   await page.getByRole('button', { name: /^Finished/ }).click();
@@ -207,12 +198,5 @@ async (page) => {
   await page.screenshot({ path: 'shots/admin-standings.png' });
   await page.getByRole('button', { name: 'Close' }).last().click();
   await page.waitForTimeout(300);
-  await page.locator('[data-idea="gp"]').click();
-  await page.waitForTimeout(500);
-  await page.getByLabel('Starting number').fill('15');
-  await page.locator('[data-save-goal]').click();
-  await page.waitForTimeout(900);
-  out.push('template target now: ' + TABLES.goal_templates[0].target_default);
-  await page.screenshot({ path: 'shots/admin-goal-templates.png' });
   return out.join('\n');
 }

@@ -1,7 +1,7 @@
 import { assertWrote } from './mutate';
 import { supabase } from '../supabaseClient';
 import { currentGymId } from '../gymContext';
-import { newId, registerSender, sendOrQueue } from '../outbox';
+import { registerSender, sendOrQueue } from '../outbox';
 
 /**
  * The Progress Hub's data layer (migration 0020).
@@ -34,22 +34,6 @@ export interface BodyMeasurementRow {
   calf_cm: number | null;
   notes: string | null;
   created_at: string;
-}
-
-export interface FitnessGoalRow {
-  id: string;
-  member_id: string;
-  title: string;
-  metric: string;
-  start_value: number | null;
-  target_value: number | null;
-  target_date: string | null;
-  achieved_on: string | null;
-  created_at: string;
-  /** A preset goal's definition (0055); null for a number goal. */
-  template_key?: string | null;
-  /** For metric `lift_kg` (0087): the exercise whose heaviest set is the value. */
-  exercise_id?: string | null;
 }
 
 export interface WorkoutLogRow {
@@ -88,15 +72,6 @@ registerSender('measurement', async (p) => {
   const { error } = await supabase.from('body_measurements')
     .upsert(row, { onConflict: gymId ? 'gym_id,member_id,measured_on' : 'member_id,measured_on' });
   if (error) throw error;
-});
-registerSender('goal-add', async (p) => {
-  const { error } = await supabase.from('fitness_goals').insert(p);
-  if (error) throw error;
-});
-registerSender('goal-update', async (p) => {
-  const { data, error } = await supabase.from('fitness_goals').update(p.updates as Record<string, unknown>).eq('id', p.id as string).select('id');
-  if (error) throw error;
-  assertWrote(data, 'That target could not be saved — it may not be yours to edit.');
 });
 
 /**
@@ -145,40 +120,6 @@ export async function deleteMeasurement(id: string): Promise<void> {
     .select('id');
   if (error) throw error;
   assertWrote(data, 'That measurement could not be deleted — it may not be yours to remove.');
-}
-
-// ─── Goals ───────────────────────────────────────────────────────────────────
-
-export async function listGoals(memberId: string): Promise<FitnessGoalRow[]> {
-  const { data, error } = await supabase
-    .from('fitness_goals')
-    .select('*')
-    .eq('member_id', memberId)
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return data ?? [];
-}
-
-/** Saved now, or kept on the phone with no signal (lib/outbox.ts); the id is made here. */
-export async function createGoal(
-  input: Omit<FitnessGoalRow, 'id' | 'created_at' | 'achieved_on'> & { achieved_on?: string | null }
-): Promise<'sent' | 'queued'> {
-  return sendOrQueue('goal-add', 'Target', { id: newId(), ...input });
-}
-
-export async function updateGoal(
-  id: string,
-  updates: Partial<Omit<FitnessGoalRow, 'id' | 'member_id' | 'created_at'>>
-): Promise<'sent' | 'queued'> {
-  return sendOrQueue('goal-update', 'Target change', { id, updates });
-}
-
-export async function deleteGoal(id: string): Promise<void> {
-  const { data: data, error: error } = await supabase
-    .from('fitness_goals').delete().eq('id', id)
-    .select('id');
-  if (error) throw error;
-  assertWrote(data, 'That goal could not be deleted — it may not be yours to remove.');
 }
 
 // ─── Workout logs ────────────────────────────────────────────────────────────
@@ -248,20 +189,3 @@ export function bmiBand(value: number): { label: string; color: string } {
   return { label: 'Obese', color };
 }
 
-/**
- * How far a goal has come, 0–1, or null when it can't be known.
- *
- * Needs a start, a target and a current reading; without all three the honest
- * answer is "no idea", and a progress bar that invents a position is worse than
- * no bar at all.
- */
-export function goalProgress(
-  goal: FitnessGoalRow,
-  current: number | null
-): number | null {
-  if (goal.start_value == null || goal.target_value == null || current == null) return null;
-  const span = goal.target_value - goal.start_value;
-  if (span === 0) return current === goal.target_value ? 1 : 0;
-  // Works for goals that go down (losing weight) as well as up.
-  return Math.max(0, Math.min(1, (current - goal.start_value) / span));
-}

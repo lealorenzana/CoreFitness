@@ -8,8 +8,6 @@ import { supabase } from '../supabaseClient';
  *   routines   the routines they built (0086)
  *   notes      coach notes as `trainer_feedback` records (0072), with whether the
  *              member opened them and ticked the next step off (0088)
- *   goal value the current value of each goal, from `goal_current_value` (0087)
- *              — the same number the member's own Goals tab shows
  *
  * Each read fails soft to null, and the drawer says "could not be read" for a
  * null rather than drawing an empty section that looks like "none".
@@ -105,11 +103,3 @@ export async function listCoachNotes(memberId: string): Promise<CoachNoteRecord[
   }));
 }
 
-/** goal id → current value (0087); null where the database has none. */
-export async function getGoalValues(goalIds: string[]): Promise<Record<string, number | null>> {
-  const pairs = await Promise.all(goalIds.map(async (id) => {
-    const { data, error } = await supabase.rpc('goal_current_value', { p_goal: id });
-    return [id, error || data == null ? null : Number(data)] as const;
-  }));
-  return Object.fromEntries(pairs);
-}

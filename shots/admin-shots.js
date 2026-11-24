@@ -226,8 +226,8 @@ async (page) => {
     trainer_ratings: [], trainer_credentials: [], trainer_feedback: [],
     workout_resources: [], achievements: [], achievement_unlocks: [],
     challenges: [], challenge_participants: [], activity_log: [],
-    features: [], plan_features: [], point_rules: [], goal_templates: [],
-    body_measurements: [], fitness_goals: [], workout_logs: [], workout_sets: [],
+    features: [], plan_features: [], point_rules: [],
+    body_measurements: [], workout_logs: [], workout_sets: [],
     pending_registrations: [], exercises: [],
   };
 

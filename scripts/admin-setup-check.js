@@ -39,7 +39,7 @@ async (page) => {
     { feature_key: 'desk', label: 'The front desk', description: 'Payments and check-ins.', state: 'on', enabled: true, sort_order: 1, parent_key: null },
     { feature_key: 'shop', label: 'The shop', description: 'Sell at the desk.', state: 'on', enabled: true, sort_order: 2, parent_key: 'desk' },
     { feature_key: 'assistant', label: 'The AI coach', description: 'A coach in the app.', state: 'on', enabled: true, sort_order: 3, parent_key: null },
-    { feature_key: 'squads', label: 'Squads', description: 'Train with friends.', state: 'not_sold', enabled: false, sort_order: 4, parent_key: null },
+    { feature_key: 'lobby_tv', label: 'Lobby TV', description: 'A screen in your gym.', state: 'not_sold', enabled: false, sort_order: 4, parent_key: null },
   ];
   const CALLS = [];
   let FINISHED = false;
@@ -121,7 +121,7 @@ async (page) => {
   await page.locator('[data-every-switch] summary').click();
   await page.waitForTimeout(300);
   t = await text();
-  out.push('only what the plan sells: ' + (/The front desk/.test(t) && /The shop/.test(t) && !/Squads/.test(t) ? 'yes (squads hidden)' : 'MISSING'));
+  out.push('only what the plan sells: ' + (/The front desk/.test(t) && /The shop/.test(t) && !/Lobby TV/.test(t) ? 'yes (lobby TV hidden)' : 'MISSING'));
   await page.getByRole('button', { name: /The shop/ }).click();
   await page.waitForTimeout(500);
   out.push('a switch saves at once: ' + (CALLS.some(([f, b]) => f === 'set_gym_module' && b.p_feature === 'shop' && b.p_enabled === false) ? 'yes' : 'MISSING'));

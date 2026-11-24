@@ -165,43 +165,9 @@ export function streakLine(s: StreakCard): { text: string; tone: 'state' | 'acti
   };
 }
 
-/** A squad's streak (0153): consecutive weeks the squad reached its weekly target. */
-export interface SquadStreak {
-  name: string; target: number; current: number; best: number; daysThisWeek: number; needed: number;
-  daysLeft: number; members: number; atRisk: boolean; outOfReach: boolean; history: StreakWeek[];
-}
-
-/** null when not in a squad, Squads switched off, or before 0153. */
-export async function mySquadStreak(): Promise<SquadStreak | null> {
-  const { data, error } = await supabase.rpc('my_squad_streak');
-  if (error || !data) return null;
-  const r = data as Record<string, unknown>;
-  return {
-    name: String(r.name), target: Number(r.target), current: Number(r.current), best: Number(r.best),
-    daysThisWeek: Number(r.days_this_week), needed: Number(r.needed), daysLeft: Number(r.days_left),
-    members: Number(r.members), atRisk: Boolean(r.at_risk), outOfReach: Boolean(r.out_of_reach),
-    history: Array.isArray(r.history) ? (r.history as StreakWeek[]) : [],
-  };
-}
-
-/** The board's squad streaks — names and numbers only. Empty before 0153. */
-export async function squadStreaks(): Promise<Map<string, number>> {
-  const { data, error } = await supabase.rpc('squad_streaks');
-  if (error || !Array.isArray(data)) return new Map();
-  return new Map((data as { squad_name: string; current_streak: number }[]).map((r) => [r.squad_name, r.current_streak]));
-}
-
 const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 /** "Sun" / "Sat and Sun" — the gym's closed days, said plainly. */
 export const closedDaysLabel = (days: number[]) => {
   const names = [...days].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)).map((d) => DAY_SHORT[d]);
   return names.length <= 1 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
 };
-
-/** A trainee's squad streak, for their coach (0153). null when none, not visible, or before 0153. */
-export async function memberSquadStreak(memberId: string): Promise<{ current: number; atRisk: boolean } | null> {
-  const { data, error } = await supabase.rpc('member_squad_streak', { p_member: memberId });
-  if (error || !data) return null;
-  const r = data as Record<string, unknown>;
-  return { current: Number(r.current), atRisk: Boolean(r.at_risk) };
-}

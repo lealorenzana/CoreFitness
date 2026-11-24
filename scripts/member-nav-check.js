@@ -264,7 +264,7 @@ async (page) => {
   let t = await text();
   const trainTabs = (await page.getByRole('tablist').first().getByRole('tab').allInnerTexts()).map((x) => x.trim());
   out.push('Train opens on Workout, Coach last: ' + (trainTabs[0] === 'Workout' && trainTabs[trainTabs.length - 1] === 'Coach'
-    && /Your plan/.test(t) && /Library/.test(t) && !/Coach notes|Goals|Squad/.test(t) ? trainTabs.join(' · ') : 'MISSING ' + JSON.stringify(trainTabs)));
+    && /Your plan/.test(t) && /Library/.test(t) && !/Coach notes|Goals|Team/.test(t) ? trainTabs.join(' · ') : 'MISSING ' + JSON.stringify(trainTabs)));
   await shot('nav-train');
 
   await go('/member/track');

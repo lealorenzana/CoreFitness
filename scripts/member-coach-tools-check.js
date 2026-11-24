@@ -142,11 +142,12 @@ async (page) => {
         { exercise_id: 'e3', target_sets: 3, target_seconds: 30, rest_seconds: 60 }] }, 'pending', 0) },
     { text: 'Two days a week suits you.', proposal: PROP('P2', 'schedule.set', 'Train Monday and Thursday',
       { days: [{ day_of_week: 1, routine_id: 'r1', remind_at: '06:30' }, { day_of_week: 4 }] }, 'pending', 0) },
-    { text: 'A goal keeps you honest.', proposal: PROP('P3', 'goal.create', 'Squat your bodyweight by December',
-      { title: 'Squat 70 kg', metric: 'weight_kg', target_value: 70, target_date: '2026-12-01' }, 'pending', 0) },
+    // Goal proposals were the examples here until 0274 removed goals; routines stand in.
+    { text: 'A heavy day keeps you honest.', proposal: PROP('P3', 'routine.create', 'Squat your bodyweight by December',
+      { name: 'Squat 70 kg', exercises: [{ exercise_id: 'e1', target_sets: 5, target_reps: 5, target_weight_kg: 70, rest_seconds: 120 }] }, 'pending', 0) },
     // A proposal and no words at all: still the coach's reply.
-    { text: '', proposal: PROP('P4', 'goal.create', 'Train three times a week',
-      { title: 'Three a week', metric: 'workouts_per_week', target_value: 3 }, 'pending', 0) },
+    { text: '', proposal: PROP('P4', 'schedule.set', 'Train three times a week',
+      { days: [{ day_of_week: 1 }, { day_of_week: 3 }, { day_of_week: 5 }] }, 'pending', 0) },
   ];
   const RPC_CALLS = [];
   let APPLY_REFUSAL = null;
@@ -348,11 +349,11 @@ async (page) => {
   // ── An apply the database refuses shows its own sentence ──
   await ask('How do I stay motivated on cold mornings?');
   c = await cardText('P3');
-  out.push('a goal card shows its target: ' + (c.includes('Squat 70 kg') && c.includes('Target: 70 kg by Dec 1, 2026') ? 'yes' : 'MISSING ' + c));
-  APPLY_REFUSAL = 'You already have a goal with that title.';
+  out.push('a routine card shows its summary: ' + (c.includes('Squat your bodyweight by December') ? 'yes' : 'MISSING ' + c));
+  APPLY_REFUSAL = 'You already have a routine with that name.';
   await tap('P3', 'Apply');
   c = await cardText('P3');
-  out.push('a refused apply shows the database sentence: ' + (/You already have a goal with that title\./.test(await text()) ? 'yes' : 'MISSING'));
+  out.push('a refused apply shows the database sentence: ' + (/You already have a routine with that name\./.test(await text()) ? 'yes' : 'MISSING'));
   out.push('a refused apply leaves Apply on the card: ' + (/\bApply\b/.test(c) && !/Applied/.test(c) ? 'yes' : 'NO ' + c));
   APPLY_REFUSAL = null;
 
@@ -363,7 +364,7 @@ async (page) => {
   const waiting = await group('Waiting');
   const applied = await group('Applied');
   const gone = await group('Undone or discarded');
-  out.push('the sheet: Waiting holds the refused goal: ' + (/Squat your bodyweight by December/.test(waiting) && !/push day|Monday/.test(waiting) ? 'yes' : 'MISSING ' + waiting));
+  out.push('the sheet: Waiting holds the refused routine: ' + (/Squat your bodyweight by December/.test(waiting) && !/push day|Monday/.test(waiting) ? 'yes' : 'MISSING ' + waiting));
   out.push('the sheet: Applied holds the earlier change: ' + (/Lighter arms day/.test(applied) && /Replaces: Arms day/.test(applied) && /Undo/.test(applied) ? 'yes' : 'MISSING ' + applied));
   out.push('the sheet: undone and discarded together: ' + (/A push day with squats/.test(gone) && /Train Monday and Thursday/.test(gone) && /Undone/.test(gone) && /Discarded/.test(gone) ? 'yes' : 'MISSING ' + gone));
   await page.screenshot({ path: 'shots/member-coach-changes.png' });

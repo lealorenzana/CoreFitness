@@ -45,7 +45,7 @@ const ACTION_GROUPS: Record<ActivityGroup, string[]> = {
   shop:        ['shop.'],
   // 0245: reel.posted, reel.removed. 0246: the gym chat's moderation (chat.removed, chat.silenced, chat.unsilenced, chat.mode) sits beside the rooms'.
   coaching:    ['room.', 'classwork.', 'program.', 'ai.', 'reel.', 'chat.'],
-  engagement:  ['reward.', 'referral.', 'squad.', 'season.', 'streak.', 'winback.', 'achievement.'],
+  engagement:  ['reward.', 'referral.', 'season.', 'streak.', 'winback.', 'achievement.'],
   team:        ['credential.', 'gym.'],
 };
 

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useGymApp } from '../hooks/useGymApp';
 import { moduleOn, pointsWord } from '../lib/gymApp';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { CaretRight, Coins, Gift, Package, PushPin, Ranking, Star, Storefront, UsersThree, WarningCircle } from '@phosphor-icons/react';
+import { CaretRight, Coins, Gift, Package, PushPin, Ranking, Star, Storefront, WarningCircle } from '@phosphor-icons/react';
 import Challenges from './Challenges';
 import { CountNumber } from '../components/ui/lively';
 import FeatureLock from '../components/ui/FeatureLock';
@@ -59,7 +59,6 @@ export default function Rewards() {
   const rtab: RewardsTab = askedTab && offeredTabs.includes(askedTab) ? askedTab : offeredTabs[0] ?? 'rewards';
   const extras = [
     { label: 'Season', path: '/member/season', on: moduleOn(gymApp, 'seasons'), icon: Ranking, meta: 'This month’s standings' },
-    { label: 'Team', path: '/member/squad', on: moduleOn(gymApp, 'squads'), icon: UsersThree, meta: 'Your squad’s weekly target' },
   ].filter((x) => x.on);
   const { features } = useFeatures();
   const mayRedeem = isEnabled(features, 'points_redeem');

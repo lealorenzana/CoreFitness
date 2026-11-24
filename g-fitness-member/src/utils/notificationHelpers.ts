@@ -59,19 +59,6 @@ export const notificationHelpers = {
   },
 
   /**
-   * Send goal milestone notification
-   */
-  async sendGoalMilestone(userId: string, goalName: string, percentage: number) {
-    await notificationService.sendNotification(
-      userId,
-      'goal_milestone',
-      'Goal Milestone Reached! 🎯',
-      `You've reached ${percentage}% of your ${goalName} goal. Keep it up!`,
-      '/member/targets'
-    );
-  },
-
-  /**
    * Send trainer feedback notification
    */
   async sendTrainerFeedback(userId: string, trainerName: string) {

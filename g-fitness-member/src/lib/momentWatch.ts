@@ -18,7 +18,6 @@ import { loadMomentPrefs, pointsFor, saveMarkers, showMoment } from './moments';
  */
 
 const RANK: Record<string, number> = { beginner: 0, intermediate: 1, advanced: 2 };
-const UNIT: Record<string, string> = { weight_kg: 'kg', lift_kg: 'kg', body_fat_pct: '%', waist_cm: 'cm' };
 
 let running: Promise<void> | null = null;
 let lastRun = 0;
@@ -58,21 +57,6 @@ export function checkForMoments(force = false): Promise<void> {
       }
     }
 
-    // Targets with a number, marked reached by settle_my_goals() (never a hand tick).
-    await supabase.rpc('settle_my_goals').then(() => undefined, () => undefined);
-    const goals = await supabase.from('fitness_goals')
-      .select('id, title, metric, start_value, target_value, template_key')
-      .eq('member_id', uid).not('achieved_on', 'is', null).is('celebrated_at', null);
-    for (const g of ((goals.error ? [] : goals.data) ?? []) as {
-      id: string; title: string; metric: string; start_value: number | null; target_value: number | null; template_key: string | null;
-    }[]) {
-      // A custom target is ticked by hand and pays nothing (0087): its "Nicely done" is enough.
-      if (g.metric === 'custom' && !g.template_key) { await markGoal(g.id); continue; }
-      showMoment({ kind: 'target', id: g.id, title: g.title, unit: UNIT[g.metric] ?? '',
-        start: g.start_value, target: g.target_value, points: await pointsFor('fitness_goals', g.id) });
-      await markGoal(g.id);
-    }
-
     // Challenges finished.
     await supabase.rpc('settle_challenges').then(() => undefined, () => undefined);
     const done = await supabase.from('challenge_participants')
@@ -99,11 +83,6 @@ export function splashGone(): Promise<void> {
     const look = () => (!document.getElementById('boot') || Date.now() - t0 > 10_000 ? done() : window.setTimeout(look, 200));
     look();
   });
-}
-
-async function markGoal(id: string) {
-  await supabase.from('fitness_goals').update({ celebrated_at: new Date().toISOString() }).eq('id', id).select('id')
-    .then(() => undefined, () => undefined);
 }
 
 /**

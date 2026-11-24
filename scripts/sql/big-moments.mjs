@@ -30,8 +30,7 @@ await db.exec(`
       values ('${u}', '${k}', 'T', '${k}@bm-test.com', 'active', '${role}', '${GYM}') on conflict (id) do update set active_gym_id = excluded.active_gym_id;
     delete from gym_roles where user_id = '${u}';
     insert into gym_roles (gym_id, user_id, role, status) values ('${GYM}', '${u}', '${role}', 'active');`).join('\n')}
-  insert into member_profiles (profile_id, gym_id, qr_code) values ('${M}', '${GYM}', 'QR-BM1'), ('${M2}', '${GYM}', 'QR-BM2') on conflict do nothing;
-  insert into fitness_goals (id, gym_id, member_id, title, metric, target_value) values ('${id('91')}', '${GYM}', '${M}', 'Squat', 'lift_kg', 100), ('${id('92')}', '${GYM}', '${M2}', 'Bench', 'lift_kg', 80);`);
+  insert into member_profiles (profile_id, gym_id, qr_code) values ('${M}', '${GYM}', 'QR-BM1'), ('${M2}', '${GYM}', 'QR-BM2') on conflict do nothing;`);
 
 check('defaults: celebrations and sounds on for a gym',
   (await one(`select celebrations c, celebration_sounds s from gym_settings where gym_id = '${GYM}'`))?.c === true);
@@ -51,15 +50,7 @@ check('…and they are kept', mine.s === false && mine.l === 'intermediate' && m
 const theirs = await one(`select celebration_sounds s, celebrated_level l from member_profiles where profile_id = '${M2}'`);
 check('…but never another member\'s (zero rows, no error — RLS)', theirs.s === true && theirs.l === null, JSON.stringify(theirs));
 
-// A target's mark.
-await as(M);
-err = await tryExec(`update fitness_goals set celebrated_at = now() where id = '${id('91')}'`);
-check('a member marks their own target celebrated', err === null, err ?? '');
-await tryExec(`update fitness_goals set celebrated_at = now() where id = '${id('92')}'`);
-await owner();
-check('…and not someone else\'s', (await one(`select celebrated_at c from fitness_goals where id = '${id('92')}'`)).c === null);
-check('…and marking it did not mark it reached (the achieved guard still decides that)',
-  (await one(`select achieved_on a from fitness_goals where id = '${id('91')}'`)).a === null);
+// A target's mark went with members' own goals (0274).
 
 // The gym's switches: the owner, not a member, not the desk.
 await as(M);

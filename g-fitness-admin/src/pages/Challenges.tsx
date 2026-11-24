@@ -1,14 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { Flag, Building2, UsersRound, Goal, Sparkles, Repeat, Eye, EyeOff, BarChart3, Lightbulb, Check, MoreHorizontal } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Flag, Building2, Sparkles, Repeat, Eye, EyeOff, BarChart3, Lightbulb, Check, MoreHorizontal } from 'lucide-react';
 import { ChallengeStandingsModal } from '../components/ui/EngagementRules';
 import ImageField from '../components/ui/ImageField';
 import Popover from '../components/ui/Popover';
 import SentenceDate from '../components/challenges/SentenceDate';
 import GymGoalTab from '../components/challenges/GymGoalTab';
-import SquadsTab from '../components/challenges/SquadsTab';
-import { useGymModules, moduleOn } from '../hooks/useGymModules';
-import GoalListTab from '../components/challenges/GoalListTab';
 import './attendance/att.css';
 import { showToast } from '../utils/toast';
 import { supabase } from '../lib/supabaseClient';
@@ -18,9 +15,8 @@ import SkelRows from '../components/ui/SkelRows';
 
 /**
  * Challenges & goals (0052/0124/0055, redrawn 2026-10-20 to the approved
- * mock-up): the four ideas explained where they are chosen — challenges members
- * join, one goal for the whole gym, the members' squads, and the goals members
- * pick — each counted from real check-ins and workouts, never typed in.
+ * mock-up): the two ideas explained where they are chosen: challenges members
+ * join, and one goal for the whole gym, each counted from real check-ins and workouts, never typed in.
  *
  * There is no "mark complete": `challenge_participants` has no UPDATE policy
  * for anyone, and completion is `settle_challenges()` from real counts.
@@ -40,7 +36,6 @@ const COUNTS: Record<string, string> = {
   distinct_activities: 'Different kinds of training: classes, workouts, sessions.',
   early_checkins: 'Check-ins before 7 in the morning.',
   late_checkins: 'Check-ins from 8 in the evening.',
-  goals_achieved: 'Goals with a number they reached.',
   measurements: 'Body measurements they recorded.',
   classes_attended: 'Booked classes they attended.',
   pt_sessions_done: 'Completed 1-on-1 sessions.',
@@ -53,26 +48,24 @@ const PRESETS = [
   { name: 'Steady month', title: 'Steady month', metric: 'consistent_weeks', target: 4, days: 30, points: 300, weekly: false, line: 'Twice a week, four weeks running.' },
 ];
 const fmt = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
-type View = 'ch' | 'gg' | 'sq' | 'gp';
+type View = 'ch' | 'gg';
 type Show = 'running' | 'upcoming' | 'finished';
 
 export default function Challenges() {
   const [today] = useState(() => todayKey());
   const [params, setParams] = useSearchParams();
-  const view = (['ch', 'gg', 'sq', 'gp'].includes(params.get('tab') ?? '') ? params.get('tab') : 'ch') as View;
+  const view = (['ch', 'gg'].includes(params.get('tab') ?? '') ? params.get('tab') : 'ch') as View;
   const go = (v: View) => setParams(v === 'ch' ? {} : { tab: v }, { replace: true });
 
   const [metrics, setMetrics] = useState<Metric[]>([]);
   const [items, setItems] = useState<Challenge[] | null | undefined>(undefined);
   const [counts, setCounts] = useState<Record<string, { joined: number; done: number }>>({});
-  const [summary, setSummary] = useState<{ goal: string; squads: string; list: string }>({ goal: '…', squads: '…', list: '…' });
+  const [summary, setSummary] = useState<{ goal: string }>({ goal: '…' });
   const [avgDays, setAvgDays] = useState<number | null>(null);
   const [show, setShow] = useState<Show>('running');
   const [standing, setStanding] = useState<{ id: string; title: string; target: number } | null>(null);
   const [menu, setMenu] = useState<{ at: HTMLElement; c: Challenge } | null>(null);
   const [busy, setBusy] = useState(false);
-  // Squads are off by default since 0220: switched off, the card says so and the tab explains, never hides.
-  const squadsOn = moduleOn(useGymModules(), 'squads');
   const [preset, setPreset] = useState(PRESETS[0].name);
   const [form, setForm] = useState({ title: PRESETS[0].title, description: PRESETS[0].line, metric_key: 'training_days', target: '10',
     starts_on: today, ends_on: addDays(today, 29), reward_points: '250', imageUrl: '', repeatsWeekly: false });
@@ -100,15 +93,9 @@ export default function Challenges() {
     setCounts(agg);
   }, []);
 
-  /** The line under each of the four ideas — the same numbers each tab shows. */
+  /** The line under each idea — the same numbers each tab shows. */
   const loadSummary = useCallback(async () => {
-    const [g, s, sm, t, f] = await Promise.all([
-      supabase.rpc('current_gym_goal'),
-      supabase.from('squads').select('id', { count: 'exact', head: true }).is('archived_at', null),
-      supabase.from('squad_members').select('id', { count: 'exact', head: true }).is('left_at', null),
-      supabase.from('goal_templates').select('key, is_active'),
-      supabase.from('fitness_goals').select('id', { count: 'exact', head: true }).is('achieved_on', null).not('template_key', 'is', null),
-    ]);
+    const g = await supabase.rpc('current_gym_goal');
     const goal = Array.isArray(g.data) ? g.data[0] as { id: string; target: number; metric: string } | undefined : undefined;
     let goalWord = 'none running';
     if (goal) {
@@ -116,11 +103,7 @@ export default function Challenges() {
       const row = Array.isArray(r.data) ? r.data[0] as { progress: number } | undefined : undefined;
       goalWord = `${Number(row?.progress ?? 0).toLocaleString()} of ${goal.target.toLocaleString()} ${goal.metric === 'workouts_logged' ? 'workouts' : goal.metric === 'checkins' ? 'check-ins' : 'days'}`;
     }
-    setSummary({
-      goal: goalWord,
-      squads: s.error ? '—' : `${s.count ?? 0} squad${s.count === 1 ? '' : 's'} · ${sm.count ?? 0} members`,
-      list: t.error ? '—' : `${(t.data ?? []).filter((x) => x.is_active).length} on the list · ${f.count ?? 0} using`,
-    });
+    setSummary({ goal: goalWord });
   }, []);
 
   useEffect(() => {
@@ -179,20 +162,18 @@ export default function Challenges() {
   const ideas: [View, typeof Flag, string, React.ReactNode, string][] = [
     ['ch', Flag, 'Challenges', <>A target with dates that members <b>join</b>. Each one chases it alone; finishing pays points once.</>, `${running.length} running · ${runningJoined} joined`],
     ['gg', Building2, 'Gym goal', <>One target for <b>everyone together</b>. Every visit adds to it; when it is reached, everyone who helped gets the points.</>, summary.goal],
-    ['sq', UsersRound, 'Squads', <>Small groups of friends that <b>members make</b> in the app, with a weekly target they hit together.</>, squadsOn ? summary.squads : 'Off at your gym'],
-    ['gp', Goal, 'Goals members pick', <>A <b>personal goal</b> each member chooses from your list, like “train 12 days a month”. Private to them and their coach.</>, summary.list],
   ];
 
   return (
     <div className="att" data-challenges>
       <div className="a-head">
-        <div className="min-w-0 v3-banner" style={{ ['--art' as string]: 'url(/art/tile-challenges.webp)' }}><h1>Challenges &amp; goals</h1><p>Four ways to keep members coming back, every one counted from real check-ins and workouts, never typed in</p></div>
+        <div className="min-w-0 v3-banner" style={{ ['--art' as string]: 'url(/art/tile-challenges.webp)' }}><h1>Challenges &amp; goals</h1><p>Two ways to keep members coming back, every one counted from real check-ins and workouts, never typed in</p></div>
       </div>
 
-      {/* The four ideas down the left (owner, 2026-11-23, after Discord's settings): each with its live count; the open
+      {/* The ideas down the left (owner, 2026-11-23, after Discord's settings): each with its live count; the open
           one's explanation leads its page instead of four big cards. */}
       <div className="ya-shell v3-shell">
-      <nav className="ya-nav" role="tablist" aria-label="Four ideas" aria-orientation="vertical">
+      <nav className="ya-nav" role="tablist" aria-label="Two ideas" aria-orientation="vertical">
         {ideas.map(([k, Icon, title, , em]) => (
           <button key={k} type="button" role="tab" aria-selected={view === k} className={`ya-item v3-li ${view === k ? 'on' : ''}`} onClick={() => go(k)} data-idea={k}>
             <span className="v3-mark"><Icon size={16} /></span>
@@ -291,18 +272,6 @@ export default function Challenges() {
         </div>
       )}
       {view === 'gg' && <GymGoalTab onChanged={() => void loadSummary()} />}
-      {view === 'sq' && (squadsOn ? <SquadsTab /> : (
-        <div className="a-card" data-squads-off style={{ flex: 1 }}>
-          <div className="a-ct"><h3><UsersRound size={16} />Squads are switched off</h3></div>
-          <p className="a-sub" style={{ maxWidth: 620 }}>
-            A squad is a group of up to five friends who make it themselves in the app and share one weekly target: training days
-            added up across the squad (10 unless they choose another). When the week's target is met, everyone in it earns your squad-week points.
-            Your members don't see Squads while it is off, and nothing here counts.
-          </p>
-          <div style={{ marginTop: 12 }}><Link to="/gym-app?tab=runs" className="a-btn violet">Switch it on in Your app</Link></div>
-        </div>
-      ))}
-      {view === 'gp' && <GoalListTab onChanged={() => void loadSummary()} />}
       </div>
       </div>
 

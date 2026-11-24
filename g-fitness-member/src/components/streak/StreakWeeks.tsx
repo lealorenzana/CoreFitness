@@ -6,21 +6,19 @@ const weekLabel = (iso: string) =>
   new Date(`${iso}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
 
 /**
- * The last twelve weeks as tokens to tap (0152/0153) — a member's own, or their
- * squad's. Which week counted is SQL's call; this only draws it. Tokens scale in
+ * The last twelve weeks of a member's own streak as tokens to tap (0152/0153).
+ * Which week counted is SQL's call; this only draws it. Tokens scale in
  * but are never hidden waiting for an animation (CLAUDE.md, motion).
  */
-export default function StreakWeeks({ weeks, words, unit = 'training' }: {
+export default function StreakWeeks({ weeks, words }: {
   weeks: StreakWeek[];
   /** What each state means, in this context ("Target reached", "Frozen — …"). */
   words: Partial<Record<StreakWeek['state'], string>>;
-  /** "training" for a member, "squad" for a squad's summed days. */
-  unit?: 'training' | 'squad';
 }) {
   const [picked, setPicked] = useState<number | null>(null);
   if (weeks.length === 0) return null;
   const pw = picked !== null ? weeks[picked] : null;
-  const days = (n: number) => `${n} ${unit === 'squad' ? 'training days between you' : `training ${n === 1 ? 'day' : 'days'}`}`;
+  const days = (n: number) => `${n} training ${n === 1 ? 'day' : 'days'}`;
   return (
     <>
       <div className="streak-weeks" role="list">

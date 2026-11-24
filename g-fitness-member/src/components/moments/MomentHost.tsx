@@ -1,7 +1,7 @@
 import { usePointsOn } from '../../hooks/usePointsOn';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
-import { Barbell, Check, Coins, FlagCheckered, Fire, Medal, Star, Target, TrendUp, UsersThree } from '@phosphor-icons/react';
+import { Barbell, Check, Coins, FlagCheckered, Fire, Medal, Star, TrendUp, UsersThree } from '@phosphor-icons/react';
 import type { CoachMilestone } from '../../lib/api/coachMoments';
 import { tierStyle } from '../../data/achievements';
 import { levelLabel } from '../../lib/api/achievements';
@@ -45,7 +45,6 @@ function Full({ m, still }: { m: Moment; still: boolean }) {
     case 'checkin': return <CheckinMoment m={m} still={still} />;
     case 'badge': return <BadgeMoment m={m} still={still} />;
     case 'level': return <LevelMoment m={m} still={still} />;
-    case 'target': return <TargetMoment m={m} still={still} />;
     case 'challenge': return <ChallengeMoment m={m} still={still} />;
     case 'coach': return <CoachMoment m={m} still={still} />;
   }
@@ -202,33 +201,6 @@ function LevelMoment({ m, still }: { m: Extract<Moment, { kind: 'level' }>; stil
   );
 }
 
-// ── Target reached ───────────────────────────────────────────────────────────
-
-function TargetMoment({ m, still }: { m: Extract<Moment, { kind: 'target' }>; still: boolean }) {
-  const { ref, burst } = useConfetti(still);
-  const span = m.start != null && m.target != null ? m.target - m.start : null;
-  const step = useSteps([200, 400, 950, 350, 150, 350], still, (s) => {
-    if (s === 3) { play('snap'); buzz([30, 40, 90]); burst(0.5, 90); }
-    if (s === 6) play('pop');
-  });
-  const fmt = (v: number | null) => (v == null ? '' : `${Number(v.toFixed(1)).toLocaleString('en-PH')}${m.unit ? ` ${m.unit}` : ''}`);
-  return (
-    <Layer still={still} canvas={ref}>
-      <p className={on(step, 1, 'mo-eyebrow mo-in')}>Target reached</p>
-      <div className={`${on(step, 1, 'mo-target mo-in')}${step >= 3 ? ' on' : ''}`}>
-        <div className="mo-t"><b>{m.title}</b><span className="mo-v">{fmt(m.target)}</span></div>
-        <div className="mo-bar"><i style={{ width: step >= 2 ? '100%' : '80%' }} /></div>
-        {m.start != null && <div className="mo-t" style={{ marginTop: 8 }}><span className="mo-v">Started at {fmt(m.start)}</span><span className="mo-v">{fmt(m.target)}</span></div>}
-      </div>
-      <div className={on(step, 3, 'mo-stamp')}><Check size={44} weight="bold" /></div>
-      <h2 className={on(step, 4, 'mo-h1 mo-in')}>{m.title}</h2>
-      {span != null && span !== 0 && <p className={on(step, 5, 'mo-sub mo-in')}>From {fmt(m.start)} to {fmt(m.target)}.</p>}
-      <Points points={m.points} step={step} at={6} why="for the target" />
-      <button type="button" className="mo-cta" onClick={nextMoment} data-moment-done>Done</button>
-    </Layer>
-  );
-}
-
 // ── Challenge finished ───────────────────────────────────────────────────────
 
 function ChallengeMoment({ m, still }: { m: Extract<Moment, { kind: 'challenge' }>; still: boolean }) {
@@ -326,7 +298,6 @@ function cardText(m: Moment, word: string): [typeof Check, string, string | null
       [m.daysThisWeek != null && m.target ? `${m.daysThisWeek} of ${m.target} days this week` : null, pts(m.points)].filter(Boolean).join(' · ') || null];
     case 'badge': return [Medal, `Badge unlocked: ${m.def.title}`, tierStyle(m.def.tier).label];
     case 'level': return [TrendUp, `Earned level: ${levelLabel(m.to as never)}`, null];
-    case 'target': return [Target, `Target reached: ${m.title}`, pts(m.points)];
     case 'challenge': return [FlagCheckered, `Challenge finished: ${m.title}`, pts(m.points)];
     case 'coach': { const t = coachMilestoneText(m.milestone); return [t.icon, t.title, t.eyebrow]; }
   }

@@ -41,8 +41,9 @@ check('a 1001-character question is refused', !core.validQuestion('x'.repeat(100
 // ---- Phase 3: the tools ----
 const tools = core.TOOLS ?? [];
 const names = tools.map((t) => t.name).sort().join(',');
-check('the fourteen tools are defined',
-  names === 'find_exercises,get_gym_info,get_my_bookings,get_my_progress,get_my_routines,get_my_schedule,propose_booking,propose_cancel_booking,propose_goal,propose_log,propose_program,propose_reading,propose_routine,propose_schedule', names);
+// Thirteen since propose_goal went with members' own goals (0274).
+check('the thirteen tools are defined',
+  names === 'find_exercises,get_gym_info,get_my_bookings,get_my_progress,get_my_routines,get_my_schedule,propose_booking,propose_cancel_booking,propose_log,propose_program,propose_reading,propose_routine,propose_schedule', names);
 // Every object in a strict schema must close its properties and require every one of them.
 const closed = (s) => {
   if (!s || typeof s !== 'object') return true;
@@ -56,7 +57,7 @@ const closed = (s) => {
   return true;
 };
 check('every tool is closed and requires every property; all but the loose proposals are strict',
-  tools.length === 14 && tools.every((t) => t.strict === !core.LOOSE_TOOLS.includes(t.name) && t.input_schema?.additionalProperties === false && closed(t.input_schema)));
+  tools.length === 13 && tools.every((t) => t.strict === !core.LOOSE_TOOLS.includes(t.name) && t.input_schema?.additionalProperties === false && closed(t.input_schema)));
 check('a loose tool is still checked in full before it runs', 'error' in core.toolCall('propose_log', { summary: 's', performed_on: '2026-10-11', activity: 'x', sets: [{ exercise_id: 'e', reps: 8 }] }));
 check('MAX_ROUNDS is 6', core.MAX_ROUNDS === 6);
 // Anthropic refuses a request whose strict tools carry more than 16 union (nullable) parameters
@@ -91,7 +92,7 @@ const walk = (s, at) => {
 };
 for (const t of tools) walk(t.input_schema, t.name);
 check('no schema uses a type array; nullables are anyOf with a null branch',
-  typeArrays.length === 0 && nullables.length >= 12, JSON.stringify({ typeArrays, n: nullables.length }));
+  typeArrays.length === 0 && nullables.length >= 11, JSON.stringify({ typeArrays, n: nullables.length }));
 check('an anyOf-nullable still refuses the wrong type (a number for a string id)',
   typeof core.toolCall('find_exercises', { muscle_group: 7, equipment: null }).error === 'string'
   && typeof core.toolCall('find_exercises', { equipment: null }).error === 'string');
@@ -119,11 +120,7 @@ const sc = core.toolCall('propose_schedule', { summary: 'Train Monday and Thursd
 check('propose_schedule → schedule.set, nulls dropped from each day',
   sc.rpc === 'create_ai_proposal' && sc.args.p_kind === 'schedule.set' && sc.args.p_payload.days.length === 2
   && !hasNull(sc.args.p_payload) && sc.args.p_payload.days[0].remind_at === '17:00' && !('summary' in sc.args.p_payload), JSON.stringify(sc));
-const gc = core.toolCall('propose_goal', { summary: 'Train three times a week.', title: 'Three a week', metric: 'workouts_per_week',
-  start_value: null, target_value: 3, target_date: null });
-check('propose_goal → goal.create with the nulls dropped',
-  gc.args?.p_kind === 'goal.create' && gc.args.p_payload.target_value === 3 && !hasNull(gc.args.p_payload)
-  && !('summary' in gc.args.p_payload), JSON.stringify(gc));
+check('propose_goal is gone (0274): an unknown tool', typeof core.toolCall('propose_goal', { summary: 'x', title: 'x' }).error === 'string');
 const fe = core.toolCall('find_exercises', { muscle_group: 'chest', equipment: null });
 check('find_exercises → ai_coach_exercises with p_muscle / p_equipment',
   fe.rpc === 'ai_coach_exercises' && fe.args.p_muscle === 'chest' && fe.args.p_equipment === null, JSON.stringify(fe));
@@ -132,15 +129,15 @@ check('get_my_routines / get_my_schedule → their readers, no arguments',
 check('an unknown tool → an error', typeof core.toolCall('delete_everything', {}).error === 'string');
 check('a malformed input → an error, never an rpc',
   typeof core.toolCall('propose_routine', { ...routine, exercises: 'lots' }).error === 'string'
-  && typeof core.toolCall('propose_goal', { summary: 'x', title: 'x', metric: 'x', start_value: 'ten', target_value: null, target_date: null }).error === 'string'
+
   && typeof core.toolCall('propose_schedule', { summary: 'x', days: [{ day_of_week: 1.5, routine_id: null, remind_at: null }] }).error === 'string'
   && typeof core.toolCall('find_exercises', null).error === 'string'
   && typeof core.toolCall('propose_routine', { ...routine, summary: '' }).error === 'string');
 check('the prompt says nothing changes until Apply', /nothing changes until they tap Apply/.test(core.SYSTEM_PROMPT));
 check('the prompt keeps the injury rule for proposals', /Never propose a change because of an injury or pain\./.test(core.SYSTEM_PROMPT));
 check('sse frames a proposal as one JSON line',
-  core.sse({ type: 'proposal', id: 'p1', kind: 'goal.create', summary: 's', payload: { title: 't' } })
-    === 'data: {"type":"proposal","id":"p1","kind":"goal.create","summary":"s","payload":{"title":"t"}}\n\n');
+  core.sse({ type: 'proposal', id: 'p1', kind: 'schedule.set', summary: 's', payload: { days: [] } })
+    === 'data: {"type":"proposal","id":"p1","kind":"schedule.set","summary":"s","payload":{"days":[]}}\n\n');
 
 // ---- Meal guides were retired (0166, 2026-10-05) ----
 check('the coach has no meal tool and its prompt never mentions meals',

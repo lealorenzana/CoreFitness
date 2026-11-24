@@ -1,7 +1,8 @@
 /**
- * 0208: a squad week and a gym goal, settled from the owner's screen, pay a
- * member whose plan earns points and not one whose plan has points_earn off.
- * Before 0208 plan_allows() said yes to the admin caller, so both were paid.
+ * 0208: a gym goal, settled from the owner's screen, pays a member whose plan
+ * earns points and not one whose plan has points_earn off. Before 0208
+ * plan_allows() said yes to the admin caller, so both were paid. (Squad weeks
+ * were checked here too until 0273 removed squads.)
  *
  *   node <repo>/scripts/sql/settle-pays-by-plan.mjs "<repo>"   (from a dir with pglite installed)
  */
@@ -37,7 +38,7 @@ await db.exec(`
     insert into gym_roles (gym_id, user_id, role, status) values ('${GYM}', '${u}', '${role}', 'active');`).join('\n')}
   insert into member_profiles (profile_id, gym_id, qr_code) values ('${MP}', '${GYM}', 'QR-SP1'), ('${MF}', '${GYM}', 'QR-SP2') on conflict do nothing;
   select act_as_gym('${GYM}');
-  update point_rules set is_active = true where gym_id = '${GYM}' and key in ('squad_week', 'gym_goal');
+  update point_rules set is_active = true where gym_id = '${GYM}' and key = 'gym_goal';
   insert into membership_plans (id, gym_id, name, price, duration_days, tier, can_book_classes, can_book_pt, is_active)
     values ('${id('f1')}', '${GYM}', 'Settle Premium', 900, 30, 'premium', true, true, true),
            ('${id('f2')}', '${GYM}', 'Settle No Points', 500, 30, 'premium', true, true, true);
@@ -46,9 +47,6 @@ await db.exec(`
   insert into memberships (member_id, gym_id, plan_id, status, start_date, expiry_date, never_expires)
     values ('${MP}', '${GYM}', '${id('f1')}', 'active', manila_today() - 1, manila_today() + 30, false),
            ('${MF}', '${GYM}', '${id('f2')}', 'active', manila_today() - 1, manila_today() + 30, false);
-  insert into squads (id, gym_id, name, code, weekly_target, created_by)
-    values ('${id('e1')}', '${GYM}', 'Settle Squad', 'SETTLE', 2, '${MP}');
-  insert into squad_members (gym_id, squad_id, member_id) values ('${GYM}', '${id('e1')}', '${MP}'), ('${GYM}', '${id('e1')}', '${MF}');
   insert into workout_logs (member_id, gym_id, activity, performed_on) values
     ('${MP}', '${GYM}', 'Gym', manila_today()), ('${MF}', '${GYM}', 'Gym', manila_today());
   select set_config('app.workout_counting', 'on', false); update workout_logs set counts = true where not counts; select set_config('app.workout_counting', '', false);
@@ -65,20 +63,11 @@ check('member_plan_allows asks the plan alone: yes for one, no for the other',
   && (await one(`select member_plan_allows('${MF}', 'points_earn') b`)).b === false);
 
 await as(AD);
-let err = await tryExec(`select settle_squads(); select settle_squads();`);
-check('the owner settles the squads (as the admin page does on load)', err === null, err ?? '');
-await owner();
-check('the week is recorded once', (await one(`select count(*)::int n from squad_weeks where squad_id = '${id('e1')}'`)).n === 1);
-let rows = await paid('squad_week');
-check('a squad week pays the member whose plan earns points', rows.some((r) => r.member_id === MP), JSON.stringify(rows));
-check('…and not the one whose plan has points off', !rows.some((r) => r.member_id === MF), JSON.stringify(rows));
-
-await as(AD);
-err = await tryExec(`select settle_gym_goals(); select settle_gym_goals();`);
+let err = await tryExec(`select settle_gym_goals(); select settle_gym_goals();`);
 check('the owner settles the gym goal (Challenges → Gym goal on load)', err === null, err ?? '');
 await owner();
 check('the goal is reached', (await one(`select reached_at is not null r from gym_goals where id = '${id('e2')}'`)).r === true);
-rows = await paid('gym_goal');
+const rows = await paid('gym_goal');
 check('a gym goal pays the contributor whose plan earns points, once', rows.filter((r) => r.member_id === MP).length === 1
   && rows.find((r) => r.member_id === MP).points === 40, JSON.stringify(rows));
 check('…and not the contributor whose plan has points off', !rows.some((r) => r.member_id === MF), JSON.stringify(rows));

@@ -44,8 +44,7 @@ await db.exec(`reset role;
     select m, '${GYM}', (select pf.plan_id from plan_features pf join membership_plans mp on mp.id = pf.plan_id
                           where pf.feature_key = 'ai_model' and pf.enabled and mp.gym_id = '${GYM}' limit 1),
            'active', manila_today() - 1, manila_today() + 30
-      from unnest(array['${A}','${B}']::uuid[]) m;
-  insert into fitness_goals (member_id, title) values ('${A}', 'Squat my bodyweight');`);
+      from unnest(array['${A}','${B}']::uuid[]) m;`);
 
 // ---- status and gates --------------------------------------------------------------------------
 await as(A);
@@ -69,8 +68,9 @@ await as(A);
 check('no context before consent', (await one(`select ai_coach_context() as c`)).c === null);
 await db.exec(`select set_ai_coach_consent(true)`);
 const ctx = (await one(`select ai_coach_context() as c`)).c;
-check('with consent: name, level and goals', ctx?.first_name === 'A' && ctx?.experience_level === 'beginner'
-  && ctx?.goals?.includes('Squat my bodyweight'), JSON.stringify(ctx));
+// Members' own goals went with 0274: the context no longer carries any.
+check('with consent: name and level, and no goals', ctx?.first_name === 'A' && ctx?.experience_level === 'beginner'
+  && !('goals' in (ctx ?? {})), JSON.stringify(ctx));
 check('the context never carries health or payment keys',
   !/par_q|waiver|payment|amount|phone|email/i.test(JSON.stringify(ctx)), JSON.stringify(ctx));
 // ---- a member of two gyms: the context is this gym's only --------------------------------------
@@ -82,7 +82,7 @@ check('the context never carries health or payment keys',
       on conflict (gym_id, user_id) do update set status = 'active';
     insert into member_profiles (profile_id, gym_id, qr_code, experience_level)
       values ('${A}', '${GYM2}', 'QR-AI-A2', 'advanced') on conflict do nothing;
-    insert into fitness_goals (member_id, gym_id, title) values ('${A}', '${GYM2}', 'GYM2 secret goal');
+
     insert into workout_routines (member_id, gym_id, name, position) values ('${A}', '${GYM2}', 'GYM2 secret routine', 0);
     insert into workout_logs (member_id, gym_id, activity, completed_at) values ('${A}', '${GYM2}', 'GYM2 run', now());`);
   await as(A);
@@ -90,7 +90,7 @@ check('the context never carries health or payment keys',
   check('a member of two gyms gets a context, not an error', err === null, String(err));
   const c2 = (await one(`select ai_coach_context() as c`)).c;
   const blob = JSON.stringify(c2);
-  check('the context carries no goal of another gym or routine', !!c2 && !/GYM2/.test(blob), blob);
+  check('the context carries no routine or workout of another gym', !!c2 && !/GYM2/.test(blob), blob);
   check('the level comes from this gym only', c2?.experience_level === 'beginner', blob);
   check('workouts of another gym are not counted', c2?.workouts_30d === 0, blob);
 }
@@ -200,7 +200,7 @@ check('without consent: the profile only', c?.profile?.goal === 'muscle' && c?.p
 check('the injury is a yes/no, never text', !/injur.*[a-z]{4,}/i.test(JSON.stringify(c?.profile ?? {}).replace('"has_injury":true', '')));
 await db.exec(`select set_ai_coach_consent(true)`);
 c = (await one(`select ai_coach_context() as c`)).c;
-check('with consent: profile and history', c?.profile?.goal === 'muscle' && Array.isArray(c?.goals), JSON.stringify(c));
+check('with consent: profile and history', c?.profile?.goal === 'muscle' && Array.isArray(c?.routines), JSON.stringify(c));
 // An extra "injury_details" key is ignored: the words are stored nowhere and never reach the coach.
 check('a profile with an injury_details key still saves', !(await tryExec(`select save_ai_coach_profile('{"goal":"muscle","experience":"some","days_per_week":4,"minutes":60,"equipment":["full_gym","dumbbells"],"likes":"lifting","avoid":"running","has_injury":true,"injury_details":"left knee"}'::jsonb)`)));
 c = (await one(`select ai_coach_context() as c`)).c;

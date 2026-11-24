@@ -152,7 +152,7 @@ async (page) => {
       phone: null, email: null, opening_time: '06:00', closing_time: '21:00', logo_url: null,
       short_name: 'CF', tagline: null, updated_at: iso(0, 9, 0), updated_by: null }],
     features: [], plan_features: [], point_ledger: [], attendance: [],
-    body_measurements: [], fitness_goals: [], workout_logs: [], workout_sets: [],
+    body_measurements: [], workout_logs: [], workout_sets: [],
     achievements: [], achievement_unlocks: [], challenges: [], challenge_participants: [],
     rewards: [], reward_redemptions: [], trainer_ratings: [], trainer_feedback: [],
     workout_resources: [], notification_prefs: [], member_share_prefs: [],

@@ -1,6 +1,6 @@
 /**
  * You since the simplify (2026-10-28): the earned level, then Progress (body,
- * targets, photos and how training is going — the old Progress section) ·
+ * photos and how training is going — the old Progress section; Targets went with 0274) ·
  * Badges & records · Membership (the plan card, this term, described rows, the
  * folded plan and account). Points moved to Rewards; Shop and Invite moved to
  * More. Old Progress links land on the new homes; a gym without progress
@@ -135,11 +135,11 @@ async (page) => {
   let m = await main();
   say('the profile row above the tabs', /Lea Lorenzana/.test(m) && /Member since/.test(m), m.slice(0, 100));
   const prog = (await page.locator('[data-you-progress]').innerText().catch(() => '')).replace(/\s+/g, ' ');
-  say('Progress: body, targets and photos as rows', /Body|kg/.test(prog) && /Targets/.test(prog) && /Progress photos/.test(prog), prog.slice(0, 200));
+  say('Progress: body and photos as rows, no Targets (0274)', /Body|kg/.test(prog) && !/Targets/.test(prog) && /Progress photos/.test(prog), prog.slice(0, 200));
   await page.screenshot({ path: 'shots/member-you.png' });
-  await page.locator('[data-you-progress]').getByRole('button', { name: /Targets/ }).first().click();
+  await page.locator('[data-you-progress]').getByRole('button', { name: /Progress photos/ }).first().click();
   await page.waitForTimeout(1200);
-  say('…a row opens its own screen (Targets)', /\/member\/targets$/.test(page.url()), page.url());
+  say('…a row opens its own screen (Progress photos)', /\/member\/progress-photos$/.test(page.url()), page.url());
 
   await go('/member/membership?tab=badges', ME);
   m = await main();
@@ -165,7 +165,8 @@ async (page) => {
     && (await page.getByRole('button', { name: /^Points$/ }).count()) + (await page.getByRole('tab', { name: /^Points$/ }).count()) > 0, page.url());
 
   for (const [from, want] of [['/member/progress', /\/member\/membership\?tab=progress$/], ['/member/progress?tab=body', /\/member\/body$/],
-    ['/member/progress?tab=goals', /\/member\/targets$/], ['/member/progress?tab=badges', /\/member\/membership\?tab=badges$/]]) {
+    ['/member/progress?tab=goals', /\/member\/membership\?tab=progress$/], ['/member/targets', /\/member\/membership\?tab=progress$/],
+    ['/member/progress?tab=badges', /\/member\/membership\?tab=badges$/]]) {
     await go(from, ME);
     say(`an old link ${from} lands on its new home`, want.test(page.url()), page.url());
   }

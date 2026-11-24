@@ -54,7 +54,7 @@ async (page) => {
       image_url: null, created_at: iso(-20, 9, 0) }],
     gym_plans: [], classes: [], class_availability: [], public_trainers: [], bookings: [],
     pt_sessions: [], attendance: [], workout_logs: [], workout_sets: [], body_measurements: [],
-    fitness_goals: [], achievements: [], achievement_unlocks: [], member_share_prefs: [],
+    achievements: [], achievement_unlocks: [], member_share_prefs: [],
     notifications: [], payments: [], push_subscriptions: [], workout_resources: [],
     workout_plans: [], challenges: [], challenge_participants: [], trainer_feedback: [],
     gym_settings: [{ id: true, gym_name: 'Core Fitness', address: 'Mamburao, Occidental Mindoro',
@@ -67,7 +67,7 @@ async (page) => {
       .map((key) => ({ key, label: key, description: '', enabled: true })),
     plan_allows: true, member_points_balance: 0, member_commitments: [],
     member_progression: [{ level: 2, points: 90, next_level_points: 300 }],
-    goal_progress: [], sync_my_achievements: 0,
+    sync_my_achievements: 0,
   };
 
   await page.route(`**://${REF}.supabase.co/**`, async (route) => {

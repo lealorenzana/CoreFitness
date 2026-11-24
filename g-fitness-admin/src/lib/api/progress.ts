@@ -26,18 +26,6 @@ export interface BodyMeasurementRow {
   created_at: string;
 }
 
-export interface FitnessGoalRow {
-  id: string;
-  member_id: string;
-  title: string;
-  metric: string;
-  start_value: number | null;
-  target_value: number | null;
-  target_date: string | null;
-  achieved_on: string | null;
-  created_at: string;
-}
-
 export interface WorkoutLogRow {
   id: string;
   member_id: string;
@@ -86,45 +74,6 @@ export async function deleteMeasurement(id: string): Promise<void> {
     .select('id');
   if (error) throw error;
   assertWrote(data, 'That measurement could not be deleted — it may not be yours to remove.');
-}
-
-// ─── Goals ───────────────────────────────────────────────────────────────────
-
-export async function listGoals(memberId: string): Promise<FitnessGoalRow[]> {
-  const { data, error } = await supabase
-    .from('fitness_goals')
-    .select('*')
-    .eq('member_id', memberId)
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return data ?? [];
-}
-
-export async function createGoal(
-  input: Omit<FitnessGoalRow, 'id' | 'created_at' | 'achieved_on'> & { achieved_on?: string | null }
-): Promise<FitnessGoalRow> {
-  const { data, error } = await supabase.from('fitness_goals').insert(input).select().single();
-  if (error) throw error;
-  return data;
-}
-
-export async function updateGoal(
-  id: string,
-  updates: Partial<Omit<FitnessGoalRow, 'id' | 'member_id' | 'created_at'>>
-): Promise<void> {
-  const { data: data, error: error } = await supabase
-    .from('fitness_goals').update(updates).eq('id', id)
-    .select('id');
-  if (error) throw error;
-  assertWrote(data, 'That goal could not be saved — it may not be yours to edit.');
-}
-
-export async function deleteGoal(id: string): Promise<void> {
-  const { data: data, error: error } = await supabase
-    .from('fitness_goals').delete().eq('id', id)
-    .select('id');
-  if (error) throw error;
-  assertWrote(data, 'That goal could not be deleted — it may not be yours to remove.');
 }
 
 // ─── Workout logs ────────────────────────────────────────────────────────────
@@ -187,20 +136,3 @@ export function bmiBand(value: number): { label: string; color: string } {
   return { label: 'Obese', color };
 }
 
-/**
- * How far a goal has come, 0–1, or null when it can't be known.
- *
- * Needs a start, a target and a current reading; without all three the honest
- * answer is "no idea", and a progress bar that invents a position is worse than
- * no bar at all.
- */
-export function goalProgress(
-  goal: FitnessGoalRow,
-  current: number | null
-): number | null {
-  if (goal.start_value == null || goal.target_value == null || current == null) return null;
-  const span = goal.target_value - goal.start_value;
-  if (span === 0) return current === goal.target_value ? 1 : 0;
-  // Works for goals that go down (losing weight) as well as up.
-  return Math.max(0, Math.min(1, (current - goal.start_value) / span));
-}

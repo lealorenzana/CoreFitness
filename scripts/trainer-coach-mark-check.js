@@ -146,7 +146,6 @@ async (page) => {
     member_streak: (b) => b.p_member !== 'mb1' ? null : { target: 3, current: 5, best: 7, days_this_week: 1, needed: 2,
       days_left: 2, week: [true, false, false, false, false, false, false], today_index: 5, frozen: false,
       at_risk: true, out_of_reach: false, next_milestone: 12, nudges: true },
-    member_squad: (b) => b.p_member !== 'mb1' ? [] : [{ squad_name: 'Iron Barkada', members: 3, squad_days: 4, weekly_target: 9, member_days: 2 }],
     member_personal_records: (b) => b.p_member !== 'mb1' ? [] : [
       { id: 'r1', exercise_name: 'Deadlift', kind: 'weight', value: 120, previous: 110, achieved_at: new Date().toISOString() }],
     program_progress: (b) => !assigned || b.p_member !== 'mb1' ? [] : [1, 3].map((d) => ({

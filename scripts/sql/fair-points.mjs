@@ -39,7 +39,7 @@ await db.exec(`
   insert into member_profiles (profile_id, gym_id, qr_code) values ('${M}', '${GYM}', 'QR-FP1') on conflict do nothing;
   select act_as_gym('${GYM}');
   update point_rules set is_active = true, points = greatest(points, 5)
-   where gym_id = '${GYM}' and key in ('workout_logged', 'personal_record', 'goal_achieved');
+   where gym_id = '${GYM}' and key in ('workout_logged', 'personal_record');
   insert into membership_plans (id, gym_id, name, price, duration_days, tier, can_book_classes, can_book_pt, is_active)
     values ('${id('f1')}', '${GYM}', 'FP Premium', 900, 30, 'premium', true, true, true);
   insert into plan_features (plan_id, feature_key, enabled) values ('${id('f1')}', 'points_earn', true), ('${id('f1')}', 'workout_tracker', true),
@@ -121,19 +121,7 @@ await tryExec(`delete from workout_sets where log_id = '${id('82')}'`);
 await owner();
 check('deleting the record’s set takes its points back', (await pts('personal_record')) === Math.max(0, prPts - 5) || (await pts('personal_record')) < prPts, `${prPts} → ${await pts('personal_record')}`);
 
-// 9. Targets: a week old at least, at most two paid in 30 days.
-await owner();
-await db.exec(`select act_as_gym('${GYM}');
-  insert into fitness_goals (id, gym_id, member_id, title, metric, start_value, target_value, created_at) values
-    ('${id('b1')}', '${GYM}', '${M}', 'New today', 'lift_kg', 50, 60, now()),
-    ('${id('b2')}', '${GYM}', '${M}', 'Old 1', 'lift_kg', 50, 60, now() - interval '10 days'),
-    ('${id('b3')}', '${GYM}', '${M}', 'Old 2', 'lift_kg', 50, 60, now() - interval '10 days'),
-    ('${id('b4')}', '${GYM}', '${M}', 'Old 3', 'lift_kg', 50, 60, now() - interval '10 days');
-  select set_config('app.goal_settling', 'on', true);
-  update fitness_goals set achieved_on = manila_today() where id in ('${id('b1')}', '${id('b2')}', '${id('b3')}', '${id('b4')}');
-  select act_as_gym(null);`);
-const goalRows = Number((await one(`select count(*)::int n from point_ledger where member_id = '${M}' and rule_key = 'goal_achieved' and points > 0`)).n);
-check('a target made today and reached today pays nothing; older ones pay, at most two in 30 days', goalRows === 2, String(goalRows));
+// 9 (targets paying at most twice in 30 days) went with members' own goals (0274).
 
 // 10. A reward request always starts as pending.
 await owner();

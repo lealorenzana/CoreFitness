@@ -33,7 +33,6 @@ import SignInMethods from '../components/account/SignInMethods';
 /** Enforced in the database by `trainer_may_see()` (0032), not by this screen. */
 const SHARE_ROWS: { key: keyof SharePrefs; label: string; description: string }[] = [
   { key: 'shareMeasurements', label: 'Body measurements', description: 'Weight, body fat and tape measurements' },
-  { key: 'shareGoals', label: 'Goals', description: 'What you are working towards' },
   // 0086: saved routines follow this switch too — they are how workouts are logged now.
   { key: 'shareWorkouts', label: 'Workouts and routines', description: 'Sessions you log and the routines you build' },
 ];

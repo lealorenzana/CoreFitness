@@ -135,7 +135,7 @@ begin
         (7, 'Paolo', 'Sarmiento', 'Sports Performance',
             array['speed','agility','athletes'], array['NSCA Certified Strength and Conditioning Specialist','Philippine Red Cross Sports First Aid'], 7,
             'Works with student athletes on speed, power and staying injury-free.',
-            'Prepared the provincial volleyball squad for Palarong Pambansa.'),
+            'Prepared the provincial volleyball team for Palarong Pambansa.'),
         (8, 'Liza', 'Macaraeg', 'Pilates & Core',
             array['pilates','core','posture'], array['Balanced Body Mat Pilates','ACE Group Fitness Instructor'], 9,
             'Mat Pilates for posture, back pain and a core that actually works.',

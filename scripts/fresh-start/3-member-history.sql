@@ -18,7 +18,7 @@
 -- and leaves their real account exactly as it was.
 --
 -- What: 22 earlier monthly terms each paid with a numbered receipt, about
--- three visits a week, a weigh-in every month, three goals, three routines and
+-- three visits a week, a weigh-in every month, three routines and
 -- a workout logged on most training days (sets that get heavier over time),
 -- the points those earned, the badges, and a weekly training plan.
 do $seed$
@@ -56,7 +56,6 @@ begin
   alter table payments          disable trigger user;
   alter table attendance        disable trigger user;
   alter table body_measurements disable trigger user;
-  alter table fitness_goals     disable trigger user;
   alter table workout_routines  disable trigger user;
   alter table workout_routine_exercises disable trigger user;
   alter table workout_logs      disable trigger user;
@@ -106,14 +105,6 @@ begin
          case i when 22 then 'First weigh-in with Coach' when 12 then 'Back after the holidays' end,
          ((v_anchor - 30 * i + 2) + time '18:00') at time zone 'Asia/Manila'
     from generate_series(0, 22) i
-  on conflict do nothing;
-
-  -- ── Three goals: two reached, one on the way ──────────────────────────────────
-  insert into fitness_goals (id, gym_id, member_id, title, metric, start_value, target_value, target_date, achieved_on, created_at)
-  values
-    (format(id_of, '114', '000000000001')::uuid, v_gym, v_me, 'Reach 65 kg', 'weight_kg', 72, 65, v_anchor - 40, v_anchor - 60, (v_anchor - 650) at time zone 'Asia/Manila'),
-    (format(id_of, '114', '000000000002')::uuid, v_gym, v_me, 'Waist under 76 cm', 'waist_cm', 84, 76, v_anchor - 90, v_anchor - 120, (v_anchor - 400) at time zone 'Asia/Manila'),
-    (format(id_of, '114', '000000000003')::uuid, v_gym, v_me, 'Body fat under 18%', 'body_fat_pct', 23, 18, v_today + 90, null, (v_anchor - 60) at time zone 'Asia/Manila')
   on conflict do nothing;
 
   -- ── Three routines (push, pull, legs) from the gym's exercise library ──────────
@@ -196,7 +187,6 @@ begin
   alter table payments          enable trigger user;
   alter table attendance        enable trigger user;
   alter table body_measurements enable trigger user;
-  alter table fitness_goals     enable trigger user;
   alter table workout_routines  enable trigger user;
   alter table workout_routine_exercises enable trigger user;
   alter table workout_logs      enable trigger user;

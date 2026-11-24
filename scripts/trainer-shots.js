@@ -104,7 +104,7 @@ async (page) => {
     notifications: [{ id: 'n1', user_id: 't1', type: 'booking', title: 'New session request',
       message: 'Miguel asked for Tuesday 4:00 PM.', action_url: '/trainer/bookings', metadata: null,
       read: false, created_at: iso(0, 8, 30) }],
-    attendance: [], workout_logs: [], body_measurements: [], fitness_goals: [],
+    attendance: [], workout_logs: [], body_measurements: [],
     achievements: [], achievement_unlocks: [], member_share_prefs: [],
     gym_settings: [{ id: true, gym_name: 'Core Fitness', address: 'Mamburao, Occidental Mindoro',
       phone: '+63 917 555 0101', email: 'hello@corefitness.ph', opening_time: '06:00', closing_time: '21:00',

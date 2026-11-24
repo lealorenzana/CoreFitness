@@ -316,10 +316,6 @@
       "app": "member"
     },
     {
-      "file": "squad-check.js",
-      "app": "member"
-    },
-    {
       "file": "member-streak-check.js",
       "app": "member"
     },

@@ -120,7 +120,7 @@ CHECKS = [
     ('0085', 'rpc migration_0085_applied',     lambda: rpc('migration_0085_applied')),
     ('0086', 'table workout_routines',         lambda: table('workout_routines', 'id')),
     ('0086', 'rpc migration_0086_applied',     lambda: rpc('migration_0086_applied')),
-    ('0087', 'rpc settle_my_goals',            lambda: rpc('settle_my_goals')),
+
     ('0087', 'rpc migration_0087_applied',     lambda: rpc('migration_0087_applied')),
     ('0088', 'trainer_feedback.done_at',       lambda: table('trainer_feedback', 'done_at')),
     ('0088', 'rpc migration_0088_applied',     lambda: rpc('migration_0088_applied')),
@@ -311,6 +311,9 @@ CHECKS = [
     ('0270', 'rpc migration_0270_applied',     lambda: rpc('migration_0270_applied')),
     ('0271', 'rpc migration_0271_applied',     lambda: rpc('migration_0271_applied')),
     ('0272', 'rpc migration_0272_applied',     lambda: rpc('migration_0272_applied')),
+    # 0273/0274 remove squads and members' own goals; only their markers prove they ran.
+    ('0273', 'rpc migration_0273_applied',     lambda: rpc('migration_0273_applied')),
+    ('0274', 'rpc migration_0274_applied',     lambda: rpc('migration_0274_applied')),
 ]
 
 # The platform home's Migrations card checks 0074..LAST (it was admin's System page until 2026-10-04). It read 117 while 0118 and 0119

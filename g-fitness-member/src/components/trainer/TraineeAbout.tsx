@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useUrlState } from '../../hooks/useUrlState';
 import { useNavigate } from 'react-router-dom';
-import { Barbell, CalendarCheck, ChatCircleText, EyeSlash, Lifebuoy, ListChecks, ListPlus, PaperPlaneRight, Ruler, Target, Trophy, X, type Icon } from '@phosphor-icons/react';
+import { Barbell, CalendarCheck, ChatCircleText, EyeSlash, Lifebuoy, ListChecks, ListPlus, PaperPlaneRight, Ruler, Trophy, X, type Icon } from '@phosphor-icons/react';
 import { leaveFeedback, listFeedbackByTrainer, type TrainerFeedbackRow } from '../../lib/api/trainerFeedback';
 import { DAY_LABELS, formatRemindAt } from '../../lib/api/gymPlans';
 import TraineeProgram from './TraineeProgram';
 import TraineeRecords from './TraineeRecords';
-import TraineeSquad from './TraineeSquad';
 import TraineeStreak from './TraineeStreak';
 import TraineeShowingUp from './TraineeShowingUp';
 import TraineePhotos from './TraineePhotos';
@@ -17,8 +16,6 @@ import { listMyTrainerMembers } from '../../lib/api/trainerRoster';
 import { getCurrentTrainerId, getMemberDetailForTrainer, type MemberDetailForTrainer } from '../../services/trainerService';
 import { levelLabel } from '../../lib/api/achievements';
 import { errorMessage } from '../../utils/errorMessage';
-import { moduleOn } from '../../lib/gymApp';
-import { useGymApp } from '../../hooks/useGymApp';
 import SkelRows from '../ui/SkelRows';
 
 /**
@@ -71,7 +68,6 @@ export default function TraineeAbout({ member, onChat, initialTab = 'progress' }
   onChat: () => void;
   initialTab?: AboutTab;
 }) {
-  const squadsOn = moduleOn(useGymApp(), 'squads');
   const navigate = useNavigate();
   // In the address (`?about=`), so coming Back to a trainee lands on the same part (2026-11-07).
   const [sheetTab, setSheetTab] = useUrlState<AboutTab>('about', initialTab, ['progress', 'training', 'notes', 'safety']);
@@ -253,26 +249,6 @@ export default function TraineeAbout({ member, onChat, initialTab = 'progress' }
         ) : (
           <>
             <SharedBlock
-              icon={Target}
-              label="Goals"
-              shared={detail?.shared.shareGoals ?? true}
-              empty={(detail?.goals.length ?? 0) === 0}
-              emptyText="No active goals."
-            >
-              {detail?.goals.map((g) => (
-                <p key={g.id} className="flex items-baseline justify-between" style={{ ...line, gap: 10 }}>
-                  <span className="truncate">{g.title}</span>
-                  {/* The same current value the member's Goals tab shows (0087). */}
-                  {g.target_value != null && (
-                    <span className="flex-none tabular-nums" style={muted}>
-                      {detail.goalValues[g.id] != null ? `${detail.goalValues[g.id]} of ` : 'target '}{g.target_value}
-                    </span>
-                  )}
-                </p>
-              ))}
-            </SharedBlock>
-
-            <SharedBlock
               icon={Ruler}
               label="Latest measurement"
               shared={detail?.shared.shareMeasurements ?? true}
@@ -316,8 +292,6 @@ export default function TraineeAbout({ member, onChat, initialTab = 'progress' }
             </SharedBlock>
           </>
         )}
-          {/* Their squad this week (0124) — name and figures, never its code. Not while the gym has Teams off. */}
-          {squadsOn && <TraineeSquad memberId={member.id} firstName={member.name.split(' ')[0]} />}
           <TraineePhotos memberId={member.id} firstName={member.name.split(' ')[0]} />
         </div>
       )}

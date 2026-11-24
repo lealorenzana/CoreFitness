@@ -177,15 +177,6 @@ begin
       end if;
     end loop;
 
-    -- A goal of each kind: one numeric, one preset that tracks itself.
-    insert into fitness_goals (member_id, title, metric, start_value, target_value, target_date)
-    select m.id, 'Get to 72 kg', 'weight_kg', 78, 72,
-           (now() at time zone 'Asia/Manila')::date + 60
-    where not exists (select 1 from fitness_goals g where g.member_id = m.id and g.title = 'Get to 72 kg');
-
-    insert into fitness_goals (member_id, title, metric, template_key, target_value)
-    select m.id, 'Build consistency', 'custom', 'build_consistency', 6
-    where not exists (select 1 from fitness_goals g where g.member_id = m.id and g.template_key = 'build_consistency');
 
     -- Join the running challenge, so the progress bar has a participant.
     if v_challenge is not null then
@@ -257,7 +248,7 @@ begin;
   delete from rewards    where name in ('Free week added','Free PT session','Core Fitness shirt',
                                         'Bring a friend','Protein shake')
                            and not exists (select 1 from reward_redemptions rr where rr.reward_id = rewards.id);
-  delete from fitness_goals where title = 'Get to 72 kg' or template_key = 'build_consistency';
+
   delete from body_measurements where height_cm = 170 and weight_kg between 75 and 79;
 commit;
 */

@@ -16,7 +16,7 @@ import type { CoachMilestone } from './api/coachMoments';
  * the level is `member_progression()`.
  *
  * Whether one has already played is on the account (0216: member_profiles'
- * markers, fitness_goals.celebrated_at), never the phone. Before 0216 the
+ * markers), never the phone. Before 0216 the
  * markers cannot be read, so the moments that would replay without one
  * (arrival, level, target, challenge, a missed check-in) do not play at all.
  */
@@ -30,7 +30,6 @@ export type Moment =
   | { kind: 'badge'; def: AchievementDef; rarity: { holders: number; audience: number } | null; remaining: number }
   /** nextDays / nextWeeks: what the next level still needs, not its totals. */
   | { kind: 'level'; from: string | null; to: string; next: string | null; nextDays: number | null; nextWeeks: number | null }
-  | { kind: 'target'; id: string; title: string; unit: string; start: number | null; target: number | null; points: number | null }
   | { kind: 'challenge'; id: string; title: string; points: number | null }
   /** A coach's own milestone (0218): counted in SQL, played once per account. */
   | { kind: 'coach'; milestone: CoachMilestone };

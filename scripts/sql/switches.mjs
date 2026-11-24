@@ -38,13 +38,14 @@ await db.exec(`reset role;
 await as(OWNER);
 const list = await all(`select * from my_gym_modules()`);
 const keys = list.map((r) => r.feature_key);
-check('ten new switches, each with a parent', ['shop', 'requests', 'chat', 'rooms', 'programs', 'photos', 'squads', 'seasons', 'quests', 'referrals']
+check('the 0141 switches, each with a parent', ['shop', 'requests', 'chat', 'rooms', 'programs', 'photos', 'seasons', 'quests', 'referrals']
   .every((k) => list.find((r) => r.feature_key === k)?.parent_key));
 check('children listed right after their parent', keys.indexOf('chat') === keys.indexOf('coaching') + 1 || keys.indexOf('rooms') === keys.indexOf('coaching') + 1, keys.join());
-// 0220: classes, squads, seasons and events start off; 0245/0246: so do reels and the gym chat. Everything else on.
+// 0220: classes, seasons and events start off (squads too, until 0273 removed them); 0245/0246: so do reels and the gym chat. Everything else on.
 const startOff = list.filter((r) => r.state !== 'on').map((r) => r.feature_key).sort().join();
 const B = process.env.BEFORE;
 const expectOff = ['classes', 'events', 'gym_chat', 'noshows', 'reels', 'repeats', 'seasons', 'slots', 'squads']
+  .filter((k) => k !== 'squads' || (B && B <= '0273'))
   .filter((k) => k !== 'slots' || !B || B > '0259')
   .filter((k) => !['noshows', 'repeats'].includes(k) || !B || B > '0260');
 check('everything starts on except the four 0220 switched off, reels and the gym chat, time slots (0259), repeats and no-shows (0260)', startOff === expectOff.join(), startOff);
@@ -72,9 +73,9 @@ check('a plan without the shop: not sold, and the owner cannot switch it on',
 
 // ---- who may switch ------------------------------------------------------------------------------
 await as(DESK);
-check('the desk cannot switch anything', !!(await tryExec(`select set_gym_module('squads', false)`)));
+check('the desk cannot switch anything', !!(await tryExec(`select set_gym_module('seasons', false)`)));
 await as(MEM);
-check('nor can a member', !!(await tryExec(`select set_gym_module('squads', false)`)));
+check('nor can a member', !!(await tryExec(`select set_gym_module('seasons', false)`)));
 check('a member\'s phone still reads every switch', Object.keys(await phone()).length >= 19);
 
 // ---- the gym's own colour --------------------------------------------------------------------------

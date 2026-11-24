@@ -62,8 +62,6 @@ async (page) => {
     trainer_feedback: [{ id: 'f1', trainer_id: 't1', member_id: 'm1', created_at: iso(-2),
       note: 'Knee tracks well now.', recommendation: 'Add one mobility session a week.',
       seen_at: iso(-1), done_at: null }],
-    fitness_goals: [{ id: 'g1', member_id: 'm1', title: 'Squat 80 kg', metric: 'lift_kg', start_value: 50,
-      target_value: 80, target_date: null, achieved_on: null, created_at: iso(-20), template_key: null, exercise_id: 'e1' }],
     // A term that started 10 days ago: 3 visit days (two check-ins on one), one
     // class that has happened and one that has not, one finished workout and
     // one still open. Expected: 3 visit days, 1 class, 0 1-on-1, 1 workout.
@@ -84,7 +82,6 @@ async (page) => {
   const RPC = {
     resource_save_counts: [{ resource_id: 'w1', saved: 12, done: 5 }],
     exercise_routine_counts: [{ exercise_id: 'e1', routines: 3, members: 2 }],
-    goal_current_value: 65,
   };
 
   await page.route(`**://${REF}.supabase.co/**`, async (route) => {
