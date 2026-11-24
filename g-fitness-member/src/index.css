@@ -2163,3 +2163,6 @@ label:has(> .field-input[style*="border: none"]:focus) {
 @media (max-width: 760px) { .cf-skfigs { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cf-skgrid { grid-template-columns: minmax(0, 1fr) !important; } }
 @keyframes cf-skel-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 @media (prefers-reduced-motion: reduce) { .cf-skel { animation: none; } }
+
+/* "See all" beside a trophy-room heading is a link, not a label: it was grey text nobody could tap (2026-11-25). */
+.lv-see-all { display: inline-flex; align-items: center; min-height: 44px; margin: -12px 0; padding: 0 2px; font-size: var(--text-meta); font-weight: 600; color: var(--color-primary-300); }

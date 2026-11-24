@@ -65,6 +65,9 @@
 .member-clean-shell .member-page [data-row-icon] > * { animation: none !important; }
 .member-clean-shell main [role="tablist"] { padding: 5px; gap: 4px !important; border: 1px solid var(--color-hairline); border-radius: 13px; background: var(--color-surface); margin-block: 4px; }
 .member-clean-shell main [role="tablist"] [role="tab"] { padding: 10px 13px !important; border-radius: 9px; min-height: 40px; font-size: 12px; }
+/* Tabs share the whole row, like Train's: left-packed tabs left an empty stretch on the right (2026-11-25).
+   flex-basis auto keeps each at least its own width, so a row of many tabs still scrolls sideways. */
+.member-clean-shell main [role="tablist"] [role="tab"] { flex: 1 1 0 !important; min-width: max-content; justify-content: center; }
 .member-clean-shell main [role="tablist"] [role="tab"][aria-selected="true"] { background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface-raised)); font-weight: 650 !important; }
 .member-clean-shell main [role="tablist"] .noc-underline { display: none; }
 .member-clean-shell :is(button, a, input, textarea, select, summary):focus-visible { outline: 2px solid var(--color-primary-400); outline-offset: 3px; }

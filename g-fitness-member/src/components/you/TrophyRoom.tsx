@@ -110,7 +110,7 @@ export default function TrophyRoom({ part }: { part: 'level' | 'shelf' }) {
 
       {part === 'shelf' && d.badges.length > 0 && (
         <section className="lv-in" style={{ ['--i' as string]: 1 }} data-trophy-badges>
-          <SectionHead title="Badges" meta={`${d.badges.length} of ${Math.max(d.total, d.badges.length)} · See all`} />
+          <SectionHead title="Badges" meta={<button type="button" className="lv-see-all noc-press-soft" onClick={() => navigate('/member/achievements')}>{d.badges.length} of {Math.max(d.total, d.badges.length)} · See all</button>} />
           <button type="button" onClick={() => navigate('/member/achievements')} className="lv-shelf w-full text-left" aria-label="Your badges. See all">
             {d.badges.slice(0, 8).map((b) => (
               <figure key={b.def.key}>
@@ -125,7 +125,7 @@ export default function TrophyRoom({ part }: { part: 'level' | 'shelf' }) {
 
       {part === 'shelf' && d.records.length > 0 && (
         <section className="lv-in" style={{ ['--i' as string]: 2 }} data-trophy-records>
-          <SectionHead title="Your records" meta="See all" />
+          <SectionHead title="Your records" meta={<button type="button" className="lv-see-all noc-press-soft" onClick={() => navigate('/member/records/all')}>See all</button>} />
           <button type="button" onClick={() => navigate('/member/records/all')} className="grid w-full text-left"
             style={{ gridTemplateColumns: `repeat(${d.records.length}, minmax(0, 1fr))`, gap: 8, marginTop: 10 }}>
             {d.records.map((r) => (
