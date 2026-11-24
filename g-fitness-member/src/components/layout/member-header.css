@@ -11,7 +11,11 @@
 .member-clean-shell .member-tab-header > .justify-between > div { padding-top: 0 !important; }
 .member-clean-shell .member-tab-header[data-header-tab="today"] h1 { display: flex; align-items: baseline; gap: 8px; }
 .member-clean-shell .member-tab-header[data-header-tab="today"] .screen-title + .screen-title { font-size: 15px; font-weight: 500; }
-.member-clean-shell .member-page-header { position: sticky; top: -1px; z-index: 4; margin-inline: calc(-1 * var(--gutter)); padding: 10px var(--gutter) 14px; gap: 7px; background: var(--member-header-glass); -webkit-backdrop-filter: blur(24px) saturate(150%); backdrop-filter: blur(24px) saturate(150%); border-bottom: 1px solid var(--member-header-line); }
+/* Pinned like Today's bar: frosted glass, 90% solid (92% light) with a 32px blur (2026-11-25). The opacity alone must keep words
+   behind it unreadable: a phone that skips the blur (old WebView, battery saver, mid-animation) showed text through 62%. */
+.member-clean-shell { --member-page-header-bg: color-mix(in srgb, var(--color-primary) 10%, color-mix(in srgb, var(--color-bg) 90%, transparent)); }
+:root[data-mode="light"] .member-clean-shell { --member-page-header-bg: color-mix(in srgb, var(--color-primary) 6%, color-mix(in srgb, var(--color-bg) 92%, transparent)); }
+.member-clean-shell .member-page-header { position: sticky; top: -1px; z-index: 4; margin-inline: calc(-1 * var(--gutter)); padding: 10px var(--gutter) 14px; gap: 7px; background: var(--member-page-header-bg); -webkit-backdrop-filter: blur(32px) saturate(160%); backdrop-filter: blur(32px) saturate(160%); border-bottom: 1px solid var(--member-header-line); box-shadow: inset 0 1px 0 rgb(255 255 255 / .06); }
 .member-clean-shell .member-page-header > button { margin: 0 !important; height: 36px !important; }
 .member-clean-shell .member-page-header .member-title-row { min-height: 0; align-items: center; }
 .member-clean-shell .member-page-header .member-title-row h1 { font-size: 22px !important; line-height: 1.2 !important; letter-spacing: -.035em !important; }
@@ -25,3 +29,6 @@
 .member-header-points { display: inline-flex; align-items: center; justify-content: center; gap: 5px; flex: none; align-self: center; min-height: 32px; padding: 4px 9px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--color-secondary) 23%, transparent); color: var(--color-secondary); background: color-mix(in srgb, var(--color-secondary) 7%, transparent); }
 .member-header-points strong { font-size: 12px; line-height: 1; font-weight: 750; font-variant-numeric: tabular-nums; }
 .member-header-points:focus-visible { outline: 2px solid var(--color-secondary); outline-offset: 2px; }
+
+/* No blur at all on this browser: a solid bar, never words showing through. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .member-clean-shell .member-page-header { background: var(--color-bg); } }

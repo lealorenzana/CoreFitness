@@ -1,0 +1,28 @@
+/* Gym events (2026-11-24): each event is a ticket in Today's panel style, a date block beside the title. */
+.ev-ticket { position: relative; border: 1px solid color-mix(in srgb, var(--color-primary) 22%, var(--color-hairline)); border-radius: 22px; background: var(--color-surface); padding: 16px; }
+.ev-ticket[data-going] { border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-hairline)); background: color-mix(in srgb, var(--color-primary) 7%, var(--color-surface)); }
+.ev-ticket[data-closed] { opacity: .78; }
+.ev-photo { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 14px; margin-bottom: 14px; background: var(--color-surface-high); }
+.ev-head { display: flex; gap: 14px; align-items: flex-start; }
+.ev-date { flex: none; display: grid; justify-items: center; align-content: center; width: 58px; height: 66px; border-radius: 16px; background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface)); border: 1px solid color-mix(in srgb, var(--color-primary) 22%, var(--color-hairline)); }
+.ev-date span { font-size: 12px; font-weight: 650; line-height: 1.2; color: var(--color-primary-300); text-transform: uppercase; letter-spacing: .04em; }
+.ev-date b { font-size: 24px; line-height: 1.05; font-weight: 850; letter-spacing: -.04em; color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
+/* The one you are going to wears a solid gym-colour date block, white words (light mode rule: words on a fill are white). */
+.ev-ticket[data-going]:not([data-closed]) .ev-date { background: var(--fill-primary, var(--color-primary)); border-color: transparent; }
+.ev-ticket[data-going]:not([data-closed]) .ev-date span, .ev-ticket[data-going]:not([data-closed]) .ev-date b { color: #fff; }
+.ev-head h3 { font-size: 17px; line-height: 1.3; font-weight: 750; letter-spacing: -.02em; color: var(--color-text-primary); }
+.ev-time { margin-top: 3px; font-size: 12.5px; color: var(--color-text-secondary); }
+.ev-time[data-live] { color: var(--color-primary-300); font-weight: 600; }
+.ev-desc { margin-top: 12px; font-size: 13px; line-height: 1.55; color: var(--color-text-secondary); }
+.ev-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.ev-tags span { font-size: 12px; padding: 5px 10px; border-radius: 99px; color: var(--color-text-secondary); background: var(--color-surface-raised); border: 1px solid var(--color-hairline); }
+.ev-facts { margin-top: 14px; border-top: 1px solid var(--color-separator); }
+.ev-facts > div { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--color-separator); }
+.ev-facts dt { font-size: 12px; color: var(--color-text-muted); }
+.ev-facts dd { font-size: 13px; line-height: 1.45; color: var(--color-text-primary); }
+.ev-places { display: flex; justify-content: space-between; margin-top: 14px; font-size: 12px; color: var(--color-text-muted); }
+.ev-places b { font-weight: 650; color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
+.ev-foot { margin-top: 14px; }
+.ev-empty { text-align: center; padding: 26px 18px; }
+.ev-empty-title { font-size: 15px; font-weight: 700; color: var(--color-text-primary); }
+.ev-empty p:last-child { margin-top: 4px; font-size: 13px; line-height: 1.55; color: var(--color-text-muted); }

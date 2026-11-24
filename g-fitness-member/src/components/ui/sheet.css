@@ -1,0 +1,14 @@
+/* Every bottom sheet (2026-11-24): one glass, Today's glow at the top, a handle you can hold and drag up or down. */
+.cf-sheet { position: relative; isolation: isolate; overflow: hidden; max-height: 86%; transition: max-height 260ms var(--ease-out-soft, ease); }
+.cf-sheet::before { content: ''; position: absolute; z-index: -1; inset: -60px -30% auto; height: 190px; background: radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--color-primary) 30%, transparent), transparent 65%); pointer-events: none; }
+:root[data-mode="light"] .cf-sheet::before { opacity: 0; }
+/* Held and pulled up: nearly the whole screen. Any sheet using the drag hook gets this. */
+[data-expanded="true"] { max-height: 96% !important; min-height: 96%; }
+.cf-sheet { transition: max-height 260ms var(--ease-out-soft, ease), min-height 260ms var(--ease-out-soft, ease); }
+.cf-sheet-grip { display: grid; place-items: center; height: 26px; cursor: grab; touch-action: none; user-select: none; }
+.cf-sheet-grip:active { cursor: grabbing; }
+.cf-sheet-grip > span { width: 44px; height: 5px; border-radius: 3px; background: rgb(var(--hair-rgb, 233 233 237) / .32); transition: width 160ms ease, background 160ms ease; }
+.cf-sheet-grip:hover > span, .cf-sheet-grip:active > span { width: 56px; background: color-mix(in srgb, var(--color-primary-300) 70%, transparent); }
+.cf-sheet-head { user-select: none; }
+.cf-sheet-head h2 { font-size: 19px; font-weight: 750; letter-spacing: -.025em; color: var(--color-text-primary); }
+.cf-sheet-close { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--color-hairline); background: color-mix(in srgb, var(--color-surface-raised) 70%, transparent); color: var(--color-text-primary); }

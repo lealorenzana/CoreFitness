@@ -10,19 +10,6 @@
 .classes-allowance { padding: 14px 16px; border-radius: 16px; background: var(--color-surface); border: 1px solid var(--class-edge); }
 .classes-calendar-card { min-width: 0; border: 1px solid var(--class-edge); border-radius: 23px; padding: 17px 15px; background: var(--raised-solid, var(--color-surface-raised)); }
 .member-classes .art-calendar--gym { max-width: none; color: var(--color-text-primary); }
-.art-calendar--gym .art-calendar-content { padding: 0; }
-.art-calendar--gym .art-calendar-nav { padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--color-hairline); }
-.art-calendar--gym .art-calendar-nav h2 { color: var(--color-text-primary); font-size: 19px; }
-.art-calendar--gym .art-calendar-nav button { border-radius: 12px; background: var(--color-surface); color: var(--color-primary-300); border: 1px solid var(--color-hairline); }
-.art-calendar--gym .art-calendar-grid { background: none !important; gap: 3px; }
-.art-calendar--gym .art-calendar-weekday { color: var(--color-text-secondary); font-size: 11px; }
-.art-calendar--gym .art-calendar-day { color: var(--color-text-primary); border-radius: 11px; }
-.art-calendar--gym .art-calendar-day.is-marked { background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface)); }
-.art-calendar--gym .art-calendar-day.is-selected { background: var(--fill-primary, var(--color-primary)); color: #fff; }
-.art-calendar--gym .art-calendar-day[aria-current="date"] { outline-color: var(--color-primary-300); }
-.art-calendar--gym .art-calendar-day small { color: var(--color-secondary); font-size: 10px; }
-.art-calendar--gym .art-calendar-day.is-selected small { color: #fff; }
-.art-calendar--gym .art-calendar-hint { color: var(--color-text-muted); font-size: 11px; }
 .classes-calendar-card .calendar-explainer { margin: 13px 0; font-size: 12px; color: var(--color-text-secondary); }
 .classes-calendar-card .orb-cell { min-height: 42px; font-size: 12px !important; border-radius: 11px !important; }
 .member-classes .classes-day-sessions { border-radius: 22px; border: 1px solid var(--class-edge); background: var(--color-surface); padding: 17px 15px 5px; }
@@ -34,3 +21,25 @@
 @media (prefers-reduced-motion: no-preference) { .classes-welcome-art { animation: class-art-idle 5s ease-in-out infinite; } }
 @keyframes class-art-idle { 0%, 100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-5px) rotate(1deg); } }
 @media (prefers-reduced-motion: reduce) { .member-classes * { animation: none !important; transition: none !important; } }
+
+/* Ask for a session (2026-11-24): coaches as tiles, the chosen coach as a small pass. */
+.coach-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.coach-tile { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; padding: 18px 10px 12px; border-radius: 22px; border: 1px solid color-mix(in srgb, var(--color-primary) 22%, var(--color-hairline)); background: radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--color-primary) 16%, transparent), transparent 62%), var(--color-surface); }
+.coach-tile > :first-child { margin-bottom: 10px; box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 50%, transparent), 0 10px 22px color-mix(in srgb, var(--color-primary) 22%, transparent); border-radius: 50%; }
+.coach-tile-name { font-size: 14.5px; font-weight: 750; line-height: 1.3; letter-spacing: -.015em; color: var(--color-text-primary); }
+.coach-tile-spec { font-size: 12px; line-height: 1.4; color: var(--color-text-secondary); }
+.coach-tile-days { display: flex; gap: 3px; margin-top: 9px; }
+.coach-tile-days i { font-style: normal; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 6px; font-size: 12px; font-weight: 650; line-height: 1; color: var(--color-text-muted); background: var(--color-surface-raised); }
+.coach-tile-days i[data-on] { color: #fff; background: var(--fill-primary, var(--color-primary)); }
+.coach-tile-go { margin-top: auto; padding-top: 12px; width: 100%; }
+.coach-tile-go::before { content: ''; display: block; height: 1px; margin-bottom: 10px; background: var(--color-separator); }
+.coach-tile-go { font-size: 13px; font-weight: 700; color: var(--color-secondary); }
+.coach-chosen { display: flex; align-items: center; gap: 14px; margin-top: 12px; padding: 14px; border-radius: 22px; border: 1px solid color-mix(in srgb, var(--color-primary) 30%, var(--color-hairline)); background: radial-gradient(ellipse at 0% 0%, color-mix(in srgb, var(--color-primary) 18%, transparent), transparent 60%), var(--color-surface); }
+.coach-chosen > :first-child { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 50%, transparent); border-radius: 50%; flex: none; }
+:root[data-mode="light"] .coach-tile, :root[data-mode="light"] .coach-chosen { background: color-mix(in srgb, var(--color-primary) 6%, #fff); }
+.slot-times { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 4px; }
+.slot-time-btn { display: grid; justify-items: center; gap: 2px; min-height: 64px; padding: 10px 6px; border-radius: 16px; border: 1px solid color-mix(in srgb, var(--color-secondary) 35%, var(--color-hairline)); background: color-mix(in srgb, var(--color-secondary) 7%, var(--color-surface)); }
+.slot-time-btn b { font-size: 15px; font-weight: 750; letter-spacing: -.01em; color: var(--color-text-primary); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.slot-time-btn span { font-size: 12px; color: var(--color-secondary); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slot-time-btn[data-off] { border-color: var(--color-hairline); background: var(--color-surface); opacity: .6; }
+.slot-time-btn[data-off] span { color: var(--color-text-muted); }

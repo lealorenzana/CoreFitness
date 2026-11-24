@@ -681,20 +681,25 @@ export default function BookClass({ mode }: { mode?: 'classes' | 'pt' } = {}) {
                   Personal training opens once the gym adds its coaching team.
                 </p>
               ) : (
-                <div className="noc-rows" style={{ marginTop: 4 }}>
-                  {shownTrainers.map((t, i) => (
-                    <LineRow
-                      key={t.id}
-                      gutterWidth={46}
-                      // The coach's photo when they have one — this was initials only.
-                      gutter={<Avatar name={trainerName(t)} photoUrl={t.photo_url} size={36} />}
-                      title={trainerName(t)}
-                      meta={coachMeta(t, workDays)}
-                      action="Open times"
-                      onClick={() => openTrainer(t)}
-                      last={i === shownTrainers.length - 1}
-                    />
-                  ))}
+                // Coaches as tiles (2026-11-24): photo, speciality and the days they really work, from their hours.
+                <div className="coach-tiles noc-rows" style={{ marginTop: 6 }}>
+                  {shownTrainers.map((t) => {
+                    const days = workDays?.get(t.id) ?? null;
+                    return (
+                      <button key={t.id} type="button" className="coach-tile noc-press-soft" onClick={() => openTrainer(t)}
+                        aria-label={`${trainerName(t)}, ${coachMeta(t, workDays)}. See open times`}>
+                        <Avatar name={trainerName(t)} photoUrl={t.photo_url} size={64} />
+                        <span className="coach-tile-name">{trainerName(t)}</span>
+                        <span className="coach-tile-spec">{t.specialization ?? 'General training'}</span>
+                        {days && (days.length === 0
+                          ? <span className="coach-tile-spec">No open hours yet</span>
+                          : <span className="coach-tile-days" aria-hidden>
+                              {[1, 2, 3, 4, 5, 6, 0].map((d) => <i key={d} data-on={days.includes(d) || undefined}>{WEEKDAY_SHORT[d].slice(0, 1)}</i>)}
+                            </span>)}
+                        <span className="coach-tile-go">See times</span>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </section>
@@ -709,12 +714,15 @@ export default function BookClass({ mode }: { mode?: 'classes' | 'pt' } = {}) {
                   <ArrowLeft size={15} /> {onlyTrainers ? 'Your coaches' : 'All coaches'}
                 </button>
               )}
-              <p style={{ marginTop: 10, fontSize: 17, fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                {trainerName(selectedTrainer)}
-              </p>
-              <p style={{ fontSize: 12.5, marginTop: 2, color: 'var(--color-text-muted)' }}>
-                {selectedTrainer.specialization ?? 'General training'} · pick an open time
-              </p>
+              <div className="coach-chosen">
+                <Avatar name={trainerName(selectedTrainer)} photoUrl={selectedTrainer.photo_url} size={52} />
+                <div className="min-w-0">
+                  <p style={{ fontSize: 17, fontWeight: 750, color: 'var(--color-text-primary)' }}>{trainerName(selectedTrainer)}</p>
+                  <p style={{ fontSize: 12.5, marginTop: 2, color: 'var(--color-text-secondary)' }}>
+                    {selectedTrainer.specialization ?? 'General training'} · pick an open time
+                  </p>
+                </div>
+              </div>
             </div>
           )}
           {filter === 'pt' && selectedTrainer && slotsLoading && <SkeletonList count={2} />}
@@ -817,24 +825,20 @@ export default function BookClass({ mode }: { mode?: 'classes' | 'pt' } = {}) {
                       : 'No open times on this day. Pick another in the week above.'}
                   </p>
                 ) : (
-                  <div className="noc-rows">
-                    {daySlots.map((s, i) => {
-                      // A clashing slot is shown and refused, never hidden —
-                      // hiding it would say "this coach has no 10am", which is a
-                      // different and wrong statement.
+                  // Times as a grid of buttons (2026-11-24): a row each read "60 min with Gabby" seven times over.
+                  <div className="slot-times noc-rows">
+                    {daySlots.map((s) => {
+                      // A clashing slot is shown and refused, never hidden — hiding it would say
+                      // "this coach has no 10am", which is a different and wrong statement.
                       const off = ptBlock !== null || s.conflict !== null;
+                      const why = s.conflict !== null ? `Clashes with ${s.conflict}` : ptBlock ? 'Locked' : null;
                       return (
-                        <LineRow
-                          key={s.startsAt}
-                          gutter={timeLabel(s.startsAt)}
-                          title={`${s.durationMinutes} min with ${selectedTrainer.first_name}`}
-                          dim={off}
-                          meta={s.conflict !== null ? `Clashes with ${s.conflict}` : undefined}
-                          action={s.conflict !== null ? 'Busy' : ptBlock ? 'Locked' : 'Ask'}
-                          actionTone={off ? 'muted' : 'action'}
-                          onClick={off ? undefined : () => setConfirmSlot(s)}
-                          last={i === daySlots.length - 1}
-                        />
+                        <button key={s.startsAt} type="button" className="slot-time-btn noc-press-soft" data-off={off || undefined}
+                          disabled={off} onClick={() => setConfirmSlot(s)}
+                          aria-label={`${timeLabel(s.startsAt)}, ${s.durationMinutes} minutes with ${selectedTrainer.first_name}${why ? `. ${why}` : ''}`}>
+                          <b>{timeLabel(s.startsAt)}</b>
+                          <span>{why ?? `${s.durationMinutes} min`}</span>
+                        </button>
                       );
                     })}
                   </div>

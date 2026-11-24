@@ -127,3 +127,19 @@
 @media (max-width: 360px) { .art-calendar-grid { grid-template-rows: 22px repeat(6, 39px); gap: 2px; } .art-calendar-day { font-size: 12px; } .art-calendar-content { padding-inline: 6%; } }
 .art-calendar-grid { background: url('/images/member-calendar-paper.webp') center 60% / 125% 160%; border-radius: 8px; }
 @media (prefers-reduced-motion: reduce) { .art-calendar-grid { transform: none !important; opacity: 1 !important; } }
+
+/* The calendar in the gym's colours (appearance="gym"), shared by Classes and Attendance (moved from classes.css, 2026-11-25). */
+.art-calendar--gym .art-calendar-content { padding: 0; }
+.art-calendar--gym .art-calendar-nav { padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--color-hairline); }
+.art-calendar--gym .art-calendar-nav h2 { color: var(--color-text-primary); font-size: 19px; }
+.art-calendar--gym .art-calendar-nav button { border-radius: 12px; background: var(--color-surface); color: var(--color-primary-300); border: 1px solid var(--color-hairline); }
+.art-calendar--gym .art-calendar-grid { background: none !important; gap: 3px; }
+.art-calendar--gym .art-calendar-weekday { color: var(--color-text-secondary); font-size: 12px; }
+.art-calendar--gym .art-calendar-day { color: var(--color-text-primary); border-radius: 11px; }
+.art-calendar--gym .art-calendar-day.is-marked { background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface)); }
+.art-calendar--gym .art-calendar-day.is-selected { background: var(--fill-primary, var(--color-primary)); color: #fff; }
+.art-calendar--gym .art-calendar-day[aria-current="date"] { outline-color: var(--color-primary-300); }
+.art-calendar--gym .art-calendar-day small { color: var(--color-secondary); font-size: 12px; }
+.art-calendar--gym .art-calendar-day.is-selected small { color: #fff; }
+.art-calendar--gym .art-calendar-hint { color: var(--color-text-muted); font-size: 12px; }
+.art-calendar--gym .art-calendar-day.is-marked > i { width: 6px; height: 6px; background: var(--color-primary-300); }

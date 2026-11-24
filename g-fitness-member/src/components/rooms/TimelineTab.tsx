@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import './chat.css';
 import { useNavigate } from 'react-router-dom';
 import { Barbell, CalendarBlank, ChatCircleText, ClipboardText, NotePencil, PaperPlaneRight } from '@phosphor-icons/react';
 import { TextArea } from '../ui/Field';
@@ -206,10 +207,8 @@ export default function TimelineTab({ room, mode, with: withPerson, docked = fal
     catch (err) { toast.error(errorMessage(err, 'Could not change that')); }
   };
   const card = (icon: React.ReactNode, eyebrow: string, title: string, onOpen?: () => void, accent = false) => (
-    <button type="button" onClick={onOpen} disabled={!onOpen} className="w-full text-left flex items-start noc-press"
-      style={{ gap: 10, padding: 12, borderRadius: 14, border: `1px solid ${accent ? 'var(--color-primary)' : 'var(--color-border)'}`,
-        background: accent ? 'color-mix(in srgb, var(--color-primary) 10%, transparent)' : 'var(--color-surface)' }}>
-      <span className="flex-none" style={{ color: 'var(--color-primary-300)', marginTop: 1 }}>{icon}</span>
+    <button type="button" onClick={onOpen} disabled={!onOpen} className="w-full text-left flex items-start noc-press chat-card" data-accent={accent || undefined}>
+      <span className="flex-none chat-card-icon">{icon}</span>
       <span className="min-w-0">
         <span className="block" style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{eyebrow}</span>
         <span className="block" style={{ fontSize: 14, marginTop: 2, whiteSpace: 'pre-wrap', color: 'var(--color-text-primary)' }}>{title}</span>
@@ -221,18 +220,17 @@ export default function TimelineTab({ room, mode, with: withPerson, docked = fal
   // Messenger style (2026-11-14): a solid bar docked to the bottom edge, full width — not a glass pill over the messages.
   const composer = chatOn ? (
         <div className={docked ? 'noc-composer' : 'noc-composer sticky'} data-composer>
-
+          <div className="chat-input-row">
           <div style={{ flex: 1, minWidth: 0 }}>
             <TextArea rows={2} value={draft} aria-label="Message" placeholder={other ? `Message ${other.name.split(' ')[0]}` : 'Write a message'}
               onChange={(e) => setDraft(e.target.value.slice(0, 2000))}
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } }} />
           </div>
           <button type="button" onClick={() => void send()} disabled={busy || !draft.trim() || !other} aria-label="Send"
-            className="flex-none flex items-center justify-center"
-            style={{ width: 44, height: 44, borderRadius: 22, background: 'var(--color-secondary)', color: 'var(--nb-action-fg, #000)',
-              opacity: busy || !draft.trim() ? 0.45 : 1 }}>
-            <PaperPlaneRight size={20} weight="fill" />
+            className="flex-none flex items-center justify-center chat-send">
+            <PaperPlaneRight size={19} weight="fill" />
           </button>
+          </div>
         </div>
       ) : (
         <p style={{ fontSize: 12.5, color: 'var(--color-text-muted)' }}>Messaging is off at this gym — notes and routines still arrive here.</p>
@@ -240,7 +238,7 @@ export default function TimelineTab({ room, mode, with: withPerson, docked = fal
 
   return (
     <>
-    <div className={docked ? 'noc-chat-scroll flex flex-col' : 'flex flex-col'} style={{ gap: 8 }} data-timeline>
+    <div className={docked ? 'noc-chat-scroll flex flex-col chat-timeline' : 'flex flex-col chat-timeline'} data-timeline>
       {more && shown.length >= 30 && (
         <button type="button" onClick={() => void loadEarlier()} style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-primary-300)', padding: '6px 0' }}>
           Earlier
@@ -259,15 +257,13 @@ export default function TimelineTab({ room, mode, with: withPerson, docked = fal
           return (
             <div key={`m${it.id}`} className="flex relative" data-timeline-kind="message"
               style={{ justifyContent: mineMsg ? 'flex-end' : 'flex-start', marginBottom: lastMine?.id === it.id && seen ? 18 : 0 }}>
-              <div style={{ maxWidth: '80%', padding: '8px 12px', borderRadius: 16, whiteSpace: 'pre-wrap', fontSize: 14,
-                background: mineMsg ? 'var(--color-primary)' : 'var(--color-surface-raised)',
-                color: mineMsg ? '#fff' : 'var(--color-text-primary)',
-                borderBottomRightRadius: mineMsg ? 4 : 16, borderBottomLeftRadius: mineMsg ? 16 : 4 }}>
+              <div className={mineMsg ? 'chat-msg is-mine' : 'chat-msg'}>
+                {!mineMsg && <span className="chat-msg-label">{mode === 'member' ? coachName : other?.name.split(' ')[0] ?? 'Member'}</span>}
                 {it.body}
-                <span style={{ display: 'block', fontSize: 12, marginTop: 2, opacity: 0.7, textAlign: 'right' }}>{when(it.at)}</span>
+                <span className="chat-msg-time">{when(it.at)}</span>
               </div>
               {lastMine?.id === it.id && seen && (
-                <p data-seen style={{ position: 'absolute', right: 0, marginTop: 2, fontSize: 12, color: 'var(--color-text-muted)' }}>Seen</p>
+                <p data-seen style={{ position: 'absolute', right: 0, top: '100%', marginTop: 3, fontSize: 12, color: 'var(--color-text-muted)' }}>Seen</p>
               )}
             </div>
           );
@@ -280,8 +276,7 @@ export default function TimelineTab({ room, mode, with: withPerson, docked = fal
               {/* The coach's next step: the member ticks it, the coach sees it (0088). */}
               {mode === 'member' ? (
                 <button type="button" onClick={() => void toggleDone(it.id, !done)} data-note-done={done}
-                  style={{ marginTop: 6, fontSize: 13, fontWeight: 600, padding: '4px 0',
-                    color: done ? 'var(--color-primary-300)' : 'var(--color-secondary)' }}>
+                  className="chat-note-done">
                   {done ? '✓ Done' : 'Mark as done'}
                 </button>
               ) : done ? <p style={{ marginTop: 6, fontSize: 12.5, color: 'var(--color-primary-300)' }}>✓ They marked it done</p> : null}
@@ -307,10 +302,9 @@ export default function TimelineTab({ room, mode, with: withPerson, docked = fal
       })}
       {waitingMsgs.map((j) => (
         <div key={`q${j.id}`} className="flex" data-timeline-kind="message" data-waiting-message style={{ justifyContent: 'flex-end' }}>
-          <div style={{ maxWidth: '80%', padding: '8px 12px', borderRadius: 16, borderBottomRightRadius: 4, whiteSpace: 'pre-wrap', fontSize: 14,
-            background: 'color-mix(in srgb, var(--color-primary) 55%, transparent)', color: '#fff' }}>
+          <div className="chat-msg is-mine" data-waiting>
             {String(j.payload.body)}
-            <span style={{ display: 'block', fontSize: 12, marginTop: 2, opacity: 0.8, textAlign: 'right' }}>Waiting to send</span>
+            <span className="chat-msg-time">Waiting to send</span>
           </div>
         </div>
       ))}

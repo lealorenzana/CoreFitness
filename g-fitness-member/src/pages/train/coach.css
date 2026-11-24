@@ -30,3 +30,24 @@
 @keyframes coach-board-idle { 0%, 100% { transform: translateY(0) rotate(-9deg); } 50% { transform: translateY(-5px) rotate(-5deg); } }
 @keyframes coach-chat-idle { 0%, 100% { transform: translateY(0) rotate(9deg); } 50% { transform: translateY(-4px) rotate(4deg); } }
 @media (prefers-reduced-motion: reduce) { .member-coach * { animation: none !important; transition: none !important; } }
+
+/* The coach pass (2026-11-24): the active package as one card, Today's glow and ring, the coach's photo blurred behind its top. */
+.member-coach [data-coaching="active"] { position: relative; isolation: isolate; overflow: hidden; gap: 4px !important; padding: 18px 16px 16px; border-radius: 26px; border: 1px solid color-mix(in srgb, var(--color-primary) 34%, var(--color-hairline)); background: var(--color-surface); }
+.member-coach .coach-pass-photo { position: absolute; z-index: -2; inset: -30px -30px auto; height: 170px; background: color-mix(in srgb, var(--color-primary) 40%, transparent) center 30% / cover no-repeat; filter: blur(26px) saturate(130%); opacity: .55; -webkit-mask: linear-gradient(#000 35%, transparent); mask: linear-gradient(#000 35%, transparent); pointer-events: none; }
+.member-coach .coach-pass-glow { position: absolute; z-index: -1; width: 300px; height: 140px; right: -120px; top: 40px; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--color-primary-300) 20%, transparent); transform: rotate(-24deg); box-shadow: 0 0 0 34px color-mix(in srgb, var(--color-primary) 4%, transparent), 0 0 0 68px color-mix(in srgb, var(--color-primary) 3%, transparent); pointer-events: none; }
+.member-coach [data-coaching="active"] > .noc-row { padding-block: 4px 10px !important; min-height: 0; border: 0 !important; }
+.member-coach [data-coaching="active"] > .noc-row img, .member-coach [data-coaching="active"] > .noc-row [data-avatar] { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 55%, transparent); border-radius: 50%; }
+.member-coach [data-coaching="active"] [data-coach-card] > * { border: 0 !important; padding: 14px 0 0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; border-top: 1px solid var(--color-separator) !important; }
+.coach-pass-percent { font-size: 26px; line-height: 1; font-weight: 850; letter-spacing: -.04em; color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
+:root[data-mode="light"] .member-coach [data-coaching="active"] { background: color-mix(in srgb, var(--color-primary) 8%, #fff); }
+:root[data-mode="light"] .member-coach .coach-pass-photo { opacity: .3; }
+
+/* Times that fit your week: three date tiles. */
+.member-coach .slot-note { margin-top: -4px; margin-bottom: 12px; font-size: 12px; color: var(--color-text-muted); }
+.slot-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.slot-tile { display: grid; justify-items: center; align-content: start; gap: 1px; padding: 12px 6px 10px; border-radius: 18px; border: 1px solid color-mix(in srgb, var(--color-primary) 22%, var(--color-hairline)); background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface-raised)); }
+.slot-tile .slot-day { font-size: 12px; font-weight: 650; line-height: 1.2; text-transform: uppercase; letter-spacing: .04em; color: var(--color-primary-300); }
+.slot-tile b { font-size: 26px; line-height: 1.05; font-weight: 850; letter-spacing: -.04em; color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
+.slot-tile .slot-time { margin-top: 6px; font-size: 12.5px; font-weight: 650; color: var(--color-text-primary); white-space: nowrap; }
+.slot-tile .slot-len { font-size: 12px; color: var(--color-text-muted); }
+.slot-tile .slot-ask { margin-top: 9px; width: 100%; min-height: 32px; display: grid; place-items: center; border-radius: 10px; font-size: 12.5px; font-weight: 700; color: var(--color-secondary); border: 1px solid color-mix(in srgb, var(--color-secondary) 45%, transparent); background: color-mix(in srgb, var(--color-secondary) 9%, transparent); }

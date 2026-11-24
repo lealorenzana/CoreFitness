@@ -12,6 +12,7 @@ import {
   ListChecks, Minus, PaperPlaneTilt, SignOut, UserCircle, Warning, Receipt, CalendarDots, FileText, PauseCircle,
 } from '@phosphor-icons/react';
 import { Page } from '../components/ui/page';
+import '../components/ui/page-hero.css';
 import { Eyebrow, InlineStat, LineRow, NocButton, Panel, ProgressBar, SectionHead, StatusPill, TextTabs } from '../components/ui/noc';
 import Disclosure from '../components/ui/Disclosure';
 import Modal from '../components/ui/Modal';
@@ -180,7 +181,7 @@ export default function MembershipHub() {
       {error && <p style={{ fontSize: 12.5, color: 'var(--color-secondary)' }}>{error}</p>}
 
       {/* ── Identity ── */}
-      <button onClick={() => navigate('/member/profile/edit')} className="flex items-center text-left noc-press-soft" style={{ gap: 13 }}>
+      <button onClick={() => navigate('/member/profile/edit')} className="flex items-center text-left noc-press-soft mh-profile" style={{ gap: 13 }}>
         <Avatar name={home.fullName} photoUrl={home.photoUrl} size={48} />
         <span className="min-w-0 flex-1">
           <span className="block truncate" style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-text-primary)' }}>{home.fullName}</span>
@@ -210,7 +211,9 @@ export default function MembershipHub() {
       {tab === 'membership' && (<>
 
       {/* ── Membership ── */}
-      <Panel glow={status.tone === 'action' ? 'action' : 'structure'}>
+      <Panel glow={status.tone === 'action' ? 'action' : 'structure'} className="mh-pass">
+        {/* Today's pass, with its own picture behind the plan name (2026-11-25). */}
+        <img className="mh-pass-art" src="/images/membership-hero.png" alt="" aria-hidden onError={(e) => { e.currentTarget.style.display = 'none'; }} />
         <div className="flex items-center justify-between" style={{ gap: 10 }}>
           <Eyebrow tone={status.tone === 'action' ? 'action' : undefined}>Membership</Eyebrow>
           <StatusPill label={status.label} tone={status.tone} />
@@ -318,7 +321,7 @@ export default function MembershipHub() {
       {/* ── Everything else about the membership: one described row each, each its own page
           (redesign, 2026-10-26). The activity preview and its filter chips became the Activity
           page's own (it has the same filters); the text links became rows. ── */}
-      <section aria-label="Your membership" data-you-rows>
+      <section aria-label="Your membership" data-you-rows className="page-hero-list is-rows">
         {youRows.map((r, i) => (
           <LineRow key={r.path} icon={r.icon} tone={r.tone ?? 'info'} title={r.label} meta={r.meta}
             onClick={() => navigate(r.path)} last={i === youRows.length - 1} />
@@ -330,8 +333,8 @@ export default function MembershipHub() {
         )}
       </section>
 
-      {/* ── Folded: the plan, its history, the account ── */}
-      <div className="flex flex-col" style={{ gap: 10 }}>
+      {/* ── Folded: the plan, its history, the account ── one panel of rows, like Browse by kind. */}
+      <div className="flex flex-col page-hero-list is-rows">
         {home.access && (
           <Disclosure title={`What ${home.planName ?? 'your plan'} includes`} icon={<ListChecks size={17} />}
             meta={home.access.excluded.length ? `${home.access.excluded.length} not included` : 'Everything'}>

@@ -1,0 +1,43 @@
+/* 1-on-1 chat (2026-11-24), aligned to the Assistant (pages/assistant.css): its backdrop, its two voices, its composer pill.
+   Shared by the member's room and the coach's trainee place. */
+.chat-room { position: relative; isolation: isolate; --chat-edge: color-mix(in srgb, var(--color-primary) 18%, var(--color-hairline)); }
+.chat-backdrop { position: absolute; inset: 0 calc(-1 * var(--gutter, 20px)); z-index: -1; overflow: hidden; pointer-events: none; }
+.chat-backdrop::before { content: ''; position: absolute; width: 520px; height: 520px; right: -260px; top: 20%; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--color-primary) 22%, transparent), transparent 68%); }
+.chat-backdrop::after { content: ''; position: absolute; width: 460px; height: 460px; left: -220px; top: -120px; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--color-primary) 16%, transparent), transparent 70%); }
+:root[data-mode="light"] .chat-backdrop::before, :root[data-mode="light"] .chat-backdrop::after { opacity: .5; }
+.chat-backdrop > i, .chat-backdrop > span { position: absolute; width: 380px; height: 380px; border: 1px solid color-mix(in srgb, var(--color-primary-300) 7%, transparent); border-radius: 50%; right: -270px; top: 15%; transform: rotate(-25deg); }
+.chat-backdrop > span { width: 500px; height: 500px; right: -320px; top: 12%; border-style: dashed; }
+@media (prefers-reduced-motion: no-preference) { .chat-backdrop > span { animation: chat-orbit-drift 30s linear infinite; } }
+@keyframes chat-orbit-drift { to { transform: rotate(335deg); } }
+
+/* The header: the pinned Today bar in a row, square back and settings buttons. */
+.member-clean-shell .cf-row-head { border-bottom: 0; padding-bottom: 10px; }
+.member-clean-shell .cf-row-head > .member-page-header { flex-direction: row; align-items: center; gap: 12px; padding-top: 12px; padding-bottom: 12px; }
+.member-clean-shell .cf-row-head > .member-page-header > button { width: 40px; height: 40px !important; min-height: 40px; flex: none; font-size: 0 !important; justify-content: center; gap: 0 !important; border-radius: 12px; border: 1px solid var(--color-hairline); background: color-mix(in srgb, var(--color-surface-raised) 70%, transparent); color: var(--color-text-primary) !important; }
+.member-clean-shell .cf-row-head > .member-page-header > button svg { width: 18px; height: 18px; }
+.member-clean-shell .cf-row-head > .member-page-header .member-title-row { flex: 1; min-width: 0; align-items: center; }
+.member-clean-shell .cf-row-head > .member-page-header h1 { font-size: 20px !important; font-weight: 750 !important; letter-spacing: -.03em !important; }
+.member-clean-shell .cf-row-head > .member-page-header p { margin-top: 2px !important; }
+.member-clean-shell .cf-row-head .member-title-art { display: none; }
+
+/* The timeline. */
+.chat-timeline { gap: 18px; }
+.chat-msg { max-width: 82%; font-size: 14px; line-height: 1.65; white-space: pre-wrap; color: var(--color-text-primary); }
+.chat-msg-label { display: block; margin-bottom: 4px; font-size: 12px; font-weight: 650; color: var(--color-primary-300); }
+.chat-msg-time { display: block; margin-top: 4px; font-size: 12px; color: var(--color-text-muted); }
+.chat-msg.is-mine { max-width: min(82%, 560px); padding: 10px 15px; border-radius: 19px 19px 5px 19px; border: 1px solid var(--chat-edge, var(--color-hairline)); background: var(--color-surface-raised); }
+.chat-msg.is-mine .chat-msg-time { text-align: right; }
+.chat-msg[data-waiting] { opacity: .65; }
+.chat-card { gap: 12px; padding: 14px; border-radius: 18px; border: 1px solid var(--chat-edge, var(--color-hairline)); background: color-mix(in srgb, var(--color-surface) 85%, transparent); }
+.chat-card[data-accent] { border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-hairline)); background: color-mix(in srgb, var(--color-primary) 9%, var(--color-surface)); }
+.chat-card-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; color: var(--color-primary-300); background: color-mix(in srgb, var(--color-primary) 14%, transparent); }
+.chat-note-done { margin-top: 8px; min-height: 36px; padding: 6px 14px; border-radius: 99px; font-size: 13px; font-weight: 650; color: var(--color-secondary); border: 1px solid color-mix(in srgb, var(--color-secondary) 40%, transparent); background: color-mix(in srgb, var(--color-secondary) 8%, transparent); }
+.chat-note-done[data-note-done="true"] { color: var(--color-primary-300); border-color: color-mix(in srgb, var(--color-primary) 35%, transparent); background: color-mix(in srgb, var(--color-primary) 9%, transparent); }
+
+/* The composer: the Assistant's pill, a round send button inside it. */
+.noc-composer:has(.chat-input-row) { background: transparent; border-top: 0; padding-top: 6px; padding-bottom: 12px; }
+.chat-input-row { display: flex; align-items: flex-end; gap: 6px; width: 100%; min-width: 0; padding: 6px 6px 6px 8px; border-radius: 24px; border: 1px solid var(--chat-edge, var(--color-hairline)); background: var(--raised-solid, var(--color-surface-raised)); box-shadow: 0 4px 18px #0002; }
+.chat-input-row:focus-within { border-color: var(--color-primary-300); box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 10%, transparent); }
+.chat-input-row textarea { border: 0 !important; background: transparent !important; box-shadow: none !important; outline: none !important; min-height: 44px; padding: 10px 6px !important; resize: none; font-size: 16px; caret-color: var(--color-primary-300); }
+.chat-send { width: 42px; height: 42px; border-radius: 50%; background: var(--color-text-primary); color: var(--color-bg); }
+.chat-send:disabled { background: var(--color-surface-high); color: var(--color-text-muted); opacity: .6; }

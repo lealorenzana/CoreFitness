@@ -24,8 +24,8 @@ export const GLASS: CSSProperties = {
   // violet — a blue gym's sheets were violet-black (2026-10-27).
   // Colour roles (0234): the glass is dark on dark and frosted white in light mode (index.css --glass-*).
   background: 'var(--glass-bg)',
-  backdropFilter: 'blur(24px) saturate(160%)',
-  WebkitBackdropFilter: 'blur(24px) saturate(160%)',
+  backdropFilter: 'blur(32px) saturate(160%)',
+  WebkitBackdropFilter: 'blur(32px) saturate(160%)',
   border: '1px solid var(--glass-line)',
   boxShadow: 'var(--glass-shadow)',
 };

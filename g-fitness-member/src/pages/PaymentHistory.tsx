@@ -16,6 +16,7 @@ import { listMyRenewalRequests, type RenewalRequest } from '../lib/api/renewalRe
 import { getGymSettings, type GymSettingsRow } from '../lib/api/settings';
 import type { PaymentRow, PaymentStatus } from '../types/db';
 import { Page, PageTitle } from '../components/ui/page';
+import { PageHero } from '../components/ui/PageHero';
 import { Eyebrow, InlineStat, NocButton, Panel, StatusPill } from '../components/ui/noc';
 
 /**
@@ -162,8 +163,10 @@ export default function PaymentHistory() {
   };
 
   return (
-    <Page>
-      <PageTitle back fallback="/member/membership" title="Payments" subtitle="Paid at the desk, or in the app" />
+    <Page className="has-page-hero cf-panels">
+      <PageTitle back fallback="/member/membership" title="Payments" />
+      <PageHero label="Payments" kicker="Your receipts" lead="Paid and" accent="on record."
+        text="Paid at the desk, or in the app. Each one keeps its receipt." art="/images/payments-hero.png" />
 
       {loading ? <SkeletonList /> : (
         <>

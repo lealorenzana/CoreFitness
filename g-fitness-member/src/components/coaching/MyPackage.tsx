@@ -138,9 +138,14 @@ export default function MyPackage({ next, onCurrent }: {
 
       {current && (
         <div data-coaching={current.status} className="flex flex-col" style={{ gap: 10 }}>
+          {/* The active package is a pass, like Today's membership card: the coach's own photo, blurred, is its backdrop. */}
+          {current.status === 'active' && <>
+            <div className="coach-pass-photo" aria-hidden style={current.trainerPhoto ? { backgroundImage: `url("${current.trainerPhoto}")` } : undefined} />
+            <div className="coach-pass-glow" aria-hidden />
+          </>}
           <LineRow
-            gutter={<Avatar name={current.trainerName} photoUrl={current.trainerPhoto} size={44} />}
-            gutterWidth={58}
+            gutter={<Avatar name={current.trainerName} photoUrl={current.trainerPhoto} size={current.status === 'active' ? 56 : 44} />}
+            gutterWidth={current.status === 'active' ? 70 : 58}
             title={current.trainerName}
             meta={`Package · ${monthsLabel(current.months)}${current.price ? ` · ${peso(current.price)}` : ''}`}
             action={current.status === 'active' && unread > 0
@@ -220,11 +225,14 @@ export default function MyPackage({ next, onCurrent }: {
                   {monthsLabel(current.months)} package · until {fmt(current.endsOn)}
                 </p>
                 {frac !== null && (
-                  <div className="flex items-center" style={{ gap: 10, marginTop: 8 }}>
-                    <ProgressBar style={{ flex: 1 }} fraction={frac} />
-                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-primary-300)' }} data-package-percent>
-                      {Math.round(Math.min(1, Math.max(0, frac)) * 100)}%
-                    </span>
+                  <div style={{ marginTop: 12 }}>
+                    <div className="flex items-end justify-between" style={{ gap: 10, marginBottom: 8 }}>
+                      <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Through your package</span>
+                      <span className="coach-pass-percent" data-package-percent>
+                        {Math.round(Math.min(1, Math.max(0, frac)) * 100)}%
+                      </span>
+                    </div>
+                    <ProgressBar fraction={frac} />
                   </div>
                 )}
                 {pause && (

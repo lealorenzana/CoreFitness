@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Page, PageTitle } from '../components/ui/page';
+import { PageHero } from '../components/ui/PageHero';
 import { LineRow, NocButton, SectionHead, StatusPill } from '../components/ui/noc';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { toast } from '../components/ui/Toast';
@@ -77,13 +78,15 @@ export default function Waiver() {
   };
 
   return (
-    <Page>
+    <Page className="has-page-hero cf-panels">
       <PageTitle
         back
         fallback="/member/membership"
         title={status.title}
         subtitle={`Version ${status.version}`}
       />
+      <PageHero label="Waiver" kicker="Before you train" lead="Safe from" accent="day one."
+        text="Read the gym's waiver and answer a few health questions." art="/images/waiver-hero.png" />
 
       <section>
         <p style={{

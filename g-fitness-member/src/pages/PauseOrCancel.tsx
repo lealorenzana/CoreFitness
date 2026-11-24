@@ -1,6 +1,7 @@
 import { CaretRight, PauseCircle, XCircle } from '@phosphor-icons/react';
 import { useCallback, useEffect, useState } from 'react';
 import { Page, PageTitle } from '../components/ui/page';
+import { PageHero } from '../components/ui/PageHero';
 import { LineRow, NocButton, SectionHead, StatusPill } from '../components/ui/noc';
 import { Field, TextInput } from '../components/ui/Field';
 import { SkeletonList } from '../components/ui/Skeleton';
@@ -126,13 +127,14 @@ export default function PauseOrCancel() {
   const word = (k: 'freeze' | 'cancel') => (k === 'freeze' ? 'pause' : 'cancellation');
 
   return (
-    <Page>
+    <Page className="has-page-hero cf-panels">
       <PageTitle
         back
         fallback="/member/membership"
         title="Pause or cancel"
-        subtitle="Ask the desk — they make the change"
       />
+      <PageHero label="Pause or cancel" kicker="Your membership" lead="Pause it," accent="or end it."
+        text="Ask the desk. They make the change, and you see their answer here." art="/images/pause-hero.png" />
 
       {/* Nothing to ask about. Said plainly rather than showing a form that
           would be refused by the database a second later. */}

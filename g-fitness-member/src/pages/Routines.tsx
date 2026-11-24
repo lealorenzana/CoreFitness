@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import './routines.css';
+import { PageHero } from '../components/ui/PageHero';
 import { agoLabel as ago } from '../utils/dates';
 import { supabase } from '../lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
@@ -96,18 +97,15 @@ export default function Routines() {
   };
 
   const title = (
-    <PageTitle back fallback="/member/book-class?tab=workout" title="Routines"
-      subtitle="Find, repeat, or edit your saved workouts." />
+    <PageTitle back fallback="/member/book-class?tab=workout" title="Routines" />
   );
 
   return (
     <FeatureLock feature="workout_tracker" context={<Page>{title}</Page>}>
-      <Page className="member-routines">
+      <Page className="member-routines has-page-hero">
         {title}
-        <section className="routines-welcome" aria-label="Your workout library">
-          <div><span>Your workout library</span><h2>Ready to repeat.</h2><p>Build a workout once. Keep your exercises, sets, and reps ready for next time.</p></div>
-          <div className="routines-welcome-art" aria-hidden="true"><img src="/images/train-free-workouts.png" alt="" /><span /></div>
-        </section>
+        <PageHero label="Your workout library" kicker="Your workout library" lead="Ready to" accent="repeat."
+          text="Build a workout once. Keep your exercises, sets, and reps ready for next time." art="/images/routines-hero.png" />
 
         {error && <p role="alert" style={{ fontSize: 13, color: 'var(--color-secondary)' }}>{error}</p>}
 

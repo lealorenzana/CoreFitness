@@ -14,7 +14,9 @@ import {
 } from '../lib/api/events';
 import { getCurrentMemberId } from '../services/bookingService';
 import { Page, PageTitle } from '../components/ui/page';
-import { NocButton, Panel, ProgressBar, StatusPill, TextTabs } from '../components/ui/noc';
+import { NocButton, ProgressBar, StatusPill, TextTabs } from '../components/ui/noc';
+import { PageHero } from '../components/ui/PageHero';
+import './events.css';
 
 /**
  * Gym events — the real `events` table (migration 0014).
@@ -132,14 +134,16 @@ export default function Events() {
   const paged = usePaged(visible, undefined, tab);
 
   return (
-    <Page>
-      <PageTitle back hub={false} fallback="/member/notifications" title="Gym events" subtitle="See what is happening at your gym."
+    <Page className="has-page-hero">
+      <PageTitle back hub={false} fallback="/member/notifications" title="Gym events"
         action={
           // The other half of "what has the gym told me" — see NotificationsAll.
           <button onClick={() => navigate('/member/notifications')} style={{ fontSize: 13, color: 'var(--color-primary-300)' }}>
             Updates
           </button>
         } />
+      <PageHero label="Gym events" kicker="At your gym" lead="Show up," accent="together."
+        text="See what is happening at your gym and tell them you are coming." art="/images/member-community.png" />
 
       <TextTabs<Tab>
         label="Events"
@@ -151,11 +155,12 @@ export default function Events() {
       {loading ? (
         <SkeletonList count={3} />
       ) : visible.length === 0 ? (
-        <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--color-text-muted)' }}>
-          {tab === 'mine'
-            ? 'Nothing booked. Register for an event and it appears here.'
-            : tab === 'past' ? 'Nothing yet.' : 'No events scheduled. When the gym schedules something, it shows up here.'}
-        </p>
+        <div className="page-hero-list ev-empty">
+          <p className="ev-empty-title">{tab === 'mine' ? 'Nothing booked' : tab === 'past' ? 'No past events' : 'Nothing scheduled'}</p>
+          <p>{tab === 'mine'
+            ? 'Register for an event and it appears here.'
+            : tab === 'past' ? 'Events that have finished show up here.' : 'When the gym schedules something, it shows up here.'}</p>
+        </div>
       ) : (
         <div className="flex flex-col" style={{ gap: 14 }}>
           {paged.rows.map(({ event, status }) => {
@@ -170,85 +175,83 @@ export default function Events() {
             return (
               // Going is filled, the rest sit on the page: the one you are
               // attending reads first without a label saying so.
-              <Panel key={event.id} filled={going} style={{ opacity: closed ? 0.75 : 1 }}>
-                {/* The gym's own picture, when there is one. A cancelled event
-                    keeps it — hiding it would make the event harder to
-                    recognise, and the status pill already says cancelled. */}
-                {event.image_url && (
-                  <img src={event.image_url} alt="" loading="lazy" className="w-full object-cover"
-                    style={{ aspectRatio: '16 / 9', marginBottom: 12, borderRadius: 10, background: 'var(--color-surface-high)' }} />
-                )}
+              // Going is marked, the rest sit plain: the one you are attending reads first.
+              <article key={event.id} className="ev-ticket" data-going={going || undefined} data-closed={closed || undefined}>
+                {/* The gym's own picture, when there is one. A cancelled event keeps it. */}
+                {event.image_url && <img src={event.image_url} alt="" loading="lazy" className="ev-photo" />}
 
-                <div className="flex items-center justify-between" style={{ gap: 10 }}>
-                  <p className="eyebrow" style={{ color: status === 'Ongoing' ? 'var(--color-primary-300)' : undefined }}>
-                    {start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {time(start)}–{time(end)}
-                  </p>
-                  {status !== 'Upcoming' && (
-                    <StatusPill label={status} tone={status === 'Ongoing' ? 'structure' : 'muted'} />
-                  )}
+                <div className="ev-head">
+                  <span className="ev-date" aria-hidden>
+                    <span>{start.toLocaleDateString('en-US', { weekday: 'short' })}</span>
+                    <b>{start.getDate()}</b>
+                    <span>{start.toLocaleDateString('en-US', { month: 'short' })}</span>
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <h3>{event.title}</h3>
+                    <p className="ev-time" data-live={status === 'Ongoing' || undefined}>
+                      <span className="sr-only">{start.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}, </span>
+                      {time(start)} to {time(end)}
+                    </p>
+                    {(status !== 'Upcoming' || (going && !closed)) && (
+                      <span className="flex flex-wrap" style={{ gap: 6, marginTop: 7 }}>
+                        {status !== 'Upcoming' && <StatusPill label={status} tone={status === 'Ongoing' ? 'structure' : 'muted'} />}
+                        {going && !closed && <StatusPill label="Going" tone="structure" />}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <p style={{ fontSize: 16, fontWeight: 600, marginTop: 8, color: 'var(--color-text-primary)' }}>{event.title}</p>
-                {event.description && (
-                  <p style={{ fontSize: 12.5, marginTop: 4, lineHeight: 1.55, color: 'var(--color-text-muted)' }}>{event.description}</p>
-                )}
 
-                <p style={{ fontSize: 12.5, marginTop: 10, lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>
-                  {[
-                    event.location,
-                    // NULL fee is free; 0 is deliberately priced at zero. "₱0"
-                    // reads like a placeholder, and "Free" for a ₱0 event would
-                    // erase a decision the gym made.
-                    event.fee == null ? 'Free' : `₱${Number(event.fee).toLocaleString('en-PH')}, paid at the desk`,
-                  ].filter(Boolean).join(' · ')}
-                </p>
+                {event.description && <p className="ev-desc">{event.description}</p>}
 
-                {/* The three things that decide whether someone turns up (0057).
-                    Each is absent rather than shown empty. */}
+                <div className="ev-tags">
+                  {event.location && <span>{event.location}</span>}
+                  {/* NULL fee is free; 0 is deliberately priced at zero. "Free" for a 0 peso event would erase a decision the gym made. */}
+                  <span>{event.fee == null ? 'Free' : `₱${Number(event.fee).toLocaleString('en-PH')}, paid at the desk`}</span>
+                </div>
+
+                {/* The three things that decide whether someone turns up (0057). Each is absent rather than shown empty. */}
                 {(event.who_is_it_for || event.what_to_bring || event.contact) && (
-                  <div className="flex flex-col" style={{ gap: 8, marginTop: 12 }}>
+                  <dl className="ev-facts">
                     {([
                       ['Who it is for', event.who_is_it_for],
                       ['Bring', event.what_to_bring],
                       ['Questions', event.contact],
                     ] as const).filter(([, v]) => v).map(([label, value]) => (
-                      <div key={label}>
-                        <p className="eyebrow">{label}</p>
-                        <p style={{ fontSize: 13, marginTop: 3, lineHeight: 1.5, color: 'var(--color-text-secondary)' }}>{value}</p>
-                      </div>
+                      <div key={label}><dt>{label}</dt><dd>{value}</dd></div>
                     ))}
-                  </div>
+                  </dl>
                 )}
 
-                <div className="flex justify-between" style={{ marginTop: 14, fontSize: 12 }}>
-                  <span style={{ color: 'var(--color-text-muted)' }}>
-                    {full ? 'Full' : `${event.capacity - taken} ${event.capacity - taken === 1 ? 'place' : 'places'} left`}
-                  </span>
-                  <span style={{ color: 'var(--color-text-primary)' }}>{taken} / {event.capacity}</span>
+                <div className="ev-places">
+                  <span>{full ? 'Full' : `${event.capacity - taken} ${event.capacity - taken === 1 ? 'place' : 'places'} left`}</span>
+                  <b>{taken} / {event.capacity}</b>
                 </div>
                 <ProgressBar style={{ marginTop: 7 }} fraction={event.capacity > 0 ? taken / event.capacity : null} />
 
-                {closed ? (
-                  <p style={{ fontSize: 12.5, marginTop: 14, color: 'var(--color-text-muted)' }}>
-                    {status === 'Cancelled' ? 'This event was cancelled.' : 'This event has finished.'}
-                    {going && status === 'Completed' && ' You were registered.'}
-                  </p>
-                ) : going ? (
-                  <div className="flex items-center justify-between" style={{ marginTop: 14, fontSize: 13 }}>
-                    <span className="flex items-center" style={{ gap: 6, color: 'var(--color-primary-300)' }}>
-                      <Check size={15} /> You are going
-                    </span>
-                    <button onClick={() => void toggle(event)} disabled={busy === event.id} className="disabled:opacity-50"
-                      style={{ color: 'var(--color-text-secondary)' }}>
-                      {busy === event.id ? 'Saving…' : 'Cancel registration'}
-                    </button>
-                  </div>
-                ) : (
-                  <NocButton variant="action" className="w-full" style={{ marginTop: 14 }}
-                    onClick={() => void toggle(event)} disabled={busy === event.id || full}>
-                    {busy === event.id ? 'Saving…' : full ? 'Full' : 'Register'}
-                  </NocButton>
-                )}
-              </Panel>
+                <div className="ev-foot">
+                  {closed ? (
+                    <p style={{ fontSize: 12.5, color: 'var(--color-text-muted)' }}>
+                      {status === 'Cancelled' ? 'This event was cancelled.' : 'This event has finished.'}
+                      {going && status === 'Completed' && ' You were registered.'}
+                    </p>
+                  ) : going ? (
+                    <div className="flex items-center justify-between" style={{ fontSize: 13 }}>
+                      <span className="flex items-center" style={{ gap: 6, color: 'var(--color-primary-300)' }}>
+                        <Check size={15} /> You are going
+                      </span>
+                      <button onClick={() => void toggle(event)} disabled={busy === event.id} className="disabled:opacity-50"
+                        style={{ minHeight: 44, color: 'var(--color-text-secondary)' }}>
+                        {busy === event.id ? 'Saving…' : 'Cancel registration'}
+                      </button>
+                    </div>
+                  ) : (
+                    <NocButton variant="action" className="w-full"
+                      onClick={() => void toggle(event)} disabled={busy === event.id || full}>
+                      {busy === event.id ? 'Saving…' : full ? 'Full' : 'Register'}
+                    </NocButton>
+                  )}
+                </div>
+              </article>
             );
           })}
           <Pager page={paged.page} pages={paged.pages} total={paged.total}
@@ -257,10 +260,11 @@ export default function Events() {
       )}
 
       {!loading && events.length > 0 && tab === 'upcoming' && (
-        <p style={{ fontSize: 12.5, lineHeight: 1.55, color: 'var(--color-text-muted)' }}>
+        <p className="page-note">
           Registering tells the gym to expect you, so they can cater for the right number.
         </p>
       )}
+      {!loading && <p className="page-ending">See you there.</p>}
     </Page>
   );
 }

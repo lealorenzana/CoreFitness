@@ -1,4 +1,5 @@
 import { Page, PageTitle } from '../components/ui/page';
+import { PageHero } from '../components/ui/PageHero';
 import BookClass from './BookClass';
 import { useBookingModes } from '../hooks/useBookingModes';
 
@@ -21,7 +22,11 @@ export default function BookSession() {
   }
   return (
     <div className="flex flex-col">
-      <Page><PageTitle back fallback="/member/book-class?tab=coach" title="Ask for a session" /></Page>
+      <Page className="has-page-hero">
+        <PageTitle back fallback="/member/book-class?tab=coach" title="Ask for a session" />
+        <PageHero label="1-on-1 coaching" kicker="1-on-1 coaching" lead="Your coach," accent="your time."
+          text="Pick a coach, then one of their open times. They confirm it." art="/images/member-training.png" />
+      </Page>
       <BookClass mode="pt" />
     </div>
   );

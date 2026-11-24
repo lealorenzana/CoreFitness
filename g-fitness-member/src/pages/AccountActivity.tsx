@@ -4,6 +4,7 @@ import { usePaged } from '../hooks/usePaging';
 import Pager from '../components/ui/Pager';
 import { useSearchParams } from 'react-router-dom';
 import { Page, PageTitle } from '../components/ui/page';
+import { PageHero } from '../components/ui/PageHero';
 import { Chip } from '../components/ui/noc';
 import { SkeletonList } from '../components/ui/Skeleton';
 import ActivityLineRow from '../components/ui/ActivityLineRow';
@@ -48,7 +49,8 @@ export default function AccountActivity() {
 
   // Twenty lines to a page (2026-10-10); the page's lines are grouped by month.
   const allLines = useMemo(() => toLines((rows ?? []).filter((a) => matchesFilter(a, filter))), [rows, filter]);
-  const paged = usePaged(allLines);
+  // The filter sends the list back to page 1 through resetOn: a second write in the same tap wiped the filter (2026-11-25).
+  const paged = usePaged(allLines, undefined, filter);
   const months = useMemo(() => {
     const out: [string, typeof allLines][] = [];
     for (const l of paged.rows) {
@@ -61,14 +63,16 @@ export default function AccountActivity() {
   }, [paged.rows]);
 
   return (
-    <Page>
-      <PageTitle back fallback="/member/membership" title="Account activity"
-        subtitle={pointsOn ? 'Points earned and spent, payments, and changes to your membership' : 'Payments and changes to your membership'} />
+    <Page className="has-page-hero cf-panels">
+      <PageTitle back fallback="/member/membership" title="Account activity" />
+      <PageHero label="Account activity" kicker="Your statement" lead={pointsOn ? 'Every point,' : 'Every peso,'} accent="on record."
+        text={pointsOn ? 'Points earned and spent, payments, and changes to your membership.' : 'Payments and changes to your membership.'}
+        art="/images/activity-hero.png" />
 
       <div className="flex" style={{ gap: 8 }}>
-        <Chip label="All" on={filter === 'all'} onClick={() => { setFilter('all'); paged.setPage(1); }} />
-        {pointsOn && <Chip label="Points" on={filter === 'points'} onClick={() => { setFilter('points'); paged.setPage(1); }} />}
-        <Chip label="Payments" on={filter === 'payments'} onClick={() => { setFilter('payments'); paged.setPage(1); }} />
+        <Chip label="All" on={filter === 'all'} onClick={() => setFilter('all')} />
+        {pointsOn && <Chip label="Points" on={filter === 'points'} onClick={() => setFilter('points')} />}
+        <Chip label="Payments" on={filter === 'payments'} onClick={() => setFilter('payments')} />
       </div>
 
       {error ? (
@@ -91,6 +95,7 @@ export default function AccountActivity() {
         ))
       )}
       <Pager page={paged.page} pages={paged.pages} total={paged.total} noun={paged.total === 1 ? 'entry' : 'entries'} onPage={paged.setPage} />
+      {months.length > 0 && <p className="page-ending">Every line, in one place.</p>}
 
       {gaps.length > 0 && (
         <p style={{ fontSize: 12, color: 'var(--color-secondary)' }}>

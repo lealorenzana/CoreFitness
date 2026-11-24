@@ -17,10 +17,11 @@ import {
 import { getCurrentMemberId, getExperienceLevel, type ExperienceLevel } from '../services/bookingService';
 import type { ClassLevel } from '../types/db';
 import { Page, PageTitle } from '../components/ui/page';
-import { Chip, Eyebrow, Panel, StatusPill, TextTabs } from '../components/ui/noc';
+import { Chip, Panel, StatusPill, TextTabs } from '../components/ui/noc';
 import { CLAMP_2 } from '../components/ui/styles';
 import ExerciseLibrary from './workouts/ExerciseLibrary';
 import GymPrograms from '../components/workout/GymPrograms';
+import { Chapter, PageHero } from '../components/ui/PageHero';
 
 /**
  * Free workouts — the gym's library (0019), its exercise list (0050), and what
@@ -49,9 +50,11 @@ const fitsLevel = (r: WorkoutResourceRow, level: ExperienceLevel | null) =>
   level != null && (r.level === 'all_levels' || r.level === level);
 
 /** A 3:1 preview crop, or the host on a flat tile — never someone else's picture. */
-function Thumb({ r }: { r: WorkoutResourceRow }) {
+function Thumb({ r, wide }: { r: WorkoutResourceRow; wide?: boolean }) {
   const [broken, setBroken] = useState(false);
-  const box = { width: 64, height: 48, borderRadius: 10, flex: 'none' as const, overflow: 'hidden' as const };
+  const box = wide
+    ? { display: 'block', width: '100%', aspectRatio: '16 / 9', borderRadius: 16, overflow: 'hidden' as const }
+    : { width: 64, height: 48, borderRadius: 10, flex: 'none' as const, overflow: 'hidden' as const };
   if (hasPreview(r) && !broken) {
     return (
       <span style={{ ...box, background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-hairline)' }}>
@@ -65,8 +68,37 @@ function Thumb({ r }: { r: WorkoutResourceRow }) {
       ...box, color: 'var(--color-primary-300)', background: 'color-mix(in srgb, var(--color-primary) 12%, transparent)',
       boxShadow: 'inset 0 0 0 1px var(--color-hairline)',
     }}>
-      <Globe size={20} />
+      <Globe size={wide ? 34 : 20} />
     </span>
+  );
+}
+
+/** Picked for you as a card you swipe past: the picture leads, the bookmark sits on it. */
+function PickCard({ r, saved, canSave, onToggleSave }: {
+  r: WorkoutResourceRow; saved: SavedResource | undefined; canSave: boolean; onToggleSave: () => void;
+}) {
+  return (
+    <div className="pick-card">
+      <a href={r.url} target="_blank" rel="noopener noreferrer" className="noc-press-soft">
+        <Thumb r={r} wide />
+        <span className="pick-card-body">
+          <span className="pick-card-title">{r.title}<ArrowUpRight size={13} aria-hidden /></span>
+          <span className="pick-card-source">{r.provider} · {linkHost(r.url)}</span>
+          <span className="flex flex-wrap" style={{ gap: 6, marginTop: 10 }}>
+            <StatusPill label={LEVEL_LABEL[r.level]} tone="muted" />
+            {r.category && <StatusPill label={r.category} tone="muted" />}
+            {saved?.doneAt && <StatusPill label="Done" tone="structure" />}
+          </span>
+        </span>
+      </a>
+      {canSave && (
+        <button onClick={onToggleSave} aria-pressed={!!saved} className="pick-card-save noc-press"
+          aria-label={saved ? `Remove ${r.title} from saved` : `Save ${r.title}`}
+          style={{ color: saved ? 'var(--color-secondary)' : 'var(--color-text-primary)' }}>
+          <BookmarkSimple size={19} weight={saved ? 'fill' : 'regular'} />
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -224,9 +256,10 @@ export default function Workouts() {
   );
 
   return (
-    <Page>
-      <PageTitle back hub={false} fallback="/member/book-class" title="Free workouts"
-        subtitle="Choose a workout or learn an exercise. No paid plan needed." />
+    <Page className="has-page-hero">
+      <PageTitle back hub={false} fallback="/member/book-class" title="Free workouts" />
+      <PageHero label="Free workouts" kicker="Free for every member" lead="Learn it," accent="then lift it."
+        text="Choose a workout or learn an exercise. No paid plan needed." art="/images/train-free-workouts.png" />
 
       {/* The gym's own programs (0122), first: its own training beats anyone's links. */}
       <GymPrograms memberId={memberId} />
@@ -249,6 +282,8 @@ export default function Workouts() {
           <span className="flex-none" style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-secondary)' }}>Start</span>
         </div>
       </Panel>
+
+      <Chapter id="find-workout-title" title="Find a workout" text="Free videos and guides, credited to who made them." />
 
       <TextTabs<Tab>
         label="Free workouts"
@@ -276,9 +311,9 @@ export default function Workouts() {
               <span style={{ fontWeight: 700, color: 'var(--color-text-primary)' }}>{done.length} of {savedRows.length}</span> done
             </p>
             {toDo.length > 0 && (
-              <section>
-                <Eyebrow mark>To do</Eyebrow>
-                <div style={{ marginTop: 4 }}>
+              <section className="page-hero-list is-rows">
+                <div className="page-list-head">To do<span>{toDo.length}</span></div>
+                <div>
                   {toDo.map(({ r }, i) => (
                     <div key={r.id} className="flex items-start" style={{ gap: 4 }}>
                       <button onClick={() => void toggleDone(r)} aria-label={`Mark ${r.title} done`}
@@ -292,7 +327,7 @@ export default function Workouts() {
               </section>
             )}
             {done.length > 0 && (
-              <Disclosure title="Done" meta={String(done.length)} icon={<CheckCircle size={17} />} defaultOpen={toDo.length === 0}>
+              <div className="page-hero-list is-rows"><Disclosure title="Done" meta={String(done.length)} icon={<CheckCircle size={17} />} defaultOpen={toDo.length === 0}>
                 {done.map(({ r }, i) => (
                   <div key={r.id} className="flex items-start" style={{ gap: 4 }}>
                     <button onClick={() => void toggleDone(r)} aria-label={`Mark ${r.title} not done`}
@@ -302,34 +337,32 @@ export default function Workouts() {
                     <div className="flex-1 min-w-0">{row(r, i, done)}</div>
                   </div>
                 ))}
-              </Disclosure>
+              </Disclosure></div>
             )}
           </>
         )
       ) : (
         <>
-          <label className="flex items-center" style={{
+          <div className="flex items-center" style={{ gap: 8 }}>
+          <label className="flex flex-1 min-w-0 items-center" style={{
             gap: 10, height: 46, padding: '0 14px', borderRadius: 'var(--radius-btn)',
             background: 'var(--color-surface)', border: '1px solid var(--color-hairline)',
           }}>
             <MagnifyingGlass size={17} aria-hidden style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
-            <TextInput value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search yoga, strength, no equipment…"
+            <TextInput value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search yoga, strength…"
               aria-label="Search the library" className="flex-1 min-w-0"
               style={{ border: 'none', background: 'transparent', height: 44, padding: 0, fontSize: 14.5 }} />
           </label>
-          {level && (
-            <div className="flex" style={{ gap: 8, marginTop: -6 }}>
-              <Chip label={`Suits ${LEVEL_LABEL[level].toLowerCase()}`} on={mine} onClick={() => setMine((m) => !m)} />
-            </div>
-          )}
+          {level && <Chip label={`Suits ${LEVEL_LABEL[level].toLowerCase()}`} on={mine} onClick={() => setMine((m) => !m)} />}
+          </div>
 
           {filtering ? (
-            <section>
-              <Eyebrow mark>{matches.length} {matches.length === 1 ? 'result' : 'results'}</Eyebrow>
+            <section className="page-hero-list is-rows">
+              <div className="page-list-head">Results<span>{matches.length}</span></div>
               {matches.length === 0 ? (
-                <p style={{ fontSize: 13, marginTop: 8, color: 'var(--color-text-muted)' }}>Nothing matches. Try a shorter word.</p>
+                <p style={{ fontSize: 13, padding: '8px 0 14px', color: 'var(--color-text-muted)' }}>Nothing matches. Try a shorter word.</p>
               ) : (
-                <div style={{ marginTop: 4 }}>{matches.map((r, i) => row(r, i, matches, true))}</div>
+                <div>{matches.map((r, i) => row(r, i, matches, true))}</div>
               )}
             </section>
           ) : resources.length === 0 ? (
@@ -339,13 +372,18 @@ export default function Workouts() {
           ) : (
             <>
               {picked.length > 0 && (
-                <section>
-                  <Eyebrow mark>Picked for you{level ? ` · ${LEVEL_LABEL[level]}` : ''}</Eyebrow>
-                  <div style={{ marginTop: 4 }}>{picked.map((r, i) => row(r, i, picked, true))}</div>
+                <section aria-label="Picked for you">
+                  <div className="page-list-head is-bare">Picked for you{level && <span>For {LEVEL_LABEL[level].toLowerCase()}</span>}</div>
+                  <div className="pick-rail noc-rows">
+                    {picked.map((r) => (
+                      <PickCard key={r.id} r={r} saved={savedById.get(r.id)} canSave={saved != null}
+                        onToggleSave={() => void toggleSave(r)} />
+                    ))}
+                  </div>
                 </section>
               )}
-              <section className="flex flex-col" style={{ gap: 10 }}>
-                <Eyebrow>Browse by kind</Eyebrow>
+              <section className="page-hero-list is-rows">
+                <div className="page-list-head">Browse by kind<span>{categories.length}</span></div>
                 {categories.map(([c, list]) => (
                   <Disclosure key={c} title={c} meta={String(list.length)}>
                     {list.map((r, i) => row(r, i, list))}
@@ -355,10 +393,11 @@ export default function Workouts() {
             </>
           )}
 
-          <p style={{ fontSize: 12.5, lineHeight: 1.6, color: 'var(--color-text-muted)' }}>
+          <p className="page-note">
             These are free resources published by others, not your gym’s own programmes.
             Check with a trainer before starting something new.
           </p>
+          <p className="page-ending">Learn the move. Then make it yours.</p>
         </>
       )}
     </Page>

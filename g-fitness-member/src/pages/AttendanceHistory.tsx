@@ -7,6 +7,7 @@ import { listMemberAttendance } from '../lib/api/attendance';
 import type { AttendanceRow } from '../types/db';
 import { dateKey, localDateKey } from '../utils/dates';
 import { Page, PageTitle } from '../components/ui/page';
+import { PageHero } from '../components/ui/PageHero';
 import WeekMarks from '../components/ui/WeekMarks';
 import ArtCalendar from '../components/ui/ArtCalendar';
 import { Eyebrow, InlineStat, LineRow, SectionHead, SeeAll } from '../components/ui/noc';
@@ -170,9 +171,11 @@ export default function AttendanceHistory() {
 
 
   return (
-    <Page>
-      <PageTitle back fallback="/member/membership" title="Attendance"
-        subtitle={loading ? undefined : `${last30} ${last30 === 1 ? 'visit' : 'visits'} in the last 30 days · ${records.length} in all`} />
+    <Page className="has-page-hero cf-panels">
+      <PageTitle back fallback="/member/membership" title="Attendance" />
+      <PageHero label="Attendance" kicker="Your visits" lead="Show up," accent="it counts."
+        text={loading ? 'Every check-in, day by day.' : `${last30} ${last30 === 1 ? 'visit' : 'visits'} in the last 30 days · ${records.length} in all.`}
+        art="/images/attendance-hero.png" />
 
       {loading ? <SkeletonList count={3} /> : (
         <>
@@ -181,15 +184,14 @@ export default function AttendanceHistory() {
             <div style={{ marginTop: 10 }}>
               <WeekMarks days={week.days} dayNumbers={week.dayNumbers} todayIndex={week.todayIndex} />
             </div>
+            <div className="att-stats">
+              <InlineStat value={records.length} label="check-ins in all" />
+              {streaksOn && <InlineStat value={currentStreak} label={currentStreak === 1 ? 'day in a row, now' : 'days in a row, now'} />}
+              {streaksOn && <InlineStat value={longestStreak} label="longest run of days" />}
+            </div>
           </section>
 
-          <div className="flex flex-wrap" style={{ gap: 24 }}>
-            <InlineStat value={records.length} label="check-ins in all" />
-            {streaksOn && <InlineStat value={currentStreak} label={currentStreak === 1 ? 'day in a row, now' : 'days in a row, now'} />}
-            {streaksOn && <InlineStat value={longestStreak} label="longest run of days" />}
-          </div>
-
-          <ArtCalendar month={cursor} onMonthChange={setCursor} label="Attendance calendar"
+          <ArtCalendar appearance="gym" month={cursor} onMonthChange={setCursor} label="Attendance calendar"
             canPrevious={canGoBack} canNext={canGoForward} selected={openDay ?? undefined}
             onSelect={(day) => openDaySheet(dateKey(day))}
             dayState={(day) => ({

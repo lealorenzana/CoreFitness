@@ -624,7 +624,8 @@ html, body {
 
 @media (prefers-reduced-motion: no-preference) {
   /* A screen arriving. Keyed on the pathname in Layout, so it runs per screen. */
-  .noc-screen { animation: noc-fade 0.22s ease-out both; }
+  /* backwards, not both: a held fill keeps the screen an opacity layer, and Chrome then never blurs the pinned header (2026-11-24). */
+  .noc-screen { animation: noc-fade 0.22s ease-out backwards; }
 
   /* Its sections, one after another. Capped at the eighth so a long screen
      never makes someone wait for the part they scrolled to. */
@@ -651,7 +652,7 @@ html, body {
   .noc-grow-x { transform-origin: left center; animation: noc-grow-x 0.9s var(--ease-out-soft) 0.18s backwards; }
   .noc-grow-y { transform-origin: bottom center; animation: noc-grow-y 0.5s var(--ease-spring) backwards; }
   .noc-breathe { animation: noc-breathe 2.8s ease-in-out infinite; }
-  .noc-sheet { animation: noc-sheet-in 0.32s var(--ease-out-soft) both; }
+  .noc-sheet { animation: noc-sheet-in 0.32s var(--ease-out-soft) backwards; }
 
   /* The tab mark and the text-tab underline slide their scale, not their layout. */
   .noc-mark {
@@ -1707,7 +1708,8 @@ img { -webkit-user-drag: none; user-select: none; }
 
 /* The glass sheets' roles (components/ui/glass.ts) — dark here, frosted white below. */
 :root {
-  --glass-bg: linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 9%, rgba(14, 14, 20, 0.95)) 0%, rgba(9, 9, 13, 0.97) 100%);
+  /* Glass you can see is glass (2026-11-24): 86-92% with a 32px blur, the same frost as the pinned page header. */
+  --glass-bg: linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 10%, rgba(14, 14, 20, 0.86)) 0%, rgba(9, 9, 13, 0.92) 100%);
   --glass-line: rgba(255, 255, 255, 0.10);
   --glass-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 24px 60px -24px rgba(0, 0, 0, 0.75);
   --glass-scrim: rgba(4, 4, 8, 0.6);

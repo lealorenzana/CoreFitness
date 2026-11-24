@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, MagnifyingGlass, Plus, Timer, Video } from '@phosphor-icons/react';
+import { CaretRight, Lock, MagnifyingGlass, Plus, Timer, Video } from '@phosphor-icons/react';
 import GlassSheet from '../../components/ui/GlassSheet';
 import { SkeletonList } from '../../components/ui/Skeleton';
 import { TextInput } from '../../components/ui/Field';
@@ -54,6 +54,7 @@ export default function ExerciseLibrary({ memberId }: { memberId: string | null 
   const [routines, setRoutines] = useState<Routine[] | null>(null);
   const [picking, setPicking] = useState(false);
   const [media, setMedia] = useState<Map<string, ExerciseMedia>>(new Map());
+  const searchRef = useRef<HTMLLabelElement>(null);
 
   useEffect(() => {
     void (async () => {
@@ -98,15 +99,17 @@ export default function ExerciseLibrary({ memberId }: { memberId: string | null 
   if (failed) return <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>The exercise list could not be loaded just now.</p>;
   if (!exercises) return <SkeletonList />;
 
-  // Grouped under headings when showing everything; a flat list once filtered.
-  const sections: [string, Exercise[]][] = group === 'all' && !query.trim()
-    ? groups.map((g) => [groupLabel(g), visible.filter((e) => e.muscleGroup === g)])
-    : [[group === 'all' ? `${visible.length} found` : groupLabel(group), visible]];
+  // Everything: one panel per muscle group, its first four and "See all" (229 in one list was a wall).
+  // Filtered or searched: one panel with every match.
+  const PREVIEW = 4;
+  const sections: [string, Exercise[], string | null][] = group === 'all' && !query.trim()
+    ? groups.map((g) => [groupLabel(g), visible.filter((e) => e.muscleGroup === g), g])
+    : [[group === 'all' ? 'Found' : groupLabel(group), visible, null]];
 
   return (
     <>
-      <label className="flex items-center" style={{
-        gap: 10, height: 46, padding: '0 14px', borderRadius: 'var(--radius-btn)',
+      <label ref={searchRef} className="flex items-center" style={{
+        scrollMarginTop: 16, gap: 10, height: 46, padding: '0 14px', borderRadius: 'var(--radius-btn)',
         background: 'var(--color-surface)', border: '1px solid var(--color-hairline)',
       }}>
         <MagnifyingGlass size={17} aria-hidden style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
@@ -127,15 +130,17 @@ export default function ExerciseLibrary({ memberId }: { memberId: string | null 
         <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
           Nothing matches “{query}”. The gym adds exercises to this list; ask the desk if one is missing.
         </p>
-      ) : sections.map(([title, list]) => (
-        <section key={title}>
-          <h2 style={{ fontSize: 'var(--text-title)', fontWeight: 700, color: 'var(--color-text-primary)' }}>{title}</h2>
-          <div className="noc-rows" style={{ marginTop: 4 }}>
+      ) : sections.map(([title, all, g]) => {
+        const list = g ? all.slice(0, PREVIEW) : all;
+        return (
+        <section key={title} className="page-hero-list is-rows">
+          <h2 className="page-list-head">{title}<span>{all.length}</span></h2>
+          <div className="noc-rows">
             {list.map((e, i) => (
               <button key={e.id} onClick={() => show(e)} className="w-full flex items-center text-left noc-press-soft"
-                style={{ gap: 12, padding: '12px 0', borderBottom: i === list.length - 1 ? 'none' : '1px solid var(--color-separator)' }}>
+                style={{ gap: 12, minHeight: 56, padding: '10px 0', borderBottom: i === list.length - 1 && !(g && all.length > PREVIEW) ? 'none' : '1px solid var(--color-separator)' }}>
                 <span className="flex-1 min-w-0">
-                  <span className="block truncate" style={{ fontSize: 14.5, color: 'var(--color-text-primary)' }}>{e.name}</span>
+                  <span className="block truncate" style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{e.name}</span>
                   <span className="block" style={{ fontSize: 12, marginTop: 2, color: 'var(--color-text-secondary)' }}>
                     {equipmentLabel(e.equipment)}{group !== 'all' || query ? ` · ${groupLabel(e.muscleGroup)}` : ''}
                   </span>
@@ -148,11 +153,18 @@ export default function ExerciseLibrary({ memberId }: { memberId: string | null 
                     <Timer size={14} aria-hidden /> Timed
                   </span>
                 )}
+                <CaretRight size={15} aria-hidden className="flex-none" style={{ color: 'var(--color-text-muted)' }} />
               </button>
             ))}
           </div>
+          {g && all.length > PREVIEW && (
+            <button type="button" className="page-see-all noc-press-soft" onClick={() => { setGroup(g); searchRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }); }}>
+              See all {all.length} {title.toLowerCase()}<CaretRight size={14} aria-hidden />
+            </button>
+          )}
         </section>
-      ))}
+        );
+      })}
 
       <GlassSheet
         open={open != null}

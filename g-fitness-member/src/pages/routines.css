@@ -1,12 +1,4 @@
 .member-routines { --routine-edge: color-mix(in srgb, var(--color-primary) 22%, var(--color-hairline)); }
-.routines-welcome { position: relative; isolation: isolate; display: flex; align-items: center; min-height: 165px; padding-block: 10px 18px; }
-.routines-welcome > div:first-child { max-width: 61%; }
-.routines-welcome > div > span { color: var(--color-primary-300); font-size: 12px; font-weight: 550; }
-.routines-welcome h2 { font-size: clamp(28px, 7vw, 36px); line-height: 1.08; letter-spacing: -.05em; font-weight: 850; margin-top: 9px; }
-.routines-welcome p { max-width: 29ch; font-size: 12px; line-height: 1.6; margin-top: 11px; color: var(--color-text-secondary); }
-.routines-welcome-art { position: absolute; right: -4px; top: 20px; width: 42%; height: 135px; isolation: isolate; pointer-events: none; }
-.routines-welcome-art img { width: 100%; height: 100%; object-fit: contain; filter: grayscale(1); }
-.routines-welcome-art > span { position: absolute; inset: 0; background: var(--color-primary); mix-blend-mode: color; mask: url('/images/train-free-workouts.png') center / contain no-repeat; -webkit-mask: url('/images/train-free-workouts.png') center / contain no-repeat; }
 .member-routines .routines-active-session { border: 1px solid color-mix(in srgb, var(--color-secondary) 30%, var(--color-hairline)); border-radius: 22px; padding: 18px; background: color-mix(in srgb, var(--color-secondary) 5%, var(--color-surface)); box-shadow: none; }
 .routines-active-session [data-open-workout] { flex-wrap: wrap; gap: 8px !important; }
 .routines-active-session [data-open-workout] button { min-height: 44px; padding: 8px 12px; border-radius: 12px; }
@@ -23,12 +15,5 @@
 .member-routines [data-routine-source] { line-height: 1.6; }
 .member-routines .routines-free-log { padding: 16px !important; border: 1px solid var(--routine-edge); border-radius: 17px; min-height: 54px; background: var(--color-surface); }
 .member-routines button:focus-visible { outline: 2px solid var(--color-primary-300); outline-offset: 3px; }
-@media (min-width: 700px) { .routines-welcome { min-height: 185px; } .routines-welcome-art { right: 10%; width: 190px; height: 160px; top: 0; } .routines-welcome h2 { max-width: 14ch; } .routines-list-section { padding: 22px 22px 6px; } }
-@media (prefers-reduced-motion: no-preference) { .routines-welcome-art { animation: routine-art-idle 5s ease-in-out infinite; } }
-@keyframes routine-art-idle { 0%, 100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-5px) rotate(1deg); } }
+@media (min-width: 700px) { .routines-list-section { padding: 22px 22px 6px; } }
 @media (prefers-reduced-motion: reduce) { .member-routines * { animation: none !important; transition: none !important; } }
-.member-clean-shell .member-routines > .member-page-header { flex-direction: row; align-items: center; gap: 9px; top: 0; }
-.member-clean-shell .member-routines > .member-page-header > button { width: 32px; min-height: 44px; flex: none; font-size: 0 !important; justify-content: center; gap: 0 !important; }
-.member-clean-shell .member-routines > .member-page-header > button svg { width: 18px; height: 18px; }
-.member-clean-shell .member-routines > .member-page-header .member-title-row { flex: 1; min-width: 0; }
-.member-clean-shell .member-routines > .member-page-header h1 { font-size: 20px !important; }

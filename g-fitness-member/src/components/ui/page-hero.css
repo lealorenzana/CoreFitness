@@ -1,0 +1,85 @@
+/* Today's hero, for inner pages (Routines, Free workouts). Same border, glow, orbit and type as .today-hero. */
+.page-hero { position: relative; isolation: isolate; overflow: hidden; display: flex; align-items: center; min-height: 210px; padding: 26px 22px; border-radius: 28px; border: 1px solid color-mix(in srgb, var(--color-primary) 32%, var(--color-hairline)); background: var(--color-surface); }
+.page-hero-atmosphere { position: absolute; z-index: -2; inset: -45% -25% -10%; background: radial-gradient(ellipse at 48% 20%, color-mix(in srgb, var(--color-primary) 65%, transparent), transparent 64%), radial-gradient(ellipse at 95% 70%, color-mix(in srgb, var(--color-secondary) 20%, transparent), transparent 52%); pointer-events: none; }
+.page-hero-orbit { position: absolute; z-index: -1; width: 290px; height: 140px; right: -110px; top: 70px; border: 1px solid color-mix(in srgb, var(--color-primary-300) 22%, transparent); border-radius: 50%; transform: rotate(-26deg); box-shadow: 0 0 0 35px color-mix(in srgb, var(--color-primary) 4%, transparent), 0 0 0 70px color-mix(in srgb, var(--color-primary) 3%, transparent); pointer-events: none; }
+.page-hero-copy { position: relative; z-index: 2; max-width: 60%; }
+.page-hero-copy > span { display: block; color: var(--color-primary-200); font-size: 12px; font-weight: 550; }
+.page-hero h2 { font-size: clamp(32px, 9vw, 44px); line-height: .99; letter-spacing: -.065em; font-weight: 900; margin-top: 12px; color: var(--color-text-primary); }
+.page-hero h2 em { font-style: italic; color: var(--color-primary-200); padding-right: .12em; }
+.page-hero p { max-width: 24ch; font-size: 13px; line-height: 1.6; margin-top: 13px; color: var(--color-text-secondary); }
+.page-hero-art { position: absolute; right: 4px; bottom: 18px; width: 44%; height: 140px; isolation: isolate; pointer-events: none; }
+.page-hero-art img { width: 100%; height: 100%; object-fit: contain; filter: grayscale(1); }
+/* The art wears the gym's colour, like Today's mascot. */
+.page-hero-art > span { position: absolute; inset: 0; background: var(--color-primary); mix-blend-mode: color; mask: var(--art) center / contain no-repeat; -webkit-mask: var(--art) center / contain no-repeat; }
+:root[data-mode="light"] .page-hero { background: color-mix(in srgb, var(--color-primary) 11%, #fff); }
+:root[data-mode="light"] .page-hero-atmosphere { opacity: 0; }
+:root[data-mode="light"] .page-hero-orbit { opacity: .55; }
+@media (min-width: 700px) { .page-hero { min-height: 230px; padding: 32px 36px; } .page-hero-art { right: 8%; width: 210px; height: 170px; bottom: 26px; } }
+@media (prefers-reduced-motion: no-preference) { .page-hero-art { animation: page-hero-idle 5s ease-in-out infinite; } }
+@keyframes page-hero-idle { 0%, 100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-5px) rotate(1deg); } }
+
+/* Above a hero the header is Today's bar: pinned, a square icon button, the title beside it, the action at the right. */
+.member-clean-shell .has-page-hero > .member-page-header { flex-direction: row; align-items: center; gap: 12px; padding-top: 12px; padding-bottom: 12px; }
+.member-clean-shell .has-page-hero > .member-page-header > button { width: 40px; height: 40px !important; min-height: 40px; flex: none; font-size: 0 !important; justify-content: center; gap: 0 !important; border-radius: 12px; border: 1px solid var(--color-hairline); background: color-mix(in srgb, var(--color-surface-raised) 70%, transparent); color: var(--color-text-primary) !important; }
+.member-clean-shell .has-page-hero > .member-page-header > button svg { width: 18px; height: 18px; }
+.member-clean-shell .has-page-hero > .member-page-header .member-title-row { flex: 1; min-width: 0; }
+.member-clean-shell .has-page-hero > .member-page-header h1 { font-size: 20px !important; font-weight: 750 !important; letter-spacing: -.03em !important; }
+.has-page-hero .member-title-art { display: none; }
+
+/* A list under a hero sits in one bordered panel, like Routines' list. */
+.page-hero-list { border: 1px solid color-mix(in srgb, var(--color-primary) 22%, var(--color-hairline)); border-radius: 22px; background: var(--color-surface); padding: 18px 15px 5px; }
+
+/* Today's chapters (.today-chapter), numbered by the page. */
+.has-page-hero { counter-reset: page-chapter; }
+.page-chapter { display: flex; gap: 13px; align-items: center; margin-top: 8px; }
+.page-chapter > span { display: grid; place-items: center; flex: none; width: 33px; height: 33px; border-radius: 11px; background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface)); border: 1px solid color-mix(in srgb, var(--color-primary) 20%, var(--color-hairline)); color: var(--color-primary-300); font-size: 12px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.page-chapter > span::before { counter-increment: page-chapter; content: counter(page-chapter, decimal-leading-zero); }
+.page-chapter h2 { font-size: 19px; font-weight: 750; letter-spacing: -.035em; color: var(--color-text-primary); }
+.page-chapter p { margin-top: 3px; font-size: 12px; line-height: 1.5; color: var(--color-text-secondary); }
+.page-hero-list > .page-list-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 13px; font-weight: 700; color: var(--color-text-primary); padding-bottom: 4px; }
+.page-hero-list > .page-list-head > span { font-size: 12px; font-weight: 500; color: var(--color-text-muted); }
+.page-hero-list.is-rows { padding-bottom: 4px; }
+/* Disclosures inside a panel read as rows, not a card each. */
+.page-hero-list .orb-cell { background: none !important; border: 0 !important; box-shadow: none !important; border-radius: 0 !important; border-bottom: 1px solid var(--color-separator) !important; }
+.page-hero-list .orb-cell:last-child { border-bottom: 0 !important; }
+.page-hero-list .orb-cell > button { padding-inline: 0 !important; }
+.page-hero-list .orb-cell > div > div > div { padding-inline: 0 !important; }
+/* Today's closing line. */
+.page-ending { display: flex; gap: 12px; align-items: center; justify-content: center; padding: 6px 0 8px; color: var(--color-text-muted); font-size: 12px; }
+.page-ending::before, .page-ending::after { content: ''; width: 24px; height: 1px; background: var(--color-hairline); }
+.page-note { font-size: 12px; line-height: 1.6; color: var(--color-text-muted); text-align: center; max-width: 34ch; margin-inline: auto; }
+
+/* A heading for a block that is not inside a panel. */
+.page-list-head.is-bare { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 15px; font-weight: 750; letter-spacing: -.02em; color: var(--color-text-primary); margin-bottom: 10px; }
+.page-list-head.is-bare > span { font-size: 12px; font-weight: 500; color: var(--color-primary-300); }
+/* Picked for you: cards in a row you swipe, snapping one at a time, running to the screen edge. */
+.pick-rail { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; margin-inline: calc(-1 * var(--gutter, 16px)); padding: 2px var(--gutter, 16px) 6px; scroll-padding-inline: var(--gutter, 16px); scrollbar-width: none; }
+.pick-rail::-webkit-scrollbar { display: none; }
+.pick-card { position: relative; flex: none; width: min(78%, 300px); scroll-snap-align: start; padding: 8px 8px 14px; border-radius: 22px; border: 1px solid color-mix(in srgb, var(--color-primary) 22%, var(--color-hairline)); background: var(--color-surface); }
+.pick-card > a { display: block; }
+.pick-card-body { display: block; padding: 12px 6px 0; }
+.pick-card-title { display: flex; gap: 5px; align-items: flex-start; font-size: 15px; line-height: 1.35; font-weight: 700; color: var(--color-text-primary); }
+.pick-card-title svg { flex: none; margin-top: 4px; color: var(--color-text-muted); }
+.pick-card-source { display: block; margin-top: 3px; font-size: 12px; color: var(--color-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pick-card-save { position: absolute; top: 14px; right: 14px; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 14px; background: color-mix(in srgb, var(--color-bg) 70%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+:root[data-mode="light"] .pick-card-save { background: #fff; }
+/* "See all" at the foot of a panel preview. */
+.page-see-all { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; min-height: 48px; font-size: 13px; font-weight: 650; color: var(--color-primary-300); }
+
+/* Pages marked cf-panels (2026-11-25): every section is one of Today's panels, so inner pages match without per-section edits. */
+.has-page-hero.cf-panels > section:not(.page-hero) { border: 1px solid color-mix(in srgb, var(--color-primary) 22%, var(--color-hairline)); border-radius: 22px; background: var(--color-surface); padding: 16px 15px 6px; }
+.has-page-hero.cf-panels > section:not(.page-hero) > h2:first-child { font-size: 15px !important; font-weight: 750 !important; letter-spacing: -.02em; }
+
+/* Membership (2026-11-25): the profile row and the plan as Today's pass, with a picture. */
+.mh-profile { padding: 14px; border-radius: 22px; border: 1px solid color-mix(in srgb, var(--color-primary) 22%, var(--color-hairline)); background: radial-gradient(ellipse at 0% 0%, color-mix(in srgb, var(--color-primary) 16%, transparent), transparent 60%), var(--color-surface); }
+.mh-pass { position: relative; isolation: isolate; overflow: hidden; border-radius: 26px !important; padding-right: 18px; }
+.mh-pass::before { content: ''; position: absolute; z-index: -1; width: 300px; height: 140px; right: -120px; top: 30px; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--color-primary-300) 20%, transparent); transform: rotate(-24deg); box-shadow: 0 0 0 34px color-mix(in srgb, var(--color-primary) 4%, transparent), 0 0 0 68px color-mix(in srgb, var(--color-primary) 3%, transparent); pointer-events: none; }
+/* The picture sits in the top-right corner like a sticker, clear of every line; the status pill moves beside the label to make room. */
+.mh-pass-art { position: absolute; z-index: -1; right: -12px; top: -12px; width: 108px; height: 96px; object-fit: contain; mix-blend-mode: luminosity; transform: rotate(8deg); pointer-events: none; }
+.mh-pass > div:first-of-type { justify-content: flex-start !important; }
+:root[data-mode="light"] .mh-profile { background: color-mix(in srgb, var(--color-primary) 6%, #fff); }
+.page-hero:has(.page-hero-art[style*="none"]) .page-hero-copy { max-width: 100%; }
+
+/* Attendance (2026-11-25): the week and its three numbers in one panel, split by hairlines. */
+.att-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 16px; padding: 14px 0 10px; border-top: 1px solid var(--color-separator); }
+.att-stats > * + * { padding-left: 10px; border-left: 1px solid var(--color-separator); }

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X } from '@phosphor-icons/react';
 import { useSwipeToClose } from '../../lib/useSwipeToClose';
 import { GLASS, SCRIM } from './glass';
+import './sheet.css';
 
 /**
  * A bottom sheet in the app's dark glass — the trainer screens' detail and
@@ -55,22 +56,20 @@ export default function GlassSheet({
         ref={swipe}
         role="dialog"
         aria-modal="true"
-        className="relative flex flex-col noc-sheet"
+        className="relative flex flex-col noc-sheet cf-sheet"
         style={{
           ...GLASS,
-          maxHeight: '86%',
-          borderRadius: '20px 20px 0 0',
+          borderRadius: '24px 24px 0 0',
           borderBottom: 'none',
           paddingBottom: 'env(safe-area-inset-bottom)',
         }}
       >
-        <span aria-hidden className="self-center" style={{
-          width: 36, height: 4, borderRadius: 2, marginTop: 8, background: 'rgb(var(--hair-rgb, 233 233 237) / 0.18)',
-        }} />
-        <div className="flex-none flex items-center" style={{ gap: 12, padding: '12px var(--gutter) 12px' }}>
+        {/* Hold and drag: down closes, up stretches it (lib/useSwipeToClose). */}
+        <div aria-hidden className="cf-sheet-grip"><span /></div>
+        <div className="flex-none flex items-center cf-sheet-head" style={{ gap: 12, padding: '4px var(--gutter) 12px' }}>
           {leading}
           <div className="flex-1 min-w-0">
-            <h2 className="truncate" style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text-primary)' }}>{title}</h2>
+            <h2 className="truncate">{title}</h2>
             {subtitle && (
               <p className="truncate" style={{ fontSize: 12.5, marginTop: 2, color: 'var(--color-text-muted)' }}>{subtitle}</p>
             )}
@@ -78,12 +77,7 @@ export default function GlassSheet({
           <button
             onClick={onClose}
             aria-label="Close"
-            className="flex-none grid place-items-center noc-press"
-            style={{
-              width: 34, height: 34, borderRadius: 8,
-              border: '1px solid rgb(var(--hair-rgb, 233 233 237) / 0.14)',
-              color: 'var(--color-text-secondary)',
-            }}
+            className="flex-none grid place-items-center noc-press cf-sheet-close"
           >
             <X size={16} />
           </button>

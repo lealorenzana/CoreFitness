@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CalendarPlus } from '@phosphor-icons/react';
 import GlassSheet from '../ui/GlassSheet';
-import { Chip, LineRow, NocButton, SectionHead } from '../ui/noc';
+import { Chip, NocButton, SectionHead } from '../ui/noc';
 import { toast } from '../ui/Toast';
 import { getCurrentMemberId, listOpenPtSlots } from '../../services/bookingService';
 import { requestPtSession } from '../../lib/api/ptSessions';
@@ -99,11 +98,24 @@ export default function SuggestedTimes({ coaching, onAsked }: { coaching: Coachi
   return (
     <section aria-label="Times that fit your week" data-suggested-times>
       <SectionHead title={fits ? 'Times that fit your week' : `${coachFirst}'s next open times`} />
-      {list.map((s, i) => (
-        <LineRow key={s.startsAt} icon={CalendarPlus} tone="info" title={when(s.startsAt)}
-          meta={fits ? 'On one of your training days' : `${s.durationMinutes} minutes`}
-          action="Ask" actionTone="action" onClick={() => { setWeekly(canRepeat); setPick(s); }} last={i === list.length - 1} />
-      ))}
+      <p className="slot-note">{fits ? 'Each one falls on one of your training days.' : `Open times in ${coachFirst}'s hours.`}</p>
+      {/* Three date tiles side by side, the same date block as Events (2026-11-24). */}
+      <div className="slot-grid noc-rows">
+        {list.map((s) => {
+          const d = new Date(s.startsAt);
+          return (
+            <button key={s.startsAt} type="button" className="slot-tile noc-press-soft" aria-label={`Ask for ${when(s.startsAt)}`}
+              onClick={() => { setWeekly(canRepeat); setPick(s); }}>
+              <span className="slot-day">{d.toLocaleDateString('en-US', { weekday: 'short' })}</span>
+              <b>{d.getDate()}</b>
+              <span className="slot-day">{d.toLocaleDateString('en-US', { month: 'short' })}</span>
+              <span className="slot-time">{clock(s.startsAt)}</span>
+              {!fits && <span className="slot-len">{s.durationMinutes} min</span>}
+              <span className="slot-ask">Ask</span>
+            </button>
+          );
+        })}
+      </div>
       {!fits && (
         <button type="button" onClick={() => navigate('/member/gym-plan')} data-set-days
           style={{ fontSize: 12.5, marginTop: 6, color: 'var(--color-primary-300)', textAlign: 'left' }}>

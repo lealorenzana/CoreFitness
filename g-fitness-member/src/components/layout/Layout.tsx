@@ -58,6 +58,8 @@ function ChatheadGate({ pathname }: { pathname: string }) {
   if (!allowed || placement !== 'floating') return null;
   if (pathname.startsWith('/member/chatbot')) return null;
   if (pathname.startsWith('/member/messages/')) return null;
+  // The coach chats moved here; the bubble sat on their send button (2026-11-24).
+  if (/^\/member\/(rooms|chat)\/[^/]+/.test(pathname)) return null;
   return <FloatingChathead />;
 }
 

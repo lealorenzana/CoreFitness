@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock } from '@phosphor-icons/react';
-import { LineRow, SectionHead, StatusPill } from '../ui/noc';
+import { LineRow, StatusPill } from '../ui/noc';
+import { Chapter } from '../ui/PageHero';
 import { useFeatures } from '../../hooks/useFeatures';
 import { isEnabled } from '../../lib/api/planFeatures';
 import { listGymPrograms, programProgress, type ProgramSummary, type ProgressDay } from '../../lib/api/programs';
@@ -38,8 +39,9 @@ export default function GymPrograms({ memberId }: { memberId: string | null }) {
   const ordered = [...programs].sort((a, b) => Number(b.id === following) - Number(a.id === following));
 
   return (
-    <section>
-      <SectionHead title="Your gym's programs" />
+    <section className="flex flex-col" style={{ gap: 14 }} aria-labelledby="gym-programs-title">
+      <Chapter id="gym-programs-title" title="Your gym's programs" text="Made by your gym. Follow one day by day." />
+      <div className="page-hero-list is-rows">
       {ordered.map((p, i) => {
         const locked = p.premium && !unlocked;
         const done = p.id === following ? progress.filter((d) => d.done).length : 0;
@@ -54,6 +56,7 @@ export default function GymPrograms({ memberId }: { memberId: string | null }) {
               : p.id === following ? <StatusPill label="Following" tone="structure" /> : undefined} />
         );
       })}
+      </div>
     </section>
   );
 }

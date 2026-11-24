@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import '../../components/rooms/chat.css';
+import '../../components/ui/sheet.css';
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Page, PageTitle } from '../../components/ui/page';
 import { LineRow, TextTabs } from '../../components/ui/noc';
@@ -80,14 +82,15 @@ export default function Room() {
   // "left": leaving it means ending the package, which Manage package does with its reason.
   const sheetRow = { gap: 0 };
   return (
-    <div className="noc-chat" data-room={room.id}>
-      <div className="noc-chat-head">
+    <div className="noc-chat chat-room" data-room={room.id}>
+      {/* The Assistant's backdrop: a soft glow and two faint rings in the gym's colour (2026-11-24). */}
+      <div className="chat-backdrop" aria-hidden><span /><i /></div>
+      <div className="noc-chat-head cf-row-head">
         <PageTitle back fallback={fallback} title={room.name}
           subtitle={`${KIND[room.kind]}${mode === 'member' ? ` · ${room.trainerName}` : ` · ${room.memberCount} member${room.memberCount === 1 ? '' : 's'}`}${room.archived ? ' · closed' : ''}`}
           action={(
             <button type="button" onClick={() => setSettingsOpen(true)} aria-label="Chat settings" data-room-settings
-              className="grid place-items-center noc-press" style={{ width: 40, height: 40, borderRadius: 20, color: 'var(--color-text-secondary)',
-                border: '1px solid rgb(var(--hair-rgb, 233 233 237) / 0.12)' }}>
+              className="grid place-items-center noc-press cf-sheet-close">
               <DotsThreeVertical size={20} weight="bold" />
             </button>
           )} />
