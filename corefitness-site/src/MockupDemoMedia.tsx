@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 const DEMOS = {
   checkin: { poster: 'member-qr.png', clip: 'demo-checkin' },
@@ -43,5 +43,15 @@ export default function MockupDemoMedia({ name, label, onEnded }: { name: DemoNa
       </video> : <img src={`/mockup-art/${media.poster}`} alt={label} className="v3-capture-motion" />}
     </div>
     <div className="v3-demo-bar"><span>Core Fitness screens, animated · demo records</span><button type="button" disabled={reduced} aria-label={`${paused?'Play':'Pause'} ${label}`} aria-pressed={paused} onClick={()=>setPaused(!paused)}>{paused?'▶ Play':'Ⅱ Pause'}</button></div>
+  </div>;
+}
+
+/** A demo's video, or in its place (the same box, in the page's flow, never over it) its interactive example. */
+export function DemoOrExample({ label, video, children }: { label: string; video: ReactNode; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  if (!open) return <>{video}<button type="button" className="v3-example-toggle" aria-expanded={false} onClick={() => setOpen(true)}>▶ {label} · interactive example</button></>;
+  return <div className="v3-example" role="region" aria-label={`${label}, interactive example`}>
+    {children}
+    <div className="v3-demo-bar"><span>Interactive example · sample data</span><button type="button" aria-expanded onClick={() => setOpen(false)}>◀ Back to the video</button></div>
   </div>;
 }

@@ -10,7 +10,7 @@ import MockupHero from './MockupHero';
 import MockupRoles from './MockupRoles';
 import MockupRibbon from './MockupRibbon';
 import MockupBackdrop from './MockupBackdrop';
-import MockupDemoMedia from './MockupDemoMedia';
+import MockupDemoMedia, { DemoOrExample } from './MockupDemoMedia';
 import { Catalogue, Manifesto, Phone3D, Scrub } from './Showcase';
 import PlacePicker from './PlacePicker';
 import Legal, { parseLegalHash } from './Legal';
@@ -335,8 +335,7 @@ export default function App() {
             </ul>
             </div>
             <div className="pb-visual">
-              <MockupDemoMedia name="coach" label="Coach dashboard demo" />
-              <details className="v2-coach-example"><summary>Try the booking flow · interactive example</summary><CoachDemo /></details>
+              <DemoOrExample label="Try the booking flow" video={<MockupDemoMedia name="coach" label="Coach dashboard demo" />}><CoachDemo /></DemoOrExample>
             </div>
           </div>
         </section>

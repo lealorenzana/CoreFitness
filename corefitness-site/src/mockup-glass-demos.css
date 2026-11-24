@@ -26,3 +26,38 @@
 .setup-buddy{width:140px;height:140px;overflow:visible;background:url('/mascot-library/mascots.webp') 0 0 /400% 200% no-repeat;top:-112px;right:38px}.setup-buddy img{display:none}@media(max-width:720px){.setup-buddy{width:100px;height:100px;top:-83px;right:20px}}
 
 .v2-depth-stars{background-image:url('/background-assets/stars-sparse.svg');background-size:1200px 900px;opacity:.7}
+
+/* Interactive examples: they take the video's place in the same box, in the page's flow (never pinned over it). */
+.v3-example-toggle{display:block;margin:10px auto 0;padding:10px 14px;border:0;border-radius:999px;background:none;color:var(--violet-text);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
+@media(hover:hover){.v3-example-toggle:hover{background:#ffffff0d}}
+.v3-example-toggle:focus-visible,.v3-example button:focus-visible{outline:2px solid var(--violet-text);outline-offset:2px}
+.v3-example{position:relative;min-height:490px;border-radius:30px;background:#100d16;padding:18px 18px 58px;text-align:left;animation:exIn .35s var(--ease-out) both}
+.v3-example .v3-demo-bar{border-radius:0 0 30px 30px}
+.v3-example .v3-demo-bar button{font-weight:600}
+@keyframes exIn{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}
+/* The month */
+.v3-example .month-card{position:static!important;grid-column:auto!important;grid-row:auto!important;max-height:none!important;overflow:visible!important;border:0!important;background:none!important;border-radius:0!important;padding:0!important;gap:14px}
+.ex-weeks{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding:4px;border-radius:14px;background:#ffffff08}
+.ex-weeks button{min-height:36px;border:0;border-radius:10px;background:none;color:var(--text-3);font:inherit;font-size:12.5px;font-weight:650;cursor:pointer;transition:background .2s,color .2s}
+.ex-weeks button[aria-pressed=true]{background:var(--violet);color:#fff}
+@media(hover:hover){.ex-weeks button:not([aria-pressed=true]):hover{color:var(--text)}}
+.v3-example .month-counts b{font-size:34px}
+.v3-example .cal{gap:5px}.v3-example .cal-d{aspect-ratio:auto;height:46px;font-size:12px}
+.v3-example .cal-d.past{animation-delay:calc(var(--i,0) * 45ms)}
+/* The coach's requests */
+.v3-example .cq{position:static;width:auto;background:none;border:0;box-shadow:none;padding:0}
+.v3-example .cq-card{padding:12px 14px}
+.v3-example .cq-actions .cq-btn{min-height:38px}
+@media(max-width:720px){.v3-example{min-height:290px;border-radius:22px;padding:12px 12px 50px}.v3-example .v3-demo-bar{border-radius:0 0 22px 22px}.v3-example .cal-d{height:36px;font-size:11px}.v3-example .month-counts b{font-size:26px}}
+@media(prefers-reduced-motion:reduce){.v3-example{animation:none}.v3-example .cal-d.past{animation:none!important}}
+.ex-legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--text-3)}
+.ex-legend span{display:inline-flex;align-items:center;gap:6px}
+.ex-legend i{width:12px;height:12px;border-radius:3px;background:var(--violet)}
+.ex-legend i.r{position:relative}.ex-legend i.r::after{content:'';position:absolute;inset:3.5px;background:#fff;transform:rotate(45deg);border-radius:1px}
+.ex-legend i.n{background:none;border:1.5px dashed var(--violet-text)}
+/* The coaches band's panel is very round: keep the example's words clear of its corners. */
+.photo-band .v3-example{border-radius:72px;padding:34px 40px 86px}
+.photo-band .v3-example .v3-demo-bar{padding:14px 48px 28px;border-radius:0 0 72px 72px}
+.v3-example .cq-head em{display:none}
+@media(max-width:1050px){.photo-band .v3-example{border-radius:45px;padding:24px 26px 74px}.photo-band .v3-example .v3-demo-bar{padding:12px 32px 22px;border-radius:0 0 45px 45px}}
+@media(max-width:720px){.photo-band .v3-example{border-radius:28px;padding:14px 14px 60px}.photo-band .v3-example .v3-demo-bar{padding:10px 18px 16px;border-radius:0 0 28px 28px}}

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { CATALOGUE, FEATURE_COUNT, WHERE, WHERE_LABEL } from './catalogue';
 import { DETAIL } from './catalogueDetail';
 import { reducedMotion, useChapter } from './motion';
-import MockupDemoMedia, { type DemoName } from './MockupDemoMedia';
+import MockupDemoMedia, { DemoOrExample, type DemoName } from './MockupDemoMedia';
 
 /**
  * The scroll-told sections added 2026-10-11 — each one a different scroll
@@ -160,9 +160,11 @@ export function Scrub() {
             <p className="illus-note">Choose a week to explore the real app</p>
           </div>
           <div className="v2-month-ui">
-            <MockupDemoMedia name={monthMedia[week]} label="Member month demo" onEnded={() => { setWeek((week + 1) % monthMedia.length); setPick(null); }} />
-            <details className="v2-month-exploration"><summary>Explore a month · interactive example</summary>
+            <DemoOrExample label="Explore a month" video={<MockupDemoMedia name={monthMedia[week]} label="Member month demo" onEnded={() => { setWeek((week + 1) % monthMedia.length); setPick(null); }} />}>
           <div className="month-card">
+            <div className="ex-weeks" role="group" aria-label="Show the month up to">
+              {MONTH_STEPS.map((_, i) => <button type="button" key={i} aria-pressed={i === week} onClick={() => { setWeek(i); setPick(null); }}>Week {i + 1}</button>)}
+            </div>
             <div className="month-counts">
               <div><b className="num">{visits}</b><small>visits</small></div>
               <div><b className="num">{points}</b><small>points</small></div>
@@ -174,7 +176,7 @@ export function Scrub() {
                 const past = d < lit;
                 const kind = d === RENEWED ? 'renew' : d === RECORD ? 'record' : VISIT.has(d) ? 'visit' : 'rest';
                 return (
-                  <button type="button" key={d} role="gridcell" disabled={!past}
+                  <button type="button" key={d} role="gridcell" disabled={!past} style={{ ['--i' as string]: Math.max(0, d - week * 7) }}
                     className={`cal-d ${kind}${past ? ' past' : ''}${shown === d ? ' sel' : ''}`}
                     aria-label={`${dayWords(d).when}: ${dayWords(d).what}`}
                     onPointerEnter={() => past && setPick(d)} onFocus={() => setPick(d)} onClick={() => setPick(d)}>
@@ -183,12 +185,13 @@ export function Scrub() {
                 );
               })}
             </div>
+            <div className="ex-legend" aria-hidden="true"><span><i className="v" />Visit</span><span><i className="r" />Personal record</span><span><i className="n" />Renewed</span></div>
             <div className="cal-info" aria-live="polite">
               {info ? <><small>{info.when}</small><b>{info.what}</b><span>{info.more}</span></>
-                : <><small>Day 1</small><b>Scroll to start the month</b><span>Each day fills in as you go.</span></>}
+                : <><small>Day 1</small><b>Pick a week to start the month</b><span>Each day fills in as you go.</span></>}
             </div>
           </div>
-            </details>
+            </DemoOrExample>
           </div>
         </div>
       </div>
