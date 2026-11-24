@@ -2,11 +2,13 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import {
-  Bell, Bot, Building2, Calendar, CalendarHeart, Camera, Check, Clapperboard, Coins, Copy, CreditCard, DoorOpen, Dumbbell, Flag, Globe, HeartHandshake,
+  ArrowUpRight, Bell, Bot, Building2, Calendar, CalendarHeart, Camera, Check, Clapperboard, Coins, Copy, CreditCard, DoorOpen, Dumbbell, Flag, Globe, HeartHandshake,
   Lock, MessageSquare, MessagesSquare, PartyPopper, NotebookPen, Palette, Printer, QrCode, RefreshCw, Salad, Share2, ShoppingBag, Smartphone,
   Sparkles, ToggleRight, Trophy, Tv, Type, UserCheck, UserPlus, Users, type LucideIcon,
 } from 'lucide-react';
 import './attendance/att.css';
+import './preferences.css';
+import PreferencesNav, { type PreferenceItem } from '../components/PreferencesNav';
 import { showToast } from '../utils/toast';
 import {
   getGymApp, getGymModules,
@@ -84,7 +86,7 @@ const MODULE_ICONS: Record<string, LucideIcon> = {
 };
 
 export default function GymApp() {
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const tab = (APP_TABS.some(([k]) => k === params.get('tab')) ? params.get('tab') : 'look') as AppTab;
   const [app, setApp] = useState<App | null>(null);
   const [modules, setModules] = useState<GymModule[]>([]);
@@ -96,11 +98,10 @@ export default function GymApp() {
   /** Both colour roles and the logo, edited together because they are one look. */
   const [look, setLook] = useState({ accent: 'violet', action: '', logo_url: '' });
   const [lookStep, setLookStep] = useState<'pair' | 'own' | 'premium' | 'logo'>('pair');
-  const [open, setOpen] = useState<AppTab>(tab);
+  const open = tab === 'coach' && !modules.some((module) => module.feature_key === 'assistant' && module.state !== 'not_sold') ? 'runs' : tab;
   /** The fixed preview column (owner, 2026-11-23): shows the section on screen; one with no phone keeps the last. */
   const [stageEl, setStageEl] = useState<HTMLElement | null>(null);
-  const [stageSec, setStageSec] = useState<string>(tab);
-  if (open !== stageSec && STAGED.includes(open)) setStageSec(open);
+  const stageSec = open;
   const [group, setGroup] = useState(GROUPS[0]);
   const [uploading, setUploading] = useState(false);
   /** The gym's address, open for editing. NULL means "not editing", so an accidental empty box cannot be saved. */
@@ -112,31 +113,18 @@ export default function GymApp() {
   const [ready, setReady] = useState(false);
   const [copied, setCopied] = useState<'link' | 'code' | 'message' | null>(null);
 
-  /** The page is one scrolling column (owner, 2026-11-23, after Discord's settings): the list follows the scroll. */
   const mainRef = useRef<HTMLDivElement>(null);
-  const go = (k: AppTab, step?: 'pair' | 'own' | 'premium' | 'logo') =>
-    document.getElementById(step ? `ya-step-${step}` : `ya-${k}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const go = (key: AppTab) => setParams((previous) => {
+    const next = new URLSearchParams(previous);
+    next.set('tab', key);
+    next.delete('focus');
+    return next;
+  });
   useEffect(() => {
-    const root = mainRef.current;
-    if (!root) return;
-    const spy = () => {
-      const line = root.getBoundingClientRect().top + 96;
-      let sec: string | null = null, step: string | null = null;
-      root.querySelectorAll<HTMLElement>('[data-ya-sec]').forEach((el) => { if (el.getBoundingClientRect().top <= line) sec = el.dataset.yaSec ?? null; });
-      root.querySelectorAll<HTMLElement>('[data-ya-step]').forEach((el) => { if (el.getBoundingClientRect().top <= line) step = el.dataset.yaStep ?? null; });
-      // At the very bottom the last section is the one being read, even when it is too short to reach the line.
-      if (root.scrollTop + root.clientHeight >= root.scrollHeight - 4) sec = root.querySelector<HTMLElement>('[data-ya-sec]:last-of-type')?.dataset.yaSec ?? sec;
-      const first = root.querySelector<HTMLElement>('[data-ya-sec]')?.dataset.yaSec ?? 'look';
-      setOpen((sec ?? first) as AppTab);
-      if (step) setLookStep(step as 'pair' | 'own' | 'premium' | 'logo');
-    };
-    root.addEventListener('scroll', spy, { passive: true });
-    // A link to ?tab=words lands on that section.
-    const start = params.get('tab');
-    if (start && start !== 'look') requestAnimationFrame(() => document.getElementById(`ya-${start}`)?.scrollIntoView({ block: 'start' }));
-    return () => root.removeEventListener('scroll', spy);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready]);
+    mainRef.current?.scrollTo({ top: 0 });
+    canvasRef.current?.scrollTo({ top: 0 });
+  }, [open, lookStep]);
   const load = useCallback(async () => {
     const [a, m, js] = await Promise.all([getGymApp(), getGymModules(), getJoinSettings()]);
     setApp(a); setModules(m); setJoinSet(js);
@@ -271,37 +259,25 @@ export default function GymApp() {
   const kindOn = vocab ? KINDS.find((k) => (Object.keys(k.v) as (keyof GymVocabulary)[]).every((key) => same(v(key, ''), k.v[key])))?.name : undefined;
 
   return (
-    <div className="att" data-your-app>
-      <div className="a-head">
-        <div className="min-w-0 v3-banner" style={{ ['--art' as string]: 'url(/art/tile-yourapp.webp)' }}><h1>Your app</h1><p>Everything {app.gym_name}'s members see on their phones: change it here, watch it change on the right</p></div>
-      </div>
-
-      {/* Settings-app layout (owner, 2026-11-23, after Discord's): the sections down the left, the open one's
-          steps under it with a line beside the current; the content in one column; the phone on the right. */}
+    <div className="att preferences" data-your-app>
+      <header className="preferences-header">
+        <div><h1>Your app</h1><p>Make the member experience feel like {app.gym_name}.</p></div>
+        <Link to="/settings" className="preferences-header-link"><Building2 size={14} />Gym settings<ArrowUpRight size={13} /></Link>
+      </header>
       <SaveCtx.Provider value={register}>
       <StageCtx.Provider value={{ el: stageEl, sec: stageSec }}>
-      <div className="ya-shell ya-has-stage">
-      <nav className="ya-nav" role="tablist" aria-label="Your app sections" aria-orientation="vertical">
-        {APP_TABS.filter(([k]) => k !== 'coach' || coachSold).map(([k, t, Icon]) => (
-          <div key={k}>
-            <button type="button" role="tab" aria-selected={open === k} className={`ya-item ${open === k ? 'on' : ''}`} onClick={() => go(k)}>
-              <Icon size={16} />{t}
-            </button>
-            {k === 'look' && (
-              <div className="ya-sub" role="tablist" aria-label="Look steps">
-                {([['pair', 'Colour pair'], ['own', 'Your own colours'], ['logo', 'Logo and name']] as const).map(([s, l]) => (
-                  <button key={s} type="button" role="tab" aria-selected={lookStep === s} className={lookStep === s ? 'on' : ''} onClick={() => go(k, s)} data-look-step={s}>{l}</button>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
-      </nav>
-      <div className="ya-main" ref={mainRef}>
-
+      <div className="preferences-layout">
+        <PreferencesNav items={APP_TABS.filter(([key]) => key !== 'coach' || coachSold).map(([id, label, icon]): PreferenceItem => ({
+          id, label, icon, group: ['look', 'words', 'runs'].includes(id) ? 'Make it yours' : 'Member experience',
+          words: id === 'look' ? ['colours', 'colors', 'logo', 'theme', 'appearance'] : id === 'join' ? ['link', 'qr', 'code', 'approval'] : [],
+        }))} active={open} onSelect={(id) => go(id as AppTab)} label="Your app sections"
+          footer={<><p>Changes apply to your gym's apps.</p><Link to="/subscription">View your plan<ArrowUpRight size={12} /></Link></>} />
+        <div className="preferences-workspace">
+          <div className="preferences-app-canvas" data-preview={STAGED.includes(open)} ref={canvasRef}>
+            <div className="ya-main preferences-content" ref={mainRef}>
       {/* ---- Look ---------------------------------------------------------------------- */}
       {(
-        <Split sec="look" preview={(
+        <Split active={open} sec="look" preview={(
           <Phone cap="Live preview · Today" colours={[a.base, b.base]}>
             <div className="flex items-center justify-between">
               <div><div className="a-sub">Good morning</div><b style={{ display: 'block', fontSize: 16 }}>{shortName}</b></div>{logo(32)}
@@ -317,16 +293,30 @@ export default function GymApp() {
           {/* Four steps, one at a time (2026-11-02): pairs, saved and premium themes and the two pickers
               were stacked into one long list whose titles did not say how they differ. */}
 
-          <div className="ya-step" data-ya-step="pair" id="ya-step-pair"><h2 className="ya-h">Colour pair</h2>
+          <div className="preferences-look-heading"><h2>Look and branding</h2><p>Your colours and logo, across the member app and this dashboard.</p></div>
+          <div className="preferences-look-tabs" role="tablist" aria-label="Look steps">
+            {([['pair', 'Colour pairs'], ['own', 'Your own colours'], ['logo', 'Logo and name']] as const).map(([step, title]) =>
+              <button key={step} type="button" role="tab" id={`look-tab-${step}`} aria-selected={lookStep === step} aria-controls={`ya-step-${step}`} tabIndex={lookStep === step ? 0 : -1}
+                onKeyDown={(event) => {
+                  const steps = ['pair', 'own', 'logo'] as const;
+                  const index = steps.indexOf(step);
+                  const next = event.key === 'ArrowRight' ? steps[(index + 1) % steps.length]
+                    : event.key === 'ArrowLeft' ? steps[(index + steps.length - 1) % steps.length]
+                    : event.key === 'Home' ? steps[0] : event.key === 'End' ? steps[2] : null;
+                  if (next) { event.preventDefault(); setLookStep(next); document.getElementById(`look-tab-${next}`)?.focus(); }
+                }}
+                onClick={() => setLookStep(step)} data-look-step={step}>{title}</button>)}
+          </div>
+          <div className="ya-step" data-ya-step="pair" id="ya-step-pair" role="tabpanel" aria-labelledby="look-tab-pair" hidden={lookStep !== 'pair'}><h2 className="ya-h">Colour pair</h2>
             <p className="a-sub" style={{ marginBottom: 10 }}>The quickest way: a ready-made pair sets your main colour and your button colour together. Pairs are free; Premium themes restyle the whole app and come with the colours unlock.</p>
-          <div className="flex items-center gap-2 flex-wrap" style={{ marginBottom: 6 }}>
+          <div className="preferences-pair-groups">
             <span className="a-lbl">{group === PREMIUM ? 'A whole style on top of your colours' : 'One tap sets both colours'}</span>
             <span style={{ marginLeft: 'auto' }} />
             {[...GROUPS, PREMIUM].map((g) => <button key={g} type="button" className={`a-chip ${group === g ? 'v' : ''}`} onClick={() => setGroup(g)} data-pair-group={g}>{g === PREMIUM && <Sparkles size={12} />}{g}</button>)}
           </div>
           {/* Premium themes live with the pairs (owner, 2026-11-23); still part of the colours unlock. */}
           {group === PREMIUM ? <PremiumThemes /> : <>
-          <div className="a-grid" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 6 }}>
+          <div className="preferences-pair-grid">
             {PAIRS.filter((p) => p.group === group).map((p) => (
               <button key={p.name} type="button" className={`a-pair ${pairOn?.name === p.name ? 'on' : ''}`} aria-pressed={pairOn?.name === p.name}
                 onClick={() => setLook((l) => ({ ...l, accent: p.accent, action: p.action }))}>
@@ -338,7 +328,7 @@ export default function GymApp() {
           </>}
           </div>
 
-          <div className="ya-step" data-ya-step="own" id="ya-step-own"><h2 className="ya-h">Your own colours</h2>
+          <div className="ya-step" data-ya-step="own" id="ya-step-own" role="tabpanel" aria-labelledby="look-tab-own" hidden={lookStep !== 'own'}><h2 className="ya-h">Your own colours</h2>
             <p className="a-sub" style={{ marginBottom: 10 }}>Choose each colour yourself. The swatches are free; typing your own colour code is part of the one-time colours unlock.</p>
           <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16, marginTop: 4 }}>
             <div>
@@ -359,7 +349,7 @@ export default function GymApp() {
 
           </div>
 
-          <div className="ya-step" data-ya-step="logo" id="ya-step-logo"><h2 className="ya-h">Logo and name</h2>
+          <div className="ya-step" data-ya-step="logo" id="ya-step-logo" role="tabpanel" aria-labelledby="look-tab-logo" hidden={lookStep !== 'logo'}><h2 className="ya-h">Logo and name</h2>
           <div className="flex items-center gap-3.5">
             {logo(64)}
             <div className="a-fld" style={{ flex: 1 }}>
@@ -396,7 +386,7 @@ export default function GymApp() {
 
       {/* ---- Words --------------------------------------------------------------------- */}
       {(
-        <Split sec="words" preview={(
+        <Split active={open} sec="words" preview={(
           <Phone cap="Live preview · your words in place">
             {words.welcome_message.trim() && <div className="a-phcard" style={{ background: 'var(--color-primary-light)', borderColor: 'color-mix(in srgb, var(--color-primary) 30%, transparent)' }}><span className="a-sub">📣 {words.welcome_message.trim()}</span></div>}
             <div className="a-phcard"><b>You earned <span style={{ color: 'var(--a-a300)' }}>{pointsShort}</span></b><div className="a-sub">for checking in</div></div>
@@ -447,7 +437,7 @@ export default function GymApp() {
 
       {/* ---- What you run ---------------------------------------------------------------- */}
       {(
-        <Split sec="runs" preview={<FeatureShow module={modules.find((m) => m.feature_key === pointed) ?? modules.find((m) => !m.parent_key) ?? null} />}>
+        <Split active={open} sec="runs" preview={<FeatureShow module={modules.find((m) => m.feature_key === pointed) ?? modules.find((m) => !m.parent_key) ?? null} />}>
           <div className="a-ct"><h3><ToggleRight size={16} />What your gym runs</h3><small>switching off hides it: nothing is deleted · click one to see what it does</small></div>
           <ModuleColumns modules={modules} onToggle={(m) => void toggle(m)} onPoint={setPointed} pointed={pointed} />
         </Split>
@@ -455,7 +445,7 @@ export default function GymApp() {
 
       {/* ---- Joining ---------------------------------------------------------------------- */}
       {(
-        <Split sec="join" preview={(
+        <Split active={open} sec="join" preview={(
           <Phone cap="Live preview · someone opening your link" centre>
             <div style={{ marginTop: 20 }}>{logo(56)}</div>
             <b style={{ fontSize: 17 }}>Join {app.gym_name}</b>
@@ -568,10 +558,13 @@ export default function GymApp() {
         </Split>
       )}
 
-      {coachSold && coach && <section className="ya-sec ya-full" data-ya-sec="coach" id="ya-coach"><CoachTab enabled={coach.enabled} sold={coachSold} onToggle={() => void toggle(coach)} /></section>}
-      <section className="ya-sec ya-full" data-ya-sec="pay" id="ya-pay"><PayTab /></section>
-      <section className="ya-sec ya-full" data-ya-sec="tv" id="ya-tv"><TvTab /></section>
-      <section className="ya-sec ya-full" data-ya-sec="moments" id="ya-moments"><CelebrationsTab /></section>
+      {coachSold && coach && <section className="ya-sec ya-full" data-ya-sec="coach" id="ya-coach" hidden={open !== 'coach'}><CoachTab enabled={coach.enabled} sold={coachSold} onToggle={() => void toggle(coach)} /></section>}
+      <section className="ya-sec ya-full" data-ya-sec="pay" id="ya-pay" hidden={open !== 'pay'}><PayTab /></section>
+      <section className="ya-sec ya-full" data-ya-sec="tv" id="ya-tv" hidden={open !== 'tv'}><TvTab /></section>
+      <section className="ya-sec ya-full" data-ya-sec="moments" id="ya-moments" hidden={open !== 'moments'}><CelebrationsTab /></section>
+            </div>
+            <aside className="ya-stage-col preferences-preview" ref={setStageEl} aria-label="Live preview" />
+          </div>
       {unsaved.length > 0 && (
         <div className="ya-savebar" role="status" data-save-bar>
           <span><b>Unsaved changes</b> in {unsaved.join(', ')}</span>
@@ -580,8 +573,7 @@ export default function GymApp() {
             <Check size={15} />{savingAll ? 'Saving…' : 'Save changes'}</button>
         </div>
       )}
-      </div>
-      <aside className="ya-stage-col" ref={setStageEl} aria-label="Live preview" />
+        </div>
       </div>
       </StageCtx.Provider>
       </SaveCtx.Provider>
@@ -603,10 +595,10 @@ export default function GymApp() {
 }
 
 /** A settings card beside a phone, the shape of every tab on this page. */
-function Split({ children, preview, sec }: { children: ReactNode; preview: ReactNode; sec: string }) {
-  // One section of the page; its phone goes to the fixed preview column while the section is on screen.
+function Split({ children, preview, sec, active }: { children: ReactNode; preview: ReactNode; sec: string; active: AppTab }) {
+  // Keep the form mounted to preserve drafts; only the selected category is visible.
   return (
-    <section className="ya-sec" data-ya-sec={sec} id={`ya-${sec}`}>
+    <section className="ya-sec" data-ya-sec={sec} id={`ya-${sec}`} hidden={active !== sec}>
       <div className="ya-body">{children}</div>
       <YaStage sec={sec}>{preview}</YaStage>
     </section>
@@ -687,5 +679,5 @@ function ModuleColumns({ modules, onToggle, onPoint, pointed }: { modules: GymMo
     </div>
   );
   if (parents.length === 0) return <p className="a-sub">The parts of the system could not be loaded: a connection problem, not an empty list.</p>;
-  return <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '4px 24px' }}>{col(left)}{col(right)}</div>;
+  return <div className="preferences-module-list">{col(left)}{col(right)}</div>;
 }
