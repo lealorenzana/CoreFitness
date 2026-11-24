@@ -54,7 +54,7 @@ export default function TimeSlotsSettings() {
     const r = { ...rules, ...next };
     setRules(r);
     void run(() => supabase.rpc('set_slot_settings', { p_door: r.door, p_ahead_days: r.ahead_days, p_per_day: r.per_day,
-      p_cancel_minutes: r.cancel_minutes, p_desk_override: r.desk_override }), 'Saved — it applies from the next booking.');
+      p_cancel_minutes: r.cancel_minutes, p_desk_override: r.desk_override }), 'Saved. It applies from the next booking.');
   };
   const num = (v: string, lo: number, hi: number) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : lo; };
   const box = (on: boolean) => ({ borderColor: on ? 'var(--color-primary)' : 'var(--color-border)', background: 'var(--color-bg)' });
@@ -64,7 +64,7 @@ export default function TimeSlotsSettings() {
     <div className="space-y-6" data-time-slots-settings>
       {!rules.on && (
         <p className="text-sm rounded-lg border px-3.5 py-3" style={{ borderColor: 'var(--color-border)', ...muted }} data-slots-off>
-          Time slots are off — members book nothing and the door ignores them. Set them up here, then switch on <b>Time slots and crowd limit</b> in{' '}
+          Time slots are off: members book nothing and the door ignores them. Set them up here, then switch on <b>Time slots and crowd limit</b> in{' '}
           <Link to="/gym-app?tab=runs" style={{ color: 'var(--color-primary)', textDecoration: 'underline' }} onClick={() => refreshGymModules()}>Your app → What you run</Link>.
         </p>
       )}
@@ -90,7 +90,7 @@ export default function TimeSlotsSettings() {
         <label className="mt-3 flex items-center gap-3 text-sm" style={{ color: 'var(--color-text-primary)' }}>
           <button type="button" className={`a-toggle ${rules.desk_override ? '' : 'off'}`} aria-pressed={rules.desk_override} disabled={busy}
             aria-label="The front desk may let someone in anyway" data-desk-override onClick={() => saveRules({ desk_override: !rules.desk_override })} />
-          <span>The front desk may <b>let someone in anyway</b> when a slot says no <span className="text-xs" style={muted}>— never the kiosk</span></span>
+          <span>The front desk may <b>let someone in anyway</b> when a slot says no <span className="text-xs" style={muted}>(never the kiosk)</span></span>
         </label>
       </div>
 
@@ -110,60 +110,66 @@ export default function TimeSlotsSettings() {
         ))}
         {/* 0260: the cancel window is set with the other kinds, so every late-cancel rule lives in one place. */}
         <p className="text-sm self-end" style={muted} data-slot-cancel-moved>
-          Cancel up to <b style={{ color: 'var(--color-text-primary)' }}>{rules.cancel_minutes ? `${rules.cancel_minutes} minutes before` : 'the start'}</b> —{' '}
+          Cancel up to <b style={{ color: 'var(--color-text-primary)' }}>{rules.cancel_minutes ? `${rules.cancel_minutes} minutes before` : 'the start'}</b>.{' '}
           <Link to="/settings?tab=bookings&focus=late-cancels" style={{ color: 'var(--color-primary)', textDecoration: 'underline' }}>change it in Bookings → Late cancels</Link>
         </p>
       </div>
 
       <div>
         <p className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>Your slots</p>
-        <div className="mt-2 flex flex-wrap items-end gap-2 rounded-lg border px-3.5 py-3" style={{ borderColor: 'var(--color-border)' }} data-fill>
-          <span className="text-xs w-full" style={muted}>
-            Cut a week from your hours{rules.opening_time && rules.closing_time ? ` (${clock(rules.opening_time)} – ${clock(rules.closing_time)})` : ''}, then change any day below. This replaces your slots; bookings already made stay.
-          </span>
-          <label className="text-xs" style={muted}>Each slot<input className="a-in mt-1 block" style={{ width: 90 }} inputMode="numeric" value={fill.minutes}
-            onChange={(e) => setFill({ ...fill, minutes: e.target.value.replace(/\D/g, '') })} aria-label="Slot length in minutes" /> minutes</label>
-          <label className="text-xs" style={muted}>Up to<input className="a-in mt-1 block" style={{ width: 90 }} inputMode="numeric" value={fill.capacity}
-            onChange={(e) => setFill({ ...fill, capacity: e.target.value.replace(/\D/g, '') })} aria-label="People per slot" /> people</label>
-          <button type="button" className="a-btn violet sm" disabled={busy} data-fill-go
+        <p className="text-xs mt-0.5" style={muted}>Cut a whole week from your opening hours{rules.opening_time && rules.closing_time ? ` (${clock(rules.opening_time)} to ${clock(rules.closing_time)})` : ''}, then change any day below. Filling replaces your slots; bookings already made stay.</p>
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border px-3.5 py-2.5 text-sm" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} data-fill>
+          <span>Each slot</span>
+          <input className="a-in" style={{ width: 72 }} inputMode="numeric" value={fill.minutes}
+            onChange={(e) => setFill({ ...fill, minutes: e.target.value.replace(/\D/g, '') })} aria-label="Slot length in minutes" />
+          <span style={muted}>minutes, up to</span>
+          <input className="a-in" style={{ width: 72 }} inputMode="numeric" value={fill.capacity}
+            onChange={(e) => setFill({ ...fill, capacity: e.target.value.replace(/\D/g, '') })} aria-label="People per slot" />
+          <span style={muted}>people</span>
+          <button type="button" className="a-btn violet sm ml-auto" disabled={busy} data-fill-go
             onClick={() => { if (slots.length && !window.confirm('Replace every slot with slots cut from your opening hours?')) return;
               void run(() => supabase.rpc('fill_slots_from_hours', { p_minutes: Number(fill.minutes), p_capacity: Number(fill.capacity) }), 'Slots made from your hours'); }}>
             <Wand2 size={13} />Fill from opening hours
           </button>
         </div>
 
-        <div className="mt-3 grid gap-2 sm:grid-cols-2" data-slot-grid>
-          {ORDER.map((d) => {
+        <div className="mt-3 rounded-lg border" style={{ borderColor: 'var(--color-border)' }} data-slot-grid>
+          {ORDER.map((d, i) => {
             const day = slots.filter((s) => s.day_of_week === d);
             const closed = (rules.closed_days ?? []).includes(d);
             return (
-              <div key={d} className="rounded-lg border px-3 py-2.5" style={{ borderColor: 'var(--color-border)' }} data-slot-day={d}>
-                <div className="flex items-center justify-between">
-                  <b className="text-sm" style={{ color: 'var(--color-text-primary)' }}>{DAYS[d]}</b>
-                  {closed ? <span className="text-xs" style={muted}>closed</span>
-                    : <button type="button" className="a-btn ghost sm" onClick={() => setEdit({ id: null, day: d, starts: day.length ? hm(day[day.length - 1].ends) : '06:00', ends: '', capacity: String(day[0]?.capacity ?? 30) })}
-                        aria-label={`Add a slot on ${DAYS[d]}`}><Plus size={12} />Add</button>}
+              <div key={d} className="flex items-start gap-3 px-3.5 py-2.5" style={i ? { borderTop: '1px solid var(--color-border)' } : undefined} data-slot-day={d}>
+                <b className="text-sm w-24 flex-none pt-1" style={{ color: 'var(--color-text-primary)' }}>{DAYS[d]}</b>
+                <div className="flex-1 min-w-0">
+                  {closed ? <p className="text-xs pt-1.5" style={muted}>Closed</p>
+                    : day.length === 0 ? <p className="text-xs pt-1.5" style={muted}>No slots: the door ignores this day.</p>
+                    : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {day.map((s) => (
+                          <span key={s.id} className="inline-flex items-center gap-1.5 rounded-md border pl-2.5 pr-1 py-1 text-xs" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} data-slot={`${d}:${hm(s.starts)}`}>
+                            {clock(s.starts)} to {clock(s.ends)}<span style={muted}>· {s.capacity} people</span>
+                            <button type="button" className="p-1 rounded" aria-label="Change this slot" onClick={() => setEdit({ id: s.id, day: d, starts: hm(s.starts), ends: hm(s.ends), capacity: String(s.capacity) })}><Pencil size={12} style={muted} /></button>
+                            <button type="button" className="p-1 rounded" aria-label="Remove this slot" disabled={busy} onClick={() => void run(() => supabase.rpc('delete_slot_template', { p_id: s.id }), 'Slot removed')}><Trash2 size={12} style={muted} /></button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  {edit && edit.day === d && (
+                    <div className="flex flex-wrap items-center gap-1.5 mt-2" data-slot-edit>
+                      <input className="a-in" type="time" value={edit.starts} onChange={(e) => setEdit({ ...edit, starts: e.target.value })} aria-label="Starts" style={{ width: 110 }} />
+                      <span className="text-xs" style={muted}>to</span>
+                      <input className="a-in" type="time" value={edit.ends} onChange={(e) => setEdit({ ...edit, ends: e.target.value })} aria-label="Ends" style={{ width: 110 }} />
+                      <input className="a-in" inputMode="numeric" value={edit.capacity} onChange={(e) => setEdit({ ...edit, capacity: e.target.value.replace(/\D/g, '') })} aria-label="Up to how many people" style={{ width: 64 }} />
+                      <span className="text-xs" style={muted}>people</span>
+                      <button type="button" className="a-btn violet sm" disabled={busy || !edit.starts || !edit.ends || !edit.capacity}
+                        onClick={() => void run(() => supabase.rpc('save_slot_template', { p_id: edit.id, p_day: edit.day, p_starts: edit.starts, p_ends: edit.ends, p_capacity: Number(edit.capacity) }),
+                          edit.id ? 'Slot changed' : 'Slot added').then((ok) => { if (ok) setEdit(null); })}>Save</button>
+                      <button type="button" className="a-btn ghost sm" onClick={() => setEdit(null)}>Cancel</button>
+                    </div>
+                  )}
                 </div>
-                {!closed && day.length === 0 && <p className="text-xs mt-1" style={muted}>No slots — the door ignores this day.</p>}
-                {day.map((s) => (
-                  <div key={s.id} className="flex items-center gap-2 text-xs mt-1.5" data-slot={`${d}:${hm(s.starts)}`}>
-                    <span className="flex-1" style={{ color: 'var(--color-text-primary)' }}>{clock(s.starts)} – {clock(s.ends)} · up to {s.capacity}</span>
-                    <button type="button" aria-label="Change this slot" onClick={() => setEdit({ id: s.id, day: d, starts: hm(s.starts), ends: hm(s.ends), capacity: String(s.capacity) })}><Pencil size={13} style={muted} /></button>
-                    <button type="button" aria-label="Remove this slot" disabled={busy} onClick={() => void run(() => supabase.rpc('delete_slot_template', { p_id: s.id }), 'Slot removed')}><Trash2 size={13} style={muted} /></button>
-                  </div>
-                ))}
-                {edit && edit.day === d && (
-                  <div className="flex flex-wrap items-center gap-1.5 mt-2" data-slot-edit>
-                    <input className="a-in" type="time" value={edit.starts} onChange={(e) => setEdit({ ...edit, starts: e.target.value })} aria-label="Starts" style={{ width: 110 }} />
-                    <span className="text-xs" style={muted}>to</span>
-                    <input className="a-in" type="time" value={edit.ends} onChange={(e) => setEdit({ ...edit, ends: e.target.value })} aria-label="Ends" style={{ width: 110 }} />
-                    <input className="a-in" inputMode="numeric" value={edit.capacity} onChange={(e) => setEdit({ ...edit, capacity: e.target.value.replace(/\D/g, '') })} aria-label="Up to how many people" style={{ width: 64 }} />
-                    <button type="button" className="a-btn violet sm" disabled={busy || !edit.starts || !edit.ends || !edit.capacity}
-                      onClick={() => void run(() => supabase.rpc('save_slot_template', { p_id: edit.id, p_day: edit.day, p_starts: edit.starts, p_ends: edit.ends, p_capacity: Number(edit.capacity) }),
-                        edit.id ? 'Slot changed' : 'Slot added').then((ok) => { if (ok) setEdit(null); })}>Save</button>
-                    <button type="button" className="a-btn ghost sm" onClick={() => setEdit(null)}>Cancel</button>
-                  </div>
-                )}
+                {!closed && <button type="button" className="a-btn ghost sm flex-none" onClick={() => setEdit({ id: null, day: d, starts: day.length ? hm(day[day.length - 1].ends) : '06:00', ends: '', capacity: String(day[0]?.capacity ?? 30) })}
+                  aria-label={`Add a slot on ${DAYS[d]}`}><Plus size={12} />Add</button>}
               </div>
             );
           })}

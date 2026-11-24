@@ -125,7 +125,13 @@ async (page) => {
   t = await text();
   out.push('Packages: a payment to confirm, with its reference: ' + (/Lea Lorenzana with Rae Santos/.test(t) && /ref GC-1234/.test(t) ? 'yes' : 'MISSING'));
   out.push('…and who trains with whom, until when: ' + (/Ana Reyes with Rae Santos/.test(t) && /until/i.test(t) && /day \d+ of \d+/.test(t) ? 'yes' : 'MISSING'));
-  out.push('the redesign (2026-10-20): four cards, the chips, coach load: ' + ((await page.locator('[data-coaching-cards] > *').count()) === 4 && /Ending in 14 days/.test(t) && /Ending soon/.test(t) && /Coach load/.test(t) && /How it works here/.test(t) ? 'yes' : 'MISSING'));
+  out.push('the redesign (2026-10-20): four cards, the chips, coach load: ' + ((await page.locator('[data-coaching-cards] > *').count()) === 4 && /Ending in 14 days/.test(t) && /Ending soon/.test(t) && /Coach load/.test(t) && /How coaching works here/.test(t) ? 'yes' : 'MISSING'));
+  // 2026-11-24: How coaching works here explains the gym's setup in a sheet, with a way on to Settings.
+  await page.locator('[data-how-coaching]').click();
+  await page.waitForTimeout(500);
+  out.push('How coaching works here opens a plain-words sheet: ' + (/Who is paid/.test(await page.locator('[data-how-sheet]').innerText().catch(() => '')) ? 'yes' : 'MISSING'));
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
   await page.getByRole('button', { name: /^Confirm$/ }).click();
   await page.waitForTimeout(800);
   c = CALLS.find(([f]) => f === 'confirm_coaching_payment');

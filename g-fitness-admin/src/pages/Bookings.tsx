@@ -436,7 +436,7 @@ export default function Bookings({ scope, embedded = false }: { scope?: 'pt' | '
       </div>
 
       {/* The rail gets real room (an empty list left dead space while the rail scrolled): side by side when wide. */}
-      <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0,1fr) 400px', flex: 1, minHeight: 0 }}>
+      <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0,1fr) 400px', gridTemplateRows: 'minmax(0,1fr)', flex: 1, minHeight: 0 }}>
         <div className="a-card" style={{ padding: '6px 14px 12px' }} data-queue>
           {selectablePending.length > 0 && (
             <div className="flex items-center gap-3 py-2" style={{ borderBottom: '1px solid var(--a-border)' }} data-bulk>

@@ -169,7 +169,7 @@ export default function BookingAttentionPanel({ onChanged, only }: { onChanged: 
                 <p className="text-[13.5px] font-semibold text-white truncate mt-1.5">{row.member_name} · {row.what}</p>
                 <p className="text-[12px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
                   {row.kind === 'pt' ? '1-on-1' : 'Class'} with {row.trainer_name ?? 'no coach assigned'}, {when(row.starts_at)}
-                  <span className="inline-flex items-center gap-1"> · <Clock size={12} />waiting {row.days_waiting === 0 ? 'less than a day' : `${row.days_waiting} day${row.days_waiting === 1 ? '' : 's'}`}</span>
+                  <span className="inline-flex items-center gap-1"> · <Clock size={12} />waiting {row.days_waiting <= 0 ? 'less than a day' : `${row.days_waiting} day${row.days_waiting === 1 ? '' : 's'}`}</span>
                 </p>
                 <div className="flex items-center gap-1 mt-2 flex-wrap">
                   <RdButton variant="ghost" size="sm" icon={Bell} disabled={working || !row.trainer_id} onClick={() => nudge(row)}>Remind</RdButton>
