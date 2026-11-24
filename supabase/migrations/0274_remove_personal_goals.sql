@@ -72,7 +72,7 @@ begin
     v_def := pg_get_functiondef('member_training_stats(uuid)'::regprocedure);
     select proacl into v_acl from pg_proc where oid = 'member_training_stats(uuid)'::regprocedure;
     v_new := regexp_replace(v_def, $p$goals_achieved integer,\s*$p$, '', 'g');
-    v_new := regexp_replace(v_new, $p$\(select count\(\*\) from fitness_goals g, gym\s+where g\.member_id = uid and g\.gym_id = gym\.id and g\.achieved_on is not null\)::int,\s*$p$, '', 'g');
+    v_new := regexp_replace(v_new, $p$\(\s*select count\(\*\) from fitness_goals g, gym\s+where[^)]*\)::int,\s*$p$, '', 'g');
     if v_new <> v_def then
       drop function member_training_stats(uuid);
       execute v_new;
