@@ -23,7 +23,7 @@ import { recordPayment } from '../../lib/api/payments';
 import { memberProgramProgress, type ProgressDay } from '../../lib/api/programs';
 import { memberRecords, recordValue, removeRecord, type MemberRecord } from '../../lib/api/records';
 import { memberRoomsSummary } from '../../lib/api/rooms';
-import { memberStreak, type MemberStreak } from '../../lib/api/streak';
+import { RESTORE_REASONS, memberStreak, restoreMemberStreak, type MemberStreak, type RestoreReason } from '../../lib/api/streak';
 import {
   freezeMembership, unfreezeMembership, cancelMembership, changeMembershipPlan,
   freezesThisMonth, type MembershipActionDetail,
@@ -922,6 +922,7 @@ function clock(t: string): string {
 }
 
 function ProgressTab({ detail }: { detail: MemberDetail }) {
+  const streaksOn = moduleOn(useGymModules(), 'streaks');
   const { measurements, workouts, progression, plan, routines } = detail;
   // listMeasurements is oldest-first, so the latest is the last element.
   const latest = measurements.length > 0 ? measurements[measurements.length - 1] : null;
@@ -936,7 +937,7 @@ function ProgressTab({ detail }: { detail: MemberDetail }) {
             <MiniStat label="Training days" value={String(progression.training_days)} />
             <MiniStat label="Verified" value={String(progression.verified_days)} sub="staff check-in" />
             <MiniStat label="Self-logged" value={String(progression.logged_days)} />
-            <MiniStat label="Best week run" value={String(progression.best_week_streak)} />
+            {streaksOn && <MiniStat label="Best week run" value={String(progression.best_week_streak)} />}
           </div>
         </Section>
       )}
@@ -1616,23 +1617,51 @@ function InfoCell({
 }
 
 /**
- * The member's gym streak (0151): their own weekly target, the run, and whether
- * this week is about to break it — so the desk can say a word when they walk in.
- * Nothing before 0151 or when Progress is switched off.
+ * The member's gym streak (0151, 0272): their own weekly target, the run, whether this week is about to
+ * break it, a lapsed membership's pause, the restores made, and the desk's own restore of the most
+ * recent missed week (within 14 days, for a reason). Says so when Streaks are switched off.
  */
 function StreakSection({ memberId }: { memberId: string }) {
+  const on = moduleOn(useGymModules(), 'streaks');
   const [s, setS] = useState<MemberStreak | null>(null);
+  const [asking, setAsking] = useState(false);
+  const [reason, setReason] = useState<RestoreReason>('sick');
+  const [note, setNote] = useState('');
+  const [saving, setSaving] = useState(false);
   useEffect(() => {
     let alive = true;
     void (async () => { const r = await memberStreak(memberId); if (alive) setS(r); })();
     return () => { alive = false; };
   }, [memberId]);
+  if (!on) {
+    return (
+      <Section title="Gym streak">
+        <p className="text-[12.5px]" style={{ color: 'var(--color-text-muted)' }}>Streaks are switched off at this gym (Your app, Progress).</p>
+      </Section>
+    );
+  }
   if (!s) return null;
   const week = s.frozen ? 'Frozen, paused'
+    : s.lapse?.inGrace ? 'Paused, membership ended'
     : s.needed === 0 ? 'Reached'
     : s.atRisk ? `Needs ${s.needed}, every day left`
     : s.outOfReach ? 'Out of reach'
     : `${s.daysThisWeek} of ${s.target}`;
+  const restore = async () => {
+    setSaving(true);
+    try {
+      const r = await restoreMemberStreak(memberId, reason, note);
+      setS(r);
+      setAsking(false);
+      setNote('');
+      showToast(`Streak restored: ${r.current} ${r.current === 1 ? 'week' : 'weeks'}`, 'success');
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not restore it', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+  const field = { background: 'var(--color-bg)', border: '1px solid var(--color-border)' };
   return (
     <Section title="Gym streak">
       <div className="grid grid-cols-4 gap-x-6 gap-y-4">
@@ -1641,6 +1670,59 @@ function StreakSection({ memberId }: { memberId: string }) {
         <MiniStat label="Target" value={`${s.target} days`} sub="a week, their choice" />
         <MiniStat label="This week" value={week} />
       </div>
+      {s.lapse?.inGrace && (
+        <p className="text-[12px] mt-3" style={{ color: 'var(--color-text-secondary)' }}>
+          Membership ended {formatDate(s.lapse.endedOn)}. The streak waits until {formatDate(s.lapse.renewBy)}; renewing by then keeps it.
+        </p>
+      )}
+      {s.memberRestore && (
+        <p className="text-[12px] mt-3" style={{ color: 'var(--color-secondary)' }}>
+          Missed last week. They can restore it in the app today ({s.memberRestore.left} left this month).
+        </p>
+      )}
+      {s.deskRestore && !asking && (
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <p className="text-[12px]" style={{ color: 'var(--color-text-secondary)' }}>
+            Missed the week of {formatDate(s.deskRestore.week)}: a {s.deskRestore.lost}-week streak. You can restore it until {formatDate(s.deskRestore.until)}.
+          </p>
+          <Button size="sm" variant="secondary" onClick={() => setAsking(true)}>Restore streak</Button>
+        </div>
+      )}
+      {s.deskRestore && asking && (
+        <div className="mt-3 pt-3 space-y-2" style={{ borderTop: '1px solid var(--color-border)' }}>
+          <div>
+            <label className="text-[12px] block mb-1" style={{ color: 'var(--color-text-muted)' }}>Reason</label>
+            <select value={reason} onChange={(e) => setReason(e.target.value as RestoreReason)}
+              className="w-full px-3 py-2 rounded-xl text-white text-xs" style={field}>
+              {RESTORE_REASONS.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-[12px] block mb-1" style={{ color: 'var(--color-text-muted)' }}>{reason === 'other' ? 'What happened' : 'Note (optional)'}</label>
+            <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={200}
+              className="w-full px-3 py-2 rounded-xl text-white text-xs" style={field} />
+          </div>
+          <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+            Brings the streak back to {s.deskRestore.restoredTo} {s.deskRestore.restoredTo === 1 ? 'week' : 'weeks'}. The missed week adds no week. Recorded with your name.
+          </p>
+          <div className="flex gap-2">
+            <Button size="sm" variant="ghost" onClick={() => setAsking(false)} className="flex-1">Cancel</Button>
+            <Button size="sm" variant="secondary" disabled={saving || (reason === 'other' && !note.trim())} onClick={() => void restore()} className="flex-1">
+              {saving ? 'Restoring…' : 'Restore'}
+            </Button>
+          </div>
+        </div>
+      )}
+      {s.restores.length > 0 && (
+        <div className="mt-3">
+          {s.restores.map((r) => (
+            <Row key={r.week} title={`Restored the week of ${formatDate(r.week)}`}
+              subtitle={r.kind === 'member' ? `By the member, a ${r.weeks}-week streak`
+                : `By ${r.by ?? 'the desk'}, ${RESTORE_REASONS.find((x) => x.key === r.reason)?.label.toLowerCase() ?? 'no reason'}`}
+              note={r.note} />
+          ))}
+        </div>
+      )}
     </Section>
   );
 }

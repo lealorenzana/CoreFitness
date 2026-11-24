@@ -13,6 +13,7 @@ import GymTermsBanner from '../GymTermsBanner';
 import TrialEnded from '../TrialEnded';
 import { getGymContext, type GymContext } from '../../lib/gymContext';
 import ColorModeAsk from '../colormode/ColorModeAsk';
+import Spotlight from '../Spotlight';
 
 export default function Layout() {
   const location = useLocation();
@@ -82,6 +83,8 @@ export default function Layout() {
       {/* One listener for every `data-tip` in the app. Mounted here so it
           covers the sidebar and header too, not just the routed page. */}
       <TooltipLayer />
+      {/* `?focus=` links land on the setting they name and outline it (2026-11-24). */}
+      <Spotlight />
       {/* The gym's colours and premium theme on the owner's app too (2026-11-02). */}
       <GymLook />
       {/* The first sign-in question: light, dark or match my device (0254). */}

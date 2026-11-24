@@ -1140,6 +1140,42 @@ html, body {
 .streak-week--current { border: 1.5px dashed var(--color-secondary); background: transparent; }
 .streak-week__dot { width: 6px; height: 6px; border-radius: 999px; background: var(--color-secondary); }
 .streak-week.is-picked { outline: 2px solid var(--color-primary-300); outline-offset: 2px; }
+.streak-week--restored { color: var(--color-primary-300); border: 1.5px solid color-mix(in srgb, var(--color-primary) 55%, transparent); background: transparent; }
+.streak-week--paused { color: var(--color-text-muted); background: color-mix(in srgb, var(--color-primary) 8%, transparent); }
+
+/* The calendar (0272): a filled day is a check-in, a ring a logged workout; the last column is the week. */
+.streak-cal { margin-top: 10px; }
+.streak-cal__nav { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 999px; color: var(--color-text-secondary); }
+.streak-cal__grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)) minmax(0, 0.8fr); gap: 6px 4px; }
+.streak-cal__dow { text-align: center; font-size: 12px; color: var(--color-text-muted); }
+.streak-cal__note { grid-column: 1 / -1; padding: 24px 0; text-align: center; font-size: 12.5px; color: var(--color-text-muted); }
+.streak-cal__day {
+  aspect-ratio: 1; display: grid; place-items: center; border-radius: 999px;
+  font-size: 12.5px; font-variant-numeric: tabular-nums; color: var(--color-text-secondary);
+}
+.streak-cal__day.is-checkin { background: var(--color-primary); color: #fff; font-weight: 600; }
+.streak-cal__day.is-logged { box-shadow: inset 0 0 0 2px var(--color-primary-300); color: var(--color-text-primary); font-weight: 600; }
+.streak-cal__day.is-future, .streak-cal__day.is-out { color: var(--color-text-muted); opacity: 0.45; }
+.streak-cal__day.is-today { outline: 2px solid var(--color-secondary); outline-offset: 1px; }
+.streak-cal__week { display: grid; place-items: center; color: var(--color-text-muted); }
+.streak-cal__week--hit { color: var(--color-primary-300); }
+.streak-cal__week--restored { color: var(--color-primary-300); }
+.streak-cal__week--current { color: var(--color-secondary); }
+.streak-cal__miss { width: 8px; height: 2px; border-radius: 2px; background: var(--color-text-muted); opacity: 0.6; }
+.streak-cal__legend { gap: 14px; margin-top: 12px; font-size: 12px; color: var(--color-text-muted); }
+.streak-cal__legend span { display: inline-flex; align-items: center; gap: 5px; }
+.streak-cal__key { display: inline-block; width: 11px; height: 11px; border-radius: 999px; }
+.streak-cal__key.is-checkin { background: var(--color-primary); }
+.streak-cal__key.is-logged { box-shadow: inset 0 0 0 2px var(--color-primary-300); }
+.streak-rules { margin-top: 8px; display: grid; gap: 6px; font-size: 13px; line-height: 1.45; color: var(--color-text-secondary); }
+.streak-rules li { position: relative; padding-left: 14px; }
+.streak-rules li::before { content: ''; position: absolute; left: 2px; top: 8px; width: 5px; height: 5px; border-radius: 999px; background: var(--color-primary-300); }
+:root[data-mode="light"] .streak-cal__day.is-checkin, :root[data-mode="light"] .streak-cal__key.is-checkin { background: var(--color-primary-700); color: #fff; }
+:root[data-mode="light"] .streak-cal__day.is-logged, :root[data-mode="light"] .streak-cal__key.is-logged { box-shadow: inset 0 0 0 2px var(--color-primary-700); }
+:root[data-mode="light"] .streak-cal__week--hit, :root[data-mode="light"] .streak-cal__week--restored { color: var(--color-primary-700); }
+:root[data-mode="light"] .streak-week--restored { color: var(--color-primary-700); border-color: var(--color-primary-700); }
+:root[data-mode="light"] .streak-week--paused { background: color-mix(in srgb, var(--color-primary) 10%, #EEEEF3); }
+:root[data-mode="light"] .streak-rules li::before { background: var(--color-primary-700); }
 
 /* The road to the milestones. */
 .streak-road { position: relative; height: 22px; margin: 12px 10px 0; }

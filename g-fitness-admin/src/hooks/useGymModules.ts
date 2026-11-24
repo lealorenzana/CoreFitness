@@ -20,7 +20,7 @@ import { getGymApp } from '../lib/api/gymApp';
 export const PARENT: Record<string, string> = {
   shop: 'front_desk', requests: 'front_desk', chat: 'coaching', rooms: 'coaching',
   programs: 'progress', photos: 'progress', points: 'engagement',
-  quests: 'engagement', referrals: 'engagement', events: 'push',
+  quests: 'engagement', referrals: 'engagement', events: 'push', streaks: 'progress',
 };
 
 export type Modules = Record<string, boolean>;

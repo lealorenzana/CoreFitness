@@ -97,17 +97,17 @@ async (page) => {
   say('days ahead is the owner’s number', c && c.body.p_ahead_days === 3, JSON.stringify(c));
   // 0260: the cancel cut-off moved to Bookings → Late cancels, with the other kinds; this card says so and links there.
   say('the cancel cut-off is set with the other late-cancel rules, and the card links there',
-    (await page.locator('[data-slot-cancel-moved] a[href="/settings?tab=bookings"]').count()) === 1
+    (await page.locator('[data-slot-cancel-moved] a[href^="/settings?tab=bookings"]').count()) === 1
     && (await page.locator('[data-rule="cancel_minutes"]').count()) === 0);
 
-  say('closed days say so, empty days say the door ignores them', /closed/.test(await page.locator('[data-slot-day="0"]').innerText())
+  say('closed days say so, empty days say the door ignores them', /Closed/i.test(await page.locator('[data-slot-day="0"]').innerText())
     && /No slots/.test(await page.locator('[data-slot-day="1"]').innerText()));
   await page.getByLabel('People per slot').fill('25');
   await page.locator('[data-fill-go]').click();
   await page.waitForTimeout(1200);
   const f = CALLS.find((x) => x.fn === 'fill_slots_from_hours');
   say('Fill from opening hours sends the length and the limit', f && f.body.p_minutes === 90 && f.body.p_capacity === 25, JSON.stringify(f));
-  say('…and the grid shows the slots', (await page.locator('[data-slot]').count()) === 12 && /6:00 AM – 7:30 AM · up to 25/.test(await page.locator('[data-slot-day="1"]').innerText()));
+  say('…and the grid shows the slots', (await page.locator('[data-slot]').count()) === 12 && /6:00 AM to 7:30 AM\s*· 25 people/.test(await page.locator('[data-slot-day="1"]').innerText()));
   await page.locator('[data-slot-day="6"]').getByRole('button', { name: /Add a slot/ }).click();
   await page.getByLabel('Ends').fill('10:30');
   await page.getByLabel('Up to how many people').fill('12');

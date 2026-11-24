@@ -14,6 +14,8 @@
 --
 -- Shared functions are edited in place from their live definitions, as 0273 and 0274 do, so
 -- 0271–0274's redefinitions survive; it stops before dropping anything if one still names the season.
+-- tenancy_gym_tables() loses only the two season tables from its live list (as 0276 adds cash_outs),
+-- so 0275 and 0276 work in either order and every other table, cash_outs included, stays listed.
 
 -- ============================================================================
 -- 1. SHARED FUNCTIONS WITHOUT THE SEASON
@@ -23,9 +25,15 @@ declare
   r record;
   v_def text;
   v_new text;
+  l text[];
 begin
+  l := tenancy_gym_tables();
+  if l && array['season_claims', 'season_tiers'] then
+    l := array_remove(array_remove(l, 'season_claims'), 'season_tiers');
+    execute format('create or replace function tenancy_gym_tables() returns text[] language sql immutable as $f$ select %L::text[] $f$', l);
+  end if;
+
   for r in select * from (values
-      ('tenancy_gym_tables()',          $p$'season_claims',\s*'season_tiers',\s*$p$, ''),
       ('remove_demo_data()',            $p$'season_claims',\s*'season_tiers',\s*$p$, ''),
       ('trg_tv_design()',               $p$'season',\s*$p$, ''),
       ('trg_detect_personal_record()',  $p$'/member/season'$p$, $p$'/member/records'$p$)

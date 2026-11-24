@@ -56,7 +56,7 @@ export default function WalkInGuide({ open = false }: { open?: boolean }) {
         <div>
           <p className={head}>Set it up (owner, once)</p>
           <ol className="mt-1 list-decimal pl-5 space-y-1 text-xs" style={muted}>
-            <li>In <Link to="/settings?tab=walk-ins" className="underline">Settings → Walk-ins</Link>, tick <b>Sell day passes to walk-ins</b> and type the day-pass price.</li>
+            <li>In <Link to="/settings?tab=walk-ins&focus=day-passes" className="underline">Settings → Walk-ins</Link>, tick <b>Sell day passes to walk-ins</b> and type the day-pass price.</li>
             <li>Optional: price a 5- or 10-visit pack (leave empty to not sell it), and how many visits in a month before the desk is told to suggest a membership.</li>
             <li>Press <b>Save walk-in prices</b>.</li>
             <li>To sell day passes in the app as well, connect your PayMongo account in <Link to="/gym-app" className="underline">Your app → Online payments</Link>. Without it, only the desk sells them.</li>

@@ -93,7 +93,7 @@ async (page) => {
   await page.goto('http://localhost:5174/rewards?tab=referrals', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(2500);
   let t = await text();
-  out.push('referrals listed: ' + (/Lea Lorenzana brought Ana Reyes/.test(t) && /Paid · 100 \+ 50 pts/.test(t) && /Waiting for their first payment/.test(t) ? 'shown' : 'MISSING'));
+  out.push('referrals listed: ' + (/Lea Lorenzana brought Ana Reyes/.test(t) && /Paid · 100 \+ 50 pts/.test(t) && /Not paid yet/.test(t) ? 'shown' : 'MISSING'));
   out.push('referral counts: ' + (/2 invited · 1 joined and paid · 1 this month/.test(t) ? 'shown' : 'MISSING'));
   out.push('no Monthly season tab (0275): ' + ((await page.getByRole('tab', { name: /Monthly season/ }).count()) === 0 ? 'yes' : 'STILL SHOWN'));
 

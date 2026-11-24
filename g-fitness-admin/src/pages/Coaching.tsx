@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Handshake, Wallet, UserPlus, Settings2, Search, Check, BarChart3, X, CircleStop, Maximize2 } from 'lucide-react';
+import { Handshake, Wallet, UserPlus, Settings2, Search, Info, Check, BarChart3, X, CircleStop, Maximize2 } from 'lucide-react';
 import FloatingWindow from '../components/ui/FloatingWindow';
+import DetailSheet from '../components/ui/DetailSheet';
+import { RdButton } from '../components/ui/rd';
 import { useFitRows } from '../hooks/useFitRows';
 import { usePaged } from '../hooks/usePaged';
 import { showToast } from '../utils/toast';
@@ -10,7 +12,7 @@ import { supabase } from '../lib/supabaseClient';
 import { listMembers } from '../lib/api/members';
 import { listTrainers } from '../lib/api/trainers';
 import {
-  assignCoaching, coachingSweep, confirmCoachingPayment, endCoaching, getCoachingSettings, listCoachings, STATUS_WORDS,
+  assignCoaching, coachingSweep, confirmCoachingPayment, endCoaching, getCoachingSettings, listCoachings, STATUS_WORDS, MODE_WORDS,
   type CoachingRow, type CoachingSettings,
 } from '../lib/api/coaching';
 import { Av, Pager } from './attendance/parts';
@@ -39,6 +41,8 @@ const PILL: Record<CoachingRow['status'], string> = {
 /** `embedded`: Personal training's Packages tab (simplify, 2026-10-28) — its title is the page's. */
 export default function Coaching({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate();
+  /** The plain-words sheet behind How coaching works here (2026-11-24: the button used to jump to Settings). */
+  const [howOpen, setHowOpen] = useState(false);
   const [settings, setSettings] = useState<CoachingSettings | null | undefined>(undefined);
   const [rows, setRows] = useState<CoachingRow[] | null>(null);
   const [people, setPeople] = useState<Record<string, { name: string; photo: string | null }>>({});
@@ -213,14 +217,11 @@ export default function Coaching({ embedded = false }: { embedded?: boolean } = 
       <div className="a-head">
         <div className="min-w-0">
           {!embedded && <h1>Coaching</h1>}
-          <p>{settings.feeMode === 'trainer_direct' ? 'Members pay their coach directly — you see who has a coach and until when'
-            : settings.feeMode === 'gym_priced' ? 'Members pay the gym for coaching — confirm payments here'
+          <p>{settings.feeMode === 'trainer_direct' ? 'Members pay their coach directly: you see who has a coach and until when'
+            : settings.feeMode === 'gym_priced' ? 'Members pay the gym for coaching: confirm payments here'
               : 'Coaching is included in your plans'}{settings.modes.includes('desk_assigns') ? ' · the desk pairs a member with a coach for a length' : ''}</p>
         </div>
-        <nav className="a-tabs" aria-label="Coaching views">
-          <a href="#" className="on" onClick={(e) => e.preventDefault()}><Handshake size={14} />Pairings<em>{counts.active}</em></a>
-          <a href="#" onClick={(e) => { e.preventDefault(); navigate('/settings?tab=coaching'); }}><Settings2 size={14} />How it works here</a>
-        </nav>
+        <button type="button" className="a-btn" style={{ marginLeft: 'auto' }} onClick={() => setHowOpen(true)} data-how-coaching><Info size={15} />How coaching works here</button>
       </div>
 
       <div className="a-grid flex-none" style={{ gridTemplateColumns: 'repeat(4,minmax(0,1fr))' }} data-coaching-cards>
@@ -230,13 +231,13 @@ export default function Coaching({ embedded = false }: { embedded?: boolean } = 
         </button>
         <button type="button" className={`a-card press text-left ${filter === 'waiting' ? 'on' : ''}`} style={counts.waiting ? { borderColor: '#1e3a5f' } : undefined} onClick={() => setFilter('waiting')}>
           <div className="a-lbl" style={counts.waiting ? { color: '#93c5fd' } : undefined}>Waiting</div>
-          <div className="a-num">{counts.waiting}</div>
-          <div className="a-sub" style={{ marginTop: 6 }}>{waitingFirst ? `${short(name(waitingFirst.member_id))} — ${STATUS_WORDS[waitingFirst.status].toLowerCase()}` : 'asked, offered or paying'}</div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}><div className="a-num">{counts.waiting}</div>
+          <span className="a-sub truncate">{waitingFirst ? `${short(name(waitingFirst.member_id))}: ${STATUS_WORDS[waitingFirst.status].toLowerCase()}` : 'asked, offered or paying'}</span></div>
         </button>
         <button type="button" className={`a-card press text-left ${filter === 'ending' ? 'on' : ''}`} style={counts.ending ? { borderColor: 'var(--a-warn-line, #3e310f)' } : undefined} onClick={() => setFilter('ending')}>
           <div className="a-lbl" style={counts.ending ? { color: 'var(--a-a300)' } : undefined}>Ending in 14 days</div>
-          <div className="a-num">{counts.ending}</div>
-          <div className="a-sub" style={{ marginTop: 6 }}>{endingFirst ? `${short(name(endingFirst.member_id))} — time to talk renewal` : 'none this fortnight'}</div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}><div className="a-num">{counts.ending}</div>
+          <span className="a-sub truncate">{endingFirst ? `${short(name(endingFirst.member_id))}: time to talk renewal` : 'none this fortnight'}</span></div>
         </button>
         <div className="a-card">
           <div className="a-lbl">1-on-1 sessions this month</div>
@@ -247,7 +248,7 @@ export default function Coaching({ embedded = false }: { embedded?: boolean } = 
       </div>
 
       {/* The rail gets real room (the table had dead space, the rail scrolled): its cards sit side by side when it is wide. */}
-      <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0,1.35fr) minmax(380px,1fr)', flex: 1 }}>
+      <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0,1fr) 380px', gridTemplateRows: 'minmax(0,1fr)', flex: 1, minHeight: 0 }}>
         <div className="a-card" data-coaching-list>
           <div className="a-ct" style={{ flexWrap: 'wrap', rowGap: 8 }}>
             <div className="flex gap-1.5">
@@ -285,7 +286,7 @@ export default function Coaching({ embedded = false }: { embedded?: boolean } = 
           )}
         </div>
 
-        <div className="a-scroll coaching-side" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gridAutoRows: 'max-content', alignContent: 'start', alignItems: 'start', gap: 12 }}>
+        <div className="a-scroll coaching-side" style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
           {toConfirm.length > 0 && (
             <div className="a-card" style={{ borderColor: 'var(--a-warn-line, #3e310f)' }} data-coaching-confirm>
               <div className="a-ct"><h3><Wallet size={16} style={{ color: 'var(--a-a300)' }} />Payments to confirm</h3></div>
@@ -346,7 +347,7 @@ export default function Coaching({ embedded = false }: { embedded?: boolean } = 
             <div className="a-card">
               <div className="a-ct"><h3><UserPlus size={16} />Assigning a coach</h3></div>
               <p className="a-sub">The desk does not assign coaches at this gym — members {settings.modes.includes('pick_pt') ? 'pick their own coach' : 'start coaching from the app'}.{' '}
-                <button type="button" className="a-link" style={{ color: 'var(--a-p300)' }} onClick={() => navigate('/settings?tab=coaching')}>Change in Settings</button></p>
+                <button type="button" className="a-link" style={{ color: 'var(--a-p300)' }} onClick={() => navigate('/settings?tab=coaching&focus=coach-modes')}>Change in Settings</button></p>
             </div>
           )}
 
@@ -373,6 +374,38 @@ export default function Coaching({ embedded = false }: { embedded?: boolean } = 
       <FloatingWindow open={win === 'load'} onClose={() => setWin(null)} title="Coach load" icon={BarChart3} count={coaches.length} data-load-window>
         <div className="att" style={{ height: 'auto', overflow: 'visible', padding: '6px 18px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(260px,1fr))', columnGap: 18 }}>{byBusy.map(loadOf)}</div>
       </FloatingWindow>
+      <DetailSheet open={howOpen} onClose={() => setHowOpen(false)} title="How coaching works here" subtitle="Your gym's current setup, in plain words"
+        footer={<RdButton variant="secondary" size="sm" icon={Settings2} onClick={() => navigate('/settings?tab=coaching&focus=coach-modes')}>Change these in Settings</RdButton>}>
+        <div className="space-y-5 text-[13px]" style={{ color: 'var(--color-text-secondary)' }} data-how-sheet>
+          <section>
+            <h3 className="text-[13.5px] font-semibold mb-1.5" style={{ color: 'var(--color-text-primary)' }}>How a member gets a coach</h3>
+            {settings.modes.filter((m) => m !== 'classes').length === 0
+              ? <p>No way is switched on yet, so nobody can start coaching.</p>
+              : <ul className="space-y-1.5">{settings.modes.filter((m) => m !== 'classes').map((m) => (
+                  <li key={m}><b style={{ color: 'var(--color-text-primary)' }}>{MODE_WORDS[m].title}.</b> {MODE_WORDS[m].blurb}</li>))}</ul>}
+          </section>
+          <section>
+            <h3 className="text-[13.5px] font-semibold mb-1.5" style={{ color: 'var(--color-text-primary)' }}>Who is paid</h3>
+            <p>{settings.feeMode === 'trainer_direct' ? 'Members pay their coach directly. The coach marks it received, and you see who has a coach and until when, never the money.'
+              : settings.feeMode === 'gym_priced' ? 'Members pay the gym a price you set for each length. The desk confirms the payment here, and the coaching starts.'
+                : 'Coaching is part of the member’s plan. A member whose plan includes 1-on-1 can have a coach at no extra cost.'}</p>
+          </section>
+          <section>
+            <h3 className="text-[13.5px] font-semibold mb-1.5" style={{ color: 'var(--color-text-primary)' }}>How long a coaching lasts</h3>
+            <p>{settings.lengths.length ? `You offer ${settings.lengths.map((n) => `${n} month${n === 1 ? '' : 's'}`).join(', ')}. When it ends, the member and coach are told, and it shows here as Ending soon two weeks before.` : 'No lengths are set yet.'}</p>
+          </section>
+          <section>
+            <h3 className="text-[13.5px] font-semibold mb-1.5" style={{ color: 'var(--color-text-primary)' }}>What you do on this page</h3>
+            <ul className="space-y-1.5 list-disc pl-4">
+              {settings.modes.includes('desk_assigns') && <li><b style={{ color: 'var(--color-text-primary)' }}>Assign a coach:</b> pick a member, a coach and a length on the right.</li>}
+              {settings.feeMode === 'gym_priced' && <li><b style={{ color: 'var(--color-text-primary)' }}>Payments to confirm:</b> check the member paid, then confirm to start it.</li>}
+              <li><b style={{ color: 'var(--color-text-primary)' }}>Talk renewal:</b> opens the member, for a coaching ending in the next 14 days.</li>
+              <li><b style={{ color: 'var(--color-text-primary)' }}>End:</b> stops a coaching early.</li>
+              <li><b style={{ color: 'var(--color-text-primary)' }}>Coach load:</b> how many trainees each coach has now.</li>
+            </ul>
+          </section>
+        </div>
+      </DetailSheet>
     </div>
   );
 }

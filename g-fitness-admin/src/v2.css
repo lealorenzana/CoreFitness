@@ -792,3 +792,8 @@ button.v2-railrow:hover, .v2-railbtn:hover { background: rgb(var(--hair-rgb, 255
 .att .help-thread .a-msg.me { align-self: flex-end; }
 .att .help-thread .a-msg:not(.me) { align-self: flex-start; }
 .att .a-card.a-scroll:has(> .help-thread) { overflow: hidden; display: flex; flex-direction: column; }
+
+/* `?focus=` links (Spotlight.tsx): the setting a button pointed at is outlined in the gym's colour, then fades. */
+@keyframes v2-spotlight { 0%, 70% { box-shadow: 0 0 0 2px var(--color-primary), 0 0 0 8px color-mix(in srgb, var(--color-primary) 22%, transparent); } 100% { box-shadow: 0 0 0 2px transparent, 0 0 0 8px transparent; } }
+[data-spotlight] { animation: v2-spotlight 3s var(--v2-ease, ease-out); border-radius: 12px; scroll-margin: 96px; }
+@media (prefers-reduced-motion: reduce) { [data-spotlight] { animation: none; box-shadow: 0 0 0 2px var(--color-primary); } }

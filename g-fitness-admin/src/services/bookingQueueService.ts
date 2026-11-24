@@ -133,7 +133,8 @@ export async function loadBookingQueue(): Promise<QueueData> {
     if (!membershipIsUsable(ms.status, ms.expiry_date, ms.never_expires)) {
       out.push({
         kind: 'membership',
-        message: `Membership is ${ms.status}${ms.expiry_date ? ` (expired ${ms.expiry_date})` : ''}.`,
+        // An 'active' row past its end date has run out: say that, never "active (expired …)".
+        message: ms.status === 'active' && ms.expiry_date ? `Membership ran out on ${ms.expiry_date}.` : `Membership is ${ms.status}.`,
       });
     }
     // Entitlements are configured per plan (0017) — the tier is a label, not a

@@ -10,7 +10,7 @@ import {
 import { TONE } from '../components/ui/rdTokens';
 import { todayKey } from '../utils/dates';
 import { exportPaymentsToCSV } from '../utils/exportUtils';
-import { Banknote, CalendarRange, ChevronRight, Clock, Download, Plus, Receipt as ReceiptIcon, Send } from 'lucide-react';
+import { Banknote, CalendarRange, ChevronRight, Download, ImageOff, Plus, Receipt as ReceiptIcon, Send, Wallet } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import { listPayments, recordPayment, updatePaymentStatus } from '../lib/api/payments';
 import { listMembers } from '../lib/api/members';
@@ -23,6 +23,7 @@ import {
 } from '../lib/api/renewalRequests';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import CashCloseout from '../components/ui/CashCloseout';
+import type { CashDay } from '../lib/api/cash';
 import SkelRows from '../components/ui/SkelRows';
 
 interface Payment {
@@ -93,6 +94,8 @@ export default function Payments() {
   const [approving, setApproving] = useState<string | null>(null);
   const [proof, setProof] = useState<string | null>(null);
   const [toDecline, setToDecline] = useState<OpenRenewalRequest | null>(null);
+  /** Today's drawer, from the End of day card (0271): what should be in it right now. */
+  const [drawer, setDrawer] = useState<CashDay | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -295,7 +298,7 @@ export default function Payments() {
     if (!toDecline) return;
     try {
       await declineRenewalRequest(toDecline.id, reason);
-      showToast('Request declined — the member has been told why', 'success');
+      showToast('Request declined. The member has been told why', 'success');
       setToDecline(null);
       await loadData();
     } catch (err) {
@@ -356,10 +359,11 @@ export default function Payments() {
   const slice = <T,>(list: T[]) => list.slice((page - 1) * fit.perPage, page * fit.perPage);
   const rowH = rowsTotal > fit.perPage ? fit.rowHeight : undefined;
   const reqCount = requests?.length ?? 0;
+  const paidCount = requests?.filter((r) => r.paid).length ?? 0;
 
   return (
     <div className="rd-fit" data-payments>
-      <RdHeader title="Payments" subtitle="Money taken at the desk and online, by member — and the drawer at closing time."
+      <RdHeader title="Payments" subtitle="Money taken at the desk and online, by member, and the drawer at closing time."
         actions={<>
           {/* Up here, not above the table: the table and End of day start on one line (2026-10-25). */}
           <PageTabs<'records' | 'renew'> label="Payments sections" value={tab} onChange={setTab} tabs={[
@@ -373,15 +377,17 @@ export default function Payments() {
       <div className="rd-tiles-rail">
         <StatTile compact icon={Banknote} label="Total collected" value={peso(totalRevenue)} sub={`${completed.length} completed payments`} />
         <StatTile compact icon={CalendarRange} label="This month" value={peso(thisMonth)} sub="by the day it was paid" />
-        <StatTile compact icon={Clock} tone={pendingCount ? 'amber' : 'violet'} label="Pending" value={pendingCount} sub="waiting to be confirmed"
-          active={filterStatus === 'pending'} onClick={() => { setTab('records'); setFilterStatus(filterStatus === 'pending' ? 'all' : 'pending'); setCurrentPage(1); }} />
-        <StatTile compact icon={Send} tone={reqCount ? 'amber' : 'violet'} label="To approve" value={reqCount} sub="paid online, or coming to pay"
+        {/* Was "Pending": no flow creates a pending payment any more, so it was always 0 (owner, 2026-11-24). */}
+        <StatTile compact icon={Wallet} label="In the drawer now" value={drawer ? peso(drawer.expected) : '…'}
+          sub={drawer ? (drawer.closed ? 'today is closed' : 'counted by the system') : 'reading the drawer'} />
+        <StatTile compact icon={Send} tone={reqCount ? 'amber' : 'violet'} label="To approve" value={reqCount}
+          sub={paidCount ? `${paidCount} paid online to check, ${reqCount - paidCount} coming to pay` : 'members renewing their plan'}
           active={tab === 'renew'} onClick={() => setTab('renew')} />
       </div>
 
       <FitBody rail={<>
         {/* The drawer at closing time (0095). Re-reads whenever payments change. */}
-        <CashCloseout refreshKey={payments} />
+        <CashCloseout refreshKey={payments} onDrawer={setDrawer} />
       </>}>
         {tab === 'records' ? (
           <RdCard className="overflow-hidden rd-fit-fill" data-records>
@@ -390,7 +396,8 @@ export default function Payments() {
                 onChange={(v) => { setFilterStatus(v); setCurrentPage(1); }} items={[
                   { key: 'all', label: 'All', count: payments.length },
                   { key: 'completed', label: 'Completed', count: completed.length },
-                  { key: 'pending', label: 'Pending', count: pendingCount, tone: pendingCount ? 'amber' : undefined },
+                  // Only while one exists: nothing creates a pending payment any more (2026-11-24).
+                  ...(pendingCount ? [{ key: 'pending' as const, label: 'Pending', count: pendingCount, tone: 'amber' as const }] : []),
                   { key: 'failed', label: 'Failed', count: payments.filter((p) => p.status === 'failed').length },
                 ]} />
               <div className="flex-1 min-w-[180px]"><SearchField value={q} onChange={(v) => { setQ(v); setCurrentPage(1); }} placeholder="Member, plan or invoice" /></div>
@@ -403,7 +410,7 @@ export default function Payments() {
               <RdTable boxRef={fit.ref} head={['Member', 'Payments', 'Total paid', 'Last paid', { label: '', align: 'right' }]}
                 empty={groupsShown.length === 0 ? (
                   <EmptyBlock compact icon={Banknote} title={filterStatus === 'all' ? 'No payments recorded' : `No ${filterStatus} payments`}
-                    body={filterStatus === 'all' ? 'Every peso taken at the desk is recorded here.' : 'Try another filter — the money is still under All.'}
+                    body={filterStatus === 'all' ? 'Every peso taken at the desk is recorded here.' : 'Try another filter. The money is still under All.'}
                     action={filterStatus === 'all' ? <RdButton variant="primary" icon={Plus} onClick={() => setIsModalOpen(true)}>Record one</RdButton> : undefined} />
                 ) : undefined}>
                 {slice(groupsShown).map((group) => {
@@ -418,7 +425,7 @@ export default function Payments() {
                       </Td>
                       <Td style={{ color: SECOND }}>
                         {group.payments.length} payment{group.payments.length !== 1 ? 's' : ''}
-                        {owing > 0 && <span style={{ color: TONE.amber.fg }}> — {owing} pending</span>}
+                        {owing > 0 && <span style={{ color: TONE.amber.fg }}>, {owing} pending</span>}
                       </Td>
                       <Td><span className="font-semibold text-white tabular-nums">{peso(group.totalPaid)}</span></Td>
                       <Td style={{ color: SECOND }}>{fmtDate(group.lastPayment)}</Td>
@@ -457,14 +464,14 @@ export default function Payments() {
              payment closes the request by itself; the only desk action of its own is Decline. */
           <RdCard className="flex flex-col min-h-0 overflow-hidden rd-fit-fill" data-renew>
             <div className="px-4 py-3" style={{ borderBottom: LINE }}>
-              <p className="text-[15px] font-semibold text-white">To approve</p>
+              <p className="text-[15px] font-semibold text-white">To approve: renewals</p>
               <p className="text-[12.5px]" style={{ color: SECOND }}>
-                Members who paid your GCash or bank and sent the reference come first — check it reached you, then approve. Below them, members coming to pay at the desk. One click approves it — the plan they asked for, the payment and the receipt; Edit details to change the amount or method first.
+                Members renewing their plan from the phone app. <span className="text-white font-semibold">Paid online</span>: they sent your GCash or bank the money and typed the reference. Open your GCash, find that reference and amount, then approve. <span className="text-white font-semibold">Coming to pay</span>: approve when they hand you the cash. Approving records the payment, the receipt and the plan they asked for.
               </p>
             </div>
             <div className="rd-fit-scroll p-4">
               {!requests || requests.length === 0 ? (
-                <EmptyBlock compact icon={Send} title="Nobody is on the way" body="When a member taps “Tell the desk I’m coming” in the app, they show here." />
+                <EmptyBlock compact icon={Send} title="Nothing to approve" body="When a member renews in the app, by paying your GCash or bank or by saying they will pay at the desk, they show here." />
               ) : (
                 <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
                   {/* Paid ones first: money is waiting on the desk's yes (owner, 2026-10-28). */}
@@ -480,40 +487,50 @@ export default function Payments() {
                             <p className="text-[14px] text-white font-semibold truncate">{r.memberName}</p>
                             <p className="text-[12px]" style={{ color: MUTED }}>
                               {hours < 1 ? 'just now' : hours < 24 ? `${hours} h ago` : `${Math.round(hours / 24)} d ago`}
-                              {r.note ? ` — ${r.note}` : ''}
+                              {r.note ? `. ${r.note}` : ''}
                             </p>
                           </div>
                           <span className="text-[15px] font-bold tabular-nums" style={{ color: TONE.amber.fg }}>{r.planPrice > 0 ? peso(r.planPrice) : 'Free'}</span>
                         </div>
+                        <p className="text-[12px] font-semibold uppercase tracking-wide" style={{ color: r.paid ? TONE.amber.fg : MUTED }}>
+                          {r.paid ? 'Paid online, check it' : 'Coming to pay at the desk'}
+                        </p>
                         {r.paid && (
-                          <div className="flex items-center gap-2.5 rounded-lg px-2.5 py-2" data-online-pay style={{ background: TONE.violet.bg, border: `1px solid ${TONE.violet.line}` }}>
-                            {r.paid.proof && (
-                              <button type="button" onClick={() => setProof(r.paid!.proof)} aria-label="See the screenshot" className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-md bg-white">
-                                <img src={r.paid.proof} alt="" className="h-full w-full object-cover" />
+                          // What to check against the gym's own GCash or bank before approving (owner, 2026-11-24).
+                          <div className="flex gap-2.5 rounded-lg p-2.5" data-online-pay style={{ background: TONE.violet.bg, border: `1px solid ${TONE.violet.line}` }}>
+                            {r.paid.proof ? (
+                              <button type="button" onClick={() => setProof(r.paid!.proof)} aria-label="Open the screenshot full size" data-tip="Open full size"
+                                className="h-[92px] w-[68px] flex-shrink-0 overflow-hidden rounded-md bg-white" data-proof>
+                                <img src={r.paid.proof} alt="The member's payment screenshot" className="h-full w-full object-cover object-top" />
                               </button>
+                            ) : (
+                              <div className="h-[92px] w-[68px] flex-shrink-0 rounded-md grid place-items-center text-center px-1" style={{ border: '1px dashed rgb(var(--hair-rgb, 255 255 255) / 0.2)' }}>
+                                <span className="text-[12px] leading-tight" style={{ color: MUTED }}><ImageOff size={15} className="mx-auto mb-1" />No screenshot</span>
+                              </div>
                             )}
-                            <p className="text-[12px] leading-snug" style={{ color: SECOND }}>
-                              <span className="text-white font-semibold">Paid {peso(r.paid.amount)} by {r.paid.method}</span>
-                              <br />Ref <span className="font-mono text-white">{r.paid.reference}</span>
-                              {r.paid.paidOn ? `, ${r.paid.paidOn}` : ''} — check it reached your account, then record it.
-                            </p>
+                            <dl className="text-[12.5px] leading-snug grid gap-y-0.5 min-w-0" style={{ gridTemplateColumns: 'auto minmax(0, 1fr)', columnGap: 8, color: SECOND }}>
+                              <dt>Amount</dt><dd className="text-white font-semibold tabular-nums">{peso(r.paid.amount)}</dd>
+                              <dt>Sent by</dt><dd className="text-white truncate">{r.paid.method}</dd>
+                              <dt>Reference</dt><dd className="font-mono text-white break-all" data-ref>{r.paid.reference}</dd>
+                              <dt>Paid on</dt><dd className="text-white">{r.paid.paidOn ? fmtDate(r.paid.paidOn) : 'not given'}</dd>
+                            </dl>
                           </div>
                         )}
                         <p className="text-[12.5px]" style={{ color: SECOND }}>
                           Wants <span className="text-white font-semibold">{r.planName}</span>
-                          {current ? <> — on {current.planName} now</> : ' — no membership yet'}
+                          {current ? <>, on {current.planName} now</> : ', no membership yet'}
                         </p>
                         {planChange && (
                           <p className="text-[12px]" style={{ color: TONE.amber.fg }} data-plan-switch>Approving switches them from {current.planName} to {r.planName}.</p>
                         )}
                         {!current && (
-                          <p className="text-[12px]" style={{ color: TONE.amber.fg }}>No membership yet — give them one in Members first.</p>
+                          <p className="text-[12px]" style={{ color: TONE.amber.fg }}>No membership yet. Give them one in Members first.</p>
                         )}
                         <div className="flex flex-wrap gap-1.5">
                           <RdButton size="sm" variant="primary" icon={Banknote} disabled={!current || approving !== null} onClick={() => void approveRequest(r)} data-approve>
                             {approving === r.id ? 'Approving…'
-                              : r.paid ? `Approve ${peso(r.paid.amount)} ${methodOf(r)}`
-                              : r.planPrice > 0 ? `Paid ${peso(r.planPrice)} — approve` : 'Approve'}
+                              : r.paid ? `It reached us, approve ${peso(r.paid.amount)}`
+                              : r.planPrice > 0 ? `Cash received, approve ${peso(r.planPrice)}` : 'Approve'}
                           </RdButton>
                           <RdButton size="sm" variant="ghost" disabled={!current || approving !== null} onClick={() => recordForRequest(r)} data-approve-edit>Edit details</RdButton>
                           <RdButton size="sm" variant="ghost" onClick={() => setToDecline(r)}>Decline</RdButton>
@@ -600,7 +617,7 @@ function DeclineDialog({ request, onClose, onDecline }: {
       message={request ? `${request.memberName} asked for ${request.planName}.` : ''}
       confirmText="Decline"
       type="danger"
-      reason={{ label: 'Why', placeholder: 'e.g. Renewed in person already — nothing more to do.', required: true,
+      reason={{ label: 'Why', placeholder: 'e.g. Renewed in person already, nothing more to do.', required: true,
         hint: 'The member reads this in their notifications and on their Plans screen.' }}
     />
   );

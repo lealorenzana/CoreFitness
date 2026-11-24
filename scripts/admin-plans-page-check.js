@@ -97,10 +97,13 @@ async (page) => {
   has('Premium opens first in the editor, kind Paid and 1 month pressed', (await page.locator('[data-plan-editor]').count()) === 1
     && (await page.getByRole('group', { name: 'Kind' }).getByRole('button', { name: 'Paid', pressed: true }).count()) === 1
     && (await page.getByRole('group', { name: 'Length' }).getByRole('button', { name: '1 month', pressed: true }).count()) === 1);
+  has('members-see line names the plan and the price', /Members see this plan as “Premium · ₱1,500 a month”/.test(t));
+  // 2026-11-24: the open plan shows one part at a time: Details, Members, Switching online.
+  await page.locator('[data-plan-part="who"]').click();
+  await page.waitForTimeout(300);
   has('who is on Premium, sorted by renewal, with what each has paid', (await page.locator('[data-roster-row]').count()) === 3
     && /Andrea Flores/.test(await page.locator('[data-roster-row]').first().innerText()) && /₱3,000/.test(await page.locator('[data-roster-row]').first().innerText()));
   has('Remind only on whoever renews within a week', (await page.getByRole('button', { name: 'Remind' }).count()) === 2);
-  has('members-see line names the plan and the price', /Members see this plan as “Premium · ₱1,500 a month”/.test(t));
   has('the page does not scroll', await noScroll());
   await page.waitForTimeout(1200);
   await page.screenshot({ path: 'shots/admin-plans-page.png' });
@@ -109,6 +112,8 @@ async (page) => {
   await page.waitForTimeout(500);
   has('Remind tells the member, once a day', CALLS.some(([k, b]) => (k === 'notify' || k === 'notify_user') && JSON.stringify(b).includes('renews soon')), JSON.stringify(CALLS.map((c) => c[0])));
 
+  await page.locator('[data-plan-part="plan"]').click();
+  await page.waitForTimeout(200);
   await page.getByLabel('Add a line').fill('AI coach, points, challenges');
   await page.getByLabel('Add a line').press('Enter');
   await page.locator('[data-plan-save]').click();

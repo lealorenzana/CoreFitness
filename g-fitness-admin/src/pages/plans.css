@@ -1,0 +1,28 @@
+/* Plans (2026-11-24, the owner found the long column confusing): the open plan has a title bar with three tabs
+   (Details, Members, Switching online) showing one part at a time, and Details is grouped into boxes. */
+.att .pl-main { display: flex; flex-direction: column; gap: 14px; }
+.att .pl-top { position: sticky; top: 0; z-index: 2; display: flex; flex-direction: column; gap: 10px; padding-bottom: 2px;
+  background: var(--a-bg, var(--color-bg)); }
+.att .pl-title { display: flex; align-items: center; gap: 10px; }
+.att .pl-title h2 { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; color: var(--a-ink); }
+.att .pl-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--a-border); }
+.att .pl-tabs button { padding: 8px 12px; margin-bottom: -1px; font-size: 13.5px; font-weight: 600; color: var(--a-text2);
+  border-bottom: 2px solid transparent; }
+.att .pl-tabs button.on { color: var(--a-ink); border-bottom-color: var(--a-primary); }
+.att .pl-tabs button:hover:not(.on) { color: var(--a-ink); }
+
+.att .pl-form { display: flex; flex-direction: column; gap: 12px; }
+.att .pl-box { padding: 16px; border: 1px solid var(--a-border); border-radius: 12px; background: var(--a-surface); }
+.att .pl-box-h { margin-bottom: 12px; font-size: 13.5px; font-weight: 700; color: var(--a-ink); }
+.att .pl-box-h span { font-weight: 500; color: var(--a-muted); }
+
+.att .pl-limit { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--a-border); }
+.att .pl-box-h + .pl-limit { border-top: 0; padding-top: 0; }
+.att .pl-limit .t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.att .pl-limit .t b { font-size: 13.5px; color: var(--a-ink); }
+.att .pl-limit .t small { font-size: 12.5px; color: var(--a-text2); }
+.att .pl-cap { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--a-text2); white-space: nowrap; }
+.att .pl-cap .a-in { width: 96px; padding: 7px 10px; text-align: center; }
+
+.att .pl-actions { display: flex; gap: 8px; padding-top: 4px; }
+.att .pl-actions [data-plan-save] { margin-left: auto; min-width: 200px; }

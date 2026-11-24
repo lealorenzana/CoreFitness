@@ -96,7 +96,7 @@ export default function CoachingRules({ feeMode }: { feeMode: FeeMode }) {
         </div>
       </div>
 
-      <div data-cut-rule>
+      <div data-cut-rule data-focus="share">
         <p className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>Do coaches give the gym a share of what members pay them?</p>
         {direct ? (
           <p className="text-xs mt-0.5" style={muted}>Counted from coaching packages your coaches mark Received. Single 1-on-1 sessions record no price, so they are not counted.</p>
@@ -121,7 +121,7 @@ export default function CoachingRules({ feeMode }: { feeMode: FeeMode }) {
         )}
       </div>
 
-      <div data-dues-rule>
+      <div data-dues-rule data-focus="dues">
         <p className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>Do coaches pay the gym to train here?</p>
         <p className="text-xs mt-0.5" style={muted}>Due every month from the month you switch it on. The desk records each payment; a coach who is behind is shown to you — never locked out.</p>
         {yesNo(duesWanted, () => { setDuesWanted(false); if (r.duesOn) void save({ ...r, duesOn: false }); },

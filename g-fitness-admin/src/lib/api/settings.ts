@@ -16,6 +16,8 @@ export interface GymSettingsRow {
   closing_time: string | null;
   /** Days the gym is closed, 0 = Sunday (0153). The streak never counts them as days left. */
   closed_days?: number[];
+  /** 0272: weeks a member's streak waits after their membership ends (0–8). Absent before 0272. */
+  streak_grace_weeks?: number;
   /** Check-in activity choices, editable by the gym (0018). Pre-defined at the
    *  point of check-in so the data aggregates, but the list is the gym's own. */
   activity_options: string[];

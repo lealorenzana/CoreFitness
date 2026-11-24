@@ -122,8 +122,36 @@ async (page) => {
       week: new Date(Date.UTC(2026, 6, 13 + i * 7)).toISOString().slice(0, 10),
       days: state === 'hit' ? 3 : state === 'current' ? 2 : state === 'miss' ? 1 : 0, state })) };
   let settled = false;
+  // 0272: the theme and mode the screenshots are taken in, and the calendar's month.
+  let ACCENT = 'violet';
+  let MODE = 'dark';
+  let APP = null;
+  const pad2 = (x) => String(x).padStart(2, '0');
+  const monthOf = (p) => {
+    const [y, m] = p.split('-').map(Number);
+    const last = new Date(y, m, 0).getDate();
+    const days = Array.from({ length: last }, (_, i) => {
+      const d = `${y}-${pad2(m)}-${pad2(i + 1)}`;
+      return { d, checkin: d < dstr(1) && [1, 3, 8, 9, 15, 17].includes(i + 1), logged: d < dstr(1) && [10, 22].includes(i + 1) };
+    });
+    // Mondays of every week touching the month: reached, except one restored and one paused.
+    const first = new Date(y, m - 1, 1);
+    const mon = new Date(first); mon.setDate(first.getDate() - ((first.getDay() + 6) % 7));
+    const weeks = [];
+    for (const w = new Date(mon); w <= new Date(y, m - 1, last); w.setDate(w.getDate() + 7)) {
+      const key = `${w.getFullYear()}-${pad2(w.getMonth() + 1)}-${pad2(w.getDate())}`;
+      weeks.push({ week: key, days: 2, state: weeks.length === 2 ? 'restored' : weeks.length === 3 ? 'paused' : 'hit' });
+    }
+    return { month: `${y}-${pad2(m)}-01`, days, weeks };
+  };
   const FN = {
     my_streak: () => STREAK,
+    my_color_mode: () => MODE,
+    my_gym_app: () => APP,
+    my_streak_month: (b) => monthOf(b.p_month),
+    restore_my_streak: () => { STREAK = { ...STREAK, current: STREAK.restore.restored_to, restore: null,
+      restores: [{ week: STREAK.restore.week, kind: 'member', reason: null, note: null, weeks: STREAK.restore.lost, at: new Date().toISOString(), by: null }] };
+      return STREAK; },
     settle_my_streak: () => { if (settled) return []; settled = true; return [4]; },
     set_streak_target: (b) => { STREAK = { ...STREAK, target: b.p_target, nudges: b.p_nudges,
       needed: Math.max(0, b.p_target - STREAK.days_this_week) }; return null; },
@@ -187,7 +215,7 @@ async (page) => {
         const me = rows.find((p) => p.id === sub) || rows[0];
         return json(me ? [{ gym_id: 'gym-1', gym_name: 'Core Fitness', slug: 'core-fitness',
           role: me.role, status: me.status, lock_reason: null, short_name: null, logo_url: null,
-          accent: 'violet', gym_count: 1 }] : []);
+          accent: ACCENT, gym_count: 1 }] : []);
       }
       if (fn in FN) { const b = JSON.parse(req.postData() || '{}'); CALLS[fn] = b; return json(FN[fn](b)); }
       return json(fn in RPC ? RPC[fn] : null); }
@@ -287,10 +315,10 @@ async (page) => {
   out.push('the tokens are visible without their animation: ' + (await page.locator('.streak-week--hit').first().evaluate((el) => getComputedStyle(el).opacity === '1' && el.getBoundingClientRect().width > 10) ? 'yes' : 'HIDDEN'));
   await page.locator('.streak-week--frozen').click();
   st = await sheetText();
-  out.push('tapping a week says what happened: ' + (/Frozen — it did not break the streak/.test(st) && /0 training days/.test(st) ? 'frozen week explained' : 'MISSING'));
+  out.push('tapping a week says what happened: ' + (/Frozen, it did not break the streak/.test(st) && /0 training days/.test(st) ? 'frozen week explained' : 'MISSING'));
   out.push('the milestone road: ' + (/6 more weeks to 12 weeks — 4 already reached/.test(st)
     && (await page.locator('.streak-road__stop.is-done').count()) === 1 && (await page.locator('.streak-road__stop.is-next').count()) === 1 ? '4 done, 12 next' : 'MISSING'));
-  out.push('the sheet says what counts: ' + (/check in or log a workout/.test(st) && /neither does a week your membership is frozen/.test(st) ? 'yes' : 'MISSING'));
+  out.push('the sheet says what counts: ' + (/Check in or log a workout on 3 days/.test(st) && /Frozen weeks pause it/.test(st) && /Restore it the next day/.test(st) ? 'yes' : 'MISSING'));
   await shot('streak-sheet');
 
   out.push('the plan is offered, never applied: ' + (/Your training plan has 4 days a week — use 4/.test(st) ? 'offered' : 'MISSING'));
@@ -307,6 +335,84 @@ async (page) => {
   t = await text();
   out.push('the line follows: 2 of 4 this week: ' + (/2 of 4 this week/.test(t) ? 'yes' : 'MISSING'));
   void tokens;
+
+  // 5 - the calendar (0272): every training day this month, and each week's ending.
+  await page.getByRole('button', { name: /Your gym streak/ }).click();
+  await page.locator('[data-streak-calendar]').waitFor({ timeout: 5000 });
+  await page.waitForTimeout(500);
+  const pastDays = monthOf(dstr(0)).days;
+  const wantCheck = pastDays.filter((d) => d.checkin).length;
+  const wantLog = pastDays.filter((d) => d.logged).length;
+  const gotCheck = await page.locator('.streak-cal__day.is-checkin').count();
+  const gotLog = await page.locator('.streak-cal__day.is-logged').count();
+  out.push('the calendar marks each check-in day filled and each logged day as a ring: '
+    + (gotCheck === wantCheck && gotLog === wantLog ? `${wantCheck} / ${wantLog}` : `MISSING ${gotCheck}/${gotLog} want ${wantCheck}/${wantLog}`));
+  out.push('…and how each week ended, at the end of its row: ' + ((await page.locator('.streak-cal__week--restored').count()) === 1
+    && (await page.locator('.streak-cal__week--paused').count()) === 1 && (await page.locator('.streak-cal__week--hit').count()) >= 2 ? 'reached / restored / paused' : 'MISSING'));
+  out.push('…today is marked: ' + ((await page.locator('.streak-cal__day.is-today').count()) === 1 ? 'yes' : 'MISSING'));
+  const fits = await page.evaluate(() => { const g = document.querySelector('.streak-cal__grid').getBoundingClientRect(); return g.right <= window.innerWidth && g.width > 280; });
+  out.push('…and it fits 393px: ' + (fits ? 'yes' : 'OVERFLOWS'));
+  await page.locator('[data-streak-calendar]').scrollIntoViewIfNeeded();
+  await shot('streak-calendar-dark-violet');
+  await page.getByRole('button', { name: 'Previous month' }).click();
+  await page.waitForTimeout(600);
+  out.push('…an earlier month opens: ' + (CALLS.my_streak_month?.p_month && CALLS.my_streak_month.p_month < `${dstr(0).slice(0, 7)}-01` ? 'yes' : 'MISSING'));
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(400);
+
+  // 6 - restore, TikTok style (0272): a missed week, today only.
+  STREAK = { ...STREAK, current: 0, best: 6, at_risk: false, needed: 3, days_this_week: 0,
+    restore: { week: dstr(-7), lost: 6, restored_to: 6, until: dstr(0), allowance: 1, used: 0, left: 1 }, restores: [] };
+  await go('/member/home');
+  t = await text();
+  out.push('Today says the streak can be restored today: ' + (/Restore today/.test(t) && /Restore your 6-week streak today\./.test(t) ? 'yes' : 'MISSING'));
+  await page.getByRole('button', { name: /Your gym streak/ }).click();
+  await page.getByText('Your 6-week streak broke').waitFor({ timeout: 5000 });
+  st = await sheetText();
+  out.push('the sheet: broke, restore today, 1 of 1 left: ' + (/Restore it today or it resets tonight\. 1 of 1 left this month\./.test(st) ? 'yes' : 'MISSING'));
+  await shot('streak-restore-dark-violet');
+  await page.getByRole('button', { name: 'Restore 6 weeks' }).click();
+  await page.waitForTimeout(900);
+  st = await sheetText();
+  out.push('restoring calls restore_my_streak and the streak is back: ' + ('restore_my_streak' in CALLS && /Restored\. Your streak is 6 weeks\./.test(st) ? 'yes' : 'MISSING'));
+  out.push('…the restore is listed: ' + (/Week of .* · by you/.test(st) ? 'yes' : 'MISSING'));
+  await page.keyboard.press('Escape');
+
+  // 7 - a lapsed membership (0272): paused, and the last day to renew.
+  STREAK = { ...STREAK, current: 4, restore: null, at_risk: false, out_of_reach: false,
+    lapse: { ended_on: dstr(-10), renew_by: dstr(4), in_grace: true, grace_weeks: 2 } };
+  await go('/member/home');
+  t = await text();
+  out.push('a lapsed membership pauses it and says until when: ' + (/Paused\. Renew by /.test(t) ? 'yes' : 'MISSING'));
+
+  // 8 - light mode and a non-violet gym (blue/sky): the restore and the calendar.
+  STREAK = { ...STREAK, lapse: null, restore: { week: dstr(-7), lost: 6, restored_to: 6, until: dstr(0), allowance: 2, used: 1, left: 1 } };
+  for (const [mode, accent] of [['light', 'violet'], ['dark', 'blue'], ['light', 'blue']]) {
+    MODE = mode; ACCENT = accent;
+    APP = [{ gym_id: 'gym-1', gym_name: 'Core Fitness Lab', slug: 'lab', short_name: 'Lab', logo_url: null, accent, accent_action: accent === 'blue' ? 'sky' : null,
+      points_name: null, points_name_short: null, welcome_message: null, tagline: null, vocabulary: null, modules: {} }];
+    await page.emulateMedia({ colorScheme: mode });
+    await go('/member/home');
+    await page.getByRole('button', { name: /Your gym streak/ }).click();
+    await page.locator('[data-streak-calendar]').waitFor({ timeout: 5000 });
+    await page.waitForTimeout(700);
+    const fill = await page.locator('.streak-cal__day.is-checkin').first().evaluate((el) => ({ bg: getComputedStyle(el).backgroundColor, fg: getComputedStyle(el).color }));
+    const solid = fill.fg === 'rgb(255, 255, 255)' && !fill.bg.endsWith(', 0)') && fill.bg !== 'transparent';
+    out.push(`${mode} / ${accent}: a check-in day is a solid fill with white words: ` + (solid ? fill.bg : 'MISSING ' + JSON.stringify(fill)));
+    out.push(`${mode} / ${accent}: the page is in that mode: ` + ((await page.evaluate(() => document.documentElement.dataset.mode)) === mode ? 'yes' : 'MISSING'));
+    await shot(`streak-restore-${mode}-${accent}`);
+    await page.locator('[data-streak-calendar]').scrollIntoViewIfNeeded();
+    await shot(`streak-calendar-${mode}-${accent}`);
+  }
+  MODE = 'dark'; ACCENT = 'violet'; APP = null;
+  await page.emulateMedia({ colorScheme: 'dark' });
+
+  // 9 - Streaks switched off at this gym (0272): nothing drawn, even with a card.
+  APP = [{ gym_id: 'gym-1', gym_name: 'Core Fitness Lab', slug: 'lab', short_name: 'Lab', logo_url: null, accent: 'violet', accent_action: null,
+    points_name: null, points_name_short: null, welcome_message: null, tagline: null, vocabulary: null, modules: { streaks: false } }];
+  await go('/member/home');
+  out.push('Streaks off: no line on Today: ' + ((await page.locator('[data-streak-line]').count()) === 0 ? 'nothing drawn' : 'MISSING'));
+  APP = null;
 
   // 4 - no streak here (Progress switched off, or before 0151): nothing drawn.
   STREAK = null;

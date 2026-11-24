@@ -42,7 +42,9 @@ export type FeatureKey =
   // 0246: the gym's one group chat; off unless the gym turns it on.
   | 'gym_chat'
   // 0259: time slots and a crowd limit; off unless the gym turns it on.
-  | 'slots';
+  | 'slots'
+  // 0272: streaks, a child of Progress; on unless the gym turns it off.
+  | 'streaks';
 
 /**
  * What this gym calls its people and its sessions (0114).
@@ -169,7 +171,7 @@ export function moduleOn(app: GymApp | null, key: FeatureKey | undefined): boole
 export const PARENT: Partial<Record<FeatureKey, FeatureKey>> = {
   shop: 'front_desk', requests: 'front_desk', chat: 'coaching', rooms: 'coaching',
   programs: 'progress', photos: 'progress', points: 'engagement',
-  quests: 'engagement', referrals: 'engagement', events: 'push',
+  quests: 'engagement', referrals: 'engagement', events: 'push', streaks: 'progress',
 };
 
 /** The gym's word for its points, ready to drop into a sentence. */

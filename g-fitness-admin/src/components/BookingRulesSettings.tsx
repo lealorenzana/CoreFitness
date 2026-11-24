@@ -138,7 +138,7 @@ export default function BookingRulesSettings() {
         <p className="text-xs" style={muted}>A week that cannot be booked (full, a clash, over the plan's limit) is listed with the reason — never skipped quietly. Stopping a repeat keeps the weeks already booked.</p>
       </section>
 
-      <section className="space-y-4" data-rules-late>
+      <section className="space-y-4" data-rules-late data-focus="late-cancels">
         <h3 className="flex items-center gap-2 text-base font-semibold" style={strong}><Clock3 size={16} />Late cancels</h3>
         <p className="text-xs" style={muted}>How close to the start a member may still cancel in the app. 0 means until it starts — nothing is late.</p>
         <div className="grid gap-3 sm:grid-cols-3">

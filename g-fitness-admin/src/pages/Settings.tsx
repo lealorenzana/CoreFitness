@@ -4,13 +4,16 @@ import DeleteAccount from '../components/DeleteAccount';
 import { setAccountStatus } from '../lib/api/accountEvents';
 import { Component, useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import './attendance/att.css';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import PreferencesNav, { type PreferenceItem } from '../components/PreferencesNav';
+import './preferences.css';
 import WaiverTab from '../components/WaiverTab';
 import HouseRulesTab from '../components/HouseRulesTab';
 import BookingApproval from '../components/BookingApproval';
 import CoachingSettings from '../components/CoachingSettings';
 import GymLocationPicker from '../components/GymLocationPicker';
 import DayPassSettings from '../components/DayPassSettings';
+import StreakSettings from '../components/StreakSettings';
 import DoorSettings from '../components/DoorSettings';
 import WalkInGuide from '../components/WalkInGuide';
 import Button from '../components/ui/Button';
@@ -18,7 +21,7 @@ import { getGymContext } from '../lib/gymContext';
 import Avatar from '../components/ui/Avatar';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import TimePicker from '../components/ui/TimePicker';
-import { Download, User, Shield, Building2, UserPlus, Eye, EyeOff, Camera, Trash2, Check, Banknote, FileSignature, ScrollText, Smartphone, CalendarCheck, Handshake, Footprints, Clock, DoorOpen, Tag, Tags, Search, ArrowUpRight, Palette, Phone, ListChecks, CircleCheck, CircleDashed, type LucideIcon } from 'lucide-react';
+import { Download, User, Shield, Building2, UserPlus, Eye, EyeOff, Camera, Trash2, Check, Banknote, FileSignature, ScrollText, Smartphone, CalendarCheck, Handshake, Footprints, Clock, DoorOpen, Tag, Tags, ArrowUpRight, Flame, Palette, Phone, ListChecks, CircleCheck, CircleDashed, type LucideIcon } from 'lucide-react';
 import OnlinePaymentsTab from '../components/OnlinePaymentsTab';
 import { showToast } from '../utils/toast';
 import {
@@ -67,7 +70,7 @@ import SkelRows from '../components/ui/SkelRows';
  * nothing. They are gone rather than left as buttons that appear to work.
  */
 
-type TabId = 'export' | 'profile' | 'gym' | 'hours' | 'checkin' | 'bookings' | 'slots' | 'coaching' | 'walk-ins' | 'refunds' | 'payments' | 'waiver' | 'house-rules' | 'security' | 'staff';
+type TabId = 'export' | 'profile' | 'gym' | 'hours' | 'checkin' | 'bookings' | 'slots' | 'coaching' | 'walk-ins' | 'refunds' | 'streaks' | 'payments' | 'waiver' | 'house-rules' | 'security' | 'staff';
 
 const VIOLET = 'var(--color-primary)';
 const TEXT_MUTED = 'var(--color-text-muted)';
@@ -92,6 +95,7 @@ const SECTIONS: Section[] = [
   { id: 'coaching', label: 'Personal training', icon: Handshake, words: ['coach', 'trainer', '1-on-1', 'price'] },
   { id: 'walk-ins', label: 'Walk-ins', icon: Footprints, words: ['day pass', 'guest', 'visit pack'] },
   { id: 'refunds', label: 'Refunds', icon: Banknote, words: ['refund', 'cancel', 'fee'] },
+  { id: 'streaks', label: 'Streaks', icon: Flame, words: ['streak', 'restore', 'grace', 'weeks'] },
   { id: 'payments', label: 'Online payments', icon: Smartphone, words: ['gcash', 'maya', 'qr', 'bank', 'pay'] },
   { href: '/membership-plans', label: 'Plans', icon: Tag, words: ['plan', 'price', 'membership'] },
   { group: 'Team and you', label: '', icon: Building2, words: [] },
@@ -101,6 +105,13 @@ const SECTIONS: Section[] = [
   { id: 'export', label: 'Export your data', icon: Download, words: ['export', 'download', 'excel', 'csv', 'pdf', 'json', 'backup', 'data', 'spreadsheet'] },
 ];
 const TAB_IDS = SECTIONS.filter((s) => s.id).map((s) => s.id as TabId);
+const SETTINGS_ITEMS: PreferenceItem[] = [];
+let settingsGroup = '';
+for (const section of SECTIONS) {
+  if (section.group) settingsGroup = section.group;
+  else SETTINGS_ITEMS.push({ id: section.id ?? section.href!, label: section.label, icon: section.icon, group: settingsGroup, words: section.words, href: section.href });
+}
+
 
 /** "05:00:00" → "5:00 AM". */
 const clock = (t: string) => {
@@ -133,8 +144,8 @@ async function loadSetup(): Promise<{ pinned: boolean | null; waiver: boolean | 
 }
 
 /**
- * Every section is on the page at once (one scrolling page, 2026-11-23): one that fails says so in its own place
- * and the rest of Settings stays usable, as when each section was a tab of its own.
+ * Each category keeps its own error boundary. Hidden categories stay mounted
+ * so navigating between them preserves unfinished edits.
  */
 class SectionGuard extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
@@ -150,31 +161,25 @@ class SectionGuard extends Component<{ children: ReactNode }, { failed: boolean 
 export default function Settings() {
   /** Bumped when a gym style is applied, so Who approves bookings reads the new choice (0256). */
   const [styleTick, setStyleTick] = useState(0);
-  // `?tab=refunds` opens that tab — the setup wizard's last step links straight to each one.
-  const [activeTab, setActiveTab] = useState<TabId>(() => {
-    const asked = new URLSearchParams(window.location.search).get('tab');
-    return TAB_IDS.includes(asked as TabId) ? (asked as TabId) : 'gym';
-  });
+  const [params, setParams] = useSearchParams();
+  const requested = params.get('tab') as TabId;
+  const activeTab = TAB_IDS.includes(requested) ? requested : 'gym';
   const [loading, setLoading] = useState(true);
-  /** One scrolling page (owner, 2026-11-23, after Discord's settings): the list follows what is on screen. */
   const mainRef = useRef<HTMLDivElement>(null);
-  const go = (id: TabId) => document.getElementById(`st-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const go = (id: TabId) => setParams((previous) => {
+    const next = new URLSearchParams(previous);
+    next.set('tab', id);
+    next.delete('focus');
+    return next;
+  });
   useEffect(() => {
-    const root = mainRef.current;
-    if (!root) return;
-    const spy = () => {
-      const line = root.getBoundingClientRect().top + 96;
-      let cur: string | null = null;
-      root.querySelectorAll<HTMLElement>('[data-ya-sec]').forEach((el) => { if (el.getBoundingClientRect().top <= line) cur = el.dataset.yaSec ?? null; });
-      if (root.scrollTop + root.clientHeight >= root.scrollHeight - 4) cur = root.querySelector<HTMLElement>('[data-ya-sec]:last-of-type')?.dataset.yaSec ?? cur;
-      if (cur) setActiveTab(cur as TabId);
-    };
-    root.addEventListener('scroll', spy, { passive: true });
-    // ?tab=refunds (the setup wizard's links) lands on that section.
-    if (activeTab !== 'gym') requestAnimationFrame(() => document.getElementById(`st-${activeTab}`)?.scrollIntoView({ block: 'start' }));
-    return () => root.removeEventListener('scroll', spy);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading]);
+    mainRef.current?.scrollTo({ top: 0 });
+    // Leaflet may have mounted in a hidden category when following a deep link.
+    if (activeTab === 'gym') {
+      const frame = requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
+      return () => cancelAnimationFrame(frame);
+    }
+  }, [activeTab, loading]);
   const [saving, setSaving] = useState(false);
 
   const [me, setMe] = useState<ProfileRow | null>(null);
@@ -200,7 +205,6 @@ export default function Settings() {
   /** Who last changed the gym information, and when — already stored, never shown. */
   const [gymAudit, setGymAudit] = useState<{ at: string; by: string | null } | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [search, setSearch] = useState('');
   /** The set-up checklist's facts that live outside gym_settings; null = could not be read, and the line is left out. */
   const [setup, setSetup] = useState<{ pinned: boolean | null; waiver: boolean | null; plans: boolean | null }>({ pinned: null, waiver: null, plans: null });
 
@@ -422,8 +426,6 @@ export default function Settings() {
     return { open, line: open ? `closes ${clock(gymForm.closing_time)}` : `opens ${clock(gymForm.opening_time)}` };
   })();
 
-  const q = search.trim().toLowerCase();
-  const matches = (s: Section) => !q || s.label.toLowerCase().includes(q) || s.words.some((w) => w.includes(q));
   const head = (title: string, sub: string, pill?: ReactNode) => (
     <div className="a-ct" style={{ alignItems: 'flex-start' }}>
       <div><h3 style={{ fontSize: 16 }}>{title}</h3><div className="a-sub" style={{ marginTop: 2, whiteSpace: 'normal' }}>{sub}</div></div>{pill}
@@ -431,43 +433,21 @@ export default function Settings() {
   );
 
   return (
-    <div className="att" data-settings>
-      <div className="a-head">
-        <div className="min-w-0"><h1>Settings</h1><p>How your gym works: every rule members meet comes from here</p></div>
-        <label className="a-input sm" style={{ marginLeft: 'auto', width: 320 }}>
-          <Search size={14} />
-          {/* type=search + autocomplete off: Chrome took this box for the username beside Security's password fields. */}
-          <input type="search" name="cf-settings-search" autoComplete="off" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search settings: “refund”, “hours”, “waiver”…" aria-label="Search settings"
-            onKeyDown={(e) => { if (e.key === 'Enter') { const first = SECTIONS.find((s) => s.id && matches(s)); if (first?.id) { go(first.id); setSearch(''); } } }} />
-        </label>
-      </div>
-
-      <div className="a-grid" style={{ gridTemplateColumns: '230px minmax(0, 1fr) 320px', flex: 1, minHeight: 0 }}>
-        <div className="a-card a-scroll" style={{ padding: 10 }}>
-          <nav className="a-sn" aria-label="Settings sections">
-            {SECTIONS.filter((s) => s.group || matches(s)).map((s) => s.group
-              ? <div key={s.group} className="g">{s.group}</div>
-              : s.href
-                ? <Link key={s.label} to={s.href} className="a-btn ghost" style={{ justifyContent: 'flex-start', border: 0, padding: '8px 10px', color: 'var(--a-text2)', fontWeight: 500, fontSize: 12.5 }}>
-                    <s.icon size={16} />{s.label}<ArrowUpRight size={13} style={{ marginLeft: 'auto' }} /></Link>
-                : (
-                  <button key={s.id} type="button" className={activeTab === s.id ? 'on' : ''} aria-current={activeTab === s.id ? 'page' : undefined}
-                    onClick={() => { go(s.id!); setSearch(''); }}>
-                    <s.icon size={16} />{s.label}
-                    {s.id === 'gym' && infoMissing.length > 0 && <em>{infoMissing.length} to fill</em>}
-                  </button>
-                ))}
-            {q && !SECTIONS.some((s) => !s.group && matches(s)) && <p className="a-sub" style={{ padding: '8px 10px' }}>Nothing matches “{search.trim()}”.</p>}
-          </nav>
-        </div>
-
-        <div className="a-card a-scroll st-main" ref={mainRef}>
+    <div className="att preferences" data-settings>
+      <header className="preferences-header">
+        <div><h1>Settings</h1><p>Your gym, your team, and the way things work.</p></div>
+        <Link to="/gym-app" className="preferences-header-link"><Palette size={14} />Customize your app<ArrowUpRight size={13} /></Link>
+      </header>
+      <div className="preferences-layout">
+        <PreferencesNav items={SETTINGS_ITEMS} active={activeTab} onSelect={(id) => go(id as TabId)} label="Settings sections"
+          footer={<><p>Colours, words, and member features</p><Link to="/gym-app">Live on Your app<ArrowUpRight size={12} /></Link></>} />
+        <div className="preferences-content st-main" ref={mainRef}>
           {loading ? <SkelRows label="Loading…" /> : (
             <>
-              <section className="st-sec" data-ya-sec="gym" id="st-gym"><SectionGuard>{(
+              <section className="st-sec" data-ya-sec="gym" id="st-gym" hidden={activeTab !== 'gym'}><SectionGuard>{(
                 <>
                   {head('Gym information', 'Shown on the sign-up page, receipts, the legal pages and the gym map',
-                    infoMissing.length > 0 ? <span className="a-pill a">{infoMissing.length} to fill</span> : <span className="a-pill v">complete</span>)}
+                    <span className="settings-gym-status">{infoMissing.length > 0 ? `${infoMissing.length} ${infoMissing.length === 1 ? 'detail' : 'details'} to complete` : 'Gym details complete'}</span>)}
                   <div className="a-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                     <div className="a-fld"><label htmlFor="g-name">Gym name</label>
                       <input id="g-name" className="a-in" value={gymForm.gym_name} onChange={(e) => setGymForm({ ...gymForm, gym_name: e.target.value })} /></div>
@@ -482,7 +462,7 @@ export default function Settings() {
                     <div className="a-fld" style={{ gridColumn: '1 / -1' }}><label htmlFor="g-tagline">Tagline <span style={{ fontWeight: 500 }}>· the small line under the name, blank hides it</span></label>
                       <input id="g-tagline" className="a-in" value={gymForm.tagline} placeholder={DEFAULT_BRANDING.tagline ?? ''} onChange={(e) => setGymForm({ ...gymForm, tagline: e.target.value })} /></div>
                   </div>
-                  <div className="a-grid" style={{ gridTemplateColumns: '220px minmax(0, 1fr)', gap: 14, marginTop: 12, alignItems: 'start' }}>
+                  <div className="settings-logo-row">
                     <ImageField value={gymForm.logo_url} onChange={(logo_url) => setGymForm({ ...gymForm, logo_url })} kind="logos" label="Logo" aspect={1}
                       hint="Square works best: it shows in a circle." />
                     <div className="a-hint"><Palette size={15} /><span>The two colours in your members' app live on <Link to="/gym-app" style={{ color: 'var(--a-p300)' }}>Your app</Link>, alongside your words and what you run.</span></div>
@@ -500,10 +480,35 @@ export default function Settings() {
                   <button type="button" className="a-btn violet" style={{ marginTop: 14, alignSelf: 'flex-end' }} onClick={() => void handleSaveGym()} disabled={saving}>
                     <Check size={15} />{saving ? 'Saving…' : 'Save'}
                   </button>
+                  <details className="settings-overview">
+                    <summary>Member preview and setup checklist · {pct}% complete</summary>
+                    <div className="settings-overview-content">
+                      <section>
+                        <h3 className="settings-summary-title">What members see</h3>
+                        <div className="a-phcard"><b>{gymForm.gym_name || 'Your gym'}</b>
+                          {gymForm.address.trim() && <div className="a-sub">{gymForm.address}</div>}
+                          {openNow && <div className="a-sub"><span style={{ color: openNow.open ? 'var(--a-p300)' : 'var(--a-a300)' }}>{openNow.open ? 'Open now' : 'Closed now'}</span> · {openNow.line}</div>}
+                          {gymForm.phone.trim() && <div className="a-sub flex items-center gap-1"><Phone size={11} />{gymForm.phone}</div>}
+                        </div>
+                        <p className="a-sub">Shown on Today, the join page, and receipts.</p>
+                      </section>
+                      <section data-setup-checklist>
+                        <h3 className="settings-summary-title"><ListChecks size={15} />Your gym is {pct}% set up</h3>
+                        <div className="a-meter"><i style={{ width: `${pct}%` }} /></div>
+                        {checklist.map((item) => <div key={item.label} className="a-row">
+                          {item.ok ? <CircleCheck size={15} style={{ color: 'var(--a-p300)' }} /> : <CircleDashed size={15} style={{ color: 'var(--a-muted)' }} />}
+                          <div className="t"><b>{item.label}</b>{!item.ok && <small>{item.why}</small>}</div>
+                          {!item.ok && item.href && <Link to={item.href} className="a-link">Fix</Link>}
+                          {!item.ok && item.go && item.go !== activeTab && <button type="button" className="a-link" onClick={() => go(item.go!)}>Fix</button>}
+                        </div>)}
+                      </section>
+                    </div>
+                  </details>
+
                 </>
               )
               }</SectionGuard></section>
-              <section className="st-sec" data-ya-sec="hours" id="st-hours"><SectionGuard>{(
+              <section className="st-sec" data-ya-sec="hours" id="st-hours" hidden={activeTab !== 'hours'}><SectionGuard>{(
                 <>
                   {head('Hours and closed days', 'Members see whether you are open now; classes outside these hours are flagged on Schedule')}
                   <div className="a-setting">
@@ -539,7 +544,7 @@ export default function Settings() {
                 </>
               )
               }</SectionGuard></section>
-              <section className="st-sec" data-ya-sec="checkin" id="st-checkin"><SectionGuard>{(
+              <section className="st-sec" data-ya-sec="checkin" id="st-checkin" hidden={activeTab !== 'checkin'}><SectionGuard>{(
                 <>
                   {head('Checking in', 'How members and coaches get in, and what a check-in can be tagged with')}
                   <div style={{ margin: '0 0 10px' }}><PageGuide id="door-checkin" /> <PageGuide id="kiosk" label="Set up the kiosk" /></div>
@@ -566,20 +571,20 @@ export default function Settings() {
                 </>
               )
               }</SectionGuard></section>
-              <section className="st-sec" data-ya-sec="slots" id="st-slots"><SectionGuard>{<>{head('Time slots', 'Members book a time to come in, and you cap how many train at once: every rule is yours')}<TimeSlotsSettings /></>
+              <section className="st-sec" data-ya-sec="slots" id="st-slots" hidden={activeTab !== 'slots'}><SectionGuard>{<>{head('Time slots', 'Members book a time to come in, and you cap how many train at once: every rule is yours')}<TimeSlotsSettings /></>
               }</SectionGuard></section>
-              <section className="st-sec" data-ya-sec="bookings" id="st-bookings"><SectionGuard>{<>
+              <section className="st-sec" data-ya-sec="bookings" id="st-bookings" hidden={activeTab !== 'bookings'}><SectionGuard>{<>
                 {head('How your gym works', 'Your gym’s style sets the booking and coaching settings below: you can still change each one')}
                 <GymStyles onApplied={() => setStyleTick((n) => n + 1)} />
                 <div style={{ height: 22 }} />
-                {head('Bookings', 'Who approves bookings: for group classes and 1-on-1 sessions separately')}<BookingApproval key={styleTick} />
+                {head('Bookings', 'Who approves bookings: for group classes and 1-on-1 sessions separately')}<div data-focus="booking-approval"><BookingApproval key={styleTick} /></div>
                 <div style={{ height: 22 }} />
                 {head('Repeats, late cancels and no-shows', 'Your rules for weekly bookings, cancelling close to the start, and members who do not come')}<BookingRulesSettings />
               </>
               }</SectionGuard></section>
-              <section className="st-sec" data-ya-sec="coaching" id="st-coaching"><SectionGuard>{<>{head('Personal training', 'How members get a coach, for how long, and who is paid')}<CoachingSettings /></>
+              <section className="st-sec" data-ya-sec="coaching" id="st-coaching" hidden={activeTab !== 'coaching'}><SectionGuard>{<>{head('Personal training', 'How members get a coach, for how long, and who is paid')}<CoachingSettings /></>
               }</SectionGuard></section>
-              <section className="st-sec" data-ya-sec="walk-ins" id="st-walk-ins"><SectionGuard>{(
+              <section className="st-sec" data-ya-sec="walk-ins" id="st-walk-ins" hidden={activeTab !== 'walk-ins'}><SectionGuard>{(
                 <>
                   {head('Walk-ins', 'For people without a membership: paid in cash at the desk (Attendance → Walk-ins) or, if you take payments in the app, bought by the member themselves')}
                   <div style={{ margin: '0 0 10px' }}><PageGuide id="day-pass" /></div>
@@ -588,19 +593,20 @@ export default function Settings() {
                 </>
               )
               }</SectionGuard></section>
-              <section className="st-sec" data-ya-sec="refunds" id="st-refunds"><SectionGuard>{<RefundPolicyTab />
+              <section className="st-sec" data-ya-sec="refunds" id="st-refunds" hidden={activeTab !== 'refunds'}><SectionGuard>{<>{head('Refunds', 'Set the minimum refund and any documented processing fee.')}<RefundPolicyTab /></>
               }</SectionGuard></section>
-              <section className="st-sec" data-ya-sec="payments" id="st-payments"><SectionGuard>{<OnlinePaymentsTab />
+              <section className="st-sec" data-ya-sec="streaks" id="st-streaks" hidden={activeTab !== 'streaks'}><SectionGuard>{<>{head('Streaks', 'Weeks in a row a member reaches their own target')}<StreakSettings /></>}</SectionGuard></section>
+              <section className="st-sec" data-ya-sec="payments" id="st-payments" hidden={activeTab !== 'payments'}><SectionGuard>{<>{head('Online payments', 'Manage how members pay your gym online.')}<OnlinePaymentsTab /></>
               }</SectionGuard></section>
-              <section className="st-sec" data-ya-sec="waiver" id="st-waiver"><SectionGuard>{<><div style={{ margin: '0 0 10px' }}><PageGuide id="waiver" /></div><WaiverTab /></>
+              <section className="st-sec" data-ya-sec="waiver" id="st-waiver" hidden={activeTab !== 'waiver'}><SectionGuard>{<><div style={{ margin: '0 0 10px' }}><PageGuide id="waiver" /></div><WaiverTab /></>
               }</SectionGuard></section>
-              <section className="st-sec" data-ya-sec="house-rules" id="st-house-rules"><SectionGuard>{<HouseRulesTab />
+              <section className="st-sec" data-ya-sec="house-rules" id="st-house-rules" hidden={activeTab !== 'house-rules'}><SectionGuard>{<HouseRulesTab />
               }</SectionGuard></section>
-              <section className="st-sec" data-ya-sec="staff" id="st-staff"><SectionGuard>{(
+              <section className="st-sec" data-ya-sec="staff" id="st-staff" hidden={activeTab !== 'staff'}><SectionGuard>{(
                 <StaffAccounts accounts={accounts} meId={me?.id ?? null} onStatus={(account, next) => setStaffAction({ account, next })} onChanged={load} />
               )
               }</SectionGuard></section>
-              <section className="st-sec" data-ya-sec="profile" id="st-profile"><SectionGuard>{(
+              <section className="st-sec" data-ya-sec="profile" id="st-profile" hidden={activeTab !== 'profile'}><SectionGuard>{(
                 <>
                   {head('My profile', `Signed in as ${realEmail(me?.email) ?? (me?.username ? `@${me.username}` : '')} · ${me?.role ?? ''}`)}
                   <div className="flex items-center gap-4" style={{ marginBottom: 12 }}>
@@ -633,7 +639,7 @@ export default function Settings() {
                 </>
               )
               }</SectionGuard></section>
-              <section className="st-sec" data-ya-sec="security" id="st-security"><SectionGuard>{(
+              <section className="st-sec" data-ya-sec="security" id="st-security" hidden={activeTab !== 'security'}><SectionGuard>{(
                 <>
                   {head('Security', 'Changes your real sign-in password')}
                   <div className="a-grid" style={{ gap: 10, maxWidth: 420 }}>
@@ -667,7 +673,7 @@ export default function Settings() {
               )
               }</SectionGuard></section>
               {/* Export your data (owner, 2026-11-23): choose the records and the file, then download them. */}
-              <section className="st-sec" data-ya-sec="export" id="st-export"><SectionGuard>{<>
+              <section className="st-sec" data-ya-sec="export" id="st-export" hidden={activeTab !== 'export'}><SectionGuard>{<>
                 {head('Export your data', 'Your gym’s records, in the file you choose: choose what goes, then download it')}
                 <ExportData />
               </>}</SectionGuard></section>
@@ -675,34 +681,6 @@ export default function Settings() {
           )}
         </div>
 
-        {(
-          <div className="a-grid a-scroll" style={{ alignContent: 'start' }}>
-            <div className="a-card glow">
-              <div className="a-ct"><h3><Smartphone size={16} />Members see</h3></div>
-              <div className="a-phcard">
-                <b>{gymForm.gym_name || 'Your gym'}</b>
-                {gymForm.address.trim() && <div className="a-sub">{gymForm.address}</div>}
-                {openNow && <div className="a-sub" style={{ marginTop: 6 }}><span style={{ color: openNow.open ? 'var(--a-p300)' : 'var(--a-a300)' }}>{openNow.open ? 'Open now' : 'Closed now'}</span> · {openNow.line}</div>}
-                {gymForm.phone.trim() && <div className="a-sub flex items-center gap-1" style={{ marginTop: 6 }}><Phone size={11} /> {gymForm.phone}</div>}
-              </div>
-              <div className="a-sub" style={{ marginTop: 8 }}>On Today, the join page, every receipt, and the Terms and Privacy contact lines.</div>
-            </div>
-            <div className="a-card" data-setup-checklist>
-              <div className="a-ct"><h3><ListChecks size={16} />Your gym is {pct}% set up</h3></div>
-              <div className="a-meter"><i style={{ width: `${pct}%` }} /></div>
-              <div style={{ marginTop: 6 }}>
-                {checklist.map((c) => (
-                  <div key={c.label} className="a-row">
-                    {c.ok ? <CircleCheck size={16} style={{ color: 'var(--a-p300)' }} /> : <CircleDashed size={16} style={{ color: 'var(--a-a300)' }} />}
-                    <div className="t"><b>{c.label}</b>{!c.ok && <small>{c.why}</small>}</div>
-                    {!c.ok && c.href && <Link to={c.href} className="a-link">Fix</Link>}
-                    {!c.ok && c.go && c.go !== activeTab && <button type="button" className="a-link" onClick={() => go(c.go!)}>Fix</button>}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       <ConfirmDialog

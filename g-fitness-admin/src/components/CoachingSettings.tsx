@@ -60,7 +60,7 @@ export default function CoachingSettings() {
 
   return (
     <div className="space-y-6" data-coaching-settings>
-      <div>
+      <div data-focus="coach-modes">
         <p className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>How members get a coach</p>
         <p className="text-xs mt-0.5" style={muted}>Turn on as many as your gym does.</p>
         <div className="mt-2 grid gap-2 sm:grid-cols-2">

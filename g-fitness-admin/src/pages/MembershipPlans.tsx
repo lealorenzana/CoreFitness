@@ -1,13 +1,14 @@
 import PageGuide from '../components/guides/PageGuide';
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import {
-  Plus, Check, X, Users, Tag, LockOpen, Archive, Copy, GripVertical, Smartphone, RotateCcw, Trash2, Lock, Bell,
+  Plus, Check, X, Users, Tag, LockOpen, Archive, Copy, GripVertical, Smartphone, RotateCcw, Trash2, Bell,
 } from 'lucide-react';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import PlanFeatureMatrix from '../components/PlanFeatureMatrix';
 import PlanSwitchRule from '../components/PlanSwitchRule';
 import { Av, Pager } from './attendance/parts';
 import './attendance/att.css';
+import './plans.css';
 import { showToast } from '../utils/toast';
 import { recordReason, REASON_FIELD } from '../lib/api/reasons';
 import ReasonDialog from '../components/ui/ReasonDialog';
@@ -39,7 +40,7 @@ function perWord(p: Pick<MembershipPlanRow, 'tier' | 'duration_days'>): string {
   if (p.tier === 'freemium') return `· ${lengthWord(p.duration_days)}, then the free plan`;
   return `/ ${lengthWord(p.duration_days).replace(/^1 /, '')}`;
 }
-const KIND: Record<PlanTier, [string, string]> = { free: ['Free', ''], freemium: ['Trial', 'a'], premium: ['Paid', 'v'], pro: ['Pro (retired)', 'v'] };
+const KIND: Record<PlanTier, [string, string]> = { free: ['Free', ''], freemium: ['Trial', 'a'], premium: ['Paid', 'v'], pro: ['Paid', 'v'] };
 const peso = (n: number) => `₱${Math.round(n).toLocaleString()}`;
 const monthYear = (d: string | null) => (d ? new Date(`${d.slice(0, 10)}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', year: 'numeric' }) : '—');
 const shortDay = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
@@ -182,21 +183,7 @@ export default function MembershipPlans() {
   /** One scrolling column (owner, 2026-11-23, after Discord's settings): the open plan's parts follow the scroll. */
   const mainRef = useRef<HTMLDivElement>(null);
   const [part, setPart] = useState<'plan' | 'who' | 'switch'>('plan');
-  const goPart = (k: 'plan' | 'who' | 'switch') => document.getElementById(`pl-${k}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  useEffect(() => {
-    const root = mainRef.current;
-    if (!root) return;
-    const spy = () => {
-      const line = root.getBoundingClientRect().top + 96;
-      let cur = 'plan';
-      root.querySelectorAll<HTMLElement>('[data-ya-sec]').forEach((el) => { if (el.getBoundingClientRect().top <= line) cur = el.dataset.yaSec ?? cur; });
-      if (root.scrollTop + root.clientHeight >= root.scrollHeight - 4) cur = 'switch';
-      setPart(cur as 'plan' | 'who' | 'switch');
-    };
-    root.addEventListener('scroll', spy, { passive: true });
-    return () => root.removeEventListener('scroll', spy);
-  }, [view, loading]);
-  const openPlan = (d: Draft) => { setDraft(d); mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const openPlan = (d: Draft) => { setDraft(d); setPart('plan'); mainRef.current?.scrollTo({ top: 0 }); };
 
   const remind = async (m: MembershipWithPlan, name: string) => {
     const plan = planOf.get(m.plan_id);
@@ -298,12 +285,12 @@ export default function MembershipPlans() {
     <div className="att" data-plans>
       <div className="a-head">
         <div className="min-w-0"><h1>Plans</h1><p>What you sell, what each plan unlocks in the app, and who is on it</p></div>
-        <PageGuide id="plans" />
         <nav className="a-tabs" aria-label="Plans views" data-rd-tabs style={{ marginLeft: 'auto' }}>
           <button type="button" className={view === 'sell' ? 'on' : ''} onClick={() => setView('sell')}><Tag size={14} />Plans on sale <em>{onSale.length}</em></button>
           <button type="button" className={view === 'unlock' ? 'on' : ''} onClick={() => setView('unlock')} data-view="unlock"><LockOpen size={14} />What each unlocks</button>
           <button type="button" className={view === 'retired' ? 'on' : ''} onClick={() => setView('retired')} data-view="retired"><Archive size={14} />Retired <em>{retired.length}</em></button>
         </nav>
+        <PageGuide id="plans" />
       </div>
 
       {failed && <div className="a-hint" style={{ flex: 'none' }}><X size={14} /><span>The plans could not be loaded: a connection problem, not an empty catalogue. Reload to try again.</span></div>}
@@ -361,22 +348,9 @@ export default function MembershipPlans() {
                       {p.price_unset
                         ? <small style={{ color: 'var(--a-a300)' }} data-price-unset>Set a price · members do not see it yet</small>
                         : <small>{peso(p.price)} {perWord(p)}</small>}
-                      {(!p.can_book_pt || !p.can_book_classes) && (
-                        <small className="inline-flex items-center" style={{ gap: 5 }}><Lock size={11} />{[!p.can_book_pt && 'no 1-on-1 coaching', !p.can_book_classes && 'no class booking'].filter(Boolean).join(' · ')}</small>)}
-                      <small>
-                        {n} on it{(total[p.id] ?? 0) > n ? ` · ${total[p.id]} any status` : ''}
-                        {p.price > 0 && n > 0 && p.duration_days ? ` · ${peso((p.price * 30 * n) / p.duration_days)} a month` : ''}
-                        {ending > 0 && <span style={{ color: 'var(--a-p300)' }}> · {ending} end this week</span>}
-                      </small>
+                      <small>{n} member{n === 1 ? '' : 's'}{ending > 0 && <span style={{ color: 'var(--a-a300)' }}> · {ending} renew this week</span>}</small>
                     </span>
                   </button>
-                  {on && (
-                    <div className="ya-sub" aria-label={`${p.name} parts`}>
-                      {([['plan', 'The plan'], ['who', 'Who is on it'], ['switch', 'Switching online']] as const).map(([k, l]) => (
-                        <button key={k} type="button" className={part === k ? 'on' : ''} onClick={() => goPart(k)}>{l}</button>
-                      ))}
-                    </div>
-                  )}
                 </div>
               );
             })}
@@ -385,16 +359,27 @@ export default function MembershipPlans() {
             </button>
           </nav>
 
-          <div className="ya-main" ref={mainRef}>
+          <div className="ya-main pl-main" ref={mainRef}>
             {draft && (
-              <section className="ya-sec ya-full v3-sec" data-ya-sec="plan" id="pl-plan" data-plan-editor>
-                <div className="v3-sec-h">
-                  <h2 className="ya-h">{draft.id ? draft.name || 'Untitled plan' : 'New plan'}</h2>
-                  {draft.id && <button type="button" className="a-btn ghost sm" onClick={() => setDraft({ ...draft, id: null, name: `${draft.name} copy`, isActive: true })}><Copy size={13} />Copy</button>}
+              <div className="pl-top" data-plan-top>
+                <div className="pl-title">
+                  <h2>{draft.id ? draft.name || 'Untitled plan' : 'New plan'}</h2>
+                  {draft.id && <span className={`a-pill ${kindTone(draft.tier)}`}>{KIND[draft.tier][0]}</span>}
+                  {draft.id && <button type="button" className="a-btn ghost sm" style={{ marginLeft: 'auto' }} onClick={() => setDraft({ ...draft, id: null, name: `${draft.name} copy`, isActive: true })}><Copy size={13} />Copy</button>}
                 </div>
+                <div className="pl-tabs" role="tablist" aria-label="This plan">
+                  {([['plan', 'Details'], ['who', `Members${selected ? ` ${roster.length}` : ''}`], ['switch', 'Switching online']] as const).map(([k, l]) => (
+                    <button key={k} type="button" role="tab" aria-selected={part === k} className={part === k ? 'on' : ''} onClick={() => setPart(k)} data-plan-part={k}>{l}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {draft && part === 'plan' && (
+              <section className="ya-sec ya-full v3-sec" data-ya-sec="plan" id="pl-plan" data-plan-editor>
                 <p className="a-sub v3-lead">{draft.id ? 'What members read on Renew, its length and what it lets them book.' : 'Name it, price it and write the lines members read when choosing.'}</p>
 
-                <div className="v3-form">
+                <div className="v3-form pl-form">
+                  <div className="pl-box"><div className="pl-box-h">Basics</div>
                   <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) 160px minmax(0, 1fr)', gap: 12 }}>
                     <div className="a-fld"><label htmlFor="plan-name">Name members see</label>
                       <input id="plan-name" className="a-in" value={draft.name} onChange={(e) => set({ name: e.target.value })} placeholder="e.g. Premium" /></div>
@@ -410,24 +395,31 @@ export default function MembershipPlans() {
                     </div>
                   </div>
                   {draft.tier === 'freemium' && <div className="a-sub" style={{ marginTop: 6 }}>A trial is one per member; when it ends they move to the free plan.</div>}
+                  </div>
 
-                  <div className="v3-row-h">Length</div>
+                  <div className="pl-box"><div className="pl-box-h">How long it lasts</div>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }} role="group" aria-label="Length">
                     {LENGTHS.map(([d, l]) => <button key={l} type="button" className={`a-chip ${draft.days === d ? 'on' : ''}`} aria-pressed={draft.days === d} onClick={() => set({ days: d })}>{l}</button>)}
                     {customLength && <span className="a-chip on">{lengthWord(draft.days)}</span>}
                   </div>
+                  </div>
 
-                  <div className="v3-row-h">Booking limits <span>· enforced when a member books</span></div>
-                  {([['canBookClasses', 'classesPerWeek', 'Classes a week', 'blank = unlimited'], ['canBookPt', 'ptPerMonth', '1-on-1 sessions a month', 'with any coach']] as const).map(([flag, limit, label, hint]) => (
-                    <div key={flag} className="a-setting">
-                      <div className="t"><b>{label}</b><small>{draft[flag] ? hint : 'not on this plan: members see it locked'}</small></div>
-                      <input className="a-in" type="number" min="1" style={{ width: 70, textAlign: 'center', padding: 7 }} aria-label={`${label} limit`} disabled={!draft[flag]}
-                        value={draft[limit]} placeholder="∞" onChange={(e) => set({ [limit]: e.target.value } as Partial<Draft>)} />
+                  <div className="pl-box"><div className="pl-box-h">What it lets members book <span>· checked every time a member books</span></div>
+                  {([['canBookClasses', 'classesPerWeek', 'Classes', 'a week'], ['canBookPt', 'ptPerMonth', '1-on-1 coaching', 'a month']] as const).map(([flag, limit, label, per]) => (
+                    <div key={flag} className="pl-limit" data-limit={flag}>
                       <button type="button" className={`a-toggle ${draft[flag] ? '' : 'off'}`} aria-pressed={draft[flag]} aria-label={label} onClick={() => set({ [flag]: !draft[flag] } as Partial<Draft>)} />
+                      <div className="t"><b>{label}</b><small>{draft[flag] ? (draft[limit].trim() ? `Up to ${draft[limit]} ${per}` : `Unlimited ${per === 'a week' ? 'classes' : 'sessions'}`) : 'Not on this plan: members see it locked'}</small></div>
+                      {draft[flag] && (
+                        <label className="pl-cap">Up to
+                          <input className="a-in" type="number" min="1" aria-label={`${label} limit`} value={draft[limit]} placeholder="no limit"
+                            onChange={(e) => set({ [limit]: e.target.value } as Partial<Draft>)} />
+                          {per}</label>
+                      )}
                     </div>
                   ))}
+                  </div>
 
-                  <div className="v3-row-h">Lines on the plan card <span>· members read these</span></div>
+                  <div className="pl-box"><div className="pl-box-h">What members read <span>· the lines on the plan card in the app</span></div>
                   <div data-plan-lines>
                     {draft.lines.map((l, i) => (
                       <div key={`${i}-${l}`} className="a-row" style={{ padding: '7px 0', opacity: dragAt === i ? 0.4 : 1 }} draggable
@@ -443,11 +435,13 @@ export default function MembershipPlans() {
                     <input value={newLine} onChange={(e) => setNewLine(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addLine(); } }} onBlur={addLine}
                       placeholder="Add a line…" aria-label="Add a line" /></label>
 
-                  <div className="a-hint" style={{ marginTop: 14 }}><Smartphone size={14} />
+                  </div>
+
+                  <div className="a-hint" style={{ marginTop: 2 }}><Smartphone size={14} />
                     <span>Members see this plan as <b style={{ color: '#fff' }}>“{draft.name.trim() || 'Untitled'} · {draft.price.trim() === '' ? 'no price yet' : Number(draft.price) === 0 ? 'free' : `${peso(Number(draft.price))} ${draft.days == null ? 'once' : `a ${lengthWord(draft.days).replace(/^1 /, '')}`}`}”</b>
                       {draft.lines.length ? ` with the ${draft.lines.length === 1 ? 'line' : `${draft.lines.length} lines`} above` : ''}, on Renew in the app.</span></div>
 
-                  <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+                  <div className="pl-actions">
                     {selected && (selected.is_active
                       ? <button type="button" className="a-btn ghost" onClick={() => setToRetire(selected)} data-plan-retire><Archive size={15} />Retire</button>
                       : <button type="button" className="a-btn ghost" onClick={() => void setOnSale(selected, true)}><RotateCcw size={15} />Restore</button>)}
@@ -458,7 +452,7 @@ export default function MembershipPlans() {
               </section>
             )}
 
-            <section className="ya-sec ya-full v3-sec" data-ya-sec="who" id="pl-who" data-plan-roster>
+            {part === 'who' && <section className="ya-sec ya-full v3-sec" data-ya-sec="who" id="pl-who" data-plan-roster>
               <div className="v3-sec-h"><h2 className="ya-h">{selected ? `Who is on ${selected.name}` : 'Who is on it'}</h2>
                 <small className="a-sub">{selected ? `${roster.length} member${roster.length === 1 ? '' : 's'} · sorted by renewal` : 'a new plan has nobody yet'}</small></div>
               {roster.length === 0 ? <div className="v3-emptyart v3-emptyart-row"><img src="/art/empty-cards.webp" alt="" /><div><b>{selected ? 'Nobody is on this plan right now' : 'A new plan has nobody yet'}</b><span className="a-sub">{selected ? 'Members are put on a plan at the desk, or renew onto it in the app.' : 'Save the plan, then members can be put on it at the desk.'}</span></div></div> : (
@@ -491,14 +485,14 @@ export default function MembershipPlans() {
                   <Pager page={paged.page} pages={paged.totalPages} onPage={paged.setPage} />
                 </div>
               )}
-            </section>
+            </section>}
 
             {/* 0243: what a switch paid online mid-term does, the owner's rule for every plan. */}
-            <section className="ya-sec ya-full v3-sec" data-ya-sec="switch" id="pl-switch">
+            {part === 'switch' && <section className="ya-sec ya-full v3-sec" data-ya-sec="switch" id="pl-switch">
               <div className="v3-sec-h"><h2 className="ya-h">Switching plans online</h2></div>
               <p className="a-sub v3-lead">What happens when a member pays online for another plan before theirs ends. One rule for every plan.</p>
               <PlanSwitchRule />
-            </section>
+            </section>}
           </div>
         </div>
       )}
