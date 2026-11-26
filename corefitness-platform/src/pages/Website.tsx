@@ -39,6 +39,7 @@ const F: Record<string, Field> = {
 /** The page in order. `id` is the section's id on the site; those with one can be hidden (0261). */
 const PARTS: { id: string | null; label: string; tab: Tab; title?: Key; fixed?: string; note?: string }[] = [
   { id: null, label: 'Top of the page', tab: 'top', title: 'hero_title_1' },
+  { id: 'ad', label: 'Watch the tour (the 34 second ad)', tab: 'sections', fixed: 'A button in the top of the page that plays the ad', note: 'Hide it to take the button and the video off the site.' },
   { id: 'roles', label: 'Who uses it', tab: 'sections', title: 'roles_title' },
   { id: 'floor', label: 'Coaches band', tab: 'sections', title: 'coaches_title' },
   { id: 'how', label: 'How it works', tab: 'sections', title: 'how_title' },

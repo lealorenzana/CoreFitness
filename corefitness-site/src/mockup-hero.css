@@ -32,6 +32,20 @@
 .v2-actions{display:flex;justify-content:center;align-items:center;gap:24px;position:relative;z-index:8;margin:32px auto 0}
 .v2-primary,.v2-secondary{display:inline-flex;align-items:center;justify-content:center;gap:15px;min-height:64px;padding:16px 29px;border-radius:13px;font-size:18px;line-height:1.3;font-weight:550;text-decoration:none;transition:transform .18s var(--ease-out),background-color .18s,color .18s}
 .v2-primary{color:#1a1205;background:#f5a524}.v2-primary .icon{width:20px;height:20px}.v2-secondary{color:#fff;background:#7c3aed}
+/* Watch the tour: quieter than the two filled buttons, so registering stays the strongest action. */
+.v2-actions{flex-wrap:wrap}
+.v2-watch{display:inline-flex;align-items:center;gap:13px;min-height:64px;padding:14px 26px 14px 16px;border-radius:13px;border:1.5px solid rgb(255 255 255 / .22);background:rgb(255 255 255 / .04);color:#fff;font:inherit;font-size:18px;font-weight:550;line-height:1.3;cursor:pointer;transition:transform .18s var(--ease-out),border-color .18s,background-color .18s}
+.v2-watch-play{position:relative;width:34px;height:34px;border-radius:50%;background:#f5a524;flex:none}
+.v2-watch-play::after{content:"";position:absolute;left:13px;top:10px;border-style:solid;border-width:7px 0 7px 11px;border-color:transparent transparent transparent #1a1205}
+.v2-watch-len{font-size:14px;font-weight:450;color:#b8b0c5}
+.v2-watch:focus-visible,.v2-tour-close:focus-visible{outline:3px solid #f5a524;outline-offset:3px}
+@media(hover:hover){.v2-watch:hover{border-color:rgb(255 255 255 / .45);background:rgb(255 255 255 / .08);transform:translateY(-3px)}}
+.v2-tour{padding:0;border:0;background:transparent;width:min(1280px,calc(100vw - 48px));max-width:none;max-height:none;overflow:visible}
+.v2-tour::backdrop{background:rgb(6 4 12 / .86);backdrop-filter:blur(6px)}
+.v2-tour-frame{position:relative;border-radius:18px;overflow:hidden;background:#08060f;box-shadow:0 40px 120px rgb(124 58 237 / .35);aspect-ratio:16/9}
+.v2-tour-frame video{display:block;width:100%;height:100%;object-fit:contain;background:#08060f}
+.v2-tour-close{position:absolute;top:12px;right:12px;z-index:2;width:44px;height:44px;border-radius:50%;border:0;background:rgb(8 6 15 / .7);color:#fff;font-size:28px;line-height:1;cursor:pointer}
+@media(max-width:550px){.v2-watch{width:100%;justify-content:center}.v2-tour{width:calc(100vw - 20px)}.v2-tour-frame{border-radius:12px}}
 .v2-hero-bottom{position:relative;z-index:9;display:flex;justify-content:space-between;gap:28px;align-items:center;width:min(1270px,calc(100% - 128px));margin:36px auto 0;font-size:10px;line-height:1.8;color:#b8b0c5}
 .v2-hero-bottom>span{display:flex;gap:14px;align-items:center}.v2-hero-bottom>span i{width:3px;height:3px;border-radius:50%;background:#9f9bd1;display:inline-block}
 .v2-floor{position:relative;z-index:10}.v2-floor summary{cursor:pointer;list-style:none;padding:8px 0;font-size:11px;color:#d9dafb;display:flex;gap:12px;align-items:center}.v2-floor summary::-webkit-details-marker{display:none}.v2-floor summary>span{font-size:17px}

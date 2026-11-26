@@ -1,10 +1,39 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Icon from './Icon';
 import HeroPlan from './HeroPlan';
 
+/** The 34 second ad (output/promo/ad, Remotion). The file loads only when the player opens. */
+function TourPlayer({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  const video = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const d = dialog.current;
+    if (!d) return;
+    if (open && !d.open) {
+      d.showModal();
+      void video.current?.play().catch(() => undefined); // a blocked autoplay leaves the controls for the visitor
+    }
+    if (!open && d.open) d.close();
+    if (!open) video.current?.pause();
+  }, [open]);
+  return (
+    <dialog ref={dialog} className="v2-tour" aria-label="Core Fitness in 34 seconds" onClose={onClose}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="v2-tour-frame">
+        <button type="button" className="v2-tour-close" onClick={onClose} aria-label="Close the video">×</button>
+        {open && (
+          <video ref={video} src="/mockup-art/core-fitness-tour.mp4" poster="/mockup-art/core-fitness-tour-poster.webp"
+            controls playsInline preload="auto" width={1920} height={1080} />
+        )}
+      </div>
+    </dialog>
+  );
+}
+
 /** Only the upper section changes in this copy. All original lower-page motion stays intact. */
-export default function MockupHero() {
+export default function MockupHero({ tourHidden = false }: { tourHidden?: boolean }) {
   const hero = useRef<HTMLElement>(null);
+  const [tour, setTour] = useState(false);
   useEffect(() => {
     const element = hero.current;
     if (!element) return;
@@ -56,7 +85,13 @@ export default function MockupHero() {
       <div className="v2-actions">
         <a className="v2-primary" href="#apply"><Icon name="arrow" /> Register your gym</a>
         <a className="v2-secondary" href="#day">See a day at a gym</a>
+        {!tourHidden && (
+          <button type="button" className="v2-watch" id="ad" onClick={() => setTour(true)}>
+            <span className="v2-watch-play" aria-hidden="true" />Watch the tour <span className="v2-watch-len">0:34</span>
+          </button>
+        )}
       </div>
+      {!tourHidden && <TourPlayer open={tour} onClose={() => setTour(false)} />}
       <div className="v2-hero-bottom"><span>Cash, GCash or Maya <i /> Android and iPhone <i /> English and Filipino</span>
         <details className="v2-floor"><summary>Explore the gym floor plan <span>↗</span></summary><div className="v2-floor-content"><HeroPlan /></div></details>
       </div>

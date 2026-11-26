@@ -304,7 +304,7 @@ export default function App() {
         : token ? <><div className="wrap status-wrap"><StatusPage token={token} /></div><SiteFooter /></>
         : account ? <><div className="wrap status-wrap"><Account /></div><SiteFooter /></> : <>
 
-        <MockupHero />
+        <MockupHero tourHidden={hidden.has('ad')} />
 
         <MockupRoles roles={ROLES} hidden={hidden.has('roles')} title={tx.roles_title} />
 
