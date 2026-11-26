@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Activity, AlertTriangle, Building2, CalendarClock, ChevronRight, Download, ExternalLink, KeyRound, Plus, Search,
+  Activity, AlertTriangle, Building2, CalendarClock, Check, ChevronRight, LayoutGrid, Download, ExternalLink, KeyRound, Plus, Search,
   Sparkles, Users,
 } from 'lucide-react';
 import { downloadCsv } from '../lib/csv';
@@ -43,6 +43,16 @@ type Dialog =
   | { kind: 'add' };
 
 const PER_PAGE = 9;
+/** How the gyms are laid out (2026-11-27, the owner's File Explorer View menu). A screen preference, not a person's data. */
+type View = 'large' | 'small' | 'list' | 'details';
+const VIEWS: [View, string][] = [['large', 'Large tiles'], ['small', 'Small tiles'], ['list', 'List'], ['details', 'Details']];
+const VIEW_KEY = 'cf-platform-gyms-view';
+const readView = (): { view: View; pane: boolean } => {
+  try {
+    const v = JSON.parse(localStorage.getItem(VIEW_KEY) ?? '{}');
+    return { view: VIEWS.some(([k]) => k === v.view) ? v.view : 'large', pane: !!v.pane };
+  } catch { return { view: 'large', pane: false }; }
+};
 const setupState = (g: PlatformGym) => g.owners === 0 || !g.onboarded;
 const dueSoon = (g: PlatformGym) => g.days_left !== null && g.days_left <= 14;
 const archived = (g: PlatformGym) => g.status === 'archived';
@@ -82,6 +92,12 @@ export default function Gyms() {
   /** Cards a page = what fits the screen (useFitCards); PER_PAGE below 1280px. */
   const { ref: gridRef, perPage } = useFitCards(PER_PAGE);
   const [dialog, setDialog] = useState<Dialog | null>(null);
+  const [look, setLook] = useState(readView);
+  const [selected, setSelected] = useState<string | null>(null);
+  const changeLook = (next: { view: View; pane: boolean }) => {
+    setLook(next); setPage(1);
+    try { localStorage.setItem(VIEW_KEY, JSON.stringify(next)); } catch { /* private window */ }
+  };
   const [form, setForm] = useState({ name: '', slug: '' });
   const navigate = useNavigate();
 
@@ -189,6 +205,7 @@ export default function Gyms() {
           <option value="due">Due soonest</option>
           <option value="newest">Newest first</option>
         </select>
+        <ViewMenu look={look} onChange={changeLook} />
         <button className="btn ghost" disabled={shown.length === 0} onClick={() => downloadCsv('core-fitness-gyms', shown, [
           ['Gym', (g) => g.name], ['Address', (g) => g.slug], ['Status', (g) => g.lock_reason ? `read-only (${g.lock_reason})` : g.status],
           ['Plan', (g) => g.plan_name ?? g.plan], ['Price a month', (g) => g.price_monthly], ['Paid until', (g) => g.paid_until],
@@ -208,18 +225,51 @@ export default function Gyms() {
         <p className="empty">No gym matches{q ? ` “${search.trim()}”` : ''} in this view.</p>
       )}
 
-      <div className="gym-grid" ref={gridRef}>
-        {onPage.map((gym) => (
-          <GymCard key={gym.id} gym={gym} photo={photos.get(gym.id)} risk={risk.get(gym.id)} busy={busy === gym.id}
-            onOpen={() => setDialog({ kind: 'view', gym })}
-            onPlan={() => setDialog({ kind: 'plan', gym })}
-            onBill={() => setDialog({ kind: 'bill', gym })}
-            onSuspend={() => setDialog({ kind: 'suspend', gym })}
-            onInvite={() => setDialog({ kind: 'invite', gym })}
-            onReactivate={() => void act(gym.id, () => setGymStatus(gym.id, 'active', ''))} />
-        ))}
+      <div className={look.pane ? 'gx-split' : 'gx-nosplit'}>
+      <div className="gx-main">
+      {look.view === 'details' && onPage.length > 0 && (
+        <div className="gx-row gx-row-head">
+          <SortHead label="Gym" by="name" sort={sort} onSort={setSort} />
+          <span>Status</span><span>Plan</span>
+          <SortHead label="Covered until" by="due" sort={sort} onSort={setSort} />
+          <SortHead label="Members" by="members" sort={sort} onSort={setSort} />
+          <span>Activity</span>
+        </div>
+      )}
+      <div className={`gym-grid view-${look.view}`} ref={gridRef} data-view={look.view}>
+        {onPage.map((gym) => {
+          const open = () => (look.pane ? setSelected(gym.id) : setDialog({ kind: 'view', gym }));
+          return look.view === 'list' || look.view === 'details'
+            ? <GymRow key={gym.id} gym={gym} details={look.view === 'details'} on={look.pane && selected === gym.id} onOpen={open} />
+            : <GymCard key={gym.id} gym={gym} photo={photos.get(gym.id)} risk={risk.get(gym.id)} busy={busy === gym.id}
+              onOpen={open}
+              onPlan={() => setDialog({ kind: 'plan', gym })}
+              onBill={() => setDialog({ kind: 'bill', gym })}
+              onSuspend={() => setDialog({ kind: 'suspend', gym })}
+              onInvite={() => setDialog({ kind: 'invite', gym })}
+              onReactivate={() => void act(gym.id, () => setGymStatus(gym.id, 'active', ''))} />;
+        })}
       </div>
       <Pagination page={current} perPage={perPage} total={shown.length} noun={shown.length === 1 ? 'gym' : 'gyms'} onPage={setPage} />
+      </div>
+      {look.pane && (
+        <aside className="card gx-pane" aria-label="Details pane" data-gym-pane>
+          {(() => {
+            const gym = all.find((g) => g.id === selected);
+            return !gym ? <p className="empty">Pick a gym to see it here.</p> : (
+              <QuickView gym={gym} risk={risk.get(gym.id)} busy={busy === gym.id}
+                onFull={() => navigate(`/gyms/${gym.id}`)}
+                onPlan={() => setDialog({ kind: 'plan', gym })}
+                onBill={() => setDialog({ kind: 'bill', gym })}
+                onSuspend={() => setDialog({ kind: 'suspend', gym })}
+                onInvite={() => setDialog({ kind: 'invite', gym })}
+                onReactivate={() => void act(gym.id, () => setGymStatus(gym.id, 'active', ''))}
+                onArchive={() => setDialog({ kind: 'archive', gym })} />
+            );
+          })()}
+        </aside>
+      )}
+      </div>
 
       {/* ---- the popups ---- */}
       <Modal open={dialog?.kind === 'view'} onClose={close} size="lg" label="Gym">
@@ -471,6 +521,69 @@ function QuickView({ gym, risk, busy, onFull, onPlan, onBill, onSuspend, onInvit
           : <button className="btn ghost" disabled={busy} onClick={onReactivate}>{gym.status === 'archived' ? 'Restore' : 'Reactivate'}</button>}
         {gym.status !== 'archived' && <button className="btn ghost" disabled={busy} onClick={onArchive}>Archive</button>}
       </footer>
+    </div>
+  );
+}
+
+/** The View menu, like File Explorer's: one layout chosen, and the Details pane on or off. */
+function ViewMenu({ look, onChange }: { look: { view: View; pane: boolean }; onChange: (l: { view: View; pane: boolean }) => void }) {
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', away);
+    document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('mousedown', away); document.removeEventListener('keydown', esc); };
+  }, [open]);
+  return (
+    <span className="gx-viewmenu" ref={box}>
+      <button type="button" className="btn ghost" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <LayoutGrid size={15} /> View
+      </button>
+      {open && (
+        <div role="menu" className="gx-menu">
+          {VIEWS.map(([k, label]) => (
+            <button key={k} type="button" role="menuitemradio" aria-checked={look.view === k}
+              onClick={() => { onChange({ ...look, view: k }); setOpen(false); }}>
+              <span className="gx-tick">{look.view === k && <i />}</span>{label}
+            </button>
+          ))}
+          <hr />
+          <button type="button" role="menuitemcheckbox" aria-checked={look.pane}
+            onClick={() => { onChange({ ...look, pane: !look.pane }); setOpen(false); }}>
+            <span className="gx-tick">{look.pane && <Check size={13} />}</span>Details pane
+          </button>
+        </div>
+      )}
+    </span>
+  );
+}
+
+function SortHead({ label, by, sort, onSort }: { label: string; by: Sort; sort: Sort; onSort: (s: Sort) => void }) {
+  return <button type="button" className={sort === by ? 'on' : undefined} aria-pressed={sort === by} onClick={() => onSort(by)}>{label}</button>;
+}
+
+/** One gym as a line (List) or a table row (Details). A div with a button's role, like the card. */
+function GymRow({ gym, details, on, onOpen }: { gym: PlatformGym; details: boolean; on: boolean; onOpen: () => void }) {
+  const members = `${gym.members.toLocaleString('en-PH')}${gym.max_members !== null ? ` / ${gym.max_members}` : ''}`;
+  return (
+    <div className={`gx-row${details ? '' : ' gx-row-list'}${on ? ' on' : ''}`} role="button" tabIndex={0} aria-label={`${gym.name}, open`}
+      onClick={onOpen} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(); } }}>
+      <span className="gx-row-id">
+        <GymMark name={gym.name} logoUrl={gym.logo_url} accent={gym.accent} size={details ? 26 : 30} />
+        <span className="gx-title"><span className="gx-name">{gym.name}</span>{!details && <span className="gx-slug">/join/{gym.slug}</span>}</span>
+      </span>
+      <GymStatus gym={gym} />
+      {details ? <>
+        <span>{gym.plan_name ?? gym.plan}</span>
+        <span className={gym.days_left !== null && gym.days_left < 0 ? 'warn' : undefined}>{gym.paid_until
+          ? `${day(gym.paid_until)}, ${gym.days_left !== null && gym.days_left < 0 ? `${-gym.days_left} late` : `${gym.days_left ?? 0} left`}`
+          : 'Not billed'}</span>
+        <span>{members}</span>
+        <span className="muted">{since(gym.last_activity)}</span>
+      </> : <span className="muted gx-row-end">{members} members <ChevronRight size={14} /></span>}
     </div>
   );
 }

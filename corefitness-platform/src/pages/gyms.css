@@ -248,3 +248,45 @@
 .gx-rv:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @media (hover: none) { .gx-rv .gx-more { grid-template-rows: 1fr; opacity: 1; } .page[data-page="gyms"] .gym-grid > .gym-card.gx-rv { height: auto; min-height: 252px; } .gx-rv .gx-body { position: relative; margin-top: 120px; } }
 @media (prefers-reduced-motion: reduce) { .gx-rv .gx-art, .gx-rv .gx-more { transition: none; } .gx-rv:hover .gx-art { transform: none; } }
+
+/* The View menu (2026-11-27): Large tiles (the reveal cards), Small tiles, List, Details, and a Details pane. */
+.gx-viewmenu { position: relative; }
+.gx-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; min-width: 200px; padding: 6px; border-radius: 12px;
+  background: var(--surface-high, #1b1726); border: 1px solid var(--border-soft); box-shadow: 0 16px 40px -12px rgb(0 0 0 / .6); display: grid; }
+.gx-menu button { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border: 0; border-radius: 8px; background: none;
+  color: var(--text-2); font: inherit; font-size: 13.5px; text-align: left; cursor: pointer; justify-content: flex-start; }
+.gx-menu button:hover, .gx-menu button:focus-visible { background: rgb(255 255 255 / .06); color: var(--text); }
+.gx-menu button[aria-checked="true"] { color: var(--text); }
+.gx-menu hr { border: 0; border-top: 1px solid var(--hairline); margin: 6px 4px; }
+.gx-tick { width: 14px; display: grid; place-items: center; color: var(--accent-text); }
+.gx-tick i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+.gx-nosplit, .gx-nosplit > .gx-main { display: contents; }
+.gx-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 400px); gap: var(--gap, 16px); flex: 1 1 auto; min-height: 0; }
+.gx-split .gx-main { display: flex; flex-direction: column; gap: var(--gap, 16px); min-height: 0; }
+.gx-split .gx-main > .gym-grid { flex: 1 1 auto; min-height: 0; }
+.gx-pane { overflow-y: auto; min-height: 0; }
+.gx-pane .gx-qv-head { padding-right: 0; }
+.gx-pane .gx-figs.four { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 12px; }
+.gx-pane .gx-qv-foot { flex-wrap: wrap; gap: 8px; }
+
+.page[data-page="gyms"] .gym-grid.view-small { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)) !important; gap: 12px !important; }
+.page[data-page="gyms"] .gym-grid.view-small > .gym-card.gx-rv { height: 168px; }
+.gym-grid.view-small .gx-rv .gx-body { padding: 10px 12px; gap: 6px; }
+.gym-grid.view-small .gx-slug, .gym-grid.view-small .gym-flag { display: none; }
+
+.page[data-page="gyms"] .gym-grid:is(.view-list, .view-details) { grid-template-columns: minmax(0, 1fr) !important; gap: 0 !important; }
+.gx-row { display: grid; grid-template-columns: minmax(0, 2fr) 150px minmax(0, 1fr) minmax(0, 1.3fr) 100px minmax(0, 1fr); gap: 12px;
+  align-items: center; padding: 9px 12px; border-bottom: 1px solid var(--hairline); font-size: 13px; color: var(--text-2); cursor: pointer; }
+.gx-row.gx-row-list { grid-template-columns: minmax(0, 1fr) 170px 170px; padding: 10px 12px; }
+.gx-row:hover, .gx-row:focus-visible { background: rgb(255 255 255 / .04); }
+.gx-row.on { background: var(--accent-tint); box-shadow: inset 3px 0 0 var(--accent); }
+.gx-row .warn { color: var(--warn); }
+.gx-row-id { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.gx-row .gx-name { color: var(--text); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gx-row .gx-title { display: grid; min-width: 0; }
+.gx-row-end { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+.gx-row-head { cursor: default; padding-top: 0; font-size: 12px; color: var(--text-3); }
+.gx-row-head:hover { background: none; }
+.gx-row-head button { border: 0; background: none; padding: 0; font: inherit; color: inherit; text-align: left; justify-content: flex-start; cursor: pointer; }
+.gx-row-head button.on { color: var(--accent-text); }
