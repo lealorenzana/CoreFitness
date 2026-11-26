@@ -215,7 +215,7 @@ export default function Invitations() {
               <div className="sm:col-span-2" data-invite-username>
                 <label className={labelCls} style={labelSt} htmlFor="iv-username">Username {one.email.trim() ? '(optional)' : '(needed without an email)'}</label>
                 <div className="flex gap-2">
-                  <input id="iv-username" className={input} style={inputSt} placeholder="e.g. maria.santos" autoCapitalize="off" spellCheck={false}
+                  <input id="iv-username" className={input} style={inputSt} placeholder="e.g. mariasantos" autoCapitalize="off" spellCheck={false}
                     value={one.username} onChange={(e) => setOne({ ...one, username: e.target.value.toLowerCase().replace(/\s+/g, '') })} />
                   {(one.firstName.trim() || one.lastName.trim()) && !one.username && (
                     <RdButton variant="soft" type="button" onClick={() => setOne({ ...one, username: suggestUsername(one.firstName, one.lastName) })}>Suggest</RdButton>

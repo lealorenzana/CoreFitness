@@ -43,26 +43,26 @@ await db.exec(`
     insert into profiles (id, first_name, last_name, email, status, role, active_gym_id)
       values ('${u}', '${k}', 'T', '${mail}', 'active', '${role}', '${gym}') on conflict (id) do nothing;
     insert into gym_roles (gym_id, user_id, role, status) values ('${gym}', '${u}', '${role}', 'active') on conflict do nothing;`).join('\n')}
-  update profiles set username = 'juan.dc' where id = '${NOMAIL}';
-  update profiles set username = 'rae.coach' where id = '${COACH}';`);
+  update profiles set username = 'juan_dc' where id = '${NOMAIL}';
+  update profiles set username = 'rae_coach' where id = '${COACH}';`);
 
 // ---- the form ----
 await as(MAIL);
 let r = await one(`select set_my_username('  Lea_Lorenzana ') u`);
 check('a username is saved trimmed and lowercase', r.u === 'lea_lorenzana', JSON.stringify(r));
 for (const [bad, why, re] of [
-  ['ab', 'too short', /at least 3/], ['a'.repeat(21), 'too long', /at most 20/], ['lea lorenzana', 'a space', /letters, numbers, dots or underscores/],
+  ['ab', 'too short', /at least 3/], ['a'.repeat(21), 'too long', /at most 20/], ['lea lorenzana', 'a space', /letters, numbers or underscores/],
   ['.lea', 'starting with a dot', /starting and ending/], ['lea-l', 'a dash', /letters, numbers/], ['admin', 'a reserved word', /kept for the gym/],
-  ['juan.dc', "someone else's", /taken/]]) {
+  ['juan_dc', "someone else's", /taken/], ['lea.l', 'a dot (0278)', /letters, numbers or underscores/]]) {
   check(`refused: ${why} ("${bad}"), in words`, re.test((await tryExec(`select set_my_username('${bad}')`)) ?? ''));
 }
-r = await one(`select username_available('lea_lorenzana') a, username_available('JUAN.DC') b, username_available('fresh.name') c`);
+r = await one(`select username_available('lea_lorenzana') a, username_available('JUAN_DC') b, username_available('fresh_name') c`);
 check('available: my own counts as free, a taken one says so (any case), a fresh one is free', r.a === null && /taken/.test(r.b ?? '') && r.c === null, JSON.stringify(r));
 
 // Writing the row directly is held to the same rules (RLS cannot limit columns).
 check('a direct write of a reserved word is refused', /kept for the gym/.test((await tryExec(`update profiles set username = 'support' where id = '${MAIL}'`)) ?? ''));
 check('a direct write of a bad form is refused', !!(await tryExec(`update profiles set username = 'no spaces' where id = '${MAIL}'`)));
-check('a direct write of a taken one is refused', !!(await tryExec(`update profiles set username = 'rae.coach' where id = '${MAIL}'`)));
+check('a direct write of a taken one is refused', !!(await tryExec(`update profiles set username = 'rae_coach' where id = '${MAIL}'`)));
 
 // ---- removing it ----
 r = await one(`select set_my_username('') u`);
@@ -70,7 +70,7 @@ check('with a real email, the username can be removed', r.u === null);
 await as(NOMAIL);
 check('with no real email, removing it is refused — it is how they sign in', /how you sign in/.test((await tryExec(`select set_my_username(null)`)) ?? ''));
 r = await one(`select * from my_login()`);
-check('my_login: no real email reads as none, never the stand-in address', r.username === 'juan.dc' && r.has_email === false && r.email === null, JSON.stringify(r));
+check('my_login: no real email reads as none, never the stand-in address', r.username === 'juan_dc' && r.has_email === false && r.email === null, JSON.stringify(r));
 await as(MAIL);
 r = await one(`select * from my_login()`);
 check('my_login: a real email is shown', r.has_email === true && r.email === 'lea@names-test.com', JSON.stringify(r));
@@ -78,18 +78,20 @@ check('my_login: a real email is shown', r.has_email === true && r.email === 'le
 // ---- the server-only lookup ----
 for (const [who, setRole] of [['a signed-in member', () => as(MAIL)], ['a visitor', () => db.exec(`reset role; set role anon;`)]]) {
   await setRole();
-  check(`${who} cannot turn a username into an email`, !!(await tryExec(`select login_email_for_username('juan.dc')`)));
+  check(`${who} cannot turn a username into an email`, !!(await tryExec(`select login_email_for_username('juan_dc')`)));
   check(`${who} cannot read the sign-in failures`, !!(await tryExec(`select count(*) from login_failures`)));
 }
 await db.exec(`reset role; set role service_role;`);
-r = await one(`select login_email_for_username('  JUAN.DC ') e, login_email_for_username('nobody.here') n`);
+r = await one(`select login_email_for_username('  JUAN_DC ') e, login_email_for_username('nobody_here') n`);
 check('the server finds the address for a username (any case), and nothing for an unknown one', r.e === 'juan.dc@no-email.invalid' && r.n === null, JSON.stringify(r));
+r = await one(`select login_email_for_username('Juan.DC') e`);
+check('0278: the old dotted name still signs in', r.e === 'juan.dc@no-email.invalid', JSON.stringify(r));
 
 // ---- what the desk sees, and who may reset ----
 await as(ST);
 const info = async (u) => one(`select * from login_info_for('${u}')`);
 r = await info(NOMAIL);
-check('desk, no-email member: username shown, no email, may reset', r.username === 'juan.dc' && r.has_email === false && r.can_reset === true, JSON.stringify(r));
+check('desk, no-email member: username shown, no email, may reset', r.username === 'juan_dc' && r.has_email === false && r.can_reset === true, JSON.stringify(r));
 r = await info(MAIL);
 check('desk, member with an email who is set up: may NOT reset (Forgot password is theirs)', r.has_email === true && r.set_up === true && r.can_reset === false, JSON.stringify(r));
 r = await info(NEWBIE);
@@ -108,7 +110,7 @@ check('the reset check refuses an account with its own email', /Forgot password/
 r = await one(`select login_reset_check('${NOMAIL}') u`);
 await owner();
 const log = await one(`select summary, detail from activity_log where action = 'login.reset' order by id desc limit 1`);
-check('the reset check passes a no-email member and writes who was reset to the log', r.u === 'juan.dc' && /login was reset/.test(log?.summary ?? ''), JSON.stringify({ r, log }));
+check('the reset check passes a no-email member and writes who was reset to the log', r.u === 'juan_dc' && /login was reset/.test(log?.summary ?? ''), JSON.stringify({ r, log }));
 
 // ---- an invitation for a no-email account ----
 await as(ST);

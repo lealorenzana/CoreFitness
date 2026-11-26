@@ -187,7 +187,7 @@ export default function AddMemberWizard({ plans, onClose, onCreated }: {
         </StepField>
         {usernamesOn && (
           <StepField label={f.email.trim() ? 'Username (optional)' : 'Username'} hint={`${USERNAME_HINT}. They sign in with their email or this; with no email, this is their only login.`} error={errors.username}>
-            <input value={f.username} onChange={(e) => set('username', e.target.value.toLowerCase().replace(/\s+/g, ''))} aria-label="Username" placeholder="e.g. maria.santos"
+            <input value={f.username} onChange={(e) => set('username', e.target.value.toLowerCase().replace(/\s+/g, ''))} aria-label="Username" placeholder="e.g. mariasantos"
               autoCapitalize="off" spellCheck={false} className={`${STEP_INPUT} font-mono`} style={STEP_INPUT_STYLE} data-add-username />
           </StepField>
         )}

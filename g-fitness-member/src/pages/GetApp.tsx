@@ -6,6 +6,7 @@ import {
   AndroidLogo, AppleLogo, ArrowLeft, CaretRight, Compass, DotsThreeVertical, DownloadSimple, Export, Hash, LinkSimple, PlusSquare, SignIn,
 } from '@phosphor-icons/react';
 import { TextTabs } from '../components/ui/noc';
+import { gymBySlug, type PublicGym } from '../lib/api/gyms';
 
 /** Where the signed Android package lives once it is copied into public/ (docs/DEPLOYMENT.md). */
 const APK = '/core-fitness.apk';
@@ -48,6 +49,15 @@ export default function GetApp() {
   const [prompt, setPrompt] = useState<InstallPrompt | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [tab, setTab] = useState<Platform>(isIOS ? 'iphone' : 'android');
+  /**
+   * Sent here from a gym's link (JoinGym, install first, 2026-11-26). The installed app opens on its own
+   * start page and cannot see this link, so the page says what to type there, and offers signing up here.
+   */
+  const params = new URLSearchParams(window.location.search);
+  const gymSlug = params.get('gym');
+  const ref = params.get('ref');
+  const [gym, setGym] = useState<PublicGym | null>(null);
+  useEffect(() => { if (gymSlug) void gymBySlug(gymSlug).then(setGym).catch(() => setGym(null)); }, [gymSlug]);
 
   useEffect(() => {
     let alive = true;
@@ -107,6 +117,17 @@ export default function GetApp() {
         <main className="gp-main">
           <h1 className="gp-title">Get the app</h1>
           <p className="gp-lede">For members and coaches of every gym on Core Fitness. Your check-in code, your workouts, your coach and your gym’s news, in English or Filipino.</p>
+          {gymSlug && gym && (
+            <section className="gp-note gp-note--action" data-getapp-gym style={{ marginTop: 20 }}>
+              <p><b>{gym.name}</b> invited you. Install the app first, then sign up inside it.</p>
+              <p style={{ marginTop: 8 }}>In the app, tap <b>Sign Up</b> and type <b style={{ whiteSpace: 'nowrap' }}>{gym.slug}</b> in the join code box.</p>
+              {ref && <p style={{ marginTop: 8 }}>Your friend’s invite counts only when you sign up from this link, so sign up here first, then install.</p>}
+              <button type="button" className="gp-cta gp-cta--quiet" style={{ marginTop: 12 }}
+                onClick={() => navigate(`/join/${encodeURIComponent(gym.slug)}?web=1${ref ? `&ref=${encodeURIComponent(ref)}` : ''}`)}>
+                Sign up in the browser instead
+              </button>
+            </section>
+          )}
           <ul className="gp-facts">
             <li>Free to install</li>
             <li>About 2 MB</li>

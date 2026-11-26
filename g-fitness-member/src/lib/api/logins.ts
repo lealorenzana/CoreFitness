@@ -12,20 +12,19 @@ export const isStandInEmail = (email: string | null | undefined) => /@no-email\.
 /** The address to show, or null when the account has none. */
 export const realEmail = (email: string | null | undefined) => (email && !isStandInEmail(email) ? email : null);
 
-export const USERNAME_HINT = '3–20 letters, numbers, dots or underscores';
+export const USERNAME_HINT = '3 to 20 letters, numbers or underscores, no spaces';
 /** The client's quick check (the database decides): null = fine. */
 export function usernameShape(u: string): string | null {
   const v = u.trim().toLowerCase();
   if (!v) return null;
   if (v.length < 3) return 'At least 3 characters.';
   if (v.length > 20) return 'At most 20 characters.';
-  if (!/^[a-z0-9][a-z0-9._]{1,18}[a-z0-9]$/.test(v)) return 'Letters, numbers, dots or underscores — starting and ending with a letter or number.';
+  if (!/^[a-z0-9][a-z0-9_]{1,18}[a-z0-9]$/.test(v)) return 'Letters, numbers or underscores only, starting and ending with a letter or number.';
   return null;
 }
-/** "Maria Santos" → "maria.santos", a first suggestion they can change. */
+/** A first suggestion from a name: "Maria Santos" → "mariasantos" (0278: no dots). They can change it. */
 export const suggestUsername = (first: string, last: string) =>
-  `${first} ${last}`.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]+/g, '.').replace(/^\.+|\.+$/g, '').slice(0, 20).replace(/\.+$/, '');
+  `${first}${last}`.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '').slice(0, 20);
 
 /** Null when it is free for me (my own counts), else why not. */
 export async function usernameAvailable(u: string): Promise<string | null> {

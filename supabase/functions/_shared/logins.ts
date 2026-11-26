@@ -12,7 +12,9 @@ export function temporaryPassword(): string {
 }
 
 /** The same form as 0236's profiles_username_form check. */
-export const USERNAME_RE = /^[a-z0-9][a-z0-9._]{1,18}[a-z0-9]$/;
+export const USERNAME_RE = /^[a-z0-9][a-z0-9_]{1,18}[a-z0-9]$/;
+/** 0236's form, dots allowed: what sign-in still accepts, so a name from before 0278 signs in. */
+export const SIGN_IN_NAME_RE = /^[a-z0-9][a-z0-9._]{1,18}[a-z0-9]$/;
 const RESERVED = new Set(["admin", "administrator", "root", "support", "help", "desk", "frontdesk", "front.desk", "owner",
   "staff", "coach", "trainer", "member", "corefitness", "core.fitness", "system", "null", "undefined"]);
 
@@ -26,7 +28,7 @@ export const isStandIn = (email: string | null | undefined) => /@no-email\.inval
 export async function usernameProblem(admin: SupabaseClient, u: string, forUser?: string): Promise<string | null> {
   if (u.length < 3) return "A username is at least 3 characters.";
   if (u.length > 20) return "A username is at most 20 characters.";
-  if (!USERNAME_RE.test(u)) return "Use letters, numbers, dots or underscores, starting and ending with a letter or number.";
+  if (!USERNAME_RE.test(u)) return "Use letters, numbers or underscores only, starting and ending with a letter or number.";
   if (RESERVED.has(u)) return "That username is kept for the gym. Choose another.";
   const { data } = await admin.from("profiles").select("id").eq("username", u).maybeSingle();
   if (data && data.id !== forUser) return "That username is taken. Choose another.";

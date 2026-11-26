@@ -12,7 +12,7 @@ import { readCache, writeCache } from '../lib/pageCache';
 import { Page, PageTitle } from '../components/ui/page';
 import { LineRow, NocButton, SectionHead, StatusPill } from '../components/ui/noc';
 import { formatPhone } from '../utils/phone';
-import { realEmail } from '../lib/api/logins';
+import { myLogin, realEmail, type MyLogin } from '../lib/api/logins';
 
 /** The flattened identity + plan this screen renders. */
 interface MemberSummary {
@@ -99,9 +99,13 @@ export default function Profile() {
   // 'Active' with a capital A, so an active membership always rendered in the
   // "something is wrong" styling.
   const isActive = member.status === 'active';
+  // The name they sign in with (0236), shown where they look for it, with a way to change it (2026-11-26).
+  const [login, setLogin] = useState<MyLogin | null>(null);
+  useEffect(() => { void myLogin().then(setLogin); }, []);
 
-  const contactRows = [
-    { label: 'Email', value: realEmail(member.email) ?? 'None — you sign in with your username' },
+  const contactRows: { label: string; value: string | null | undefined; to?: string }[] = [
+    ...(login ? [{ label: 'Username', value: login.username ? `@${login.username}` : 'None yet', to: '/member/username' }] : []),
+    { label: 'Email', value: realEmail(member.email) ?? 'None. You sign in with your username' },
     { label: 'Phone', value: formatPhone(member.phone) },
     { label: 'Home gym', value: member.gym },
     { label: 'Member since', value: member.joinDate },
@@ -139,6 +143,7 @@ export default function Profile() {
             <div style={{ marginTop: 4 }}>
               {contactRows.map((row, i) => (
                 <LineRow key={row.label} gutter={row.label} gutterWidth={104} title={row.value}
+                  {...(row.to ? { action: 'Change', actionTone: 'structure' as const, onClick: () => navigate(row.to!) } : {})}
                   last={i === contactRows.length - 1} />
               ))}
             </div>

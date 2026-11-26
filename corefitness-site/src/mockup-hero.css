@@ -124,3 +124,6 @@ header.top .wrap{height:var(--header-h)}
 .v2-in-hero header.top .theme-btn{border-color:#ffffff35}
 @media(max-width:1150px){:root{--header-h:76px}}
 @media(max-width:550px){:root{--header-h:70px}}
+/* Get the app on phones (2026-11-26): the only quiet link left in the header below 550px. */
+header.top a.app-sm{display:none}
+@media(max-width:550px){header.top a.app-sm{display:inline-flex;align-items:center;min-height:36px;padding:0 11px;border-radius:13px;font-size:11px;font-weight:650;color:var(--text);border:1px solid var(--line-strong);white-space:nowrap;text-decoration:none}}

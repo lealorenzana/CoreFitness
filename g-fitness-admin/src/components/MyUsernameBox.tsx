@@ -39,7 +39,7 @@ export default function MyUsernameBox() {
       <div style={{ display: 'flex', gap: 8 }}>
         <div style={{ position: 'relative', flex: 1 }}>
           <AtSign size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-          <input id="p-username" className="a-in" style={{ paddingLeft: 32 }} value={value} autoCapitalize="off" spellCheck={false} placeholder="e.g. maria.santos"
+          <input id="p-username" className="a-in" style={{ paddingLeft: 32 }} value={value} autoCapitalize="off" spellCheck={false} placeholder="e.g. mariasantos"
             onChange={(e) => { setProblem(null); setValue(e.target.value.toLowerCase().replace(/\s+/g, '')); }} />
         </div>
         <button type="button" className="a-btn sm" disabled={!changed || busy} onClick={() => void save()}>{busy ? 'Saving…' : 'Save'}</button>

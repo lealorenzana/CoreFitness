@@ -29,10 +29,10 @@ Every demo account uses the **same password: `CoreDemo-2026`**
 
 | Who | Username | Where |
 |---|---|---|
-| Owner of gym 7 | `gym07.owner` | https://corefitness-admin.vercel.app |
-| Front desk | `gym07.desk` | https://corefitness-admin.vercel.app |
-| Coaches | `gym07.coach1` … `gym07.coach3` | https://corefitness-gym.vercel.app → Trainer |
-| Members | `gym07.m001` … `gym07.m200` | https://corefitness-gym.vercel.app |
+| Owner of gym 7 | `gym07owner` | https://corefitness-admin.vercel.app |
+| Front desk | `gym07desk` | https://corefitness-admin.vercel.app |
+| Coaches | `gym07coach1` … `gym07coach3` | https://corefitness-gym.vercel.app → Trainer |
+| Members | `gym07m001` … `gym07m200` | https://corefitness-gym.vercel.app |
 
 Gyms are `gym01` … `gym50`. Sign in with the **username** in the email box — the system accepts either (0236).
 No real email is used: each account's address is a stand-in that is never mailed.

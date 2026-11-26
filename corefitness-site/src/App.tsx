@@ -292,6 +292,8 @@ export default function App() {
           </nav>
           <span className="grow" />
           <a className="link-quiet hide-md" href={`${MEMBER_APP}/get-app`}>Get the member app</a>
+          {/* Phones hide every quiet link above, and phones are who installs the app (2026-11-26). */}
+          <a className="app-sm" href={`${MEMBER_APP}/get-app`}>Get the app</a>
           <a className="link-quiet hide-sm" href="#account">My application</a>
           {/* Hidden for an applicant whose gym is still pending — they have no gym to sign in to yet (2026-11-08). */}
           {showGymSignIn(siteAccount) && <a className="link-quiet" href={GYM_SIGN_IN} aria-label="Gym sign in" data-gym-sign-in><span className="hide-sm">Gym sign in</span><span className="only-sm">Sign in</span></a>}

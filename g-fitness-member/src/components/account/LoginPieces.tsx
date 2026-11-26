@@ -17,7 +17,7 @@ export function UsernameInput({ value, onChange, required }: { value: string; on
     <Field label={required ? 'Username' : 'Username (optional)'}>
       <div className="relative" data-username-input>
         <AtSign size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--color-text-muted)' }} />
-        <TextInput value={value} autoCapitalize="off" spellCheck={false} autoComplete="username" placeholder="e.g. maria.santos" aria-label="Username"
+        <TextInput value={value} autoCapitalize="off" spellCheck={false} autoComplete="username" placeholder="e.g. mariasantos" aria-label="Username"
           style={{ paddingLeft: 36 }}
           onChange={(e) => { setTaken(null); onChange(e.target.value.toLowerCase().replace(/\s+/g, '')); }}
           onBlur={() => { if (value.trim() && !shape) void usernameAvailable(value).then(setTaken).catch(() => setTaken(null)); }} />

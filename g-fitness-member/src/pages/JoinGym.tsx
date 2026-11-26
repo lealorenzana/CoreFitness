@@ -31,6 +31,15 @@ import { supabase } from '../lib/supabaseClient';
  * desk only). Gyms OpenStreetMap knows that are not on Core Fitness come after,
  * each with Suggest. The legend is the map's alone (/join/map).
  */
+/** A phone's browser, not the installed app, and not chosen "sign up in the browser" (`?web=1`). */
+function installFirst(): boolean {
+  if (new URLSearchParams(window.location.search).get('web') === '1') return false;
+  const installed = window.matchMedia('(display-mode: standalone)').matches
+    || (navigator as Navigator & { standalone?: boolean }).standalone === true
+    || document.referrer.startsWith('android-app://');
+  return !installed && /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+
 export default function JoinGym() {
   const navigate = useNavigate();
   const { slug: rawSlug } = useParams();
@@ -85,9 +94,16 @@ export default function JoinGym() {
       }
       // Signed in with Google and in no gym yet (0190): joining is the sign-up form, finished without a password.
       if (session) setNewAccount(((await signupState())?.gyms ?? 1) === 0);
+      // Install first (owner, 2026-11-26): a gym's link opened in a phone's browser by someone with no
+      // account goes to Get the app, which keeps the gym and offers signing up here instead (?web=1).
+      if (slug && !session && installFirst()) {
+        const ref = refFromUrl();
+        navigate(`/get-app?gym=${encodeURIComponent(slug)}${ref ? `&ref=${encodeURIComponent(ref)}` : ''}`, { replace: true });
+        return;
+      }
       await load(slug ?? '', !!slug);
     })();
-  }, [load, slug]);
+  }, [load, slug, navigate]);
 
   // Where the phone is — only when the browser already allows it, so opening
   // the page never pops a prompt; "Use my location" asks.
@@ -120,7 +136,9 @@ export default function JoinGym() {
     setCodeBusy(true);
     setCodeError(null);
     try {
-      const gym = await gymByCode(code);
+      // The installed app cannot see the link it was installed from, so Get the app tells them to type
+      // the gym's link name here (2026-11-26): a code or that name both find the gym.
+      const gym = await gymByCode(code) ?? await gymBySlug(code.trim().toLowerCase());
       if (!gym) { setCodeError('No gym has that code. Check it with your gym — codes can be changed.'); return; }
       // Its own address, which finds it whether or not it is listed.
       navigate(`/join/${gym.slug}${window.location.search.includes('ref=') ? `?ref=${new URLSearchParams(window.location.search).get('ref')}` : ''}`);
@@ -227,7 +245,7 @@ export default function JoinGym() {
             placeholder="e.g. PPDSSJ"
             aria-label="Join code"
             autoCapitalize="characters"
-            maxLength={12}
+            maxLength={40}
           />
           <button type="submit" className="gp-cta fg-pill" disabled={!code.trim() || codeBusy}>{codeBusy ? 'Finding…' : 'Find'}</button>
         </div>

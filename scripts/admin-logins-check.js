@@ -240,14 +240,14 @@ async (page) => {
   await page.locator('[data-step-next]').click();
   await page.waitForTimeout(700);
   say('Add member asks for no password', (await page.getByLabel('Password').count()) === 0);
-  say('…and suggests maria.santos as the username', (await page.locator('[data-add-username]').inputValue().catch(() => '')) === 'maria.santos');
+  say('…and suggests mariasantos as the username', (await page.locator('[data-add-username]').inputValue().catch(() => '')) === 'mariasantos');
   for (let i = 0; i < 2; i++) { await page.locator('[data-step-next]').click(); await page.waitForTimeout(500); }
   await page.getByRole('button', { name: 'Add member', exact: true }).last().click();
   await page.waitForTimeout(1200);
   const cm = calls.find((c) => c[0] === 'create-member');
-  say('the member is made with the username, no email and no password sent', !!cm && cm[1].username === 'maria.santos' && !cm[1].email && !('password' in cm[1]), JSON.stringify(cm?.[1]));
+  say('the member is made with the username, no email and no password sent', !!cm && cm[1].username === 'mariasantos' && !cm[1].email && !('password' in cm[1]), JSON.stringify(cm?.[1]));
   st = await slipText();
-  say('the slip opens by itself with the one-time password', /maria\.santos/.test(st) && /PQRST-uvwxy/.test(st), st.slice(0, 200));
+  say('the slip opens by itself with the one-time password', /mariasantos/.test(st) && /PQRST-uvwxy/.test(st), st.slice(0, 200));
   await page.keyboard.press('Escape');
 
   // ---- 3. The member drawer: Login, Reset login ----

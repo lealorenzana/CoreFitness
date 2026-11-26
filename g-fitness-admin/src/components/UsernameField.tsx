@@ -25,7 +25,7 @@ export default function UsernameField({ value, onChange, required, inputClass, i
       <div className="relative">
         <AtSign size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
         <input className={inputClass} style={{ ...inputStyle, paddingLeft: 36 }} value={value} autoCapitalize="off" spellCheck={false} autoComplete="username"
-          aria-label="Username" placeholder="e.g. maria.santos"
+          aria-label="Username" placeholder="e.g. mariasantos"
           onChange={(e) => { setTaken(null); onChange(e.target.value.toLowerCase().replace(/\s+/g, '')); }}
           onBlur={() => { if (value.trim() && !shape) void usernameAvailable(value).then(setTaken).catch(() => setTaken(null)); }} />
       </div>

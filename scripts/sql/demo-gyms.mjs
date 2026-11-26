@@ -69,12 +69,12 @@ check('the gym exists, marked demo, never billed, on Growth or Pro',
 check('its name is in a real town', /Mamburao/.test((await one(`select name from gyms where id = ${G1}`)).name));
 check('plans are priced', await n(`select count(*) as n from membership_plans where gym_id = ${G1} and price > 0 and not price_unset`) === 2);
 check('205 accounts: owner, desk, 3 coaches, 200 members',
-  await n(`select count(*) as n from profiles where username like 'gym01.%'`) === 205
+  await n(`select count(*) as n from profiles where username like 'gym01%'`) === 205
   && await n(`select count(*) as n from gym_roles where gym_id = ${G1} and role = 'member'`) === 200
   && await n(`select count(*) as n from gym_roles where gym_id = ${G1} and role = 'trainer'`) === 3
   && await n(`select count(*) as n from gym_roles where gym_id = ${G1} and role = 'staff'`) === 1
   && await n(`select count(*) as n from gym_roles where gym_id = ${G1} and role = 'admin'`) === 1);
-check('usernames as promised', await n(`select count(*) as n from profiles where username in ('gym01.owner', 'gym01.desk', 'gym01.coach1', 'gym01.coach3', 'gym01.m001', 'gym01.m200')`) === 6);
+check('usernames as promised', await n(`select count(*) as n from profiles where username in ('gym01owner', 'gym01desk', 'gym01coach1', 'gym01coach3', 'gym01m001', 'gym01m200')`) === 6);
 check('every sign-in can sign in: a hash, confirmed, token columns strings, an identity',
   await n(`select count(*) as n from auth.users u where u.id::text like 'de3a0001-0001-%' and u.encrypted_password like '$2a$%'
              and u.email_confirmed_at is not null and u.confirmation_token = '' and u.recovery_token = ''

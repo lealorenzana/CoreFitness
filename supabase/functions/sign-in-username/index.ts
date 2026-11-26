@@ -9,7 +9,7 @@
 // minutes, in login_failures (RLS on, no policy for any client role).
 
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { tidyUsername, USERNAME_RE } from "../_shared/logins.ts";
+import { SIGN_IN_NAME_RE, tidyUsername } from "../_shared/logins.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -33,7 +33,7 @@ Deno.serve(async (req: Request) => {
     const body = await req.json().catch(() => ({}));
     const username = tidyUsername(body.username);
     const password = String(body.password ?? "");
-    if (!USERNAME_RE.test(username) || !password) return json({ error: NO_MATCH }, 400);
+    if (!SIGN_IN_NAME_RE.test(username) || !password) return json({ error: NO_MATCH }, 400);
 
     const since = new Date(Date.now() - WINDOW_MIN * 60_000).toISOString();
     const { count } = await admin.from("login_failures").select("id", { count: "exact", head: true })
