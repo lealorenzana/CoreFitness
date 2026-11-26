@@ -1,5 +1,5 @@
 {
- "from": "2026-11-27",
+ "from": "2026-11-28",
  "docs": {
   "terms": {
    "short": "Terms for gyms",
@@ -188,7 +188,7 @@
       "Supabase — the database, sign-in and file storage (Singapore region).",
       "Vercel — serves the apps and this website.",
       "GitHub — holds the encrypted weekly backups.",
-      "Anthropic — answers questions sent to the AI coach, only at gyms whose plan includes it and only for members who agree to it in the app. It also reads the business documents a gym attaches when it applies, so the expiry date fills in and anything that does not match is shown to us; it decides nothing.",
+      "Anthropic — answers questions sent to the AI coach, only at gyms whose plan includes it and only for members who agree to it in the app. It also reads the business documents a gym attaches when it applies, so the expiry date fills in and anything that does not match is shown to us; it decides nothing. And it answers the questions a gym's owner and front desk ask in Help, from the app's guides and the gym's own documents.",
       "PayMongo — takes payments made online: a gym's payments to Core Fitness, and, only for a gym that connects its own PayMongo account, its members' payments to it. PayMongo receives what that payment needs (name, email, the amount and the payment details); card details go to PayMongo only, never to Core Fitness or the gym.",
       "Resend — sends account emails such as an owner's first password, when email is switched on.",
       "Your members' phone or browser maker (Google, Apple, Mozilla) — delivers notifications to members who turn them on.",
@@ -258,6 +258,7 @@
       "For owners and staff: name, email, phone and role. Your password is held, hashed, by the sign-in service — never by us. If you apply or sign in with Google, Google tells us your name, email address and picture, and nothing else.",
       "For billing: your plan, the references and screenshots you send for payments, and the receipts we issue.",
       "Support tickets, and a copy of each email we send, so we can show it was sent.",
+      "Questions the owner or front desk ask in Help go to Anthropic's AI to be answered. We keep how many were asked each day, to count them against the gym's AI messages, never the questions or the answers.",
       "What you tell us from the gym app: ratings, ideas and problem reports (with a screenshot if you add one, kept private to your gym and us), and a testimonial — shown on this website only after we approve it, with the name you chose, and removed the moment you take it down.",
       "A log of actions taken in the gym and platform apps, such as a plan change or a support session.",
       "Counts of how much each gym uses each feature — never who did what."
