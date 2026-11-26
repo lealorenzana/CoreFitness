@@ -23,7 +23,7 @@ in-process. It is not a project dependency: neither app should carry a test
 database in its bundle, so install it wherever you are running from.
 
 ```bash
-npm install @electric-sql/pglite
+npm install @electric-sql/pglite@0.6.0 @electric-sql/pglite-pgvector@0.1.0   # pgvector for 0282
 ```
 
 Then, from that directory, pass the path to the repository root:

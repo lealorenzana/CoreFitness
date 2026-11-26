@@ -6,6 +6,7 @@ import { StatTiles } from './ui/kit';
 import { showToast } from '../utils/toast';
 import { formatUsd, getAiUsage, setAiLimits, type AiUsageResult } from '../lib/api/aiCoach';
 import { getGymContext } from '../lib/gymContext';
+import { supabase } from '../lib/supabaseClient';
 import { Link } from 'react-router-dom';
 import SkelRows from './ui/SkelRows';
 
@@ -34,11 +35,15 @@ export default function AiCoachCard({ switchedOff }: { switchedOff?: boolean }) 
   const [owner, setOwner] = useState(false);
   const [daily, setDaily] = useState('');
   const [monthly, setMonthly] = useState('');
+  // Help for the owner and desk (0283): its own daily limit per staff account; null before 0283.
+  const [staffDaily, setStaffDaily] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
-    const [r, ctx] = await Promise.all([getAiUsage(), getGymContext()]);
+    const [r, ctx, help] = await Promise.all([getAiUsage(), getGymContext(), supabase.rpc('staff_help_status')]);
     setRes(r);
+    const hd = (help.data as { daily_limit?: number } | null)?.daily_limit;
+    setStaffDaily(help.error || hd == null ? null : String(hd));
     setOwner(ctx?.role === 'admin');
     if (r.ok) {
       setDaily(String(r.usage.daily_limit));
@@ -55,9 +60,15 @@ export default function AiCoachCard({ switchedOff }: { switchedOff?: boolean }) 
     const maxM = (res?.ok ? res.usage.plan_monthly_cap : null) ?? 100000;
     if (!Number.isInteger(d) || d < 1 || d > maxD) { showToast(`A daily limit is 1 to ${maxD} messages${maxD < 500 ? ' on your plan' : ''}.`, 'error'); return; }
     if (!Number.isInteger(m) || m < 1 || m > maxM) { showToast(`A monthly limit is 1 to ${maxM.toLocaleString('en-PH')} messages${maxM < 100000 ? ' on your plan' : ''}.`, 'error'); return; }
+    const h = Number(staffDaily);
+    if (staffDaily !== null && (!Number.isInteger(h) || h < 1 || h > 200)) { showToast('Help\'s daily limit is 1 to 200 messages.', 'error'); return; }
     setSaving(true);
     try {
       await setAiLimits(d, m);
+      if (staffDaily !== null) {
+        const { error } = await supabase.rpc('set_staff_help_limit', { p_daily: h });
+        if (error) throw new Error(error.message);
+      }
       await load();
       showToast('Saved. The new limits apply to the next message.', 'success');
     } catch (e) {
@@ -120,6 +131,16 @@ export default function AiCoachCard({ switchedOff }: { switchedOff?: boolean }) 
                 </p>
               )}
             </FormField>
+            {staffDaily !== null && (
+              <FormField label="Help messages per staff account per day" hint={owner ? '1 to 200 · Help for you and the desk, from the same monthly messages' : null}>
+                {owner ? (
+                  <input id="ai-staff-daily" type="number" min={1} max={200} step={1} className={input} style={inputStyle}
+                    value={staffDaily} onChange={(e) => setStaffDaily(e.target.value)} />
+                ) : (
+                  <p id="ai-staff-daily" className="text-sm font-medium tabular-nums" style={{ color: 'var(--color-text-primary)' }}>{staffDaily}</p>
+                )}
+              </FormField>
+            )}
           </div>
           {(capD != null || capM != null) && (
             <p className="mt-3 text-xs rounded-lg px-3 py-2" style={{ background: 'var(--color-surface-high)', color: 'var(--color-text-secondary)' }}>

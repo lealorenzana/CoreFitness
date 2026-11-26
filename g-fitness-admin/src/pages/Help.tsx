@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { BookOpen, Bug, CheckCircle2, Lightbulb, MessageCircle, MessageSquareQuote, Paperclip, PlayCircle, Plus, Search, Send, ShieldCheck, Star } from 'lucide-react';
+import { BookOpen, Bug, CheckCircle2, Lightbulb, MessageCircle, MessageSquareQuote, Paperclip, PlayCircle, Plus, Search, Send, ShieldCheck, Sparkles, Star } from 'lucide-react';
 import './attendance/att.css';
 import { showToast } from '../utils/toast';
 import {
@@ -17,6 +17,7 @@ import { replayTour } from '../components/tour/Tour';
 import { TOURS } from '../lib/tours';
 import { GuideList, type Lang as GuideLang } from '../components/guides/GuidePlayer';
 import SkelRows from '../components/ui/SkelRows';
+import AskHelp from '../components/help/AskHelp';
 
 const when = (iso: string) => new Date(iso).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 const day = (iso: string) => new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -32,7 +33,7 @@ const QUICK: { title: string; where: string; to: string }[] = [
   { title: 'Your join link and poster', where: 'Your app → Joining', to: '/gym-app?tab=join' },
   { title: 'Paying Core Fitness', where: 'Your plan', to: '/subscription' },
 ];
-type Tab = 'questions' | 'ideas' | 'rate' | 'tours' | 'guides';
+type Tab = 'ask' | 'questions' | 'ideas' | 'rate' | 'tours' | 'guides';
 
 /**
  * Help (2026-10-25): Support (0137, 0162) and Feedback (0188) on one page, to
@@ -50,7 +51,7 @@ type Tab = 'questions' | 'ideas' | 'rate' | 'tours' | 'guides';
  */
 export default function Help() {
   const [params, setParams] = useSearchParams();
-  const tab: Tab = params.get('tab') === 'ideas' ? 'ideas' : params.get('tab') === 'rate' ? 'rate' : params.get('tab') === 'tours' ? 'tours' : params.get('tab') === 'guides' ? 'guides' : 'questions';
+  const tab: Tab = params.get('tab') === 'ask' ? 'ask' : params.get('tab') === 'ideas' ? 'ideas' : params.get('tab') === 'rate' ? 'rate' : params.get('tab') === 'tours' ? 'tours' : params.get('tab') === 'guides' ? 'guides' : 'questions';
   const navigate = useNavigate();
   const setTab = (t: Tab) => setParams((prev) => { const n = new URLSearchParams(prev); n.set('tab', t); return n; }, { replace: true });
 
@@ -95,6 +96,8 @@ export default function Help() {
       <div className="a-head">
         <div className="min-w-0"><h1>Help</h1><p>Ask Core Fitness anything, tell us what to build, and see what we changed</p></div>
         <div className="a-tabs" role="tablist" aria-label="Help sections">
+          <button type="button" role="tab" aria-selected={tab === 'ask'} className={tab === 'ask' ? 'on' : ''} onClick={() => setTab('ask')} data-help-ask-tab>
+            <Sparkles size={14} />Ask</button>
           <button type="button" role="tab" aria-selected={tab === 'questions'} className={tab === 'questions' ? 'on' : ''} onClick={() => setTab('questions')}>
             <MessageCircle size={14} />Questions{openCount > 0 && <em>{openCount} open</em>}</button>
           <button type="button" role="tab" aria-selected={tab === 'ideas'} className={tab === 'ideas' ? 'on' : ''} onClick={() => setTab('ideas')}>
@@ -108,6 +111,9 @@ export default function Help() {
         </div>
         <button type="button" className="a-btn violet" onClick={() => { setTab('questions'); setComposing(true); }}><Plus size={15} />Ask a question</button>
       </div>
+
+      {/* Help that answers from the guides and the gym's documents, with links (0283). */}
+      {tab === 'ask' && <AskHelp />}
 
       {/* The animated set-up guides (2026-11-14): every feature that needs setting up, in English and Filipino. */}
       {tab === 'guides' && (

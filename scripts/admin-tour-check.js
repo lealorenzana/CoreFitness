@@ -7,6 +7,7 @@
  */
 async (page) => {
   await page.unrouteAll({ behavior: 'ignoreErrors' });
+  const HELP_ASKED = [];
   const REF = 'ifwxtekyjgeljerslnzr';
   const KEY = `sb-${REF}-auth-token`;
   const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
@@ -90,9 +91,18 @@ async (page) => {
       if (fn === 'my_gym_modules') return json(Object.entries({ coaching: true, classes: MODULES.classes, push: true, events: !!MODULES.events })
         .map(([k, on], i) => ({ feature_key: k, label: k, description: k, state: 'on', enabled: on, sort_order: i, parent_key: k === 'events' ? 'push' : null })));
       if (fn === 'sweep_stale_requests') return json(0);
+      if (fn === 'staff_help_status') return json({ gym_id: g.gym_id, allowed: true, reason: null, used_today: HELP_ASKED.length, daily_limit: 20 });
       if (fn === 'my_tours_seen') return json(body.p_app === 'admin' ? [...TOURS_SEEN] : []);
       if (fn === 'mark_tour_seen') { MARKED.push(`${body.p_app}:${body.p_tour}`); if (!TOURS_SEEN.includes(body.p_tour)) TOURS_SEEN.push(body.p_tour); return json(null); }
       return json(['my_support_grant', 'my_support_grant', 'my_gyms', 'my_announcements', 'my_gym_features'].includes(fn) ? [] : null);
+    }
+    // 0283: Help that answers, with the guide it read and a button to that page.
+    if (path.startsWith('/functions/v1/staff-help')) {
+      if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*' } });
+      HELP_ASKED.push(JSON.parse(req.postData() || '{}'));
+      return json({ text: 'Open Settings, then Time slots, switch them on and set how many people fit at once. Open it below.',
+        sources: [{ title: 'Guide: Time slots, step 1: Switch them on', link: '/settings?tab=slots' },
+          { title: 'Terms 5. Classes and personal training', link: '/terms#classes' }] });
     }
     if (!path.startsWith('/rest/v1/')) return json([]);
     const t = path.split('/rest/v1/')[1];
@@ -141,5 +151,25 @@ async (page) => {
   say('Replay opens the page and runs it again', /\/personal-training/.test(page.url()) && (await tour('personal-training').count()) === 1, page.url());
   await page.locator('[data-tour-skip]').click(); await page.waitForTimeout(500);
   say('Skip ends it', (await tour('personal-training').count()) === 0);
+
+  // ── 0283: Help → Ask answers from the guides, with a button to the page; member pages are named, not linked ──
+  for (const w of [1280, 1600]) {
+    await page.setViewportSize({ width: w, height: w === 1280 ? 800 : 900 });
+    await go('/help?tab=ask');
+    await page.locator('[data-help-ask]').waitFor({ timeout: 8000 });
+    say(`Help → Ask fits the screen at ${w} (no page scroll)`, await page.evaluate(() => document.scrollingElement.scrollHeight <= window.innerHeight + 1));
+  }
+  await page.getByLabel('Ask Help').fill('How do I set up time slots?');
+  await page.locator('[data-help-ask]').getByRole('button', { name: 'Ask' }).click();
+  await page.locator('[data-help-sources]').waitFor({ timeout: 8000 });
+  const helpText = (await page.locator('[data-help-ask]').innerText()).replace(/\s+/g, ' ');
+  say('the question is sent once, with the history so far', HELP_ASKED.length === 1 && HELP_ASKED[0].question === 'How do I set up time slots?' && Array.isArray(HELP_ASKED[0].history), JSON.stringify(HELP_ASKED));
+  say('the answer shows with what it read', /Open Settings, then Time slots/.test(helpText) && /Read from/.test(helpText), helpText);
+  say('an admin page is a button; a member page is only named', (await page.locator('[data-help-sources]').getByRole('button', { name: /Time slots/ }).count()) === 1
+    && (await page.locator('[data-help-sources]').getByRole('button', { name: /Terms 5/ }).count()) === 0);
+  await page.screenshot({ path: 'shots/admin-help-ask.png' });
+  await page.locator('[data-help-sources]').getByRole('button', { name: /Time slots/ }).click();
+  await page.waitForTimeout(1200);
+  say('…and the button opens that page', /\/settings\?tab=slots/.test(page.url()), page.url());
   return out.join('\n');
 }

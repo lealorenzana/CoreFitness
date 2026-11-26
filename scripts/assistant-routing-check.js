@@ -26,6 +26,11 @@ async (page) => {
       'how do I fix my squat technique?',
       'what should I eat after training?',
       'Can you build me a 3 day split?',
+      // 0282: policy the gym's documents answer; the coach searches them and cites the clause.
+      'Can I freeze my membership for a month?',
+      'How do refunds work if I quit?',
+      'What is the dress code?',
+      'How do I delete my account?',
     ];
     const facts = [
       'What time do you open?',

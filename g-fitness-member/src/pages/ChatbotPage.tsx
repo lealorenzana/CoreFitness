@@ -1,5 +1,7 @@
 import { usePointsOn } from '../hooks/usePointsOn';
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useT } from '../lib/i18n';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PaperPlaneRight, Trash, Plus, ChatsCircle, SlidersHorizontal, Sparkle, X } from '@phosphor-icons/react';
 import { TodayCompanion } from '../components/home/TodayStory';
@@ -18,6 +20,8 @@ import {
   type AssistantContext, type Reading,
 } from '../data/memberAssistant';
 import ReadingCard from '../components/ReadingCard';
+import QuestionsCard from '../components/QuestionsCard';
+import type { CoachQuestions, SourceLink } from '../lib/api/aiCoach';
 import { useGymSetup } from '../hooks/useGymSetup';
 import {
   listConversations, listMessages, createConversation, appendMessage,
@@ -77,7 +81,14 @@ interface Message {
   source?: 'rules' | 'coach';
   /** A body reading waiting for Save under this reply (this visit only, never sent as history). */
   reading?: Reading;
+  /** The passages the coach read for this answer (0282): links to the clause it came from. */
+  sources?: SourceLink[];
+  /** The coach's questions in one card (0282): answered with one Send, one message. */
+  questions?: CoachQuestions;
 }
+
+/** A source opens inside the app only where the member app has that page; otherwise it is named, not linked. */
+const MEMBER_PAGES = /^\/(terms|privacy|member\/waiver)(#[\w-]+)?$/;
 
 const READING_ASK = 'Save this to **You → Progress → Body**? Nothing is saved until you tap Save.';
 
@@ -114,6 +125,8 @@ export default function ChatbotPage() {
 }
 
 function Assistant() {
+  const navigate = useNavigate();
+  const t = useT();
   const pointsOn = usePointsOn();
   const setup = useGymSetup();
   const [baseCtx, setCtx] = useState<AssistantContext>(EMPTY_CONTEXT);
@@ -392,6 +405,11 @@ function Assistant() {
         }, (text) => setWorking((w) => ({ ...w, [botId]: text })), (r) => {
           proposed += 1;
           setMessages((prev) => prev.map((m) => (m.id === botId ? { ...m, reading: r } : m)));
+        }, (s) => {
+          setMessages((prev) => prev.map((m) => (m.id === botId ? { ...m, sources: s } : m)));
+        }, (q) => {
+          proposed += 1;
+          setMessages((prev) => prev.map((m) => (m.id === botId ? { ...m, questions: q } : m)));
         });
         setWorking((w) => { const n = { ...w }; delete n[botId]; return n; });
         if ((result.ok && streamed.trim()) || proposed > 0) {
@@ -574,6 +592,15 @@ function Assistant() {
                       status={decided[p.id] ?? 'pending'} names={names} onStatus={onDecided} />
                   ))}
                   {m.reading && <ReadingCard reading={m.reading} />}
+                  {m.questions && <QuestionsCard card={m.questions} disabled={isTyping} onSend={(text) => send(text, { coachOnly: true })} />}
+                  {m.sources && m.sources.length > 0 && (
+                    <div className="flex flex-wrap items-center" style={{ gap: 6 }} data-sources>
+                      <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{t('Read from')}</span>
+                      {m.sources.map((s) => (s.link && MEMBER_PAGES.test(s.link)
+                        ? <button key={s.title} type="button" className="assistant-source" onClick={() => navigate(s.link!)}>{s.title}</button>
+                        : <span key={s.title} className="assistant-source is-plain">{s.title}</span>))}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="max-w-[80%] assistant-user-message" style={{

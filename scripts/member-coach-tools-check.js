@@ -124,6 +124,7 @@ async (page) => {
   const CALLS = {};
   let DELAY = 0;
   const COACH_POSTS = [];
+  const SCRIPTED = [];
   // Consent already given, setup done (no `onboarded` reads as done): straight to the coach.
   const COACH = { gym_id: 'gym-1', allowed: true, reason: null, used_today: 3, daily_limit: 30,
     used_month: 40, monthly_limit: 1500, consent: true };
@@ -204,6 +205,12 @@ async (page) => {
         headers: { 'Access-Control-Allow-Origin': '*' }, body: '{"reason":"bad_question"}' });
       COACH_POSTS.push(posted);
       if (DELAY) await new Promise((r) => setTimeout(r, DELAY));
+      // 0282: a scripted reply (sources, a questions card) instead of a proposal.
+      if (SCRIPTED.length) {
+        const frames = SCRIPTED.shift();
+        return route.fulfill({ status: 200, contentType: 'text/event-stream', headers: { 'Access-Control-Allow-Origin': '*' },
+          body: [...frames, { type: 'done' }].map((o) => `data: ${JSON.stringify(o)}\n\n`).join('') });
+      }
       // The function stores the proposal (create_ai_proposal) and streams it beside the text.
       const r = REPLIES[Math.min(COACH_POSTS.length, REPLIES.length) - 1];
       PROPOSALS.push(r.proposal);
@@ -435,6 +442,50 @@ async (page) => {
   out.push('…keeping the waist already saved that day: ' + (savedRow && Number(savedRow.waist_cm) === 80 ? 'yes' : 'NO ' + JSON.stringify(savedRow)));
   out.push('…and the card says Saved: ' + (/Saved/.test(((await rc.innerText().catch(() => '')) || '')) ? 'yes' : 'MISSING'));
   await shot('reading-saved');
+
+  // ── 0282: the coach reads the gym's documents and says where; asks everything in one card ──
+  SCRIPTED.push([
+    { type: 'status', text: 'Reading the gym’s rules and guides' },
+    { type: 'sources', items: [{ title: 'Terms 2. Freezing your membership', link: '/terms#freezing' },
+      { title: 'Guide: Online payments (PayMongo)', link: '/gym-app?tab=pay' }] },
+    { type: 'text', text: 'Yes. You can freeze twice in a calendar month, with a reason, and the frozen days are added back (from the Terms, section 2).' },
+  ]);
+  await go('/member/chatbot');
+  await ask('Can I freeze my membership for a month?');
+  const src = page.locator('[data-sources]').last();
+  const srcText = ((await src.innerText().catch(() => '')) || '').replace(/\s+/g, ' ');
+  out.push('a policy question reaches the coach (not the built-in freeze reply): '
+    + (COACH_POSTS.at(-1)?.question === 'Can I freeze my membership for a month?' ? 'yes' : 'NO ' + JSON.stringify(COACH_POSTS.at(-1))));
+  out.push('the answer names where it came from: ' + (/Read from/.test(srcText) && /Terms 2\. Freezing your membership/.test(srcText) ? 'yes' : 'MISSING ' + srcText));
+  out.push('…a member page is a link; an admin-only page is named, not linked: '
+    + ((await src.getByRole('button', { name: 'Terms 2. Freezing your membership' }).count()) === 1
+      && (await src.getByRole('button', { name: /Online payments/ }).count()) === 0 ? 'yes' : 'NO'));
+  await shot('coach-sources');
+  await src.getByRole('button', { name: 'Terms 2. Freezing your membership' }).click();
+  await page.waitForTimeout(1200);
+  out.push('…and the link opens that clause: ' + (/\/terms#freezing$/.test(page.url()) ? 'yes' : 'NO ' + page.url()));
+
+  SCRIPTED.push([{ type: 'text', text: 'A few things first.' },
+    { type: 'questions', intro: 'A few things before I build your routine.', questions: [
+      { label: 'What is your goal?', kind: 'choice', options: ['Build strength', 'Lose fat', 'Get fitter'] },
+      { label: 'How many days a week can you train?', kind: 'number', options: [] },
+      { label: 'What equipment do you have?', kind: 'text', options: [] }] }]);
+  SCRIPTED.push([{ type: 'text', text: 'Thanks, building it now.' }]);
+  await go('/member/chatbot');
+  await ask('Build me a routine please');
+  const qcard = page.locator('[data-questions-card]').last();
+  out.push('the coach asks its questions in one card: ' + ((await qcard.locator('[data-question]').count()) === 3 ? 'yes' : 'MISSING ' + (await qcard.locator('[data-question]').count())));
+  await shot('coach-questions');
+  const before = COACH_POSTS.length;
+  await qcard.getByRole('button', { name: 'Build strength' }).click();
+  await qcard.getByLabel('How many days a week can you train?').fill('3');
+  await qcard.getByLabel('What equipment do you have?').fill('dumbbells');
+  await qcard.getByRole('button', { name: 'Send answers' }).click();
+  await page.waitForTimeout(2200);
+  const answers = COACH_POSTS.at(-1)?.question ?? '';
+  out.push('one Send is one message to the coach, with every answer: ' + (COACH_POSTS.length === before + 1
+    && /What is your goal\? Build strength/.test(answers) && /train\? 3/.test(answers) && /have\? dumbbells/.test(answers) ? 'yes' : 'NO ' + JSON.stringify({ n: COACH_POSTS.length - before, answers })));
+  out.push('…and the card says Sent: ' + (/Sent/.test(((await qcard.innerText().catch(() => '')) || '')) ? 'yes' : 'MISSING'));
 
   // The Privacy page says what the coach may change.
   await go('/privacy');

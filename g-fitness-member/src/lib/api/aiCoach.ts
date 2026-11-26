@@ -27,6 +27,10 @@ export interface Turn { role: 'user' | 'assistant'; content: string }
 
 /** A change the coach proposed during a reply (0145). Nothing has changed until Apply. */
 export interface ProposalFrame { id: string; kind: string; summary: string; payload: unknown }
+/** A passage the coach read in the gym's documents (0282), shown as a link under the answer. */
+export interface SourceLink { title: string; link: string | null }
+export type { CoachQuestions } from '../../components/QuestionsCard';
+import type { CoachQuestions } from '../../components/QuestionsCard';
 
 /** Null when unknown — before 0143 is pasted, or offline. Never a guess. */
 export async function getCoachStatus(): Promise<CoachStatus | null> {
@@ -106,6 +110,8 @@ export async function askCoach(
   onProposal?: (p: ProposalFrame) => void,
   onStatus?: (text: string) => void,
   onReading?: (r: Reading) => void,
+  onSources?: (s: SourceLink[]) => void,
+  onQuestions?: (q: CoachQuestions) => void,
 ): Promise<{ ok: true } | { ok: false; reason: string; message: string }> {
   const busy = { ok: false as const, reason: 'busy', message: 'The coach is busy. Try again in a minute.' };
   try {
@@ -141,7 +147,14 @@ export async function askCoach(
         type: string; text?: string; reason?: string; message?: string;
         id?: string; kind?: string; summary?: string; payload?: unknown;
         measured_on?: string; values?: Record<string, unknown>;
+        items?: SourceLink[]; intro?: string; questions?: CoachQuestions['questions'];
       };
+      if (ev.type === 'sources' && Array.isArray(ev.items)) {
+        onSources?.(ev.items.filter((x) => typeof x?.title === 'string').slice(0, 3));
+      }
+      if (ev.type === 'questions' && Array.isArray(ev.questions) && ev.questions.length) {
+        onQuestions?.({ intro: ev.intro ?? '', questions: ev.questions });
+      }
       // propose_reading: checked again here against Progress's own fields and ranges; the card
       // writes nothing until the member taps Save.
       if (ev.type === 'reading' && ev.values) {

@@ -5,7 +5,7 @@
 // service-role key is used for exactly one call, ai_record_usage(), because a
 // member who could write their own count could reset their own limit.
 import Anthropic from 'npm:@anthropic-ai/sdk@0.129.0';
-import { TOOL_STATUS, READING_RESULT,
+import { TOOL_STATUS, READING_RESULT, QUESTIONS_RESULT,
   buildRequest, MAX_ROUNDS, sse, statusToHttp, SYSTEM_PROMPT, TOOLS, toolCall, toolResultText, validQuestion,
   type CoachStatus, type Turn,
 } from './core.ts';
@@ -23,6 +23,13 @@ const json = (body: unknown, status: number) =>
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+// The question's meaning, with the same built-in model knowledge-embed uses for the library (0282).
+// deno-lint-ignore no-explicit-any
+const embedder = new (globalThis as any).Supabase.ai.Session('gte-small');
+async function embed(text: string): Promise<string | null> {
+  try { return JSON.stringify(await embedder.run(text, { mean_pool: true, normalize: true })); }
+  catch { return null; }   // keyword search still answers
+}
 
 async function rpc<T>(fn: string, auth: string, key: string, body: unknown = {}): Promise<T> {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
@@ -142,10 +149,19 @@ Deno.serve(async (req) => {
         if ('error' in call) return fail(call.error);
         if ('card' in call) {
           send(sse(call.card));
-          return { type: 'tool_result', tool_use_id: id, content: READING_RESULT };
+          return { type: 'tool_result', tool_use_id: id, content: call.card.type === 'questions' ? QUESTIONS_RESULT : READING_RESULT };
+        }
+        if (call.rpc === 'search_knowledge') {
+          // Freshen the library in the background (idle when current); never wait on it.
+          fetch(`${SUPABASE_URL}/functions/v1/knowledge-embed`, { method: 'POST', headers: { Authorization: `Bearer ${ANON}`, apikey: ANON } }).catch(() => {});
+          call.args.p_embedding = await embed(String(call.args.p_query));
         }
         const res = await toolRpc(call.rpc, auth, call.args);
         if (!res.ok) return fail(res.message);
+        if (call.rpc === 'search_knowledge' && Array.isArray(res.data) && res.data.length) {
+          // The passages it read, as links under the answer (the top three).
+          send(sse({ type: 'sources', items: (res.data as { title: string; link: string | null }[]).slice(0, 3).map((r) => ({ title: r.title, link: r.link })) }));
+        }
         if (call.rpc === 'create_ai_proposal') {
           if (typeof res.data !== 'string') return fail('That change could not be saved. Try again.');
           send(sse({

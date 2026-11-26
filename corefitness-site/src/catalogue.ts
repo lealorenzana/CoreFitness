@@ -126,6 +126,7 @@ export const CATALOGUE: CatalogueGroup[] = [
       ['A data processing agreement', 'You are the controller under RA 10173; Core Fitness is your processor, in writing.'],
       ['Versioned terms', 'Members agree to dated Terms, Privacy and house rules, and you can see which version each signed.'],
       ['Their data, theirs to take', 'Members can export what the gym holds about them.'],
+      ['Answers with sources', 'The assistant reads your gym’s Terms, waiver, house rules and the app’s guides before it answers, and links the part it read.'],
       ['Documents read for you', 'When you apply, each business document is read as you attach it: the expiry fills itself in, and anything that does not match is flagged for the person who checks it.'],
     ],
   },
@@ -207,5 +208,6 @@ export const WHERE: Record<string, Where[]> = {
   'A data processing agreement': ['built'],
   'Versioned terms': ['member', 'gym'],
   'Their data, theirs to take': ['member'],
+  'Answers with sources': ['member', 'gym'],
   'Documents read for you': ['gym'],
 };

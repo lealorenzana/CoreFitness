@@ -42,8 +42,8 @@ check('a 1001-character question is refused', !core.validQuestion('x'.repeat(100
 const tools = core.TOOLS ?? [];
 const names = tools.map((t) => t.name).sort().join(',');
 // Thirteen since propose_goal went with members' own goals (0274).
-check('the thirteen tools are defined',
-  names === 'find_exercises,get_gym_info,get_my_bookings,get_my_progress,get_my_routines,get_my_schedule,propose_booking,propose_cancel_booking,propose_log,propose_program,propose_reading,propose_routine,propose_schedule', names);
+check('the fifteen tools are defined',
+  names === 'ask_member,find_exercises,get_gym_info,get_my_bookings,get_my_progress,get_my_routines,get_my_schedule,propose_booking,propose_cancel_booking,propose_log,propose_program,propose_reading,propose_routine,propose_schedule,search_gym_documents', names);
 // Every object in a strict schema must close its properties and require every one of them.
 const closed = (s) => {
   if (!s || typeof s !== 'object') return true;
@@ -57,9 +57,21 @@ const closed = (s) => {
   return true;
 };
 check('every tool is closed and requires every property; all but the loose proposals are strict',
-  tools.length === 13 && tools.every((t) => t.strict === !core.LOOSE_TOOLS.includes(t.name) && t.input_schema?.additionalProperties === false && closed(t.input_schema)));
+  tools.length === 15 && tools.every((t) => t.strict === !core.LOOSE_TOOLS.includes(t.name) && t.input_schema?.additionalProperties === false && closed(t.input_schema)));
 check('a loose tool is still checked in full before it runs', 'error' in core.toolCall('propose_log', { summary: 's', performed_on: '2026-10-11', activity: 'x', sets: [{ exercise_id: 'e', reps: 8 }] }));
 check('MAX_ROUNDS is 6', core.MAX_ROUNDS === 6);
+// 0282: the document search runs search_knowledge; the question card is a card, never a database call.
+const sq = core.toolCall('search_gym_documents', { query: 'can I freeze my membership' });
+check('search_gym_documents runs search_knowledge with the question', sq.rpc === 'search_knowledge' && sq.args.p_query === 'can I freeze my membership');
+check('…an empty question is refused', 'error' in core.toolCall('search_gym_documents', { query: '  ' }));
+const qc = core.toolCall('ask_member', { intro: 'A few things first.', questions: [
+  { label: 'Your goal?', kind: 'choice', options: ['Strength', 'Lose fat'] }, { label: 'Days a week?', kind: 'number', options: ['x'] }] });
+check('ask_member becomes one questions card (options only on a choice)', qc.card?.type === 'questions' && qc.card.questions.length === 2
+  && qc.card.questions[1].options.length === 0);
+check('…more than 8 questions is refused', 'error' in core.toolCall('ask_member', { intro: 'x', questions: Array.from({ length: 9 }, (_, i) => ({ label: `Q${i}`, kind: 'text', options: [] })) }));
+check('…a choice with one option is refused', 'error' in core.toolCall('ask_member', { intro: 'x', questions: [{ label: 'Pick', kind: 'choice', options: ['Only'] }] }));
+check('no search result tells the coach to say it does not know', /do not know/.test(core.toolResultText('search_knowledge', [])));
+check('the prompt says to ask all questions in one card', /ask them all at once with ask_member/.test(core.SYSTEM_PROMPT));
 // Anthropic refuses a request whose strict tools carry more than 16 union (nullable) parameters
 // in total — 0177 shipped 19 and every coach message failed as "busy" for a day.
 const unions = (s) => !s || typeof s !== 'object' ? 0

@@ -548,7 +548,8 @@ function credentialsAnswer(): string {
  * `general` — fitness advice the coach answers better; skipped while it can talk.
  * `injury` — the referral; checked before anything else while it can talk.
  */
-type RuleKind = 'fact' | 'general' | 'injury';
+// 'document': a rule the gym's own documents answer better; with the coach on, it searches them and cites (0282).
+type RuleKind = 'fact' | 'general' | 'injury' | 'document';
 
 const RULES: { match: RegExp; reply: (ctx: AssistantContext) => string; kind?: RuleKind }[] = [
   {
@@ -616,10 +617,12 @@ const RULES: { match: RegExp; reply: (ctx: AssistantContext) => string; kind?: R
   {
     match: /\b(?:refund|reimburs\w*|money back|sauli)\b/,
     reply: refundAnswer,
+    kind: 'document',
   },
   {
     match: /\b(?:freeze|frozen|paus\w*|cancel\w*|hinto|tigil)\b/,
     reply: freezeAnswer,
+    kind: 'document',
   },
   {
     // `when does` deliberately absent: "when does the gym open" would have been
@@ -664,7 +667,8 @@ const RULES: { match: RegExp; reply: (ctx: AssistantContext) => string; kind?: R
   {
     match: /\b(?:delete my account|close my account|deactivat\w*)\b/,
     reply: () =>
-      'Accounts are closed by the gym rather than from the app, so your payment and attendance history is not lost. Ask the front desk and they will handle it.',
+      'You can delete your account yourself in **Settings → Your data**. It is locked at once and erased after 7 days unless you sign back in. Your payments and visits stay in the gym\'s records under "Deleted member" (Terms, section 9).',
+    kind: 'document',
   },
   {
     match: /\b(?:where|address|location|located|direction|saan|paano pumunta)\b/,
@@ -767,6 +771,7 @@ const RULES: { match: RegExp; reply: (ctx: AssistantContext) => string; kind?: R
     match: /\b(?:dress code|attire|wear|shoes|age limit|minor|rules?|policy|policies|bawal|pwede ba)\b/,
     reply: () =>
       `Your gym's house rules are in **More → Help → Terms of service**. For anything not written there, the front desk can tell you.`,
+    kind: 'document',
   },
   {
     // An honest "we do not measure that" beats a confident guess about how busy
@@ -850,8 +855,11 @@ export function answerFor(
       if (rule.kind === 'injury' && rule.match.test(q)) return rule.reply(ctx);
     }
     if (COACH_REQUEST.test(q) || EXPLAIN.test(q)) return FALLBACK;
+    // A policy question goes to the coach whole: it searches the gym's documents and cites the clause,
+    // even when a fact rule would also match ("can I freeze my membership" is not "my membership").
+    if (RULES.some((rule) => rule.kind === 'document' && rule.match.test(q))) return FALLBACK;
     for (const rule of RULES) {
-      if (rule.kind === 'general' || rule.kind === 'injury') continue;
+      if (rule.kind === 'general' || rule.kind === 'injury' || rule.kind === 'document') continue;
       if (rule.match.test(q)) return rule.reply(ctx);
     }
     return FALLBACK;

@@ -14,6 +14,8 @@ import { pathToFileURL } from 'node:url';
 // Resolved from the working directory: see scripts/sql/README.md.
 const requireFromCwd = createRequire(pathToFileURL(process.cwd() + '/'));
 const { PGlite } = await import(pathToFileURL(requireFromCwd.resolve('@electric-sql/pglite')).href);
+// pgvector (0282's knowledge search) is a separate package, installed beside pglite the same way.
+const { vector } = await import(pathToFileURL(requireFromCwd.resolve('@electric-sql/pglite-pgvector')).href);
 
 export const describe = (e) => [e.message, e.detail && `detail: ${e.detail}`, e.hint && `hint: ${e.hint}`,
   e.where && `where: ${e.where}`].filter(Boolean).join('\n   ');
@@ -74,6 +76,8 @@ create or replace function storage.extension(name text) returns text language sq
   select reverse(split_part(reverse(name), '.', 1)) $$;
 
 create schema extensions;
+-- As on Supabase: every API role may use the extensions schema (pgvector's type lives there, 0282).
+grant usage on schema extensions to anon, authenticated, service_role;
 create publication supabase_realtime;
 `;
 
@@ -89,7 +93,8 @@ insert into profiles (id, role, first_name, last_name, email, status)
 
 // Extensions pglite cannot load become no-ops. Migrations already guard their
 // use of pg_cron and pg_net behind existence checks.
-const prep = (sql) => sql.replace(/create\s+extension[^;]*;/gi, 'select 1;');
+// pglite lacks most extensions, so their lines become no-ops; pgvector is loaded (above), so it runs.
+const prep = (sql) => sql.replace(/create\s+extension(?![^;]*\bvector\b)[^;]*;/gi, 'select 1;');
 
 // The demo seeds were written for, and pasted live on, the schema before
 // tenancy (0097). They run at that point here too, so the tenancy backfills
@@ -128,7 +133,7 @@ const DEFAULTS = `
 /** Every migration, Supabase's grants, the real admin and the named seeds. Throws on the first failure. */
 export async function liveDb(repo, { seeds = [], log = () => {}, before = null } = {}) {
   const MIG = `${repo}/supabase/migrations`;
-  const db = await PGlite.create();
+  const db = await PGlite.create({ extensions: { vector } });
   await db.exec(STUBS);
   // Before any migration runs, so every table and view a migration creates is
   // granted at creation and a later revoke is not swept away afterwards.

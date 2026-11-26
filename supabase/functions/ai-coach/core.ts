@@ -35,6 +35,12 @@ Bottom bar: Today · Train · You · More, and the check-in block at the right e
 Some of these exist only when the gym switched them on; check get_gym_info before sending a member to one.
 Their membership (plan, end date, days left) is shown under You → Membership; you cannot read it, so send them there.
 
+LOOKING THINGS UP (search_gym_documents)
+For any question about rules, policies or how something works (freezing, refunds, cancelling, no-shows, the waiver, house rules, privacy and what the gym keeps, deleting the account, streaks, how to use a screen of the app, Core Fitness and how to reach it), call search_gym_documents with the member's question in plain words, and answer ONLY from what it returns. Each result has a title: name the ones you used in your answer, in a few words ("from the Terms, section 2"), so the member can open them; the app shows them as links. Text marked as your gym's own rule means: read that number from get_gym_info. If neither tool says, say you do not know and that the front desk can help. Never answer a rule from general knowledge.
+
+ASKING FOR DETAILS (ask_member)
+When you need more than one detail from the member (for example their goal, the days they can train and their equipment before building a routine), ask them all at once with ask_member: one card, up to 8 short questions, with choices where the answers are few. They answer everything with one Send, which is one message, so never ask those questions one at a time. Ask only what you do not already know from their setup or this conversation.
+
 LOGGING A READING
 When the member gives you their weight or a body measurement to record, call propose_reading. It shows a card with Save; nothing is saved until they tap it. Only use numbers they told you, in kg, cm or percent; if they used pounds or inches, ask for kg or cm. Never log a reading they did not give.
 
@@ -66,6 +72,8 @@ export const TOOL_STATUS: Record<string, string> = {
   propose_routine: 'Creating your routine',
   propose_schedule: 'Planning your week',
   propose_reading: 'Writing down your reading',
+  search_gym_documents: 'Reading the gym’s rules and guides',
+  ask_member: 'Getting your questions ready',
 };
 
 /** The readings Progress → Body takes (body_measurements). The member app checks the ranges again. */
@@ -87,7 +95,7 @@ export const MAX_STRICT_UNIONS = 16;
  * request (2026-10-10 → 11; read from ai_coach_errors, 0196). Their inputs are still checked in
  * full by `mismatch()` before anything runs, and a bad one goes back to the model as an error.
  */
-export const LOOSE_TOOLS = ['propose_program', 'propose_log', 'propose_routine', 'propose_schedule', 'propose_reading'];
+export const LOOSE_TOOLS = ['propose_program', 'propose_log', 'propose_routine', 'propose_schedule', 'propose_reading', 'ask_member'];
 const zeroNull = (v: unknown) => (typeof v === 'number' && v > 0 ? v : null);
 const blankNull = (v: unknown) => (typeof v === 'string' && v.trim() !== '' ? v : null);
 const obj = (properties: Record<string, unknown>) => ({
@@ -247,6 +255,29 @@ export const TOOLS = [
     }),
   },
   {
+    name: 'search_gym_documents',
+    description: "Searches this gym's member Terms and Privacy (with the gym's own rules), its waiver and house rules, the app's how-to guides, and how to reach Core Fitness, by meaning and by words. Returns up to 6 passages, each with a title and where it opens. The only source for rules and policies.",
+    strict: true,
+    input_schema: obj({ query: str("The member's question in plain words, in English or Filipino.") }),
+  },
+  {
+    name: 'ask_member',
+    description: 'Shows the member ONE card with all the questions you need answered (up to 8), and their answers come back as their next message. Use it instead of asking several questions one by one.',
+    strict: false,
+    input_schema: obj({
+      intro: str('One short sentence above the questions, e.g. "A few things before I build your routine."'),
+      questions: {
+        type: 'array',
+        description: '1 to 8 questions.',
+        items: obj({
+          label: str('The question, short, e.g. "How many days a week can you train?"'),
+          kind: { type: 'string', enum: ['choice', 'number', 'text'], description: 'choice: pick one of options; number; or short text.' },
+          options: { type: 'array', items: { type: 'string' }, description: '2 to 6 options for choice; [] otherwise.' },
+        }),
+      },
+    }),
+  },
+  {
     name: 'propose_reading',
     description: 'Shows the member a card to save a body reading they told you (weight, body fat or a measurement) to Progress → Body. Nothing is saved until they tap Save. Use only numbers the member gave.',
     strict: false,
@@ -316,8 +347,10 @@ function dropNulls(v: unknown): unknown {
 }
 
 export type ReadingCard = { type: 'reading'; measured_on: 'today' | 'yesterday'; values: Record<string, number> };
+export type QuestionsCard = { type: 'questions'; intro: string; questions: { label: string; kind: 'choice' | 'number' | 'text'; options: string[] }[] };
 // `card`: shown to the member as it is, no database call (a reading is saved by the member's own Save).
-export type ToolCall = { rpc: string; args: Record<string, unknown> } | { card: ReadingCard } | { error: string };
+export type ToolCall = { rpc: string; args: Record<string, unknown> } | { card: ReadingCard | QuestionsCard } | { error: string };
+export const QUESTIONS_RESULT = JSON.stringify({ status: 'Shown to the member as one card. Their answers arrive as their next message. Do not ask these again, and stop here until they answer.' });
 
 export const READING_RESULT = JSON.stringify({ status: 'Shown to the member as a card with Save. Nothing is saved until they tap it.' });
 
@@ -387,6 +420,21 @@ export function toolCall(name: string, input: unknown): ToolCall {
       if (!Object.keys(values).length) return { error: 'readings is empty.' };
       return { card: { type: 'reading', measured_on: input.measured_on as 'today' | 'yesterday', values } };
     }
+    case 'search_gym_documents': {
+      const q = String(input.query).trim();
+      if (!q || q.length > 500) return { error: 'query must be 1 to 500 characters.' };
+      return { rpc: 'search_knowledge', args: { p_query: q, p_limit: 6 } };
+    }
+    case 'ask_member': {
+      const qs = input.questions as { label: string; kind: 'choice' | 'number' | 'text'; options: string[] }[];
+      if (!qs.length || qs.length > 8) return { error: 'questions must have 1 to 8 items.' };
+      for (const x of qs) {
+        if (!x.label.trim() || x.label.length > 120) return { error: 'each label must be 1 to 120 characters.' };
+        if (x.kind === 'choice' && (x.options.length < 2 || x.options.length > 6)) return { error: 'a choice needs 2 to 6 options.' };
+      }
+      return { card: { type: 'questions', intro: String(input.intro).trim().slice(0, 200),
+        questions: qs.map((x) => ({ label: x.label.trim(), kind: x.kind, options: x.kind === 'choice' ? x.options.map((o) => o.slice(0, 60)) : [] })) } };
+    }
   }
   return { error: `There is no tool called ${name}.` };
 }
@@ -399,6 +447,11 @@ export function toolResultText(rpc: string, data: unknown): string {
   }
   if ((rpc === 'ai_coach_routines' || rpc === 'ai_coach_schedule' || rpc === 'ai_coach_progress') && data === null) {
     return JSON.stringify({ note: 'The member has not let you read their training, so you cannot see this. Ask them instead.' });
+  }
+  if (rpc === 'search_knowledge') {
+    const rows = Array.isArray(data) ? data as { title: string; body: string; link: string | null }[] : [];
+    if (!rows.length) return JSON.stringify({ results: [], note: 'Nothing in the gym documents matches. Say you do not know and that the front desk can help.' });
+    return JSON.stringify({ results: rows.map((r) => ({ title: r.title, opens: r.link, text: r.body.slice(0, 1500) })) });
   }
   if (rpc === 'ai_coach_exercises' && Array.isArray(data) && data.length === 0) {
     return JSON.stringify({ exercises: [], note: 'Nothing matches. Try again with a filter set to null.' });
@@ -451,6 +504,8 @@ export function sse(event:
   | { type: 'text'; text: string }
   | { type: 'proposal'; id: string; kind: string; summary: string; payload: unknown }
   | ReadingCard
+  | QuestionsCard
+  | { type: 'sources'; items: { title: string; link: string | null }[] }
   | { type: 'done' }
   | { type: 'error'; reason: string; message: string }): string {
   return `data: ${JSON.stringify(event)}\n\n`;
