@@ -1,5 +1,5 @@
 {
- "from": "2026-11-01",
+ "from": "2026-11-27",
  "docs": {
   "terms": {
    "short": "Terms for gyms",
@@ -30,7 +30,7 @@
      "title": "3. Applying and getting started",
      "body": [
       "You apply on this website and make an account with your email and a password. You also get a private link to your application. We read every application ourselves and answer there, and by email when we can.",
-      "Before we approve a gym we check six documents you upload: your Mayor's or business permit, DTI or SEC registration, BIR Certificate of Registration (2303), barangay business clearance, the owner's valid government ID, and a photo of the gym's front. You send all six together. We tell you which we verified, and why we could not accept one; we may also ask again for one we had verified (if it has expired or cannot be read). You then send only those, again together.",
+      "Before we approve a gym we check six documents you upload: your Mayor's or business permit, DTI or SEC registration, BIR Certificate of Registration (2303), barangay business clearance, the owner's valid government ID, and a photo of the gym's front. You send all six together. We tell you which we verified, and why we could not accept one; we may also ask again for one we had verified (if it has expired or cannot be read). You then send only those, again together. When you attach a document, a computer reads it first to fill in its expiry date and to show us anything that does not match your application; a person at Core Fitness still checks and decides on every one.",
       "If you chose a paid plan, you pay for it once all six are verified and before we approve the gym: online through PayMongo, or by GCash, Maya or bank with the reference number, which we check. Your plan starts the day we approve the gym, for the month or year you paid. A free trial pays nothing first. If we decline the application after you have paid, we refund the payment in full.",
       "We may decline an application, and you may call yours off. Either way it is shown to you. You can delete the account you made yourself, on your application page: it is locked at once and erased after 7 days unless you sign back in, an application still waiting is called off, and your documents are erased.",
       "When we approve it, the account you made becomes the gym's owner account. You then set the gym up in the gym app, and send a renewed permit each January and any document before it runs out."
@@ -188,7 +188,7 @@
       "Supabase — the database, sign-in and file storage (Singapore region).",
       "Vercel — serves the apps and this website.",
       "GitHub — holds the encrypted weekly backups.",
-      "Anthropic — answers questions sent to the AI coach, only at gyms whose plan includes it and only for members who agree to it in the app.",
+      "Anthropic — answers questions sent to the AI coach, only at gyms whose plan includes it and only for members who agree to it in the app. It also reads the business documents a gym attaches when it applies, so the expiry date fills in and anything that does not match is shown to us; it decides nothing.",
       "PayMongo — takes payments made online: a gym's payments to Core Fitness, and, only for a gym that connects its own PayMongo account, its members' payments to it. PayMongo receives what that payment needs (name, email, the amount and the payment details); card details go to PayMongo only, never to Core Fitness or the gym.",
       "Resend — sends account emails such as an owner's first password, when email is switched on.",
       "Your members' phone or browser maker (Google, Apple, Mozilla) — delivers notifications to members who turn them on.",
@@ -254,7 +254,7 @@
      "title": "2. What we hold",
      "body": [
       "From an application: the gym's name and address, your name, email and phone, roughly how many members you have, the plan you chose, how you heard of us, how you prefer to be contacted, and the messages on your application.",
-      "The business documents you upload to be verified (permit, DTI or SEC registration, BIR 2303, barangay clearance, a photo of the gym's front and the owner's government ID), in private storage only you and the people who run Core Fitness can open, with what we decided about each.",
+      "The business documents you upload to be verified (permit, DTI or SEC registration, BIR 2303, barangay clearance, a photo of the gym's front and the owner's government ID), in private storage only you and the people who run Core Fitness can open, with what we decided about each. When you attach one, Anthropic's AI reads it for us (names, numbers and dates); what it read is kept with the document, shown only to the people who run Core Fitness, and erased with it. It only helps us check: a person decides.",
       "For owners and staff: name, email, phone and role. Your password is held, hashed, by the sign-in service — never by us. If you apply or sign in with Google, Google tells us your name, email address and picture, and nothing else.",
       "For billing: your plan, the references and screenshots you send for payments, and the receipts we issue.",
       "Support tickets, and a copy of each email we send, so we can show it was sent.",

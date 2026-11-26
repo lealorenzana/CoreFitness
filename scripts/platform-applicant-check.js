@@ -138,6 +138,9 @@ async (page) => {
     platform_application_accounts: () => [{ application_id: 'a1', has_account: true }, { application_id: 'a4', has_account: true }],
     application_document_kinds: () => KINDS,
     application_documents_of: (b) => DOCS[b.p_application] ?? [],
+    // 0280: what was read from the ID, and a name that does not match the owner.
+    application_document_checks: (b) => b.p_application === 'a1' ? [{ document_id: 'd4', warnings: ['The name on the ID (PEDRO REYES) differs from the owner, Ana Cruz.'],
+      reading: { readable: true, looks_like: 'owner_id', business_name: null, owner_name: 'PEDRO REYES', id_number: 'N01-23', issued_on: null, expires_on: '2030-03-15', valid_for_year: null, confidence: 'high' } }] : [],
     // 0223: send back a pending one (rejected) or a verified one (requested).
     request_document_again: (b) => { CALLS.push(['again', b]); for (const list of Object.values(DOCS)) for (const d of list) if (d.id === b.p_document) { d.status = d.status === 'verified' ? 'requested' : 'rejected'; d.reason = b.p_reason; } return null; },
     platform_review_document: (b) => { CALLS.push(['review', b]); for (const list of Object.values(DOCS)) for (const d of list) if (d.id === b.p_document) { d.status = b.p_ok ? 'verified' : 'rejected'; d.reason = b.p_reason; } return null; },
@@ -209,6 +212,12 @@ async (page) => {
   out.push('the six documents, each to open: ' + ((await page.locator('[data-review-documents] [data-doc]').count()) === 6
     && (await page.locator('[data-review-documents]').getByRole('button', { name: 'View', exact: true }).count()) === 6 ? 'yes' : 'MISSING'));
   const idRow = page.locator('[data-review-documents] [data-doc="owner_id"]');
+  await idRow.locator('[data-doc-read]').waitFor({ timeout: 8000 }).catch(() => {});
+  const idText = await idRow.innerText();
+  out.push('0280: what was read shows under the document, as a reading: ' + (/What we read \(high confidence\): PEDRO REYES · No\. N01-23 · expires/.test(idText) ? 'yes' : 'MISSING ' + idText));
+  out.push('…with the mismatch as a warning, and Verify still the person\'s: ' + (/differs from the owner, Ana Cruz/.test(idText)
+    && (await idRow.getByRole('button', { name: 'Verify' }).count()) === 1 ? 'yes' : 'MISSING'));
+  await idRow.screenshot({ path: 'shots/platform-document-reading.png' });
   await idRow.getByRole('button', { name: 'Send back' }).click();
   out.push('sending back needs a reason: ' + (await idRow.getByRole('button', { name: 'Send back' }).isDisabled() ? 'yes' : 'NO'));
   await idRow.getByLabel(/Why .* is sent back/).fill('The photo is blurred.');

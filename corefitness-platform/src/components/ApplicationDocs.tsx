@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { CheckCircle2, Clock, Eye, FileText, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, Eye, FileText, XCircle } from 'lucide-react';
 import DocViewer, { isPdf, type ViewDoc } from './DocViewer';
 import {
-  applicationDocuments, documentKinds, documentUrl, emailApplicant, explain, requestDocumentAgain, reviewDocument,
-  type Application, type AppDocument, type DocKind,
+  applicationDocuments, documentChecks, documentKinds, documentUrl, emailApplicant, explain, requestDocumentAgain, reviewDocument,
+  type Application, type AppDocument, type DocKind, type DocReading,
 } from '../lib/platform';
 import SkelRows from './ui/SkelRows';
 
@@ -36,6 +36,19 @@ export default function ApplicationDocs({ app, onChanged }: { app: Application; 
     catch (e) { setDocs([]); setError(explain(e, '0187')); }
   }, [app.id]);
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
+  // What was read (0280). Before 0280 is pasted, or on any failure, there is simply no line.
+  const [checks, setChecks] = useState<Record<string, { reading: DocReading | null; warnings: string[] }>>({});
+  useEffect(() => {
+    if (!docs) return;
+    let alive = true;
+    void (async () => {
+      try {
+        const rows = await documentChecks(app.id);
+        if (alive) setChecks(Object.fromEntries(rows.map((r) => [r.document_id, r])));
+      } catch { /* the review works without it */ }
+    })();
+    return () => { alive = false; };
+  }, [docs, app.id]);
   useEffect(() => {
     if (!docs) return;
     let alive = true;
@@ -110,6 +123,7 @@ export default function ApplicationDocs({ app, onChanged }: { app: Application; 
                     {(d.status === 'rejected' || d.status === 'requested') && d.reason ? ` · sent back: ${d.reason}` : ''}
                   </span>
                 ) : <span className="meta" style={{ margin: 0 }}>Not sent yet</span>}
+                {d && <ReadLine check={checks[d.id]} />}
               </span>
               {d && (
                 <span className="actions">
@@ -146,5 +160,23 @@ export default function ApplicationDocs({ app, onChanged }: { app: Application; 
       </div>
       {mailNote && <p className="meta">{mailNote}</p>}
     </div>
+  );
+}
+
+/** What the reading found, and what does not add up. Says it is a reading, never a verdict. */
+function ReadLine({ check }: { check?: { reading: DocReading | null; warnings: string[] } }) {
+  const r = check?.reading;
+  if (!r) return null;
+  const found = r.readable ? [
+    r.business_name, r.owner_name, r.id_number && `No. ${r.id_number}`,
+    r.issued_on && `issued ${day(r.issued_on)}`, r.expires_on && `expires ${day(r.expires_on)}`,
+  ].filter(Boolean).join(' · ') : '';
+  return (
+    <span className="doc-read" data-doc-read>
+      {found && <span className="meta" style={{ margin: 0 }}>What we read ({r.confidence} confidence): {found}</span>}
+      {check!.warnings.map((w) => (
+        <span key={w} className="pill warn" style={{ whiteSpace: 'normal' }}><AlertTriangle size={12} /> {w}</span>
+      ))}
+    </span>
   );
 }

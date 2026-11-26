@@ -145,25 +145,48 @@ async (page) => {
   out.push('a document uploads into the application\'s folder, then is attached as a draft: ' + (up && up[1].includes(`/applications/${APP}/bir_2303-`)
     && add && add[1].p_application === APP && add[1].p_kind === 'bir_2303' && add[1].p_path.startsWith(`${APP}/bir_2303-`) && add[1].p_expires_on === null ? 'yes' : 'MISSING ' + JSON.stringify([up, add])));
   out.push('…and shows as attached, not sent: ' + (/Attached, not sent yet/.test(await page.locator('[data-doc="bir_2303"]').innerText()) ? 'yes' : 'MISSING'));
+  // 0280: a chosen file is read first; a dated one waits, its date filled from the reading, for Attach.
+  const READ_YEAR = new Date().getFullYear() + 3;
+  await page.route('**/functions/v1/read-document', async (route) => {
+    const body = JSON.parse(route.request().postData() || '{}');
+    CALLS.push(['read', body]);
+    if (body.kind === 'barangay') return route.fulfill({ status: 502, contentType: 'application/json', body: '{"reason":"failed"}' });
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ reading: {
+      readable: true, looks_like: body.kind, business_name: 'IRON DEN', owner_name: 'ANA MARIA CRUZ', id_number: 'X1',
+      issued_on: null, expires_on: body.kind === 'owner_id' ? `${READ_YEAR}-03-15` : null, valid_for_year: null, confidence: 'high' } }) });
+  });
   const idRow = page.locator('[data-doc="owner_id"]');
   await idRow.locator('input[type=file]').setInputFiles({ name: 'id.jpg', mimeType: 'image/jpeg', buffer: Buffer.from([0xff, 0xd8, 0xff]) });
-  await page.waitForTimeout(300);
-  out.push('an ID needs its expiry date: ' + (/Give the date it expires/.test(await idRow.innerText()) ? 'yes' : 'MISSING'));
-  await idRow.getByLabel('Month').selectOption('3');
-  await idRow.getByLabel('Day').selectOption('15');
+  await idRow.getByRole('button', { name: /^Attach id\.jpg/ }).waitFor({ timeout: 8000 });
+  const read1 = CALLS.find((c) => c[0] === 'read');
+  out.push('a chosen file is read, in its own folder: ' + (read1 && read1[1].kind === 'owner_id' && read1[1].path.startsWith(`${APP}/owner_id-`) ? 'yes' : 'MISSING ' + JSON.stringify(read1)));
+  out.push('…its expiry is filled from the reading, and says so: ' + (/We read the date from your file/.test(await idRow.innerText())
+    && (await idRow.getByLabel('Year').inputValue()) === String(READ_YEAR) && (await idRow.getByLabel('Month').inputValue()) === '3'
+    && (await idRow.getByLabel('Day').inputValue()) === '15' ? 'yes' : 'MISSING'));
+  out.push('…nothing is attached before the person checks it: ' + (CALLS.filter((c) => c[0] === 'add').length === 1 ? 'yes' : 'NO'));
   const yearOpts = await idRow.getByLabel('Year').locator('option').allTextContents();
-  await idRow.getByLabel('Year').selectOption(yearOpts[3]);
   out.push('the year list starts this year (no past years): ' + (Number(yearOpts[1]) === new Date().getFullYear() ? 'yes' : 'NO ' + yearOpts[1]));
-  await idRow.locator('input[type=file]').setInputFiles({ name: 'id.jpg', mimeType: 'image/jpeg', buffer: Buffer.from([0xff, 0xd8, 0xff]) });
+  await idRow.getByRole('button', { name: /^Attach id\.jpg/ }).click();
   await page.waitForTimeout(800);
   const add2 = CALLS.filter((c) => c[0] === 'add')[1];
-  out.push('…attached with it: ' + (add2 && add2[1].p_kind === 'owner_id' && add2[1].p_expires_on === `${yearOpts[3]}-03-15` ? 'yes' : 'MISSING ' + JSON.stringify(add2)));
-  for (const [k, name, expiry] of [['dti_sec', 'dti.pdf', false], ['front_photo', 'front.jpg', false], ['barangay', 'brgy.jpg', true]]) {
-    const row = page.locator(`[data-doc="${k}"]`);
-    if (expiry) { await row.getByLabel('Month').selectOption('6'); await row.getByLabel('Day').selectOption('1'); await row.getByLabel('Year').selectOption(yearOpts[2]); }
-    await row.locator('input[type=file]').setInputFiles({ name, mimeType: name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg', buffer: Buffer.from('x') });
+  out.push('…attached with the date it showed: ' + (add2 && add2[1].p_kind === 'owner_id' && add2[1].p_expires_on === `${READ_YEAR}-03-15` ? 'yes' : 'MISSING ' + JSON.stringify(add2)));
+  for (const [k, name] of [['dti_sec', 'dti.pdf'], ['front_photo', 'front.jpg']]) {
+    await page.locator(`[data-doc="${k}"] input[type=file]`).setInputFiles({ name, mimeType: name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg', buffer: Buffer.from('x') });
     await page.waitForTimeout(700);
   }
+  out.push('an undated one attaches straight after reading; the front photo is never read: ' + (CALLS.some((c) => c[0] === 'add' && c[1].p_kind === 'dti_sec')
+    && CALLS.some((c) => c[0] === 'add' && c[1].p_kind === 'front_photo') && !CALLS.some((c) => c[0] === 'read' && c[1].kind === 'front_photo') ? 'yes' : 'MISSING'));
+  const brgy = page.locator('[data-doc="barangay"]');
+  await brgy.locator('input[type=file]').setInputFiles({ name: 'brgy.jpg', mimeType: 'image/jpeg', buffer: Buffer.from('x') });
+  await brgy.getByRole('button', { name: /^Attach brgy\.jpg/ }).waitFor({ timeout: 8000 });
+  out.push('a failed reading falls back to typing the date: ' + (/could not read it this time\. Type the date/.test(await brgy.innerText()) ? 'yes' : 'MISSING'));
+  await brgy.getByRole('button', { name: /^Attach brgy\.jpg/ }).click();
+  await page.waitForTimeout(300);
+  out.push('…and Attach without a date asks for one: ' + (/Give the date it expires/.test(await brgy.innerText()) ? 'yes' : 'MISSING'));
+  await brgy.getByLabel('Month').selectOption('6'); await brgy.getByLabel('Day').selectOption('1'); await brgy.getByLabel('Year').selectOption(yearOpts[2]);
+  await page.screenshot({ path: 'shots/site-applicant-reading.png', fullPage: false });
+  await brgy.getByRole('button', { name: /^Attach brgy\.jpg/ }).click();
+  await page.waitForTimeout(700);
   out.push('all attached: Submit documents is ready: ' + (await submitBtn.isEnabled() ? 'yes' : 'MISSING ' + (await page.locator('[data-docs-submit]').innerText())));
   await submitBtn.click();
   await page.waitForTimeout(900);

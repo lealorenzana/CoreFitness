@@ -154,4 +154,6 @@ export const DETAIL: Record<string, Detail> = {
     steps: ['Members agree to dated Terms, Privacy and house rules.', 'You can see which version each one signed.'] },
   'Their data, theirs to take': { who: 'Members.',
     steps: ['A member can export what the gym holds about them.'] },
+  'Documents read for you': { who: 'Gym owners applying to Core Fitness.',
+    steps: ['You attach a permit, registration, clearance or ID, and it is read at once.', 'Its expiry date fills in for you to check before you attach it.', 'A person at Core Fitness still checks and verifies every document.'] },
 };

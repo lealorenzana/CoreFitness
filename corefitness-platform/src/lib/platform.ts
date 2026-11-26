@@ -777,6 +777,14 @@ export interface DocSummary { application_id: string; verified: number; waiting:
 export const documentKinds = async () =>
   (await call<DocKind[]>('application_document_kinds')).sort((a, b) => a.sort_order - b.sort_order);
 export const applicationDocuments = (id: string) => call<AppDocument[]>('application_documents_of', { p_application: id });
+/** What was read from each sent document and what does not add up (0280). A suggestion: a person still verifies. */
+export interface DocReading {
+  readable: boolean; looks_like: string | null; business_name: string | null; owner_name: string | null;
+  id_number: string | null; issued_on: string | null; expires_on: string | null; valid_for_year: string | null;
+  confidence: 'high' | 'medium' | 'low';
+}
+export const documentChecks = (id: string) =>
+  call<{ document_id: string; reading: DocReading | null; warnings: string[] }[]>('application_document_checks', { p_application: id });
 export const reviewDocument = (id: string, ok: boolean, reason: string | null) =>
   call<void>('platform_review_document', { p_document: id, p_ok: ok, p_reason: reason });
 /** Send a document back — one being checked, or one already verified (0223). */

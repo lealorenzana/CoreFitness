@@ -97,22 +97,50 @@ function DocRow({ applicationId, kind, doc, draft, open, onChanged }: {
     if (data?.signedUrl) window.open(data.signedUrl, '_blank', 'noopener');
   }, []);
 
-  // Choosing a file attaches it at once (a draft — not sent until Submit).
-  const attach = async (file: File | undefined) => {
-    if (!supabase || !file) return;
-    if (kind.needs_expiry && !expires) { setError('Give the date it expires first.'); return; }
-    if (file.size > 10 * 1024 * 1024) { setError('That file is over 10 MB. A photo of the page is fine.'); return; }
+  // The chosen file waits here while it is read; a dated one waits for its date to be checked.
+  const [chosen, setChosen] = useState<{ path: string; name: string } | null>(null);
+  const [reading, setReading] = useState<'reading' | string | null>(null);
+
+  const save = async (file: { path: string; name: string }, expiresOn: string) => {
+    if (!supabase) return;
+    if (kind.needs_expiry && !expiresOn) { setError('Give the date it expires.'); return; }
     setBusy(true); setError(null);
-    const ext = (file.name.split('.').pop() ?? 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
-    const path = `${applicationId}/${kind.kind}-${Date.now()}.${ext}`;
-    const up = await supabase.storage.from('applications').upload(path, file, { contentType: file.type || undefined });
-    if (up.error) { setError(up.error.message); setBusy(false); return; }
     const { error: e2 } = await supabase.rpc('save_document_draft', {
-      p_application: applicationId, p_kind: kind.kind, p_path: path, p_file_name: file.name, p_expires_on: expires || null,
+      p_application: applicationId, p_kind: kind.kind, p_path: file.path, p_file_name: file.name, p_expires_on: expiresOn || null,
     });
     setBusy(false);
     if (e2) { setError(e2.message); return; }
+    setChosen(null); setReading(null);
     await onChanged();
+  };
+
+  // Choosing a file uploads it and has it read (0280); the reading only suggests the date.
+  const choose = async (file: File | undefined) => {
+    if (!supabase || !file) return;
+    if (file.size > 10 * 1024 * 1024) { setError('That file is over 10 MB. A photo of the page is fine.'); return; }
+    setBusy(true); setError(null); setReading(null);
+    const ext = (file.name.split('.').pop() ?? 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+    const picked = { path: `${applicationId}/${kind.kind}-${Date.now()}.${ext}`, name: file.name };
+    const up = await supabase.storage.from('applications').upload(picked.path, file, { contentType: file.type || undefined });
+    if (up.error) { setError(up.error.message); setBusy(false); return; }
+    setBusy(false);
+    let readDate = '';
+    if (kind.kind !== 'front_photo') {
+      setReading('reading');
+      const { data } = await supabase.functions.invoke('read-document', { body: { path: picked.path, kind: kind.kind } });
+      const r = (data as { reading?: { readable: boolean; looks_like: string | null; expires_on: string | null } } | null)?.reading;
+      if (!r) setReading(kind.needs_expiry ? 'We could not read it this time. Type the date it expires.' : null);
+      else if (!r.readable) setReading('We could not read this file clearly. A sharper photo helps us check it faster.');
+      else if (r.looks_like && r.looks_like !== kind.kind) setReading(`This does not look like a ${kind.label}. Check that you chose the right file.`);
+      else if (kind.needs_expiry && r.expires_on && r.expires_on >= manilaToday()) {
+        readDate = r.expires_on;
+        setReading('We read the date from your file. Check it before you attach.');
+      } else setReading(null);
+    }
+    if (kind.needs_expiry) {
+      setExpires(readDate); // a new file starts from its own date, never the last file's
+      setChosen(picked);
+    } else await save(picked, '');
   };
 
   const state = open ? (draft ? 'Attached, not sent yet' : doc ? STATUS[doc.status] : 'Not attached yet') : doc ? STATUS[doc.status] : 'Not sent yet';
@@ -137,11 +165,19 @@ function DocRow({ applicationId, kind, doc, draft, open, onChanged }: {
       {(doc?.status === 'rejected' || doc?.status === 'requested') && doc.reason && <p className="note bad">{doc.reason}</p>}
       {open && (
         <div className="doc-form">
-          {kind.needs_expiry && <ExpiryField label={kind.label} value={expires} onChange={setExpires} />}
-          <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" aria-label={`File for ${kind.label}`} disabled={busy}
-            onChange={(e) => { void attach(e.target.files?.[0]); e.target.value = ''; }} />
+          <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" aria-label={`File for ${kind.label}`}
+            disabled={busy || reading === 'reading'}
+            onChange={(e) => { void choose(e.target.files?.[0]); e.target.value = ''; }} />
           {busy && <span className="note">Attaching…</span>}
-          {draft && !busy && <span className="note">Choose another file to replace it.</span>}
+          {reading === 'reading' && <span className="note" role="status">Reading your document…</span>}
+          {reading && reading !== 'reading' && <p className="note" role="status">{reading}</p>}
+          {chosen && kind.needs_expiry && reading !== 'reading' && (
+            <>
+              <ExpiryField key={chosen.path} label={kind.label} value={expires} onChange={(v) => { setExpires(v); setError(null); }} />
+              <button type="button" className="cta" disabled={busy} onClick={() => void save(chosen, expires)}>Attach {chosen.name}</button>
+            </>
+          )}
+          {draft && !busy && !chosen && <span className="note">Choose another file to replace it.</span>}
           {error && <p className="note bad">{error}</p>}
         </div>
       )}
