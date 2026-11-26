@@ -13,17 +13,16 @@ import GymDetail from '../components/GymDetail';
 import ExportGym from '../components/ExportGym';
 import ManageGym from '../components/ManageGym';
 import SupportDoor from '../components/SupportDoor';
-import DatePicker from '../components/DatePicker';
+import BillGym, { billingState } from '../components/BillGym';
+import Modal from '../components/Modal';
 import {
-  addGymNote, deleteGymNote, explain, gymContacts, gymEvents, gymFeatures, gymNotes, gymWeeks, listGyms, listPayments,
-  setGymBilling, setNotePinned,
+  addGymNote, billingSettings, deleteGymNote, explain, gymContacts, gymEvents, gymFeatures, gymNotes, gymWeeks, listGyms, listPayments,
+  setNotePinned,
   type GymContact, type GymFeature, type GymNote, type GymPayment, type GymWeek, type PlatformEvent, type PlatformGym,
 } from '../lib/platform';
 import SkelRows from '../components/ui/SkelRows';
 
 const peso = (v: string | number | null | undefined) => `₱${Number(v ?? 0).toLocaleString('en-PH', { maximumFractionDigits: 0 })}`;
-/** A Manila calendar date n days from today, as YYYY-MM-DD (UTC+8, never the UTC date). */
-const manilaDay = (n = 0) => new Date(Date.now() + 8 * 3_600_000 + n * 86_400_000).toISOString().slice(0, 10);
 const day = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
 function ago(iso: string | null): string {
   if (!iso) return 'never';
@@ -53,8 +52,8 @@ export default function GymProfile() {
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [live, setLive] = useState(true);
-  const [billing, setBilling] = useState<{ until: string; note: string } | null>(null);
-  const [billBusy, setBillBusy] = useState(false);
+  const [billing, setBilling] = useState(false);
+  const [grace, setGrace] = useState(7);
   // Tabs (2026-11-02): one subject at a time, each with the whole height — nothing squeezed under the rest.
   const [tab, setTab] = useState<GymTab>('overview');
   /** What Core Fitness wrote to this gym's owner (0240); null = 0240 not pasted yet. */
@@ -81,6 +80,7 @@ export default function GymProfile() {
     if (p.status === 'fulfilled') setPayments(p.value);
     await loadNotes();
     await loadMessages();
+    void billingSettings().then((b) => { if (b) setGrace(b.grace_days); }, () => undefined);
   }, [gymId, loadNotes, loadMessages]);
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
 
@@ -120,10 +120,14 @@ export default function GymProfile() {
           </div>
           <GymStatus gym={gym} />
           <span className="gx-page-actions">
+            <button className="btn" onClick={() => setBilling(true)}><Wallet size={14} /> Bill this gym</button>
             <SupportDoor gymId={gym.id} />
             <ExportGym gymId={gym.id} gymName={gym.name} />
           </span>
         </div>
+        <Modal open={billing} onClose={() => setBilling(false)} size="lg" label="Bill this gym">
+          {billing && <BillGym gym={gym} onCancel={() => setBilling(false)} onDone={() => { setBilling(false); void load(); }} />}
+        </Modal>
         {writing && <MessageOwner open onClose={() => setWriting(false)} gymId={gym.id} gymName={gym.name} onSent={() => void loadMessages()} />}
       </header>
 
@@ -209,44 +213,10 @@ export default function GymProfile() {
           <div><b>{peso(gym.paid_total)}</b><span>paid in all</span></div>
           <div><b>{payments.length}</b><span>payment{payments.length === 1 ? '' : 's'}</span></div>
         </div>
-        <p className="meta">
-          {gym.paid_until && Number(gym.paid_total) === 0 && gym.plan === 'trial'
-            ? <>Free trial until {day(gym.paid_until)}. The next day the app stops for the gym, its staff and its members (no grace days) until it pays for a plan. Change the date to shorten or lengthen the trial.</>
-            : gym.paid_until
-            ? <>Covered until {day(gym.paid_until)}. After that and the grace days, the gym goes read-only until a payment is verified.</>
-            : <>No billing, this gym has no covered-until date, so nothing is ever due and it never locks. Start billing to give it a date; its owner is told, and reminded before it.</>}
-        </p>
-        {billing ? (
-          <div className="row" style={{ gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-            <label htmlFor="bill-until" className="meta">Covered until</label>
-            <span style={{ width: 190 }}><DatePicker id="bill-until" mode="future" value={billing.until}
-              onChange={(v) => setBilling({ ...billing, until: v })} /></span>
-            <input className="grow" value={billing.note} maxLength={300} placeholder="A note for the owner (optional)"
-              onChange={(e) => setBilling({ ...billing, note: e.target.value })} aria-label="Note" />
-            <button className="btn" disabled={billBusy || !billing.until} onClick={() => void (async () => {
-              setBillBusy(true);
-              try { await setGymBilling(gym.id, billing.until, billing.note.trim() || null); setBilling(null); await load(); }
-              catch (e) { setError(e instanceof Error ? e.message : 'Billing could not be set'); }
-              finally { setBillBusy(false); }
-            })()}>{gym.paid_until ? 'Save the date' : 'Start billing'}</button>
-            <button className="btn ghost" onClick={() => setBilling(null)}>Cancel</button>
-          </div>
-        ) : (
-          <div className="row" style={{ gap: 8, marginTop: 10 }}>
-            <button className="btn" onClick={() => setBilling({ until: gym.paid_until ?? manilaDay(30), note: '' })}>
-              {gym.paid_until ? 'Change the date' : 'Start billing'}
-            </button>
-            {gym.paid_until && (
-              <button className="btn ghost" disabled={billBusy} onClick={() => void (async () => {
-                if (!window.confirm(`Stop billing ${gym.name}? It will have no covered-until date, so it never locks.`)) return;
-                setBillBusy(true);
-                try { await setGymBilling(gym.id, null, null); await load(); }
-                catch (e) { setError(e instanceof Error ? e.message : 'Billing could not be cleared'); }
-                finally { setBillBusy(false); }
-              })()}>No billing</button>
-            )}
-          </div>
-        )}
+        <div className="bill-state">{billingState(gym, grace).map((l) => <span key={l}>{l}</span>)}</div>
+        <div className="row" style={{ gap: 8, marginTop: 10 }}>
+          <button className="btn" onClick={() => setBilling(true)} data-bill-open><Wallet size={14} /> Bill this gym</button>
+        </div>
       </section>
 
         <section className="card gx-pay">

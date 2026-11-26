@@ -7,13 +7,13 @@ import ReceiptSheet from '../components/ReceiptSheet';
 import PaymentClaims from '../components/PaymentClaims';
 import AiTopupClaims from '../components/AiTopupClaims';
 import OnlinePayments from '../components/OnlinePayments';
-import DatePicker from '../components/DatePicker';
+import BillGym from '../components/BillGym';
 import Modal from '../components/Modal';
 import { detail } from '../components/DetailLayer';
 import Pagination from '../components/Pagination';
 import { usePaged } from '../lib/usePaged';
 import {
-  billingSettings, explain, listDue, listGyms, listPayments, listRevenue, paymentReceipt, recordPayment,
+  billingSettings, explain, listDue, listGyms, listPayments, listRevenue, paymentReceipt,
   type BillingSettings, type GymDue, type GymPayment, type PlatformGym, type Receipt, type RevenueMonth,
 } from '../lib/platform';
 import SkelRows from '../components/ui/SkelRows';
@@ -24,17 +24,6 @@ const day = (iso: string) =>
   new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
 const monthName = (iso: string) =>
   new Date(iso).toLocaleDateString('en-PH', { month: 'long', year: 'numeric' });
-
-/** Today in Manila, as the date input wants it. The gym's clock, not the browser's. */
-const todayManila = () => {
-  const d = new Date(Date.now() + 8 * 3_600_000);
-  return d.toISOString().slice(0, 10);
-};
-const plusDays = (from: string, days: number) => {
-  const d = new Date(from + 'T00:00:00Z');
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-};
 
 /**
  * What the service is owed, and what it has been paid.
@@ -108,9 +97,9 @@ export default function Money() {
       <OnlinePayments />
 
       {/* Recording a payment is a window over the page (2026-11-08): as a box in the grid it shuffled every other box. */}
-      <Modal open={!!recording} onClose={() => setRecording(null)} size="lg" label="Record a payment">
+      <Modal open={!!recording} onClose={() => setRecording(null)} size="lg" label="Bill this gym">
         {recording && (
-          <RecordPayment
+          <BillGym
             gym={recording}
             onCancel={() => setRecording(null)}
             onDone={() => { setRecording(null); void load(); }}
@@ -127,7 +116,7 @@ export default function Money() {
             <span className="meta">
               {thisMonth
                 ? `${thisMonth.payments} payment${thisMonth.payments === 1 ? '' : 's'} from ${thisMonth.gyms} gym${thisMonth.gyms === 1 ? '' : 's'}`
-                : 'No gym has paid Core Fitness yet. Record the first payment from a gym below.'}
+                : 'No gym has paid Core Fitness yet. Bill a gym below to record the first payment.'}
             </span>
           </span>
         </div>
@@ -157,8 +146,8 @@ export default function Money() {
           {due === null && <SkelRows label="Loading…" />}
           {due?.length === 0 && (
             <p className="empty">
-              No gym is due. Gyms with no paid-until date at all are not listed here, set one by
-              recording a payment.
+              No gym is due. Gyms with no paid-until date at all are not listed here, set one with
+              Bill this gym.
             </p>
           )}
           {due?.map((g) => (
@@ -175,7 +164,7 @@ export default function Money() {
                   : `due in ${g.days_left} days`}
               </span>
               <button className="btn" onClick={() => setRecording(gyms.find((x) => x.id === g.id) ?? null)}>
-                Record a payment
+                Bill this gym
               </button>
             </div>
           ))}
@@ -202,7 +191,7 @@ export default function Money() {
               if (g) setRecording(g);
             }}
           >
-            <option value="">Record a payment from…</option>
+            <option value="">Bill a gym…</option>
             {gyms.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
           </select>
         </div>
@@ -231,115 +220,5 @@ export default function Money() {
       </div>
       </div>
     </>
-  );
-}
-
-/**
- * Recording a payment.
- *
- * Defaults are a guess, never a decision: today, and a month from today. Both
- * are editable, because a gym that paid last week for three months is the
- * normal case and typing over a wrong default is worse than typing a right one.
- */
-function RecordPayment({ gym, onCancel, onDone }: {
-  gym: PlatformGym; onCancel: () => void; onDone: () => void;
-}) {
-  const today = todayManila();
-  // A renewal continues from where the last one ended, not from today —
-  // otherwise a gym that pays early loses the days it already bought.
-  const from = gym.paid_until && gym.paid_until > today ? plusDays(gym.paid_until, 1) : today;
-  const [form, setForm] = useState({
-    amount: gym.price_monthly ?? '',
-    paid_on: today,
-    covers_from: from,
-    covers_until: plusDays(from, 30),
-    method: 'cash',
-    reference: '',
-    note: '',
-  });
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      await recordPayment({
-        gym: gym.id,
-        amount: Number(form.amount || 0),
-        coversUntil: form.covers_until,
-        paidOn: form.paid_on,
-        coversFrom: form.covers_from || null,
-        method: form.method || null,
-        reference: form.reference || null,
-        note: form.note || null,
-      });
-      onDone();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'That could not be recorded');
-      setBusy(false);
-    }
-  };
-
-  return (
-    <form className="card ask" onSubmit={submit}>
-      <div className="name">A payment from {gym.name}</div>
-      <div className="meta">
-        This is what moves the gym's access. {gym.paid_until
-          ? `It is covered to ${day(gym.paid_until)} today.`
-          : 'It has no paid-until date, so it has never been past due.'}
-        {gym.price_monthly !== null
-          ? ` Its plan is ${peso(gym.price_monthly)} a month.`
-          : ' Its plan has no price set, so the amount is yours to type.'}
-      </div>
-      <div className="fields">
-        <div>
-          <label htmlFor="pay-amt">Amount (₱)</label>
-          <input id="pay-amt" type="number" min={0} step="0.01" required value={form.amount}
-            onChange={(e) => setForm({ ...form, amount: e.target.value })} />
-        </div>
-        <div>
-          <label htmlFor="pay-on">Paid on</label>
-          <DatePicker id="pay-on" mode="record" bounds={{ backDays: 62 }} value={form.paid_on}
-            onChange={(v) => setForm({ ...form, paid_on: v })} />
-        </div>
-        <div>
-          <label htmlFor="pay-from">Covers from</label>
-          <DatePicker id="pay-from" mode="history" max={form.covers_until || undefined} value={form.covers_from}
-            onChange={(v) => setForm({ ...form, covers_from: v })} />
-        </div>
-        <div>
-          <label htmlFor="pay-to">Covers until</label>
-          <DatePicker id="pay-to" mode="future" value={form.covers_until}
-            onChange={(v) => setForm({ ...form, covers_until: v })} />
-        </div>
-        <div>
-          <label htmlFor="pay-how">How it arrived</label>
-          <input id="pay-how" value={form.method} placeholder="cash, bank transfer, GCash"
-            onChange={(e) => setForm({ ...form, method: e.target.value })} />
-        </div>
-        <div>
-          <label htmlFor="pay-ref">Reference</label>
-          <input id="pay-ref" value={form.reference} placeholder="receipt or bank reference"
-            onChange={(e) => setForm({ ...form, reference: e.target.value })} />
-        </div>
-        <div style={{ gridColumn: '1 / -1' }}>
-          <label htmlFor="pay-note">Note (optional)</label>
-          <input id="pay-note" value={form.note}
-            onChange={(e) => setForm({ ...form, note: e.target.value })} />
-        </div>
-      </div>
-      {error && <p className="err">{error}</p>}
-      <p className="meta" style={{ marginTop: 10 }}>
-        Recording this covers {gym.name} to {day(form.covers_until)}. A payment covering an earlier
-        date than the gym already has never pulls its access in.
-      </p>
-      <div style={{ height: 12 }} />
-      <div className="row">
-        <button className="btn" type="submit" disabled={busy}>{busy ? 'Recording…' : 'Record it'}</button>
-        <button className="btn ghost" type="button" onClick={onCancel} disabled={busy}>Cancel</button>
-      </div>
-    </form>
   );
 }

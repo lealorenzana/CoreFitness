@@ -10,6 +10,7 @@ import {
   type PlatformGym, type PlatformPlan,
 } from '../lib/platform';
 import InviteOwner from '../components/InviteOwner';
+import BillGym from '../components/BillGym';
 import Ask from '../components/Ask';
 import GymMark from '../components/GymMark';
 import GymStatus from '../components/GymStatus';
@@ -38,7 +39,7 @@ type Risk = { level: string; reasons: string[] };
 type Filter = 'all' | 'live' | 'setup' | 'locked' | 'risk' | 'due' | 'needs' | 'archived';
 type Sort = 'name' | 'members' | 'due' | 'newest';
 type Dialog =
-  | { kind: 'view' | 'plan' | 'suspend' | 'invite' | 'archive'; gym: PlatformGym }
+  | { kind: 'view' | 'plan' | 'bill' | 'suspend' | 'invite' | 'archive'; gym: PlatformGym }
   | { kind: 'add' };
 
 const PER_PAGE = 9;
@@ -212,6 +213,7 @@ export default function Gyms() {
           <GymCard key={gym.id} gym={gym} photo={photos.get(gym.id)} risk={risk.get(gym.id)} busy={busy === gym.id}
             onOpen={() => setDialog({ kind: 'view', gym })}
             onPlan={() => setDialog({ kind: 'plan', gym })}
+            onBill={() => setDialog({ kind: 'bill', gym })}
             onSuspend={() => setDialog({ kind: 'suspend', gym })}
             onInvite={() => setDialog({ kind: 'invite', gym })}
             onReactivate={() => void act(gym.id, () => setGymStatus(gym.id, 'active', ''))} />
@@ -225,6 +227,7 @@ export default function Gyms() {
           <QuickView gym={dialog.gym} risk={risk.get(dialog.gym.id)} busy={busy === dialog.gym.id}
             onFull={() => navigate(`/gyms/${dialog.gym.id}`)}
             onPlan={() => setDialog({ kind: 'plan', gym: dialog.gym })}
+            onBill={() => setDialog({ kind: 'bill', gym: dialog.gym })}
             onSuspend={() => setDialog({ kind: 'suspend', gym: dialog.gym })}
             onInvite={() => setDialog({ kind: 'invite', gym: dialog.gym })}
             onReactivate={() => void act(dialog.gym.id, async () => { await setGymStatus(dialog.gym.id, 'active', ''); setDialog(null); })}
@@ -272,19 +275,24 @@ export default function Gyms() {
         {dialog?.kind === 'plan' && (
           <Ask
             title={`What plan is ${dialog.gym.name} on?`}
-            blurb="The plan decides what the gym can use and how many members it may have. The date is better moved by recording a payment on the Money screen, that leaves an amount and a reference behind it."
+            blurb="The plan decides what the gym can use and how many members it may have. Its covered until date stays as it is: to record a payment or move the date, use Bill this gym."
             fields={[
               // The plans that exist; a retired plan is still listed when this
               // gym is the one on it, or the picker could not show its own value.
               { key: 'plan', label: 'Plan', initial: dialog.gym.plan,
                 options: plans.filter((p) => p.is_active || p.key === dialog.gym.plan).map((p) => p.key),
                 optionLabels: Object.fromEntries(plans.map((p) => [p.key, `${p.name}${p.price_monthly !== null ? `, ${peso(p.price_monthly)} a month` : ''}`])) },
-              { key: 'paid', label: 'Paid until', dateMode: 'future', initial: dialog.gym.paid_until ?? '' },
             ]}
             confirmLabel="Save"
             onCancel={close}
-            onConfirm={async (v) => { await setGymPlan(dialog.gym.id, v.plan, v.paid.trim() || null); setDialog(null); await load(); }}
+            onConfirm={async (v) => { await setGymPlan(dialog.gym.id, v.plan, null); setDialog(null); await load(); }}
           />
+        )}
+      </Modal>
+
+      <Modal open={dialog?.kind === 'bill'} onClose={close} size="lg" label="Bill this gym">
+        {dialog?.kind === 'bill' && (
+          <BillGym gym={dialog.gym} onCancel={close} onDone={() => { setDialog(null); void load(); }} />
         )}
       </Modal>
 
@@ -326,7 +334,7 @@ export default function Gyms() {
 
 interface CardProps {
   gym: PlatformGym; risk?: Risk; busy: boolean;
-  onPlan: () => void; onSuspend: () => void; onInvite: () => void; onReactivate: () => void; onArchive: () => void;
+  onPlan: () => void; onBill: () => void; onSuspend: () => void; onInvite: () => void; onReactivate: () => void; onArchive: () => void;
 }
 
 function Flags({ gym, risk }: { gym: PlatformGym; risk?: Risk }) {
@@ -354,7 +362,7 @@ function Flags({ gym, risk }: { gym: PlatformGym; risk?: Risk }) {
  * it holds buttons of its own — and its footer buttons stop the click so they
  * open their own popup, not the quick view.
  */
-function GymCard({ gym, photo, risk, busy, onOpen, onPlan, onSuspend, onInvite, onReactivate }: Omit<CardProps, 'onArchive'> & { onOpen: () => void; photo?: string }) {
+function GymCard({ gym, photo, risk, busy, onOpen, onPlan, onBill, onSuspend, onInvite, onReactivate }: Omit<CardProps, 'onArchive'> & { onOpen: () => void; photo?: string }) {
   const stop = (fn: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); fn(); };
   const warn = !!gym.lock_reason || risk?.level === 'high';
   /* A reveal tile (owner, 2026-11-23, like the admin's Exercises and Resources): the gym's own front photo behind a
@@ -395,6 +403,7 @@ function GymCard({ gym, photo, risk, busy, onOpen, onPlan, onSuspend, onInvite, 
 
       <div className="gym-foot">
         {gym.owners === 0 && <button className="btn" disabled={busy} onClick={stop(onInvite)}>Invite the owner</button>}
+        <button className="btn" disabled={busy} onClick={stop(onBill)}>Bill</button>
         <button className="btn ghost" disabled={busy} onClick={stop(onPlan)}>Plan</button>
         {gym.status === 'active'
           ? <button className="btn ghost" disabled={busy} onClick={stop(onSuspend)}>Suspend</button>
@@ -408,7 +417,7 @@ function GymCard({ gym, photo, risk, busy, onOpen, onPlan, onSuspend, onInvite, 
 }
 
 /** The popup a card opens: the gym at a glance, its decisions, and its full page. */
-function QuickView({ gym, risk, busy, onFull, onPlan, onSuspend, onInvite, onReactivate, onArchive }: CardProps & { onFull: () => void }) {
+function QuickView({ gym, risk, busy, onFull, onPlan, onBill, onSuspend, onInvite, onReactivate, onArchive }: CardProps & { onFull: () => void }) {
   const joined = day(gym.created_at);
   return (
     <div className="gx-qv">
@@ -455,6 +464,7 @@ function QuickView({ gym, risk, busy, onFull, onPlan, onSuspend, onInvite, onRea
         <button className="btn" onClick={onFull}><ExternalLink size={14} /> Open its full page</button>
         {gym.owners === 0 && <button className="btn ghost" disabled={busy} onClick={onInvite}>Invite the owner</button>}
         <span className="grow-gap" />
+        <button className="btn" disabled={busy} onClick={onBill}>Bill this gym</button>
         <button className="btn ghost" disabled={busy} onClick={onPlan}>Change plan</button>
         {gym.status === 'active'
           ? <button className="btn ghost" disabled={busy} onClick={onSuspend}>Suspend</button>

@@ -402,3 +402,15 @@ button.chip { cursor: pointer; border: 0; font: inherit; }
 .fb-row .grow { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1 1 260px; }
 .fb-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .fb-actions input { min-width: 180px; }
+
+/* Bill this gym (2026-11-27): where the gym stands in words, the choice, then one review sentence. */
+.bill-state { display: grid; gap: 4px; margin-top: 10px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border-soft); background: rgba(255,255,255,.03); font-size: 13.5px; color: var(--text-2); line-height: 1.45; }
+.bill-state strong { color: var(--text); font-size: 14.5px; }
+.bill-choices { margin-top: 6px; flex-wrap: wrap; }
+.bill-gym .label-like { display: block; font-size: 11px; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); margin-bottom: 6px; }
+.bill-review { margin: 16px 0 12px; padding: 12px 14px; border-radius: 12px; border-left: 3px solid var(--warn); background: var(--warn-tint); color: var(--text); font-size: 14px; line-height: 1.5; }
+/* Two columns even inside a modal, where gyms.css stacks every Ask form; the warning keeps the full width. */
+.modal .ask.bill-gym .fields { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+.modal .ask.bill-gym .fields > div:not(:only-child) { grid-column: auto !important; }
+/* The flat tabs (plan.css) read as "where you are"; a choice that decides what Confirm does needs to stand out. */
+.bill-gym .ptabs button[aria-checked="true"] { color: var(--accent-text) !important; box-shadow: inset 0 0 0 1px var(--accent) !important; }

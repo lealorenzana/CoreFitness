@@ -528,6 +528,10 @@
       "app": "platform"
     },
     {
+      "file": "platform-billing-check.js",
+      "app": "platform"
+    },
+    {
       "file": "platform-insight-check.js",
       "app": "platform"
     },
