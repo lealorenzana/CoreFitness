@@ -133,6 +133,18 @@ check('0237: the old gym’s list shows Mia switched OUT, with the refund reques
 await as(MEM);
 check('they read the new gym now', (await one(`select current_gym_id() g`)).g === B);
 
+// 0279: once switched, neither the old gym nor the one that declined can make them a member again.
+await as(OWNER_A);
+check('0279: the old gym cannot reinstate a member who switched away', /one gym at a time/.test((await tryExec(`select set_account_status('${MEM}', 'active', null)`)) ?? ''));
+await owner();
+await db.exec(`insert into gym_roles (gym_id, user_id, role, status) values ('${C}', '${MEM}', 'member', 'suspended')`);
+await as(DESK_C);
+check('0279: the gym that declined the switch cannot reinstate them later', /one gym at a time/.test((await tryExec(`select set_account_status('${MEM}', 'active', null)`)) ?? ''));
+await owner();
+await db.exec(`delete from gym_roles where gym_id = '${C}' and user_id = '${MEM}'`);
+check('0279: they are still a member of the new gym only', await n(`select count(*) n from gym_roles where user_id = '${MEM}' and role = 'member' and status in ('active', 'pending_approval')`) === 1);
+check('0279 can run twice', (await tryExec(readFileSync(join(REPO, 'supabase', 'migrations', '0279_one_gym_per_member.sql'), 'utf-8'))) === null);
+
 // Coaches still work at several gyms.
 await as(COACH);
 check('a coach can still join another gym', (await tryExec(`select request_to_join('${C}', 'list', null, null)`)) === null);

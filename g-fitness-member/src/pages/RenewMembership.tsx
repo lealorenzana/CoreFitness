@@ -450,14 +450,15 @@ export default function RenewMembership() {
           </p>
         </Panel></div>
       )}
-      {dayPass && !dayPass.today && dayPass.on && dayPass.needed && dayPass.online && Number(dayPass.price) > 0 && (
+      {dayPass && !dayPass.today && dayPass.on && dayPass.needed && Number(dayPass.price) > 0 && (
+        // Shown at a cash-only gym too (2026-11-26): it hid whenever online payment was off, so the price and the desk way never showed.
         <div className="mt-3" data-day-pass-buy><Panel>
           <p style={{ fontSize: 13.5, marginBottom: 10, color: 'var(--color-text-secondary)' }}>
             <b style={{ color: 'var(--color-text-primary)' }}>Just today?</b> A day pass lets you in today{dayPass.classes ? ' and book a class held today' : ''}.
           </p>
           <PayChooser amount={peso(Number(dayPass.price))}
-            online={{ purpose: 'day_pass', details: {}, returnPath: '/member/renew', to: gym?.gym_name ?? 'the gym' }}
-            desk={{ next: `Or ask the desk for a day pass when you arrive — ${peso(Number(dayPass.price))}, valid for today only.` }} />
+            online={dayPass.online ? { purpose: 'day_pass', details: {}, returnPath: '/member/renew', to: gym?.gym_name ?? 'the gym' } : null}
+            desk={{ next: `${dayPass.online ? 'Or ask' : 'Ask'} the desk for a day pass when you arrive: ${peso(Number(dayPass.price))}, valid for today only.` }} />
         </Panel></div>
       )}
       {/* Back from PayMongo (0192): confirmed here, the moment PayMongo says so. */}
