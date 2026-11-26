@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Activity, AlertTriangle, Building2, CalendarClock, Check, ChevronRight, LayoutGrid, Download, ExternalLink, KeyRound, Plus, Search,
+  Activity, AlertTriangle, Building2, CalendarClock, ChevronRight, Download, ExternalLink, KeyRound, Plus, Search,
   Sparkles, Users,
 } from 'lucide-react';
 import { downloadCsv } from '../lib/csv';
@@ -11,6 +11,7 @@ import {
 } from '../lib/platform';
 import InviteOwner from '../components/InviteOwner';
 import BillGym from '../components/BillGym';
+import ViewMenu, { readLook, saveLook, type Look } from '../components/ViewMenu';
 import Ask from '../components/Ask';
 import GymMark from '../components/GymMark';
 import GymStatus from '../components/GymStatus';
@@ -44,15 +45,8 @@ type Dialog =
 
 const PER_PAGE = 9;
 /** How the gyms are laid out (2026-11-27, the owner's File Explorer View menu). A screen preference, not a person's data. */
-type View = 'large' | 'small' | 'list' | 'details';
-const VIEWS: [View, string][] = [['large', 'Large tiles'], ['small', 'Small tiles'], ['list', 'List'], ['details', 'Details']];
+const VIEWS: [string, string][] = [['large', 'Large tiles'], ['small', 'Small tiles'], ['list', 'List'], ['details', 'Details']];
 const VIEW_KEY = 'cf-platform-gyms-view';
-const readView = (): { view: View; pane: boolean } => {
-  try {
-    const v = JSON.parse(localStorage.getItem(VIEW_KEY) ?? '{}');
-    return { view: VIEWS.some(([k]) => k === v.view) ? v.view : 'large', pane: !!v.pane };
-  } catch { return { view: 'large', pane: false }; }
-};
 const setupState = (g: PlatformGym) => g.owners === 0 || !g.onboarded;
 const dueSoon = (g: PlatformGym) => g.days_left !== null && g.days_left <= 14;
 const archived = (g: PlatformGym) => g.status === 'archived';
@@ -92,12 +86,9 @@ export default function Gyms() {
   /** Cards a page = what fits the screen (useFitCards); PER_PAGE below 1280px. */
   const { ref: gridRef, perPage } = useFitCards(PER_PAGE);
   const [dialog, setDialog] = useState<Dialog | null>(null);
-  const [look, setLook] = useState(readView);
+  const [look, setLook] = useState<Look>(() => readLook(VIEW_KEY, VIEWS, { view: 'large', pane: false }));
   const [selected, setSelected] = useState<string | null>(null);
-  const changeLook = (next: { view: View; pane: boolean }) => {
-    setLook(next); setPage(1);
-    try { localStorage.setItem(VIEW_KEY, JSON.stringify(next)); } catch { /* private window */ }
-  };
+  const changeLook = (next: Look) => { setLook(next); setPage(1); saveLook(VIEW_KEY, next); };
   const [form, setForm] = useState({ name: '', slug: '' });
   const navigate = useNavigate();
 
@@ -205,7 +196,7 @@ export default function Gyms() {
           <option value="due">Due soonest</option>
           <option value="newest">Newest first</option>
         </select>
-        <ViewMenu look={look} onChange={changeLook} />
+        <ViewMenu views={VIEWS} look={look} onChange={changeLook} />
         <button className="btn ghost" disabled={shown.length === 0} onClick={() => downloadCsv('core-fitness-gyms', shown, [
           ['Gym', (g) => g.name], ['Address', (g) => g.slug], ['Status', (g) => g.lock_reason ? `read-only (${g.lock_reason})` : g.status],
           ['Plan', (g) => g.plan_name ?? g.plan], ['Price a month', (g) => g.price_monthly], ['Paid until', (g) => g.paid_until],
@@ -522,42 +513,6 @@ function QuickView({ gym, risk, busy, onFull, onPlan, onBill, onSuspend, onInvit
         {gym.status !== 'archived' && <button className="btn ghost" disabled={busy} onClick={onArchive}>Archive</button>}
       </footer>
     </div>
-  );
-}
-
-/** The View menu, like File Explorer's: one layout chosen, and the Details pane on or off. */
-function ViewMenu({ look, onChange }: { look: { view: View; pane: boolean }; onChange: (l: { view: View; pane: boolean }) => void }) {
-  const [open, setOpen] = useState(false);
-  const box = useRef<HTMLSpanElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const away = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); };
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
-    document.addEventListener('mousedown', away);
-    document.addEventListener('keydown', esc);
-    return () => { document.removeEventListener('mousedown', away); document.removeEventListener('keydown', esc); };
-  }, [open]);
-  return (
-    <span className="gx-viewmenu" ref={box}>
-      <button type="button" className="btn ghost" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
-        <LayoutGrid size={15} /> View
-      </button>
-      {open && (
-        <div role="menu" className="gx-menu">
-          {VIEWS.map(([k, label]) => (
-            <button key={k} type="button" role="menuitemradio" aria-checked={look.view === k}
-              onClick={() => { onChange({ ...look, view: k }); setOpen(false); }}>
-              <span className="gx-tick">{look.view === k && <i />}</span>{label}
-            </button>
-          ))}
-          <hr />
-          <button type="button" role="menuitemcheckbox" aria-checked={look.pane}
-            onClick={() => { onChange({ ...look, pane: !look.pane }); setOpen(false); }}>
-            <span className="gx-tick">{look.pane && <Check size={13} />}</span>Details pane
-          </button>
-        </div>
-      )}
-    </span>
   );
 }
 

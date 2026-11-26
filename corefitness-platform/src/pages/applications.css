@@ -40,37 +40,37 @@
 .ap-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--warn); }
 
 /* The open application */
-.page[data-page="applications"] .ap-read .app-card { margin: 0 !important; padding: 0 !important; border: 0 !important; background: none !important;
+.page[data-page="applications"] .ap-read .app-card, .ap-pop .app-card { margin: 0 !important; padding: 0 !important; border: 0 !important; background: none !important;
   box-shadow: none !important; display: flex; flex-direction: column; gap: 18px; }
-.page[data-page="applications"] .app-top { display: flex; align-items: center; gap: 14px; padding: 0 0 16px; border-bottom: 1px solid var(--hairline); }
-.page[data-page="applications"] .app-title { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.page[data-page="applications"] .app-title .name { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.page[data-page="applications"] .app-sub { font-size: 13px; color: var(--text-2); }
+:is(.page[data-page="applications"], .ap-pop) .app-top { display: flex; align-items: center; gap: 14px; padding: 0 0 16px; border-bottom: 1px solid var(--hairline); }
+:is(.page[data-page="applications"], .ap-pop) .app-title { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+:is(.page[data-page="applications"], .ap-pop) .app-title .name { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+:is(.page[data-page="applications"], .ap-pop) .app-sub { font-size: 13px; color: var(--text-2); }
 .ap-wait { font-size: 12.5px; font-weight: 600; color: var(--warn); letter-spacing: 0; }
-.page[data-page="applications"] .app-top .actions { display: flex; gap: 8px; align-items: center; flex: none; }
+:is(.page[data-page="applications"], .ap-pop) .app-top .actions { display: flex; gap: 8px; align-items: center; flex: none; }
 .ap-state { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; color: var(--text-2); }
 .ap-state i { width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); }
 .ap-state.ok i { background: #34d399; }
 
 /* The four things to check: one ruled grid, two by two. */
-.page[data-page="applications"] .app-boxes { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 0 !important;
+:is(.page[data-page="applications"], .ap-pop) .app-boxes { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 0 !important;
   border: 1px solid var(--hairline); border-radius: 12px; overflow: hidden; margin: 0 !important; }
-.page[data-page="applications"] .app-box { display: flex !important; flex-direction: column; gap: 5px; padding: 14px 16px !important; margin: 0 !important;
+:is(.page[data-page="applications"], .ap-pop) .app-box { display: flex !important; flex-direction: column; gap: 5px; padding: 14px 16px !important; margin: 0 !important;
   border: 0 !important; border-radius: 0 !important; background: none !important; min-width: 0; }
-.page[data-page="applications"] .app-box:nth-child(2n) { border-left: 1px solid var(--hairline) !important; }
-.page[data-page="applications"] .app-box:nth-child(n+3) { border-top: 1px solid var(--hairline) !important; }
-.page[data-page="applications"] .app-box .app-lbl { font-size: 12px !important; font-weight: 600; letter-spacing: 0 !important; text-transform: none !important; color: var(--text-3); }
-.page[data-page="applications"] .app-box > b { font-size: 14.5px; font-weight: 650; color: var(--text); }
-.page[data-page="applications"] .app-box .app-line { font-size: 13px; }
+:is(.page[data-page="applications"], .ap-pop) .app-box:nth-child(2n) { border-left: 1px solid var(--hairline) !important; }
+:is(.page[data-page="applications"], .ap-pop) .app-box:nth-child(n+3) { border-top: 1px solid var(--hairline) !important; }
+:is(.page[data-page="applications"], .ap-pop) .app-box .app-lbl { font-size: 12px !important; font-weight: 600; letter-spacing: 0 !important; text-transform: none !important; color: var(--text-3); }
+:is(.page[data-page="applications"], .ap-pop) .app-box > b { font-size: 14.5px; font-weight: 650; color: var(--text); }
+:is(.page[data-page="applications"], .ap-pop) .app-box .app-line { font-size: 13px; }
 
-.page[data-page="applications"] .app-notes { display: grid; gap: 6px; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--hairline); background: var(--surface-high); margin: 0; }
+:is(.page[data-page="applications"], .ap-pop) .app-notes { display: grid; gap: 6px; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--hairline); background: var(--surface-high); margin: 0; }
 .ap-quote { color: var(--text) !important; font-style: italic; }
 
-.page[data-page="applications"] .app-foot { display: grid; gap: 10px; padding: 16px 0 0; border-top: 1px solid var(--hairline); margin: 0; }
+:is(.page[data-page="applications"], .ap-pop) .app-foot { display: grid; gap: 10px; padding: 16px 0 0; border-top: 1px solid var(--hairline); margin: 0; }
 .ap-foot-lbl { font-size: 12px; font-weight: 600; color: var(--text-3); }
-.page[data-page="applications"] .app-foot .reach { display: flex; flex-wrap: wrap; gap: 6px; }
-.page[data-page="applications"] .app-tags { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12.5px; color: var(--text-2); }
-.page[data-page="applications"] .app-tags span { display: inline-flex; align-items: center; gap: 6px; }
+:is(.page[data-page="applications"], .ap-pop) .app-foot .reach { display: flex; flex-wrap: wrap; gap: 6px; }
+:is(.page[data-page="applications"], .ap-pop) .app-tags { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12.5px; color: var(--text-2); }
+:is(.page[data-page="applications"], .ap-pop) .app-tags span { display: inline-flex; align-items: center; gap: 6px; }
 
 /* The side */
 .ap-side .section-title { margin: 0 0 10px; }
@@ -98,3 +98,30 @@
 .ap-side .source-list > div > .row { display: flex !important; flex-wrap: nowrap !important; align-items: baseline; justify-content: space-between; gap: 8px; }
 .ap-side .source-list > div > .row > .grow { flex: 1 1 auto !important; min-width: 0; }
 .ap-side .source-list > div { padding: 6px 0; }
+
+/* The View menu (2026-11-27): List (as before), Details (a table), Tiles; the Details pane on (as before) or off. */
+.ap-qtop { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; }
+.ap-qtop .section-title { margin: 0 !important; flex: 1; min-width: 0; }
+.ap-qtop .btn { height: 30px; padding: 0 10px; font-size: 12.5px; }
+.content .page[data-page="applications"] > .ap.wide { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) 300px; }
+.content .page[data-page="applications"] > .ap.no-pane { grid-template-columns: minmax(0, 1fr) 300px; grid-template-rows: minmax(0, 1fr); grid-template-areas: 'queue side'; }
+@media (max-width: 1499px) {
+  .content .page[data-page="applications"] > .ap.wide:not(.no-pane) { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
+}
+.ap-list.ap-details .ap-trow { display: grid; grid-template-columns: minmax(120px, 2fr) 66px 66px minmax(72px, 1fr) minmax(54px, 1fr) 58px; gap: 10px; align-items: center;
+  padding: 9px 16px; font-size: 12.5px; color: var(--text-2); text-align: left; }
+.ap-list.ap-details .ap-thead { position: sticky; top: 0; z-index: 1; background: var(--surface); font-size: 12px; color: var(--text-3); border-bottom: 1px solid var(--hairline); }
+.ap-trow .warn { color: var(--warn); }
+.ap-tgym { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ap-tgym b { color: var(--text); font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ap-list.ap-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; padding: 12px 18px; align-content: start; }
+.ap-list.ap-tiles .ap-row { flex-direction: column; align-items: flex-start; gap: 10px; padding: 14px; border: 1px solid var(--hairline); border-radius: 12px; height: 100%; }
+.ap-list.ap-tiles .ap-row-text { width: 100%; }
+.ap-list.ap-tiles .ap-row-text span { white-space: normal; }
+.ap-list.ap-tiles .ap-dot { position: absolute; top: 14px; right: 14px; }
+.ap-list.ap-tiles .ap-row.on::before { top: 12px; bottom: 12px; }
+.ap-pop .app-card { display: flex; flex-direction: column; gap: 18px; }
+.ap-tgym .ap-row-text { flex: 1; }
+.ap-list.ap-details .ap-trow > span:last-child { text-align: right; }
+/* The popup's own close button sits top right; the application's buttons keep clear of it. */
+.ap-pop .app-top { padding-right: 40px !important; }

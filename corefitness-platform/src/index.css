@@ -414,3 +414,16 @@ button.chip { cursor: pointer; border: 0; font: inherit; }
 .modal .ask.bill-gym .fields > div:not(:only-child) { grid-column: auto !important; }
 /* The flat tabs (plan.css) read as "where you are"; a choice that decides what Confirm does needs to stand out. */
 .bill-gym .ptabs button[aria-checked="true"] { color: var(--accent-text) !important; box-shadow: inset 0 0 0 1px var(--accent) !important; }
+
+/* The View menu (components/ViewMenu.tsx), shared by Gyms and Applications. */
+.gx-viewmenu { position: relative; }
+.gx-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; min-width: 200px; padding: 6px; border-radius: 12px;
+  background: var(--surface-high, #1b1726); border: 1px solid var(--border-soft); box-shadow: 0 16px 40px -12px rgb(0 0 0 / .6); display: grid; }
+.gx-menu button { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border: 0; border-radius: 8px; background: none;
+  color: var(--text-2); font: inherit; font-size: 13.5px; text-align: left; cursor: pointer; justify-content: flex-start; }
+.gx-menu button:hover, .gx-menu button:focus-visible { background: rgb(255 255 255 / .06); color: var(--text); }
+.gx-menu button[aria-checked="true"] { color: var(--text); }
+.gx-menu hr { border: 0; border-top: 1px solid var(--hairline); margin: 6px 4px; }
+.gx-tick { width: 14px; display: grid; place-items: center; color: var(--accent-text); }
+.gx-tick i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+

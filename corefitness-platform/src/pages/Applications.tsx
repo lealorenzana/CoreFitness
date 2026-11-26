@@ -12,6 +12,7 @@ import InviteOwner from '../components/InviteOwner';
 import Ask from '../components/Ask';
 import GymMark from '../components/GymMark';
 import Modal from '../components/Modal';
+import ViewMenu, { readLook, saveLook, type Look } from '../components/ViewMenu';
 import Tiles from '../components/Tiles';
 import GymSuggestions from '../components/GymSuggestions';
 import MapData from '../components/MapData';
@@ -20,8 +21,12 @@ import SkelRows from '../components/ui/SkelRows';
 
 const when = (iso: string) =>
   new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
+const STATUS: Record<Application['status'], string> = { pending: 'Waiting', approved: 'Let in', rejected: 'Turned down', withdrawn: 'Called off' };
 const daysSince = (iso: string) => Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000));
 
+/** The View menu (2026-11-27): how the queue is laid out, and whether the open application sits beside it. */
+const VIEWS: [string, string][] = [['list', 'List'], ['details', 'Details'], ['tiles', 'Tiles']];
+const VIEW_KEY = 'cf-platform-applications-view';
 type Show = 'pending' | 'approved' | 'rejected' | 'withdrawn' | 'all';
 type Dialog = { kind: 'in' | 'down' | 'talk' | 'docs' | 'delete' | 'pay'; app: Application } | { kind: 'owner'; gymId: string; app: Application };
 
@@ -62,62 +67,11 @@ export default function Applications() {
   const [picked, setPicked] = useState<string | null>(null);
   const open = shownAll.find((a) => a.id === picked) ?? shownAll[0] ?? null;
   const pick = (s: Show) => setShow(show === s ? 'all' : s);
-
-  return (
-    <>
-      <Tiles items={[
-        { icon: Inbox, value: apps ? String(waiting.length) : '…', label: 'Waiting for you', act: waiting.length > 0, onClick: () => pick('pending'), on: show === 'pending' },
-        { icon: CheckCircle2, value: apps ? String(of('approved').length) : '…', label: 'Let in', onClick: () => pick('approved'), on: show === 'approved' },
-        { icon: XCircle, value: apps ? String(of('rejected').length) : '…', label: 'Turned down', onClick: () => pick('rejected'), on: show === 'rejected' },
-        { icon: Users, value: apps ? waiting.reduce((n, a) => n + (a.member_estimate ?? 0), 0).toLocaleString('en-PH') : '…', label: 'Members they say they have',
-          tip: 'Each waiting gym\'s own answer to "Roughly how many members?" on the website, added up, the members those gyms would bring onto Core Fitness if you let them in. Their estimate, not a count.' },
-        { icon: Clock, value: oldest ? `${daysSince(oldest.created_at)}d` : '—', label: oldest ? `Oldest: ${oldest.gym_name}` : 'Nobody waiting', act: !!oldest && daysSince(oldest.created_at) >= 3 },
-      ]} />
-
-      {error && <p className="err">{error}</p>}
-      {mailNote && <p className="meta" data-mail-note>{mailNote}</p>}
-
-      {/* 2026-11-22: an inbox. The queue on the left, the chosen application in full beside it, where applicants
-          come from on the right. Each box scrolls its own list, so the shell's View all stays out. */}
-      <div className="ap" data-va-keep>
-        <section className="card ap-queue">
-          <header className="ap-qhead">
-            <h2 className="section-title"><ClipboardList size={14} /> {show === 'pending' ? 'Waiting for an answer' : show === 'approved' ? 'Let in' : show === 'rejected' ? 'Turned down' : show === 'withdrawn' ? 'Called off' : 'Every application'}</h2>
-            <div className="filters ap-filters" role="group" aria-label="Show">
-              {([['pending', 'Waiting'], ['approved', 'Let in'], ['rejected', 'Turned down'], ['withdrawn', 'Called off'], ['all', 'All']] as [Show, string][]).map(([s, label]) => (
-                <button key={s} type="button" className={show === s ? 'on' : ''} aria-pressed={show === s} onClick={() => setShow(s)}>{label}<b>{apps ? of(s).length : ''}</b></button>
-              ))}
-            </div>
-          </header>
-          {apps === null ? <SkelRows label="Loading…" /> : shownAll.length === 0 ? (
-            <p className="ap-none">{show === 'pending' ? 'No gym is waiting for an answer.' : 'None here.'}</p>
-          ) : (
-            <ul className="ap-list">
-              {shownAll.map((a) => {
-                const d = docs.get(a.id); const p = pays.get(a.id);
-                return (
-                  <li key={a.id}>
-                    <button type="button" className={`ap-row${open?.id === a.id ? ' on' : ''}`} aria-current={open?.id === a.id} data-app-row onClick={() => setPicked(a.id)}>
-                      <GymMark name={a.gym_name} logoUrl={null} accent="violet" size={32} />
-                      <span className="ap-row-text">
-                        <b>{a.gym_name}</b>
-                        <span>
-                          {a.status === 'pending' ? `${daysSince(a.created_at)}d waiting` : when(a.created_at)}
-                          {d && ` · docs ${6 - d.missing.length}/6`}
-                          {p && ` · ${p.status === 'paid' ? 'paid' : p.status === 'pending' ? 'payment to check' : 'not paid'}`}
-                        </span>
-                      </span>
-                      {(!!a.unread || (d?.waiting ?? 0) > 0 || p?.status === 'pending') && <i className="ap-dot" aria-label="Something to look at" />}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
-
-        <section className="card ap-read">
-          {!open ? <p className="ap-none">Choose an application on the left.</p> : (() => { const app = open; return (
+  const [look, setLook] = useState<Look>(() => readLook(VIEW_KEY, VIEWS, { view: 'list', pane: true }));
+  /** With the pane off, choosing an application opens it in a popup. */
+  const [reading, setReading] = useState(false);
+  const choose = (id: string) => { setPicked(id); if (!look.pane) setReading(true); };
+  const reader = !open ? <p className="ap-none">Choose an application on the left.</p> : (() => { const app = open; return (
             <article key={app.id} className="app-card" data-app-card>
               <header className="app-top">
                 <GymMark name={app.gym_name} logoUrl={null} accent="violet" size={48} />
@@ -206,8 +160,80 @@ export default function Applications() {
                 </span>
               </footer>
             </article>
-          ); })()}
+          ); })();
+
+  return (
+    <>
+      <Tiles items={[
+        { icon: Inbox, value: apps ? String(waiting.length) : '…', label: 'Waiting for you', act: waiting.length > 0, onClick: () => pick('pending'), on: show === 'pending' },
+        { icon: CheckCircle2, value: apps ? String(of('approved').length) : '…', label: 'Let in', onClick: () => pick('approved'), on: show === 'approved' },
+        { icon: XCircle, value: apps ? String(of('rejected').length) : '…', label: 'Turned down', onClick: () => pick('rejected'), on: show === 'rejected' },
+        { icon: Users, value: apps ? waiting.reduce((n, a) => n + (a.member_estimate ?? 0), 0).toLocaleString('en-PH') : '…', label: 'Members they say they have',
+          tip: 'Each waiting gym\'s own answer to "Roughly how many members?" on the website, added up, the members those gyms would bring onto Core Fitness if you let them in. Their estimate, not a count.' },
+        { icon: Clock, value: oldest ? `${daysSince(oldest.created_at)}d` : '—', label: oldest ? `Oldest: ${oldest.gym_name}` : 'Nobody waiting', act: !!oldest && daysSince(oldest.created_at) >= 3 },
+      ]} />
+
+      {error && <p className="err">{error}</p>}
+      {mailNote && <p className="meta" data-mail-note>{mailNote}</p>}
+
+      {/* 2026-11-22: an inbox. The queue on the left, the chosen application in full beside it, where applicants
+          come from on the right. Each box scrolls its own list, so the shell's View all stays out. */}
+      <div className={`ap${look.pane ? '' : ' no-pane'}${look.view === 'list' ? '' : ' wide'}`} data-va-keep>
+        <section className="card ap-queue">
+          <header className="ap-qhead">
+            <span className="ap-qtop"><h2 className="section-title"><ClipboardList size={14} /> {show === 'pending' ? 'Waiting for an answer' : show === 'approved' ? 'Let in' : show === 'rejected' ? 'Turned down' : show === 'withdrawn' ? 'Called off' : 'Every application'}</h2>
+              <ViewMenu views={VIEWS} look={look} onChange={(l) => { setLook(l); saveLook(VIEW_KEY, l); }} /></span>
+            <div className="filters ap-filters" role="group" aria-label="Show">
+              {([['pending', 'Waiting'], ['approved', 'Let in'], ['rejected', 'Turned down'], ['withdrawn', 'Called off'], ['all', 'All']] as [Show, string][]).map(([s, label]) => (
+                <button key={s} type="button" className={show === s ? 'on' : ''} aria-pressed={show === s} onClick={() => setShow(s)}>{label}<b>{apps ? of(s).length : ''}</b></button>
+              ))}
+            </div>
+          </header>
+          {apps === null ? <SkelRows label="Loading…" /> : shownAll.length === 0 ? (
+            <p className="ap-none">{show === 'pending' ? 'No gym is waiting for an answer.' : 'None here.'}</p>
+          ) : (
+            <ul className={`ap-list ap-${look.view}`} data-view={look.view}>
+              {look.view === 'details' && (
+                <li className="ap-trow ap-thead" aria-hidden="true"><span>Gym</span><span>Waiting</span><span>Documents</span><span>Payment</span><span>Plan</span><span>Members</span></li>
+              )}
+              {shownAll.map((a) => {
+                const d = docs.get(a.id); const p = pays.get(a.id);
+                return (
+                  <li key={a.id}>
+                    <button type="button" className={`ap-row${look.view === 'details' ? ' ap-trow' : ''}${look.pane && open?.id === a.id ? ' on' : ''}`} aria-current={look.pane && open?.id === a.id} data-app-row onClick={() => choose(a.id)}>
+                      {look.view === 'details' ? <>
+                        <span className="ap-tgym"><GymMark name={a.gym_name} logoUrl={null} accent="violet" size={26} />
+                          <span className="ap-row-text"><b>{a.gym_name}</b><span>{STATUS[a.status]}</span></span>
+                          {(!!a.unread || (d?.waiting ?? 0) > 0 || p?.status === 'pending') && <i className="ap-dot" aria-label="Something to look at" />}</span>
+                        <span className={a.status === 'pending' && daysSince(a.created_at) >= 3 ? 'warn' : undefined}>{a.status === 'pending' ? `${daysSince(a.created_at)} days` : when(a.created_at)}</span>
+                        <span>{d ? `${6 - d.missing.length} of 6` : ''}</span>
+                        <span>{p ? (p.status === 'paid' ? 'Paid' : p.status === 'pending' ? 'To check' : 'Not paid') : 'Nothing to pay'}</span>
+                        <span>{a.plan_name ?? ''}</span>
+                        <span>{a.member_estimate?.toLocaleString('en-PH') ?? ''}</span>
+                      </> : <>
+                        <GymMark name={a.gym_name} logoUrl={null} accent="violet" size={look.view === 'tiles' ? 40 : 32} />
+                        <span className="ap-row-text">
+                          <b>{a.gym_name}</b>
+                          <span>
+                            {a.status === 'pending' ? `${daysSince(a.created_at)}d waiting` : when(a.created_at)}
+                            {d && ` · docs ${6 - d.missing.length}/6`}
+                            {p && ` · ${p.status === 'paid' ? 'paid' : p.status === 'pending' ? 'payment to check' : 'not paid'}`}
+                          </span>
+                          {look.view === 'tiles' && <span>{STATUS[a.status]}{a.plan_name ? ` · ${a.plan_name}` : ''}{a.member_estimate ? ` · about ${a.member_estimate} members` : ''}</span>}
+                        </span>
+                        {(!!a.unread || (d?.waiting ?? 0) > 0 || p?.status === 'pending') && <i className="ap-dot" aria-label="Something to look at" />}
+                      </>}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </section>
+
+        {look.pane && <section className="card ap-read">
+          {reader}
+        </section>}
 
         <aside className="card ap-side">
           <h2 className="section-title"><Inbox size={14} /> Where they come from</h2>
@@ -240,6 +266,10 @@ export default function Applications() {
           <MapData />
         </aside>
       </div>
+
+      <Modal open={reading && !look.pane && !!open} onClose={() => setReading(false)} size="lg" label="Application">
+        <div className="ap-pop">{reader}</div>
+      </Modal>
 
       <Modal open={dialog?.kind === 'in'} onClose={close} size="sm" label="Let them in">
         {dialog?.kind === 'in' && (

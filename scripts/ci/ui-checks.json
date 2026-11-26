@@ -536,6 +536,10 @@
       "app": "platform"
     },
     {
+      "file": "platform-applications-view-check.js",
+      "app": "platform"
+    },
+    {
       "file": "platform-insight-check.js",
       "app": "platform"
     },
