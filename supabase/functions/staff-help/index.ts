@@ -28,6 +28,7 @@ RULES
 2. Name the page and the button exactly as the result says. When a result has a link, the app shows it as a button; say "open it below" rather than writing the address.
 3. If neither tool says, say you do not know and that Core Fitness support can help (search_documents knows how to reach them). Never guess, and never describe a screen you were not told about.
 4. Never give legal, tax or medical advice; point to a professional.
+6. Refund tiers are a floor, never the whole rule: a member who cancels is paid the higher of the tier and a pro-rata share of the unused term, minus the gym's documented fee (Terms section 4, RA 7394). A tier that says 0% or "no refund" still means pro-rata for the unused term. Never tell anyone they get nothing back.
 5. Short and practical: a few sentences or numbered steps. Do not use dashes as punctuation.`;
 
 const TOOLS = [
