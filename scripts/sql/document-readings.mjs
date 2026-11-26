@@ -119,10 +119,24 @@ await db.exec(`delete from application_documents where application_id = '${APP}'
 check('deleting the documents deletes every reading of that application',
   Number((await one(`select count(*) n from document_readings where application_id = '${APP}'`)).n) === 0);
 
+// 0281: deleting the account erases the whole folder, and readings of files never attached.
+await as(ANA);
+check('an upload that is read but never attached', (await one(claim('owner_id', `${APP}/owner_id-abandoned.jpg`))).c.claimed === true);
+await service();
+await db.exec(`select save_document_reading('${APP}/owner_id-abandoned.jpg', '{"readable":true,"owner_name":"ANA CRUZ"}', 'x')`);
+await owner();
+await db.exec(`select erase_account('${ANA}')`);
+check('0281: the erase queues the application folder as a prefix',
+  Number((await one(`select count(*) n from erasure_files where person = '${ANA}' and bucket = 'applications' and path = '${APP}/' and is_prefix`)).n) === 1);
+check('0281: …and the abandoned file\'s reading is gone with it',
+  Number((await one(`select count(*) n from document_readings where application_id = '${APP}'`)).n) === 0);
+
 await anon();
-check('the probe marker answers a visitor', (await one(`select migration_0280_applied() ok`)).ok === true);
+check('the probe marker answers a visitor', (await one(`select migration_0280_applied() ok`)).ok === true
+  && (await one(`select migration_0281_applied() ok`)).ok === true);
 await owner();
 check('0280 can run twice', (await tryExec(readFileSync(join(REPO, 'supabase', 'migrations', '0280_document_readings.sql'), 'utf-8'))) === null);
+check('0281 can run twice', (await tryExec(readFileSync(join(REPO, 'supabase', 'migrations', '0281_erase_application_folder.sql'), 'utf-8'))) === null);
 
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);
