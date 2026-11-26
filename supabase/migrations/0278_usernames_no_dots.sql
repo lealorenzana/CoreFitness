@@ -19,6 +19,15 @@
 
 alter table profiles drop constraint if exists profiles_username_form;
 
+-- One statement for every name whose dotless form is free, valid and unique (all of them on
+-- 2026-11-26, by a dry run), so 10,250 rows do not run one by one; the loop below takes the rest.
+with d as (select id, replace(username, '.', '') v, count(*) over (partition by replace(username, '.', '')) c
+             from profiles where username like '%.%')
+update profiles p set username = d.v from d
+ where p.id = d.id and length(d.v) >= 3 and not username_reserved(d.v)
+   and not exists (select 1 from profiles q where q.username = d.v)
+   and d.c = 1;
+
 do $$
 declare
   r record;
