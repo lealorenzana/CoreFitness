@@ -150,5 +150,35 @@ async (page) => {
   await page.locator('[data-kind="system"]').click();
   await page.waitForTimeout(300);
   out.push('a kind narrows the list: ' + ((await page.locator('[data-inbox-row]').count()) >= 1 && (await page.getByRole('button', { name: /Show every kind/ }).count()) === 1 ? 'yes' : 'MISSING'));
+  // Needs you (2026-11-27): the greeting on a band in the gym's colour, with a mascot; an empty search shows the map mascot.
+  await page.getByRole('button', { name: /Show every kind/ }).click().catch(() => {}); await page.waitForTimeout(300);
+  out.push('Needs you has its band and mascot: ' + ((await page.locator('.nb-band [data-needs-mascot]').count()) === 1 ? 'yes' : 'MISSING'));
+  for (const mode of ['dark', 'light']) {
+    await page.emulateMedia({ colorScheme: mode }); await page.waitForTimeout(700);
+    await page.screenshot({ path: `shots/admin-inbox-needs-${mode}.png` });
+  }
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.getByLabel('Search messages').first().fill('zzzz nothing'); await page.waitForTimeout(500);
+  out.push('an empty search shows a mascot: ' + ((await page.locator('[data-inbox-empty] .ib2-buddy').count()) === 1 ? 'yes' : 'MISSING'));
+  await page.screenshot({ path: 'shots/admin-inbox-empty.png' });
+  // A teal gym: the look arrives after the page starts, and the mascot must repaint in it (not stay violet).
+  await page.route('**/rest/v1/rpc/my_gym_app*', (r) => r.fulfill({ status: 200, contentType: 'application/json',
+    body: JSON.stringify([{ gym_id: 'gym-a', gym_name: 'gabby pogi 123', slug: 'gabby-pogi-123', accent: 'teal', accent_action: 'rose', join_policy: 'closed' }]) }));
+  await page.goto('http://localhost:5174/inbox?show=all', { waitUntil: 'domcontentloaded' });
+  await page.locator('.nb-band [data-needs-mascot]').waitFor({ timeout: 15000 });
+  await page.waitForTimeout(1500);
+  const teal = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim().toLowerCase());
+  const painted = await page.evaluate(() => {
+    const img = document.querySelector('.nb-band [data-needs-mascot]');
+    if (!img || !img.src.startsWith('data:')) return null;
+    const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+    const x = c.getContext('2d'); x.drawImage(img, 0, 0);
+    const d = x.getImageData(0, 0, c.width, c.height).data; let violet = 0, greenblue = 0;
+    for (let i = 0; i < d.length; i += 16) { if (d[i + 3] < 200) continue; const [r, g, b] = [d[i], d[i + 1], d[i + 2]];
+      if (b > r + 30 && r > g + 20) violet++; if (g > r + 30 && b > r + 10) greenblue++; }
+    return { violet, greenblue };
+  });
+  await page.screenshot({ path: 'shots/admin-inbox-needs-teal.png' });
+  out.push('a teal gym: the mascot repaints in teal, no violet left: ' + (teal === '#0d9488' && painted && painted.greenblue > 50 && painted.violet < painted.greenblue / 20 ? 'yes' : 'MISSING ' + teal + ' ' + JSON.stringify(painted)));
   return out.join('\n');
 }

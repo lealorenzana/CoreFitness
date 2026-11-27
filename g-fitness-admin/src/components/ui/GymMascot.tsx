@@ -77,14 +77,31 @@ function themeColours(): [string, string] {
   return [s.getPropertyValue('--color-primary') || '#7C3AED', s.getPropertyValue('--color-secondary') || '#F59E0B'];
 }
 
+/**
+ * The app's own colours, kept current: the gym's look is read after the page starts (lib/gymLook.ts writes a
+ * <style> into <head>), and Your app can change it, so a mascot drawn before then repaints when it lands.
+ */
+function useThemeColours(): string {
+  const [key, setKey] = useState(() => themeColours().join('|'));
+  useEffect(() => {
+    const check = () => { const k = themeColours().join('|'); setKey((old) => (old === k ? old : k)); };
+    const mo = new MutationObserver(check);
+    mo.observe(document.head, { childList: true, subtree: true, characterData: true });
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-mode', 'style'] });
+    return () => mo.disconnect();
+  }, []);
+  return key;
+}
+
 export default function GymMascot({ src, primary, action, ...img }: React.ImgHTMLAttributes<HTMLImageElement> & { src: string; primary?: string; action?: string }) {
   const [tinted, setTinted] = useState<{ for: string; url: string } | null>(null);
+  const theme = useThemeColours();
   useEffect(() => {
     let alive = true;
-    const [p, a] = primary && action ? [primary, action] : themeColours();
+    const [p, a] = theme.split('|');
     void tintMascot(src, primary ?? p, action ?? a).then((url) => { if (alive) setTinted({ for: src, url }); });
     return () => { alive = false; };
-  }, [src, primary, action]);
+  }, [src, primary, action, theme]);
   const ready = tinted?.for === src;
   return <img alt="" {...img} data-art={src} src={ready ? tinted.url : src} style={{ ...img.style, visibility: ready ? undefined : 'hidden' }} />;
 }

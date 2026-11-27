@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import GymMascot from '../components/ui/GymMascot';
 import { useNavigate } from 'react-router-dom';
 import {
   Archive, ArchiveRestore, ArrowUpRight, Banknote, Bell, Calendar, CheckCheck, Dumbbell, Gift,
@@ -247,6 +248,8 @@ export default function Inbox() {
                 : rows === null ? <SkelRows label="Loading…" />
                 : shown.length === 0 ? (
                   <div className="ib2-empty" data-inbox-empty>
+                    {/* A mascot for an empty list (owner, 2026-11-27): the map when a search finds nothing, the tick when all is read. */}
+                    <GymMascot className="ib2-buddy" src={q || kind ? '/images/admin-art/mascot-map.webp' : '/images/admin-art/mascot-clipboard.webp'} aria-hidden />
                     <b>{q || kind ? 'No message matches' : view === 'unread' ? 'You are all caught up' : view === 'archived' ? 'Nothing archived' : 'No messages yet'}</b>
                     {(q || kind || view === 'unread') && <span>{q || kind ? 'Clear the search or the kind to see more.' : 'Read messages are under All.'}</span>}
                   </div>

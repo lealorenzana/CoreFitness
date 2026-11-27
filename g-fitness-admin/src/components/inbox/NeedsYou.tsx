@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import GymMascot from '../ui/GymMascot';
 import { useNavigate } from 'react-router-dom';
 import { Banknote, CalendarClock, Dumbbell, PauseCircle, RefreshCw, UserPlus } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -151,6 +152,9 @@ export default function NeedsYou({ inboxLine, onChanged }: { inboxLine: string; 
 
   return (
     <div className="nb-home" data-needs-you>
+      {/* The band (owner, 2026-11-27, Invite members' look): the gym's colour, the greeting, and a mascot that says
+          how the day stands: the stopwatch while things wait, the clipboard with its tick when nothing does. */}
+      <div className="nb-band">
       <div className="nb-hd">
         <h2>{greeting()}{first ? `, ${first}` : ''}</h2>
         <p>{total === 0 ? 'Nothing waits on you right now.' : `${total} thing${total === 1 ? '' : 's'} wait on you. Answer them here; the rest of the inbox is for reading.`}</p>
@@ -160,6 +164,8 @@ export default function NeedsYou({ inboxLine, onChanged }: { inboxLine: string; 
         <div><b>{toApprove}</b><span>to approve</span></div>
         <div><b>{peso(cash.reduce((s, r) => s + r.planPrice, 0))}</b><span>asked to renew, cash</span></div>
         <div><b>{sessions.length + packPay.length + packAsk.length}</b><span>personal training</span></div>
+      </div>
+      <GymMascot className="nb-buddy" key={total === 0 ? 'done' : 'wait'} src={total === 0 ? '/images/admin-art/mascot-clipboard.webp' : '/images/admin-art/mascot-stopwatch.webp'} aria-hidden data-needs-mascot />
       </div>
       {failed && <p className="nb-fail">Part of this could not be loaded. Reload the page to try again; what is shown is real.</p>}
       <div className="nb-need">
