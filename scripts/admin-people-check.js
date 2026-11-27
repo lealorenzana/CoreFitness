@@ -91,7 +91,14 @@ async (page) => {
   // ---- Add member ---------------------------------------------------------------------------------
   await page.goto('http://localhost:5174/members', { waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: /Add member/i }).first().click();
-  await page.locator('[aria-label="Steps"]').getByText('Who they are').waitFor({ timeout: 15000 });
+  await page.locator('[aria-label="Sections"]').getByText('Who they are').waitFor({ timeout: 15000 });
+  // One floating page (2026-11-27): the four parts on one scrolling form, a mascot per part, no Next.
+  out.push('one page: four parts listed, every field on the form at once, a mascot: ' + ((await page.locator('.am-parts li').count()) === 4
+    && (await page.getByLabel('Email', { exact: true }).count()) === 1 && (await page.locator('.am-buddy img').count()) === 1
+    && (await page.getByRole('button', { name: 'Next', exact: true }).count()) === 0 ? 'yes' : 'MISSING'));
+  for (const [w, h] of [[1600, 1000], [1280, 800]]) { await page.setViewportSize({ width: w, height: h }); await page.waitForTimeout(300); await page.screenshot({ path: `shots/admin-add-member-${w}.png` }); }
+  await page.emulateMedia({ colorScheme: 'light' }); await page.waitForTimeout(300); await page.screenshot({ path: 'shots/admin-add-member-light-1400.png' }); await page.emulateMedia({ colorScheme: 'dark' }); await page.waitForTimeout(300); await page.screenshot({ path: 'shots/admin-add-member-dark-1400.png' }); await page.emulateMedia({ colorScheme: 'light' });
+  await page.setViewportSize({ width: 1400, height: 900 });
   await page.getByLabel('First name').fill('Ana');
   await page.getByLabel('Last name').fill('Reyes');
   await page.getByRole('radio', { name: 'Female' }).click();
@@ -99,16 +106,15 @@ async (page) => {
   await page.getByLabel('Province').selectOption('Occidental Mindoro');
   await page.getByLabel('City or municipality').selectOption('Mamburao');
   await page.getByLabel('Street or barangay').fill('Brgy. Payompon');
-  await next();
   await page.getByLabel('Email', { exact: true }).fill('ana@x.ph');
   // 0236: the desk never types a password — a one-time one is made on the server and shown on the slip.
   out.push('no password to type; a one-time one is made for them: ' + ((await page.getByRole('textbox', { name: 'Password' }).count()) === 0
     && /one-time password is made for them/.test(await text()) ? 'yes' : 'NO'));
-  await next();
   await page.getByRole('radio', { name: 'Beginner' }).click();
   await page.getByLabel('Emergency contact name').fill('Rosa Reyes');
   await page.getByRole('radio', { name: 'Parent' }).click();
-  await next();
+  await page.locator('.am-parts button', { hasText: 'Membership' }).click(); await page.waitForTimeout(900);
+  out.push('the mascot follows the part in view: ' + (/mascot-coin/.test(await page.locator('.am-buddy img').getAttribute('src')) ? 'yes' : 'NO'));
   out.push('plans as cards with price: ' + (/Monthly 30 days ₱1,500/.test(await text()) ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/admin-add-member-plan.png' });
   await page.getByRole('button', { name: 'Add member', exact: true }).last().click();
