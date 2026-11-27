@@ -109,7 +109,7 @@ const weekStartOf = (key: string) => { const [y, m, d] = key.split('-').map(Numb
 const dowOf = (key: string) => { const [y, m, d] = key.split('-').map(Number); return new Date(y, m - 1, d).getDay(); };
 const fmtDay = (key: string, opts: Intl.DateTimeFormatOptions) => { const [y, m, d] = key.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString('en-PH', opts); };
 
-type View = 'week' | 'day' | 'plan' | 'hours';
+type View = 'week' | 'day' | 'month' | 'plan' | 'hours';
 
 /** Side-by-side lanes for classes that overlap on one day. */
 function lanes(items: CalendarSession[]): Map<string, { lane: number; of: number }> {
@@ -155,6 +155,9 @@ export default function Schedule() {
   const [daySessions, setDaySessions] = useState<CalendarSession[]>([]);
   const [pts, setPts] = useState<PtSessionRow[]>([]);
   const [monthHas, setMonthHas] = useState<Set<string>>(new Set());
+  /** The month on screen (Month view): its classes and every 1-on-1 not cancelled. */
+  const [monthSessions, setMonthSessions] = useState<CalendarSession[]>([]);
+  const [allPts, setAllPts] = useState<PtSessionRow[]>([]);
   const [waiting, setWaiting] = useState<Map<string, number>>(new Map());
   const [q, setQ] = useState('');
   const [coach, setCoach] = useState('all');
@@ -232,7 +235,7 @@ export default function Schedule() {
         loadSessionsBetween(day, day).catch(() => []),
         listPtSessions().catch(() => []),
         supabase.from('class_waitlist').select('class_id'),
-        loadSessionsBetween(monthFirst, addDays(monthFirst, 41)).catch(() => []),
+        loadSessionsBetween(addDays(monthFirst, -7), addDays(monthFirst, 42)).catch(() => []),
       ]);
       setSessions(wk);
       setDaySessions(dy);
@@ -241,6 +244,8 @@ export default function Schedule() {
       for (const r of (wl.data ?? []) as { class_id: string }[]) w.set(r.class_id, (w.get(r.class_id) ?? 0) + 1);
       setWaiting(w);
       setMonthHas(new Set(mo.map((s) => localDateKey(s.startsAt))));
+      setMonthSessions(mo);
+      setAllPts(pt.filter((p) => p.status !== 'cancelled'));
       // The day's no-shows: class bookings and 1-on-1s marked no_show (0260).
       const ids = dy.map((s) => s.id);
       const ns = ids.length ? await supabase.from('bookings').select('id', { count: 'exact', head: true }).in('class_id', ids).eq('attended', 'no_show') : null;
@@ -405,10 +410,15 @@ export default function Schedule() {
   const weekLabel = weekStart.slice(5, 7) === weekEnd.slice(5, 7)
     ? `${fmtDay(weekStart, { month: 'short', day: 'numeric' })} – ${Number(weekEnd.slice(8))}, ${weekEnd.slice(0, 4)}`
     : `${fmtDay(weekStart, { month: 'short', day: 'numeric' })} – ${fmtDay(weekEnd, { month: 'short', day: 'numeric' })}, ${weekEnd.slice(0, 4)}`;
-  const step = (dir: number) => { if (view === 'day') setDay(addDays(day, dir)); else setWeekStart(addDays(weekStart, dir * 7)); setSelId(null); };
+  const step = (dir: number) => {
+    if (view === 'day') setDay(addDays(day, dir));
+    else if (view === 'month') { const y = Number(day.slice(0, 4)), m = Number(day.slice(5, 7)) - 1 + dir; const d = new Date(y, m, 1); setDay(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`); }
+    else setWeekStart(addDays(weekStart, dir * 7));
+    setSelId(null);
+  };
 
   // The figures are about one day: the day view's day, or today on the week.
-  const figDay = view === 'day' ? day : today;
+  const figDay = view === 'day' || view === 'month' ? day : today;
   const dayWord = figDay === today ? 'today' : fmtDay(figDay, { weekday: 'short', month: 'short', day: 'numeric' });
   const figSessions = figDay === day ? daySessions : sessions.filter((s) => localDateKey(s.startsAt) === figDay);
   const figPts = figDay === day ? pts : [];
@@ -539,7 +549,7 @@ export default function Schedule() {
           <p>Classes members book · 1-on-1 hours{activeCount ? <> · bookable through <b className="text-white">{fmtDay(addDays(today, WEEKS_AHEAD * 7), { month: 'short', day: 'numeric' })}</b></> : ' · no classes on the timetable yet'}</p>
         </div>
         <nav className="a-tabs" aria-label="Schedule views" data-rd-tabs>
-          <button type="button" className={view === 'week' || view === 'day' ? 'on' : ''} onClick={() => setView('week')}><CalendarDays size={14} />Calendar</button>
+          <button type="button" className={view === 'week' || view === 'day' || view === 'month' ? 'on' : ''} onClick={() => setView('week')}><CalendarDays size={14} />Calendar</button>
           <button type="button" className={view === 'plan' ? 'on' : ''} onClick={() => setView('plan')} data-view="plan"><Repeat size={14} />Weekly timetable <em>{activeCount}</em></button>
           <button type="button" className={view === 'hours' ? 'on' : ''} onClick={() => setView('hours')} data-view="hours"><Clock size={14} />Coach hours</button>
         </nav>
@@ -554,12 +564,12 @@ export default function Schedule() {
         </div>
       </Popover>
 
-      {(view === 'week' || view === 'day') && (
+      {(view === 'week' || view === 'day' || view === 'month') && (
         <div className="flex items-center gap-2 flex-none flex-wrap">
           <div className="a-datenav">
-            <button type="button" className="a-btn" style={{ padding: '7px 9px' }} onClick={() => step(-1)} aria-label={view === 'day' ? 'Previous day' : 'Previous week'}><ChevronLeft size={15} /></button>
-            <b data-date-label>{view === 'day' ? fmtDay(day, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : weekLabel}</b>
-            <button type="button" className="a-btn" style={{ padding: '7px 9px' }} onClick={() => step(1)} aria-label={view === 'day' ? 'Next day' : 'Next week'}><ChevronRight size={15} /></button>
+            <button type="button" className="a-btn" style={{ padding: '7px 9px' }} onClick={() => step(-1)} aria-label={view === 'day' ? 'Previous day' : view === 'month' ? 'Previous month' : 'Previous week'}><ChevronLeft size={15} /></button>
+            <b data-date-label>{view === 'day' ? fmtDay(day, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : view === 'month' ? fmtDay(`${day.slice(0, 7)}-01`, { month: 'long', year: 'numeric' }) : weekLabel}</b>
+            <button type="button" className="a-btn" style={{ padding: '7px 9px' }} onClick={() => step(1)} aria-label={view === 'day' ? 'Next day' : view === 'month' ? 'Next month' : 'Next week'}><ChevronRight size={15} /></button>
           </div>
           <button type="button" className="a-btn sm" style={{ padding: '7px 11px' }} onClick={() => { setDay(today); setWeekStart(weekStartOf(today)); }}>Today</button>
           {/* One tap opens the calendar — the picker's own trigger in the toolbar's look. */}
@@ -580,11 +590,12 @@ export default function Schedule() {
           <div className="a-seg" style={{ marginLeft: 'auto' }} role="tablist">
             <button type="button" className={view === 'week' ? 'on' : ''} onClick={() => setView('week')}>Week</button>
             <button type="button" className={view === 'day' ? 'on' : ''} onClick={() => setView('day')} data-view="day">Day</button>
+            <button type="button" className={view === 'month' ? 'on' : ''} onClick={() => setView('month')} data-view="month">Month</button>
           </div>
         </div>
       )}
 
-      {!loading && (view === 'week' || view === 'day') && (
+      {!loading && (view === 'week' || view === 'day' || view === 'month') && (
         <div className="sc-figs" data-schedule-figures>
           <div><span>Classes {dayWord}</span><b>{figSessions.length}</b>
             <small>{figDay === today ? `${figSessions.filter((s) => new Date(s.startsAt).getTime() > nowMs).length} still to come` : 'on the timetable'}</small></div>
@@ -657,6 +668,113 @@ export default function Schedule() {
           </div>
 
           {rail}
+        </div>
+      ) : view === 'month' ? (
+        // Month (owner, 2026-11-27, from the event calendar reference): each day's classes and 1-on-1s as chips in the
+        // coach's colour, the picked day's list beside it, and Add a class on that weekday.
+        <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0,1fr) 340px', flex: 1 }}>
+          <div className="a-card mc" data-month>
+            {(() => {
+              const first = `${day.slice(0, 7)}-01`;
+              const lead = (dowOf(first) + 6) % 7; // Monday first
+              const start = addDays(first, -lead);
+              const cells = Array.from({ length: 42 }, (_, i) => addDays(start, i));
+              type Chip = { key: string; at: string; label: string; c: number; kind: 'class' | 'pt' };
+              const chipsOf = (k: string): Chip[] => [
+                ...monthSessions.filter(passes).filter((x) => localDateKey(x.startsAt) === k)
+                  .map((x) => ({ key: x.id, at: x.startsAt, label: x.name, c: colourOf(x.trainerId), kind: 'class' as const })),
+                ...allPts.filter((x) => localDateKey(x.starts_at) === k && (coach === 'all' || x.trainer_id === coach))
+                  .map((x) => ({ key: x.id, at: x.starts_at, label: `1-on-1 · ${memberName(x.member_id).split(' ')[0]}`, c: colourOf(x.trainer_id), kind: 'pt' as const })),
+              ].sort((a, b) => a.at.localeCompare(b.at));
+              return (
+                <>
+                  <div className="mc-wd">{['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((w) => <span key={w}>{w}</span>)}</div>
+                  <div className="mc-grid">
+                    {cells.map((k) => {
+                      const chips = chipsOf(k);
+                      const more = chips.length > 3 ? chips.length - 2 : 0;
+                      return (
+                        <button key={k} type="button" data-month-day={k} aria-pressed={k === day}
+                          className={`mc-cell ${k.slice(0, 7) !== day.slice(0, 7) ? 'out' : ''} ${k === day ? 'sel' : ''} ${k === today ? 'today' : ''}`}
+                          aria-label={`${fmtDay(k, { weekday: 'long', month: 'long', day: 'numeric' })}${chips.length ? `, ${chips.length} on the schedule` : ''}`}
+                          onClick={() => { setDay(k); setSelId(null); }}>
+                          <span className="d">{Number(k.slice(8))}</span>
+                          <span className="chips">
+                            {chips.slice(0, more ? 2 : 3).map((x) => (
+                              <span key={x.key} className={`mc-chip ${x.kind}`} style={{ ['--cc' as string]: CC[x.c] }}>{timeOf(x.at)} {x.label}</span>
+                            ))}
+                            {more > 0 && <span className="mc-more">+{more} more</span>}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+          <div className="a-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 12 }} data-month-panel>
+            {selected && (
+              <div className="a-card glow" data-class-panel style={{ flexShrink: 0 }}>
+                <div className="a-ct"><h3 className="truncate"><CalendarDays size={16} />{selected.name}</h3>
+                  <button type="button" className="a-link" onClick={() => setSelId(null)} aria-label="Close"><X size={15} /></button></div>
+                <span className="a-pill v" style={{ alignSelf: 'flex-start', marginBottom: 6 }}>{fmtDay(localDateKey(selected.startsAt), { weekday: 'short', month: 'short', day: 'numeric' })} · {timeOf(selected.startsAt)}</span>
+                <div className="a-kv"><span>Coach</span><b>{trainerName(selected.trainerId)}</b></div>
+                <div className="a-kv"><span>Room</span><b>{selected.location ?? '—'}</b></div>
+                <div className="a-kv"><span>Seats</span><b>{selected.booked} of {selected.capacity}{waiting.get(selected.id) ? ` · ${waiting.get(selected.id)} waiting` : ''}</b></div>
+                <div className="a-kv"><span>Repeats</span><b>{tpl ? `Every ${DAY_NAMES[tpl.day_of_week]}` : 'One-off'}</b></div>
+                <div className="a-lbl" style={{ margin: '10px 0 6px' }}>Booked {roster ? `· ${roster.length}` : ''}</div>
+                {roster === null ? <p className="a-sub">Could not read who booked.</p> : roster.length === 0 ? <p className="a-sub">Nobody yet.</p> : (
+                  <div className="flex flex-col" style={{ maxHeight: 132, overflowY: 'auto' }} data-roster>
+                    {roster.map((r) => (
+                      <div key={r.id} className="a-row" style={{ padding: '5px 0' }}><Av name={memberName(r.member_id)} small />
+                        <div className="t"><b style={{ fontSize: 12.5 }}>{memberName(r.member_id)}</b></div>
+                        {r.status === 'pending' && <span className="a-pill a">waiting</span>}</div>
+                    ))}
+                  </div>
+                )}
+                {new Date(selected.startsAt).getTime() > Date.parse(`${today}T00:00:00`) && (
+                  <div className="relative" style={{ marginTop: 10 }}>
+                    <label className="a-input sm" style={{ fontSize: 12.5 }}><UserPlus size={14} />
+                      <input value={bookQ} onChange={(e) => setBookQ(e.target.value)} placeholder="Book a member: type a name…" aria-label="Book a member" disabled={booking} /></label>
+                    {bookHits.length > 0 && (
+                      <div className="a-card" style={{ position: 'absolute', zIndex: 5, left: 0, right: 0, top: 40, padding: '4px 10px' }}>
+                        {bookHits.map((m) => (
+                          <button key={m.id} type="button" className="a-row w-full text-left" onClick={() => void bookMember(m.id)} data-book-hit>
+                            <Av name={m.name} photo={m.photo} small /><div className="t"><b>{m.name}</b></div><span className="a-pill v">Book</span></button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div className="flex gap-1.5 flex-wrap" style={{ marginTop: 10 }}>
+                  {tpl && <button type="button" className="a-btn sm" onClick={() => openEdit(tpl)}><Pencil size={12} />Edit class</button>}
+                  {roster && roster.some((r) => r.status === 'approved') && <button type="button" className="a-btn sm" onClick={() => setMsgOpen(true)} data-message-booked><MessageSquare size={12} />Message booked</button>}
+                </div>
+              </div>
+            )}
+            <div className="a-card sc-card" style={{ flexShrink: 0 }}>
+              <div className="a-ct"><h3><CalendarDays size={16} />{fmtDay(day, { weekday: 'long', month: 'long', day: 'numeric' })}</h3>
+                <small>{daySessions.filter(passes).length + pts.length === 0 ? 'nothing on' : `${daySessions.filter(passes).length + pts.length} on the schedule`}</small></div>
+              {[...daySessions.filter(passes).map((x) => ({ at: x.startsAt, kind: 'class' as const, x })), ...pts.map((x) => ({ at: x.starts_at, kind: 'pt' as const, x }))]
+                .sort((a, b) => a.at.localeCompare(b.at)).map((r) => r.kind === 'class' ? (
+                  <button key={r.x.id} type="button" className={`mc-item ${selId === r.x.id ? 'on' : ''}`} onClick={() => setSelId(r.x.id)} style={{ ['--cc' as string]: CC[colourOf(r.x.trainerId)] }} data-month-item>
+                    <i />
+                    <span className="min-w-0 flex-1"><small>{timeOf(r.x.startsAt)} · {r.x.durationMinutes} min</small><b>{r.x.name}</b>
+                      <small>{trainerName(r.x.trainerId)}{r.x.location ? ` · ${r.x.location}` : ''} · {r.x.capacity > 0 && r.x.booked >= r.x.capacity ? 'full' : `${r.x.booked} of ${r.x.capacity}`}</small></span>
+                  </button>
+                ) : (
+                  <div key={r.x.id} className="mc-item pt" style={{ ['--cc' as string]: CC[colourOf(r.x.trainer_id)] }} data-month-item>
+                    <i />
+                    <span className="min-w-0 flex-1"><small>{timeOf(r.x.starts_at)} · {r.x.duration_minutes} min</small><b>1-on-1 · {memberName(r.x.member_id)}</b>
+                      <small>{trainerName(r.x.trainer_id)} · {r.x.status === 'approved' ? 'confirmed' : r.x.status === 'pending' ? 'waiting' : r.x.status}</small></span>
+                  </div>
+                ))}
+              {daySessions.filter(passes).length + pts.length === 0 && <p className="a-sub">Nothing on this day.</p>}
+              {/* The timetable repeats weekly, so the button says so: a class added here runs every week on this weekday. */}
+              <button type="button" className="a-btn amber mc-add" onClick={() => openAdd(dowOf(day))} data-month-add><Plus size={14} />Add a class on {DAY_NAMES[dowOf(day)]}s</button>
+            </div>
+          </div>
         </div>
       ) : view === 'day' ? (
         <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0,1fr) 320px', flex: 1 }}>

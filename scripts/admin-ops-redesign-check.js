@@ -180,6 +180,17 @@ async (page) => {
     await page.locator('[data-view="day"]').click(); await page.waitForTimeout(300);
   }
   await page.emulateMedia({ colorScheme: 'light' }); await page.setViewportSize({ width: 1600, height: 900 });
+  // Month (2026-11-27, the event calendar reference): 42 days with chips by coach, the picked day's list, Add on that weekday.
+  await page.locator('[data-view="month"]').click(); await page.waitForTimeout(600);
+  has('month: six weeks of days with class chips, the day listed beside it, and Add a class on that weekday',
+    (await page.locator('[data-month-day]').count()) === 42 && (await page.locator('[data-month] .mc-chip').count()) >= 1
+    && (await page.locator('[data-month-panel]').count()) === 1 && /Add a class on \w+days/.test(await page.locator('[data-month-add]').innerText()));
+  for (const [mode, w, h] of [['light', 1600, 900], ['dark', 1600, 900], ['dark', 1280, 800]]) {
+    await page.emulateMedia({ colorScheme: mode }); await page.setViewportSize({ width: w, height: h }); await page.waitForTimeout(400);
+    await page.screenshot({ path: `shots/ops-schedule-month-${mode}-${w}.png` });
+  }
+  await page.emulateMedia({ colorScheme: 'light' }); await page.setViewportSize({ width: 1600, height: 900 });
+  await page.locator('[data-view="day"]').click(); await page.waitForTimeout(300);
   await page.locator('[data-view="plan"]').click();
   await page.waitForTimeout(400);
   t = await text();

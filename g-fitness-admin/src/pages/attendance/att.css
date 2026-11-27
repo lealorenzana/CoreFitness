@@ -838,3 +838,33 @@
 .att .sc-left { font-size: 11.5px; color: var(--a-p300); white-space: nowrap; }
 .att .sc-left.full { color: var(--a-a300); }
 .att .sc-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; vertical-align: 1px; }
+
+/* ── Schedule, Month (owner, 2026-11-27, from the event calendar reference) ──
+   A month of days with chips in the coach's colour; the picked day's list in the panel beside it. */
+.att .mc { padding: 0; display: flex; flex-direction: column; overflow: hidden; }
+.att .mc-wd { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); flex: none; border-bottom: 1px solid var(--a-border); }
+.att .mc-wd span { padding: 9px 10px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--a-muted); }
+.att .mc-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); grid-template-rows: repeat(6, minmax(0, 1fr)); }
+.att .mc-cell { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 4px; padding: 6px 7px; text-align: left; overflow: hidden;
+  border-right: 1px solid var(--a-border); border-bottom: 1px solid var(--a-border); transition: background .15s; }
+.att .mc-cell:nth-child(7n) { border-right: 0; }
+.att .mc-cell:nth-last-child(-n + 7) { border-bottom: 0; }
+.att .mc-cell:hover { background: rgb(var(--hair-rgb, 255 255 255) / .035); }
+.att .mc-cell.out { background: rgb(var(--hair-rgb, 255 255 255) / .02); }
+.att .mc-cell.out .d { color: var(--a-muted); }
+.att .mc-cell.sel { box-shadow: inset 0 0 0 2px var(--color-primary); background: color-mix(in srgb, var(--color-primary) 8%, transparent); }
+.att .mc-cell .d { font-size: 13px; font-weight: 650; color: var(--a-ink); width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; flex: none; }
+.att .mc-cell.today .d { background: var(--fill-primary, var(--color-primary)); color: #fff; }
+.att .mc-cell .chips { display: grid; gap: 3px; min-width: 0; }
+.att .mc-chip { display: block; min-width: 0; padding: 2px 6px; border-radius: 5px; font-size: 11px; font-weight: 550; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  color: var(--a-ink); background: color-mix(in srgb, var(--cc) 20%, var(--a-surface, #191918)); border-left: 2px solid var(--cc); }
+.att .mc-chip.pt { background: transparent; border: 1px dashed color-mix(in srgb, var(--cc) 70%, transparent); border-left-width: 2px; border-left-style: solid; }
+.att .mc-more { font-size: 11px; color: var(--a-muted); padding-left: 4px; }
+.att .mc-item { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 10px; margin-bottom: 6px; text-align: left; border-radius: 12px;
+  border: 1px solid var(--a-border); background: var(--a-raised); transition: border-color .15s; }
+.att button.mc-item:hover, .att .mc-item.on { border-color: var(--cc); }
+.att .mc-item > i { width: 8px; height: 8px; border-radius: 50%; background: var(--cc); flex: none; margin-top: 6px; }
+.att .mc-item.pt > i { background: transparent; box-shadow: inset 0 0 0 2px var(--cc); }
+.att .mc-item b { display: block; font-size: 13.5px; color: var(--a-ink); margin: 1px 0; }
+.att .mc-item small { display: block; font-size: 11.5px; color: var(--a-muted); }
+.att .mc-add { width: 100%; justify-content: center; margin-top: 6px; }
