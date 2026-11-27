@@ -83,7 +83,7 @@ export default function TrainerMonthTotals({ isOpen, onClose }: { isOpen: boolea
           <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>Rates are for this estimate only and are not saved.</p>
           <div className="flex gap-2">
             <Button variant="ghost" onClick={onClose}>Close</Button>
-            <Button variant="primary" onClick={exportCsv} disabled={!rows?.length}>Export CSV</Button>
+            <Button variant="primary" onClick={exportCsv} disabled={!rows?.length}>Export</Button>
           </div>
         </div>
       }>

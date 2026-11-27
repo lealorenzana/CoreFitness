@@ -23,6 +23,7 @@ import Capacity from './pages/Capacity';
 import CommandPalette from './components/CommandPalette';
 import ErrorBoundary from './components/ErrorBoundary';
 import TooltipLayer from './components/TooltipLayer';
+import ExportHost from './components/ExportWindow';
 import ViewAll from './components/ViewAll';
 import ActivityPage from './pages/Activity';
 import Usage from './pages/Usage';
@@ -202,6 +203,7 @@ function Shell() {
           </span>
           <CommandPalette pages={PAGES} />
           <TooltipLayer />
+          <ExportHost />
           <ViewAll root=".content" boxes=".card, section, .pf-col, .cap-col, .kpi" fit />
           <DetailLayer />
         </header>

@@ -276,33 +276,18 @@ export function renderSchedulePng(
 }
 
 /** The same timetable as rows, for a spreadsheet. */
-export function scheduleToCsv(slots: ScheduleSlot[]): string {
-  const cell = (v: string | number | null): string => {
-    const s = v == null ? '' : String(v);
-    // A class named 'Strength, Level 2' would otherwise become two columns.
-    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-  };
+/** The timetable as rows for the export window (quoting and the BOM are the writer's job). */
+export function scheduleRows(slots: ScheduleSlot[]): Record<string, string | number | null>[] {
 
   const rows = [...slots].sort(
     (a, b) => a.dayOfWeek - b.dayOfWeek || minutesOfDay(a.startTime) - minutesOfDay(b.startTime),
   );
 
-  const lines = [
-    ['Day', 'Start', 'End', 'Class', 'Trainer', 'Location', 'Capacity'].join(','),
-    ...rows.map((s) => {
-      const from = minutesOfDay(s.startTime);
-      return [
-        cell(DAYS[s.dayOfWeek]),
-        cell(clock12(from)),
-        cell(clock12(from + s.durationMinutes)),
-        cell(s.name),
-        cell(s.trainerName),
-        cell(s.location),
-        cell(s.capacity),
-      ].join(',');
-    }),
-  ];
-  return lines.join('\r\n');
+  return rows.map((s) => {
+    const from = minutesOfDay(s.startTime);
+    return { Day: DAYS[s.dayOfWeek], Start: clock12(from), End: clock12(from + s.durationMinutes), Class: s.name, Trainer: s.trainerName,
+      Location: s.location, Capacity: s.capacity };
+  });
 }
 
 /**

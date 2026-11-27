@@ -97,7 +97,7 @@ const xml = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 const colName = (i: number) => { let s = ''; for (let n = i + 1; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(65 + ((n - 1) % 26)) + s; return s; };
 
 /** An Excel workbook, one sheet per table: plain OOXML, zipped. Numbers stay numbers; everything else is text. */
-async function toXlsx(sheets: Sheet[]): Promise<Uint8Array> {
+export async function toXlsx(sheets: Sheet[]): Promise<Uint8Array> {
   const { zipSync, strToU8 } = await import('fflate');
   const names = sheets.map((s, i) => (s.name.replace(/[[\]:*?/\\]/g, ' ').slice(0, 31) || `Sheet ${i + 1}`));
   const files: Record<string, Uint8Array> = {
@@ -147,7 +147,7 @@ function toPrintHtml(gymName: string, sheets: Sheet[]): string {
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'gym';
 
-function download(name: string, data: BlobPart, type: string) {
+export function download(name: string, data: BlobPart, type: string) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([data], { type }));
   a.download = name;

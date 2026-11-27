@@ -1,49 +1,19 @@
-// Export utilities for generating CSV reports.
-import { todayKey } from './dates';
+// Export utilities. Every export opens the export window (owner, 2026-11-27): tick columns and rows, see the
+// file before it is written, CSV or Excel. The writing (BOM, no formula cells, the workbook) is lib/gymDataExport.ts.
+import { openExport } from '../lib/exportRequest';
+import { showToast } from './toast';
 
 /**
  * @param stampDate append today's date to the filename. Pass `false` when the
  *   caller has already put the relevant date in the name — otherwise exporting
  *   last Tuesday's attendance produces `attendance_2026-08-11_2026-08-16.csv`.
  */
-export const exportToCSV = (data: Record<string, unknown>[], filename: string, stampDate = true) => {
+export const exportToCSV = (data: Record<string, unknown>[], filename: string, stampDate = true, title?: string) => {
   if (data.length === 0) {
-    alert('No data to export');
+    showToast('Nothing to export yet.', 'error');
     return;
   }
-
-  // Get headers from first object
-  const headers = Object.keys(data[0]);
-  
-  // Create CSV content
-  const csvContent = [
-    headers.join(','), // Header row
-    ...data.map(row => 
-      headers.map(header => {
-        const value = row[header];
-        // Handle values with commas or quotes
-        if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
-          return `"${value.replace(/"/g, '""')}"`;
-        }
-        return value;
-      }).join(',')
-    )
-  ].join('\n');
-
-  // Create blob and download
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  const url = URL.createObjectURL(blob);
-  
-  link.setAttribute('href', url);
-  // `todayKey()`, not `toISOString()` — the latter is UTC, so a file exported at
-  // 7am in Manila was stamped with yesterday's date.
-  link.setAttribute('download', stampDate ? `${filename}_${todayKey()}.csv` : `${filename}.csv`);
-  link.style.visibility = 'hidden';
-  
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  openExport({ rows: data, filename, stampDate, title });
 };
 
 /**

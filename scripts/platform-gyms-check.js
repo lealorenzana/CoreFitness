@@ -174,5 +174,24 @@ async (page) => {
     && /Tmp-4821-xyz/.test(mail.body ?? '') ? 'sent to send-email' : 'MISSING ' + JSON.stringify(mail).slice(0, 160)));
   out.push('…and says so when email is not set up: ' + (/Email is not set up yet/.test(t) && /Tmp-4821-xyz/.test(t) ? 'yes, the password still shown' : 'MISSING'));
   await page.screenshot({ path: 'shots/platform-reset-email.png' });
+
+  // The export window (owner, 2026-11-27): Export on Gyms shows the file first; tick columns and rows; CSV or Excel.
+  await page.keyboard.press('Escape');
+  await page.goto('http://localhost:5175/gyms', { waitUntil: 'domcontentloaded' }); await page.waitForTimeout(2000);
+  const readDl = async (dl) => { const chunks = []; for await (const c of await dl.createReadStream()) chunks.push(c); return Buffer.concat(chunks); };
+  await page.getByRole('button', { name: /^Export/ }).first().click(); await page.waitForTimeout(400);
+  const xw = page.locator('[data-export-window]');
+  const nRows = await xw.locator('[data-export-row]').count();
+  out.push('Export opens the export window with every column and a row per gym: ' + ((await xw.count()) === 1 && (await xw.locator('[data-export-col]').count()) === 15 && nRows >= 2 ? 'yes' : 'MISSING'));
+  await page.screenshot({ path: 'shots/platform-export-window.png' });
+  await xw.locator('[data-export-col="Risk"]').uncheck(); await xw.locator('[data-export-row] input').first().uncheck(); await page.waitForTimeout(150);
+  let [dl] = await Promise.all([page.waitForEvent('download'), xw.locator('[data-export-download]').click()]);
+  const lines = (await readDl(dl)).toString('utf8').replace(/^\uFEFF/, '').trim().split(/\r?\n/);
+  out.push('…the CSV holds what was ticked (one gym and Risk left out): ' + (/\.csv$/.test(dl.suggestedFilename()) && lines.length === nRows && !lines[0].split(',').includes('Risk') ? 'yes' : 'MISSING ' + lines[0]));
+  await page.getByRole('button', { name: /^Export/ }).first().click(); await page.waitForTimeout(400);
+  await page.locator('[data-export-window] [data-format="xlsx"]').click();
+  [dl] = await Promise.all([page.waitForEvent('download'), page.locator('[data-export-window] [data-export-download]').click()]);
+  const xl = await readDl(dl);
+  out.push('…and Excel writes a real .xlsx: ' + (/\.xlsx$/.test(dl.suggestedFilename()) && xl[0] === 0x50 && xl[1] === 0x4b ? 'yes' : 'MISSING'));
   return out.join('\n');
 }

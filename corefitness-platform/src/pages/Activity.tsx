@@ -98,7 +98,7 @@ export default function Activity() {
         </div>
         {filtered && <button className="btn ghost" onClick={() => { setQ(''); setF({ q: '', gym: null, action: null, from: null, to: null }); setPage(1); }}><X size={14} /> Clear</button>}
         <span className="spacer" />
-        <button className="btn ghost" disabled={!total} onClick={() => void exportAll()} data-tip="Everything matching the filters, up to 500 events"><Download size={15} /> Export CSV</button>
+        <button className="btn ghost" disabled={!total} onClick={() => void exportAll()} data-tip="Everything matching the filters, up to 500 events"><Download size={15} /> Export</button>
       </div>
 
       {error && <p className="err">{error}</p>}

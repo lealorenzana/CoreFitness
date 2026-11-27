@@ -21,7 +21,8 @@ import Modal from '../components/ui/Modal';
 import { Bell, BellRinging, Buildings, DownloadSimple, Eye, HandTap, Key, Phone, EnvelopeSimple, SignOut, Sparkle, Translate, UserGear, type Icon } from '@phosphor-icons/react';
 import { saveAssistantPlacement, useAssistantPlacement, type AssistantPlacement } from '../lib/assistantPlacement';
 import { loadMomentPrefs, momentPrefs, setMemberSounds, subscribeMoments } from '../lib/moments';
-import { exportMemberData, downloadExport } from '../lib/memberDataExport';
+import { exportMemberData, downloadExport, type MemberDataExport } from '../lib/memberDataExport';
+import MyDataReview from '../components/settings/MyDataReview';
 import { loadCoachDirectory, type CoachCard } from '../services/coachDirectoryService';
 import { logout } from '../utils/auth';
 import { getCoachStatus, setCoachConsent } from '../lib/api/aiCoach';
@@ -194,6 +195,8 @@ export default function Settings() {
   /** The AI coach's read-my-training consent; null until known, and the row is hidden unless the coach is allowed or consent is on, so it can always be withdrawn. */
   const [coachOn, setCoachOn] = useState<boolean | null>(null);
   const [exporting, setExporting] = useState(false);
+  /** Your data, read and waiting in the review sheet until you download it (owner, 2026-11-27). */
+  const [review, setReview] = useState<MemberDataExport | null>(null);
   // 'here' = this phone only (the default since 2026-11-14); 'all' = every device of the account.
   const [confirmLogout, setConfirmLogout] = useState<false | 'here' | 'all'>(false);
   const support = pushSupport();
@@ -315,16 +318,20 @@ export default function Settings() {
     try {
       const id = await getCurrentMemberId();
       if (!id) throw new Error('Not signed in');
-      const exp = await exportMemberData(id);
-      const who = (exp.data.profiles?.[0] as { first_name?: string; last_name?: string } | undefined);
-      downloadExport(exp, `${who?.first_name ?? ''}-${who?.last_name ?? ''}`);
-      const missing = Object.keys(exp.unavailable).length;
-      toast.success(missing ? `Downloaded — ${missing} section${missing === 1 ? '' : 's'} could not be read and are listed in the file` : 'Downloaded');
+      setReview(await exportMemberData(id));
     } catch (err) {
       toast.error(errorMessage(err, 'Could not prepare your data'));
     } finally {
       setExporting(false);
     }
+  };
+  const saveMyData = (exp: MemberDataExport) => {
+    const who = (exp.data.profiles?.[0] as { first_name?: string; last_name?: string } | undefined)
+      ?? (review?.data.profiles?.[0] as { first_name?: string; last_name?: string } | undefined);
+    downloadExport(exp, `${who?.first_name ?? ''}-${who?.last_name ?? ''}`);
+    setReview(null);
+    const missing = Object.keys(exp.unavailable).length;
+    toast.success(missing ? `Downloaded. ${missing} part${missing === 1 ? '' : 's'} could not be read and are listed in the file.` : 'Downloaded');
   };
 
   const toggleShare = async (key: keyof SharePrefs) => {
@@ -551,13 +558,14 @@ export default function Settings() {
             <section>
               <SectionHead title={t('Your data')} />
               <p style={{ fontSize: 13, marginTop: 8, lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>
-                Download a copy of everything the gym holds about you — membership, payments, visits, bookings,
-                workouts, goals, points and notes — as one file. The front desk can give you the same file.
+                Download a copy of everything the gym holds about you: membership, payments, visits, bookings,
+                workouts, points and notes, as one file. You see each part first and can leave any out. The front desk can give you the same file.
               </p>
               <NocButton variant="structure" className="w-full" style={{ marginTop: 12 }} disabled={exporting}
                 icon={<DownloadSimple size={16} />} onClick={() => void downloadMyData()}>
-                {exporting ? 'Preparing…' : 'Download my data'}
+                {exporting ? 'Reading your data…' : 'See and download my data'}
               </NocButton>
+              <MyDataReview exp={review} onClose={() => setReview(null)} onDownload={saveMyData} />
               <Footnote>
                 Something wrong? Most details you can fix yourself in Edit profile; for the rest, ask at the desk.
               </Footnote>

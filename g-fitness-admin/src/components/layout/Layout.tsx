@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Sidebar, { RAIL_W } from './Sidebar';
 import Header from './Header';
 import TooltipLayer from '../ui/TooltipLayer';
+import ExportHost from '../ui/ExportWindow';
 import GymLook from '../GymLook';
 import SubscriptionBanner from '../SubscriptionBanner';
 import MemberLimitBanner from '../MemberLimitBanner';
@@ -83,6 +84,7 @@ export default function Layout() {
       {/* One listener for every `data-tip` in the app. Mounted here so it
           covers the sidebar and header too, not just the routed page. */}
       <TooltipLayer />
+      <ExportHost />
       {/* `?focus=` links land on the setting they name and outline it (2026-11-24). */}
       <Spotlight />
       {/* The gym's colours and premium theme on the owner's app too (2026-11-02). */}

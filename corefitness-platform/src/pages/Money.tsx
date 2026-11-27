@@ -181,7 +181,7 @@ export default function Money() {
             ['Receipt', (p) => p.receipt_no], ['Gym', (p) => name(p.gym_id)], ['Amount', (p) => Number(p.amount)], ['Paid on', (p) => p.paid_on],
             ['Covers from', (p) => p.covers_from], ['Covers until', (p) => p.covers_until], ['Method', (p) => p.method],
             ['Reference', (p) => p.reference], ['Note', (p) => p.note],
-          ])}><Download size={15} /> Export CSV</button>
+          ])}><Download size={15} /> Export</button>
           <select
             className="grow"
             style={{ maxWidth: 220 }}

@@ -1,5 +1,6 @@
+import { exportToCSV } from '../utils/exportUtils';
 import {
-  renderSchedulePng, scheduleToCsv, downloadBlob, type ScheduleSlot,
+  renderSchedulePng, scheduleRows, downloadBlob, type ScheduleSlot,
 } from '../utils/exportSchedule';
 import { useBranding } from '../hooks/useBranding';
 import { supabase } from '../lib/supabaseClient';
@@ -349,8 +350,7 @@ export default function Schedule() {
     setExportAnchor(null);
     const slots = exportable();
     if (slots.length === 0) return showToast('There are no active classes to export.', 'error');
-    downloadBlob(new Blob(['﻿' + scheduleToCsv(slots)], { type: 'text/csv;charset=utf-8' }), `timetable-${todayKey()}.csv`);
-    showToast('Timetable spreadsheet downloaded.', 'success');
+    exportToCSV(scheduleRows(slots), `timetable-${todayKey()}`, false, 'Timetable');
   };
 
   const bookMember = async (memberId: string) => {

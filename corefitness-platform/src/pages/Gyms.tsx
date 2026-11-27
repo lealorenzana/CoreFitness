@@ -204,7 +204,7 @@ export default function Gyms() {
           ['Owners', (g) => g.owners], ['Set up', (g) => g.onboarded ? 'yes' : 'no'], ['Joined', (g) => g.created_at.slice(0, 10)],
           ['Last activity', (g) => g.last_activity?.slice(0, 10)], ['Risk', (g) => risk.get(g.id)?.reasons.join('; ')],
         ])}>
-          <Download size={15} /> Export CSV
+          <Download size={15} /> Export
         </button>
         <button className="btn" onClick={() => setDialog({ kind: 'add' })}><Plus size={15} /> Add a gym</button>
       </div>

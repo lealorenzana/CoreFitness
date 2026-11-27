@@ -215,6 +215,28 @@ async (page) => {
   await page.locator('[data-show="out"]').click(); await page.waitForTimeout(300);
   has('Not in yet shows only those not in, A to Z', (await page.locator('[data-att-list] tr[data-in]').count()) === 0 && (await page.locator('[data-att-list] tr[data-out]').count()) === 6);
   await page.locator('[data-show="all"]').click();
+  // The export window (owner, 2026-11-27): Export shows the file first; columns and rows can be unticked; CSV or Excel.
+  const readDl = async (dl) => { const chunks = []; for await (const c of await dl.createReadStream()) chunks.push(c); return Buffer.concat(chunks); };
+  await page.locator('[data-att-desk]').getByRole('button', { name: 'Export' }).click(); await page.waitForTimeout(500);
+  let xw = page.locator('[data-export-window]');
+  has('Export opens the export window: every column ticked, every row previewed', (await xw.count()) === 1 && (await xw.locator('[data-export-col]').count()) === 9
+    && (await xw.locator('[data-export-row]').count()) === 3 && /3\s*of\s*3 rows/.test(await xw.locator('[data-export-summary]').innerText()));
+  await page.screenshot({ path: 'shots/door-export-window.png' });
+  await xw.locator('[data-export-col="By"]').uncheck();
+  await xw.locator('[data-export-row] input').first().uncheck(); await page.waitForTimeout(150);
+  has('…unticking a column and a row changes what it shows and counts', /2\s*of\s*3 rows/.test(await xw.locator('[data-export-summary]').innerText())
+    && /8\s*of\s*9 columns/.test(await xw.locator('[data-export-summary]').innerText()) && !(await xw.locator('thead th').allInnerTexts()).includes('By'));
+  let [dl] = await Promise.all([page.waitForEvent('download'), xw.locator('[data-export-download]').click()]);
+  const csv = (await readDl(dl)).toString('utf8').replace(/^\uFEFF/, '').trim().split(/\r?\n/);
+  has('…and the CSV holds exactly that: 2 rows, no By column', /\.csv$/.test(dl.suggestedFilename()) && csv.length === 3 && !csv[0].split(',').includes('By') && csv[0].split(',').includes('Member')
+    && !csv.slice(1).some((l) => l.includes('Andrea Santos')) && (await page.locator('[data-export-window]').count()) === 0);
+  await page.locator('[data-att-desk]').getByRole('button', { name: 'Export' }).click(); await page.waitForTimeout(500);
+  xw = page.locator('[data-export-window]');
+  has('…a new export starts with everything ticked again', /3\s*of\s*3 rows/.test(await xw.locator('[data-export-summary]').innerText()));
+  await xw.locator('[data-format="xlsx"]').click();
+  [dl] = await Promise.all([page.waitForEvent('download'), xw.locator('[data-export-download]').click()]);
+  const xl = await readDl(dl);
+  has('Excel writes a real .xlsx workbook', /\.xlsx$/.test(dl.suggestedFilename()) && xl[0] === 0x50 && xl[1] === 0x4b);
   await page.locator('[data-plans-ending]').getByRole('button', { name: 'Renew' }).first().click(); await page.waitForTimeout(400);
   has('Renew opens that member on Members', /\/members\?open=/.test(page.url()));
 

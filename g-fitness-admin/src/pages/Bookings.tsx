@@ -1,3 +1,4 @@
+import { exportToCSV } from '../utils/exportUtils';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
@@ -354,16 +355,11 @@ export default function Bookings({ scope, embedded = false }: { scope?: 'pt' | '
     const g = groups[groups.length - 1];
     if (g && g.key === k) g.rows.push(r); else groups.push({ key: k, rows: [r] });
   }
-  const exportCsv = () => {
-    const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
-    const lines = [['Date', 'Time', 'Member', 'Booking', 'Coach', 'Status', 'Decided by'].join(',')];
-    for (const r of visible) {
-      lines.push([r.when ? localDateKey(r.when) : '', r.when ? fmtTime(r.when) : '', r.memberName, r.title, r.trainerName ?? '', STATUS_BADGE[r.status],
-        r.decidedByRole ? (r.decidedByRole === 'system' ? 'automatic' : `${r.decidedByName ?? DECIDER_WORD[r.decidedByRole]}`) : ''].map((v) => esc(String(v))).join(','));
-    }
-    const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `bookings-${today}.csv`; a.click(); URL.revokeObjectURL(a.href);
-  };
+  const exportCsv = () => exportToCSV(visible.map((r) => ({
+    Date: r.when ? localDateKey(r.when) : '', Time: r.when ? fmtTime(r.when) : '', Member: r.memberName, Booking: r.title, Coach: r.trainerName ?? '',
+    Status: STATUS_BADGE[r.status],
+    'Decided by': r.decidedByRole ? (r.decidedByRole === 'system' ? 'automatic' : `${r.decidedByName ?? DECIDER_WORD[r.decidedByRole]}`) : '',
+  })), `bookings-${today}`, false, 'Bookings');
 
   const outcome = (row: QueueRow) => {
     if (row.status === 'pending' && !gymMayApprove(row)) return <span data-waiting-coach className="a-sub" style={{ color: 'var(--a-p300)' }}>Waiting for {row.trainerName ?? 'the coach'} to decide</span>;

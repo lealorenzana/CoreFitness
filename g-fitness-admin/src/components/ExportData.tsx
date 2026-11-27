@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Download, FileJson, FileSpreadsheet, FileText, Lock, Table2 } from 'lucide-react';
+import { Download, Eye, FileJson, FileSpreadsheet, FileText, Lock, Table2 } from 'lucide-react';
 import { DATA_SETS, readGymData, saveExport, type ExportFormat, type ExportResult } from '../lib/gymDataExport';
 import { getGymContext } from '../lib/gymContext';
 import { showToast } from '../utils/toast';
+import { openExport } from '../lib/exportRequest';
 
 const FORMATS: [ExportFormat, string, string, typeof Download][] = [
   ['xlsx', 'Excel', 'One workbook, a sheet for each kind of record', FileSpreadsheet],
@@ -45,6 +46,25 @@ export default function ExportData() {
     }
   };
 
+  /** View one kind of record before exporting (owner, 2026-11-27): it opens in the export window, which can also download just it. */
+  const [viewing, setViewing] = useState<string | null>(null);
+  const view = async (key: string, label: string) => {
+    setViewing(key);
+    try {
+      const ctx = await getGymContext();
+      if (!ctx?.gymId) throw new Error('Your gym could not be found. Reload and try again.');
+      const res = await readGymData(ctx.gymId, [key]);
+      const sheets = res.sheets.filter((s) => s.rows.length > 0);
+      if (!res.sheets.length) throw new Error(res.unavailable[0]?.reason ?? `${label} could not be read.`);
+      if (!sheets.length) { showToast(`There are no ${label.toLowerCase()} to show yet.`, 'info'); return; }
+      const slug = (ctx.gymName ?? 'gym').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'gym';
+      const as = (s: { name: string; rows: Record<string, unknown>[] }) => ({ rows: s.rows, title: s.name, filename: `${slug}-${s.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}` });
+      openExport({ ...as(sheets[0]), more: sheets.slice(1).map(as) });
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : `${label} could not be read`, 'error');
+    } finally { setViewing(null); }
+  };
+
   const rows = done?.res.sheets.reduce((n, s) => n + s.rows.length, 0) ?? 0;
   return (
     <div data-export-data>
@@ -55,6 +75,8 @@ export default function ExportData() {
         {DATA_SETS.map((d) => (
           <div key={d.key} className="a-setting" data-export-set={d.key}>
             <div className="t"><b>{d.label}</b><small>{d.blurb}</small></div>
+            <button type="button" className="a-btn ghost sm" style={{ marginRight: 10 }} disabled={!!viewing} onClick={() => void view(d.key, d.label)}
+              data-export-view={d.key} data-tip={`See the ${d.label.toLowerCase()} before exporting`}><Eye size={14} />{viewing === d.key ? 'Reading…' : 'View'}</button>
             <button type="button" className={`a-toggle ${chosen.includes(d.key) ? '' : 'off'}`} aria-pressed={chosen.includes(d.key)}
               aria-label={`Export ${d.label}`} onClick={() => toggle(d.key)} />
           </div>

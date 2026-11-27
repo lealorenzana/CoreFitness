@@ -104,7 +104,7 @@ export default function Usage() {
               <button className="btn ghost" disabled={!use?.length} onClick={() => downloadCsv(`core-fitness-usage-${days}d`, rows, [
                 ['Gym', (g) => g.name], ...USAGE_FEATURES.map((f) => [f.label, (g: PlatformGym) => n(g.id, f.key)] as [string, (g: PlatformGym) => number]),
                 ['Total', (g) => total(g.id)],
-              ])}><Download size={15} /> Export CSV</button>
+              ])}><Download size={15} /> Export</button>
             )}
           </header>
 

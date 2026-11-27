@@ -289,14 +289,23 @@ async (page) => {
   out.push('share label: ' + (text.includes('Workouts and routines') ? 'updated' : 'OLD'));
   await go('/member/settings?section=data');
   await page.waitForTimeout(1200);
+  // Since 2026-11-27 the data opens in a review sheet first: each part with its count, untick any, then Download.
+  await page.getByRole('button', { name: 'See and download my data' }).click();
+  await page.waitForTimeout(1500);
+  const parts = page.locator('[data-my-data-part]');
+  const nParts = await parts.count();
+  const firstPart = nParts ? await parts.first().getAttribute('data-my-data-part') : null;
+  out.push('review: ' + (nParts ? `${nParts} parts shown` : 'NO REVIEW SHEET'));
+  if (firstPart) await parts.first().locator('input[type="checkbox"]').uncheck();
   const dl = page.waitForEvent('download', { timeout: 8000 }).catch(() => null);
-  await page.getByRole('button', { name: 'Download my data' }).click();
+  await page.getByRole('button', { name: /^Download \d/ }).click();
   const file = await dl;
   if (file) {
     const path = await file.path();
     const fs = await import('node:fs').catch(() => null);
     const body = fs && path ? JSON.parse(fs.readFileSync(path, 'utf-8')) : null;
-    out.push('export: ' + file.suggestedFilename() + (body ? ` tables=${Object.keys(body.data).length} unavailable=${Object.keys(body.unavailable).length}` : ''));
+    out.push('export: ' + file.suggestedFilename() + (body ? ` tables=${Object.keys(body.data).length} unavailable=${Object.keys(body.unavailable).length}` : '')
+      + (body && firstPart ? (firstPart in body.data ? ' | MISSING: the unticked part is still in the file' : ' | the unticked part is left out') : ''));
   } else {
     out.push('export: NO DOWNLOAD');
   }

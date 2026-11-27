@@ -1,0 +1,32 @@
+/* The export window (2026-11-27): wider than a form, the table scrolls itself; Download is the one amber button. */
+.modal.modal-lg:has(.xw) { max-width: min(1180px, calc(100vw - 48px)); }
+.xw { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.xw-top { display: flex; align-items: flex-start; gap: 12px; }
+.xw-cols { flex: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.xw-chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer;
+  border: 1px solid var(--hairline); color: var(--text-3); user-select: none; }
+.xw-chip.on { color: var(--text); border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+.xw-chip input, .xw-tick input { accent-color: var(--accent); margin: 0; }
+.xw-links { display: inline-flex; gap: 10px; margin-left: 6px; }
+.xw-links button { background: none; border: 0; padding: 0; font-size: 12px; font-weight: 600; color: var(--accent-text); cursor: pointer; }
+.xw-seg { flex: none; display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--hairline); border-radius: 10px; }
+.xw-seg button { background: none; border: 0; padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; color: var(--text-2); cursor: pointer; }
+.xw-seg button.on { background: var(--surface-high); color: var(--text); }
+.xw-table { max-height: min(56vh, 560px); overflow: auto; overscroll-behavior: contain; border: 1px solid var(--hairline); border-radius: 12px; }
+.xw-table table { border-collapse: collapse; width: max-content; min-width: 100%; font-size: 12.5px; }
+.xw-table th { position: sticky; top: 0; z-index: 1; text-align: left; font-size: 12px; font-weight: 600; color: var(--text-2); padding: 8px 12px; background: var(--surface-raised);
+  border-bottom: 1px solid var(--hairline); white-space: nowrap; }
+.xw-table td { padding: 7px 12px; border-bottom: 1px solid var(--border-soft); white-space: nowrap; max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
+.xw-table tr.off td { color: var(--text-3); text-decoration: line-through; }
+.xw-tick { width: 34px; }
+.xw-note { padding: 12px 14px; margin: 0; font-size: 12px; color: var(--text-2); }
+.xw-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.xw-sum { font-size: 12.5px; color: var(--text-2); }
+.xw-sum b { color: var(--text); }
+.xw-sum code { margin-left: 8px; font-size: 11.5px; color: var(--text-3); }
+.xw-foot .btn { height: 36px; padding: 0 16px; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+/* The app's global form and table styles must not reach the window: small ticks, one-line chips, quiet headers. */
+.xw input[type="checkbox"] { width: 14px; height: 14px; min-width: 0; padding: 0; margin: 0; flex: none; appearance: auto; box-shadow: none; border: 0; background: none; }
+.xw .xw-chip { white-space: nowrap; }
+.xw .xw-table th { text-transform: none; letter-spacing: 0; padding: 8px 12px; height: auto; }
+.xw .xw-table td { padding: 7px 12px; height: auto; }
