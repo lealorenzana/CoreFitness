@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import CallButton from '../components/ui/CallButton';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { HeartHandshake, MessageCircleHeart, Download, Search, MessageCircle, Phone, PhoneCall, Send, LineChart, Pencil, Info, Check } from 'lucide-react';
 import Modal from '../components/ui/Modal';
@@ -244,7 +245,7 @@ export default function Retention() {
                           <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                             <button type="button" className={`a-btn sm ${recent ? '' : 'amber'}`} onClick={() => pick(r)}><MessageCircle size={13} />Message</button>{' '}
                             <button type="button" className="a-btn sm" onClick={() => { setCalling(r); setCallNote(''); }} data-mark-called>Mark called</button>{' '}
-                            {r.phone ? <a className="a-btn ghost sm" href={`tel:${r.phone.replace(/[^\d+]/g, '')}`} aria-label={`Call ${r.name}`} data-tip={r.phone}><Phone size={13} /></a>
+                            {r.phone ? <CallButton phone={r.phone} name={r.name} label={false} className="a-btn ghost sm" />
                               : <button type="button" className="a-btn ghost sm" disabled aria-label="No phone on file" data-tip="No phone on file"><Phone size={13} /></button>}
                           </td>
                         </tr>

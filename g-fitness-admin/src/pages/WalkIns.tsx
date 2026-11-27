@@ -9,6 +9,7 @@ import FloatingWindow from '../components/ui/FloatingWindow';
 import { exportToCSV } from '../utils/exportUtils';
 import { TONE } from '../components/ui/rdTokens';
 import { showToast } from '../utils/toast';
+import CallButton from '../components/ui/CallButton';
 import { supabase } from '../lib/supabaseClient';
 import { todayKey, addDays } from '../utils/dates';
 import WalkInGuide from '../components/WalkInGuide';
@@ -345,7 +346,7 @@ export default function WalkIns() {
                         <small>{g.visits} visits · {peso(g.spent)}{cheapest ? ` of ${peso(cheapest.price)} (${cheapest.name})` : ''} · last came {ago(g.last_visit)}</small>
                       </div>
                       {g.phone
-                        ? <a href={`tel:${g.phone.replace(/[^0-9+]/g, '')}`} className="a-btn sm" data-tip={`Call ${g.phone}`}><Phone size={13} />Call</a>
+                        ? <CallButton phone={g.phone} name={g.name} />
                         : <span className="a-sub" data-tip="No phone on file. Ask on their next visit">No phone</span>}
                     </div>
                   ))}
