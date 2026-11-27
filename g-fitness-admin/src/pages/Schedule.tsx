@@ -545,10 +545,11 @@ export default function Schedule() {
               {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => <small key={i}>{d}</small>)}
               {Array.from({ length: dowOf(`${day.slice(0, 7)}-01`) }, (_, i) => <span key={`b${i}`} />)}
               {Array.from({ length: new Date(Number(day.slice(0, 4)), Number(day.slice(5, 7)), 0).getDate() }, (_, i) => `${day.slice(0, 7)}-${String(i + 1).padStart(2, '0')}`).map((k) => (
-                <button key={k} type="button" className={`${k === day ? 'on' : monthHas.has(k) ? 'has' : ''}`} onClick={() => setDay(k)}>{Number(k.slice(8))}</button>
+                <button key={k} type="button" className={`${k === day ? 'on' : ''} ${monthHas.has(k) ? 'has' : ''} ${k === today ? 'today' : ''}`} aria-pressed={k === day}
+                  aria-label={`${fmtDay(k, { weekday: 'long', month: 'long', day: 'numeric' })}${monthHas.has(k) ? ', has classes' : ''}`} onClick={() => setDay(k)}>{Number(k.slice(8))}</button>
               ))}
             </div>
-            <div className="a-hint" style={{ marginTop: 12 }}><Info size={15} />Pick any day to see its classes and 1-on-1s. Underlined days have classes.</div>
+            <div className="a-hint" style={{ marginTop: 12 }}><Info size={15} />Pick any day to see its classes and 1-on-1s. A dot marks a day with classes.</div>
           </div>
       )}
       <div className="a-card sc-card" style={{ flexShrink: 0 }} data-up-next>

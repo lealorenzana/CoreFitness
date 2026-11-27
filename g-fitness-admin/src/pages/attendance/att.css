@@ -257,10 +257,17 @@
 .att .a-now::before { content: ""; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--a-amber); }
 .att .a-legendc { display: flex; gap: 10px; flex-wrap: wrap; } .att .a-legendc span { display: flex; gap: 6px; align-items: center; font-size: 11px; color: var(--a-text2); }
 .att .a-legendc i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
-.att .a-minical { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; text-align: center; font-size: 11px; }
-.att .a-minical button { font-weight: 600; padding: 5px 0; border-radius: 7px; color: var(--a-text2); }
-.att .a-minical button.on { background: var(--a-primary); color: #fff; } .att .a-minical button.has { color: var(--a-ink); font-weight: 700; box-shadow: inset 0 -2px 0 var(--a-p400); }
-.att .a-minical small { color: var(--a-muted); font-size: 10px; padding: 2px 0; }
+/* The day picker (owner, 2026-11-27): round days, a dot for a day with classes, a ring for today, a filled circle for the day shown. */
+.att .a-minical { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); row-gap: 4px; place-items: center; font-size: 12px; }
+.att .a-minical small { color: var(--a-muted); font-size: 10.5px; font-weight: 600; letter-spacing: .04em; padding: 0 0 4px; }
+.att .a-minical button { position: relative; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-weight: 500;
+  color: var(--a-text2); font-variant-numeric: tabular-nums; transition: background .15s, color .15s; }
+.att .a-minical button:hover { background: rgb(var(--hair-rgb, 255 255 255) / .07); color: var(--a-ink); }
+.att .a-minical button.has { color: var(--a-ink); font-weight: 650; }
+.att .a-minical button.has::after { content: ''; position: absolute; left: 50%; bottom: 3px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--a-p400); }
+.att .a-minical button.today { box-shadow: inset 0 0 0 1.5px var(--a-p400); color: var(--a-ink); }
+.att .a-minical button.on, :root[data-mode="light"] .att .a-minical button.on { background: var(--fill-primary, var(--a-primary)); color: #fff; font-weight: 700; box-shadow: none; }
+.att .a-minical button.on::after { background: #fff; }
 .att .a-plan { border: 1px solid var(--a-line); border-radius: 18px; padding: 16px; background: var(--a-surface); display: flex; flex-direction: column; gap: 8px; min-width: 0; text-align: left; }
 .att .a-plan.on { border-color: color-mix(in srgb, var(--a-primary) 60%, transparent); background: radial-gradient(120% 90% at 0 0, color-mix(in srgb, var(--a-primary) 22%, transparent), var(--a-surface) 65%); box-shadow: 0 0 0 4px color-mix(in srgb, var(--a-primary) 10%, transparent); }
 .att .a-plan .price { font-size: 26px; font-weight: 800; letter-spacing: -.02em; } .att .a-plan .price small { font-size: 12px; color: var(--a-text2); font-weight: 500; }
