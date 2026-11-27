@@ -146,7 +146,7 @@ async (page) => {
   t = await visit('/attendance-history', 'history');
   has('presets, dates, search and filters', /Last 7 days/.test(t) && /Last 30 days/.test(t) && /All time/.test(t) && /From/.test(t) && /Any method/.test(t) && /Any activity/.test(t) && (await page.locator('[data-history-search]').count()) === 1);
   has('four cards', /Check-ins/.test(t) && /Different members/.test(t) && /Average a day/.test(t) && /What they came for/.test(t));
-  has('the calendar with each day\'s count and the weekday averages, and Most regular', (await page.locator('[data-attendance-calendar] [data-day]').count()) >= 28 && (await page.locator('[data-weekday-bars] > div').count()) === 7 && (await page.locator('[data-most-regular]').count()) === 1);
+  has('the calendar with each day\'s count, the weekday by hour busy grid, the log by day, and Most regular', (await page.locator('[data-attendance-calendar] [data-day]').count()) >= 28 && (await page.locator('[data-busy-hours] .hb-hrow u').count()) === 7 * 16 && (await page.locator('[data-history-log] [data-log-day]').count()) >= 1 && (await page.locator('[data-most-regular]').count()) === 1);
   has('the log with Scanned/Typed and export', /Scanned/.test(t) && /Typed/.test(t) && /Export/.test(t));
 
   // ── Members ──

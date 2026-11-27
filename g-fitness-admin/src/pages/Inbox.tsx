@@ -15,6 +15,7 @@ import { localDateKey, todayKey, addDays, daysBetween } from '../utils/dates';
 import { showToast } from '../utils/toast';
 import type { NotificationRow } from '../types/db';
 import SkelRows from '../components/ui/SkelRows';
+import NeedsYou from '../components/inbox/NeedsYou';
 
 /**
  * Notifications — the owner's and desk's own inbox. The bell only ever showed
@@ -30,6 +31,9 @@ import SkelRows from '../components/ui/SkelRows';
  *
  * Design V2 (owner's pick, 2026-11-22): a mail app. Folders (Needs attention, Unread, All, Archived, then
  * the kinds), the list, the open message. No ring, no icon tiles, status as a dot.
+ *
+ * Mock-up B (owner, 2026-11-27, design/admin-v2/inbox-b.html): with nothing open the reading pane is
+ * components/inbox/NeedsYou: a greeting, three figures and what needs you, answered in place.
  */
 type View = 'attention' | 'unread' | 'all' | 'archived';
 /** `notifications.type` as the owner reads it — the types the migrations write. */
@@ -320,10 +324,9 @@ export default function Inbox() {
               </>
             );
           })() : (
-            <div className="ib2-empty ib2-center" data-overview>
-              <b>{live.length} in your inbox</b>
-              <span>{unread ? `${unread} not read yet` : 'Every message read'}{archivedCount ? `, ${archivedCount} archived` : ''}. Pick a message to read it here.</span>
-            </div>
+            // Mock-up B (owner, 2026-11-27): with nothing open, a greeting, a summary and what needs you, each with its own actions.
+            <NeedsYou inboxLine={`${live.length} in your inbox, ${unread ? `${unread} not read yet` : 'every message read'}${archivedCount ? `, ${archivedCount} archived` : ''}. Pick a message to read it here.`}
+              onChanged={() => { window.dispatchEvent(new Event(INBOX_CHANGED)); void dashboardService.getHeaderAlerts().then(setAlerts, () => undefined); }} />
           )}
         </section>
       </div>

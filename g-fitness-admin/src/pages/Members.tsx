@@ -35,7 +35,6 @@ import {
   listMembers,
   listArchivedMembers,
   listPendingRegistrations,
-  approveMemberRegistration,
   rejectPendingRegistration,
   updateMemberProfile,
   startFreeMembership,
@@ -46,6 +45,7 @@ import {
   type MembershipActionDetail,
 } from '../lib/api/memberships';
 import { listPlans } from '../lib/api/membershipPlans';
+import { approveRegistration } from '../services/deskActions';
 import { notifyUser } from '../lib/api/notify';
 import type {
   PendingRegistrationRow,
@@ -976,23 +976,10 @@ export default function Members() {
                 <PendingRegistrationsList
                   onApprove={async (reg) => {
                     try {
-                      await approveMemberRegistration(reg);
+                      // The approval and the "you're in" notice: services/deskActions, shared with Notifications.
+                      const { notified } = await approveRegistration(reg, branding.name);
                       setPendingCount((c) => Math.max(0, c - 1));
-
-                      // Until approval, a registered member can log in but the
-                      // app unlocks nothing — so "you're in" is the single most
-                      // useful message the gym ever sends them.
-                      if (reg.auth_user_id) {
-                        await notifyUser({
-                          userId: reg.auth_user_id,
-                          type: 'membership',
-                          title: "You're in",
-                          message: `Welcome to ${branding.name}, ${reg.first_name}. Your membership is active: you can book classes now.`,
-                          actionUrl: '/member/home',
-                        }).catch(() => {
-                          showToast('Approved, but the member could not be notified', 'error');
-                        });
-                      }
+                      if (reg.auth_user_id && !notified) showToast('Approved, but the member could not be notified', 'error');
 
                       showToast(`${reg.first_name} ${reg.last_name} approved and activated!`, 'success');
                       await load();

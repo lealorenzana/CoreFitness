@@ -6,12 +6,9 @@ import './attendance/att.css';
 import Bookings from './Bookings';
 import Coaching from './Coaching';
 import { showToast } from '../utils/toast';
-import { supabase } from '../lib/supabaseClient';
-import { setPtSessionStatus } from '../lib/api/ptSessions';
-import { sweepStaleRequests } from '../lib/api/bookings';
-import { notifyUser } from '../lib/api/notify';
-import { loadBookingQueue, type QueueRow } from '../services/bookingQueueService';
-import { coachingApproval, coachingSweep, confirmCoachingPayment, deskDecideCoaching, listCoachings, type CoachingApproval, type CoachingRow } from '../lib/api/coaching';
+import type { QueueRow } from '../services/bookingQueueService';
+import { loadToDecide, decideSession, deskMayAnswer, type ToDecide } from '../services/deskActions';
+import { confirmCoachingPayment, deskDecideCoaching, type CoachingApproval, type CoachingRow } from '../lib/api/coaching';
 import { listMembers } from '../lib/api/members';
 import { listTrainers } from '../lib/api/trainers';
 import { useGymModules, moduleOn } from '../hooks/useGymModules';
@@ -20,7 +17,6 @@ import { tourFor } from '../lib/tours';
 import SkelRows from '../components/ui/SkelRows';
 
 type Tab = 'decide' | 'sessions' | 'packages';
-type Mode = 'instant' | 'coach' | 'desk' | 'coach_desk' | 'off';
 
 const peso = (n: number) => `₱${n.toLocaleString('en-PH', { maximumFractionDigits: 2 })}`;
 const when = (iso: string | null) => (iso
@@ -31,14 +27,7 @@ const waited = (iso: string) => {
   return days <= 0 ? 'asked today' : days === 1 ? 'waiting 1 day' : `waiting ${days} days`;
 };
 
-interface Decide {
-  /** 1-on-1 requests the gym may decide at this gym (0180/0203). */
-  sessions: QueueRow[];
-  /** Packages paid to the gym, waiting for the desk to confirm (0181). */
-  payments: CoachingRow[];
-  /** Packages a member asked a coach for, not answered yet — the coach decides; the desk sees it. */
-  asked: CoachingRow[];
-}
+type Decide = ToDecide;
 
 /**
  * Personal training (simplify, 2026-10-28; mock-up approved): single sessions
@@ -66,24 +55,10 @@ export default function PersonalTraining() {
 
   const load = useCallback(async () => {
     try {
-      await Promise.all([sweepStaleRequests().catch(() => undefined), Promise.resolve(coachingSweep()).catch(() => undefined)]);
-      const [queue, coachings, settings, ms, ts, ap] = await Promise.all([
-        loadBookingQueue(), listCoachings().catch(() => null),
-        supabase.from('gym_settings').select('pt_booking_approval').maybeSingle(),
-        listMembers().catch(() => []), listTrainers().catch(() => []), coachingApproval(),
-      ]);
-      setApproval(ap);
-      const mode = ((settings.data as { pt_booking_approval: Mode | null } | null)?.pt_booking_approval ?? 'coach') as Mode;
-      // The same rule Bookings uses: the gym decides unless the coach does, and
-      // always when the coach is not active (0203) — so nothing is stranded.
-      const gymMay = (r: QueueRow) => !r.coachActive || (mode !== 'coach' && (mode !== 'coach_desk' || !!r.coachOkName));
-      const list = coachings ?? [];
-      setData({
-        sessions: queue.rows.filter((r) => r.kind === 'pt' && r.status === 'pending' && gymMay(r))
-          .sort((a, b) => a.requestedAt.localeCompare(b.requestedAt)),
-        payments: list.filter((r) => r.fee_mode === 'gym_priced' && (r.status === 'payment_sent' || r.status === 'awaiting_payment')),
-        asked: list.filter((r) => r.status === 'requested'),
-      });
+      // What the gym (not the coach) answers: services/deskActions, shared with Notifications' Needs you.
+      const [todo, ms, ts] = await Promise.all([loadToDecide(), listMembers().catch(() => []), listTrainers().catch(() => [])]);
+      setApproval(todo.approval);
+      setData(todo);
       setNames(Object.fromEntries([
         ...ms.map((x) => [x.profile.id, { name: `${x.profile.first_name} ${x.profile.last_name}`, photo: x.profile.photo_url ?? null }]),
         ...ts.map((x) => [x.profile.id, { name: `${x.profile.first_name} ${x.profile.last_name}`, photo: x.profile.photo_url ?? null }]),
@@ -96,7 +71,7 @@ export default function PersonalTraining() {
 
   const name = (id: string | null) => (id ? names[id]?.name ?? 'Someone' : '—');
   // A package ask is the desk's to answer when the gym says so (0258): 'desk' always; 'coach, then desk' once the coach said yes.
-  const deskMay = (r: CoachingRow) => approval === 'desk' || (approval === 'coach_desk' && !!r.coach_ok_at);
+  const deskMay = (r: CoachingRow) => deskMayAnswer(approval, r);
   const count = data ? data.sessions.length + data.payments.length + data.asked.filter(deskMay).length : 0;
   const answerAsk = async (r: CoachingRow, accept: boolean) => {
     let price: number | null = null;
@@ -121,14 +96,8 @@ export default function PersonalTraining() {
   const decide = async (r: QueueRow, decision: 'approved' | 'rejected') => {
     setBusy(r.id);
     try {
-      await setPtSessionStatus(r.id, decision);
-      await notifyUser({
-        userId: r.memberId, type: 'booking',
-        title: decision === 'approved' ? 'Session confirmed' : 'Session not approved',
-        message: decision === 'approved' ? `Your session on ${when(r.when)} is confirmed. See you there.`
-          : `Your session on ${when(r.when)} could not be approved. Ask the front desk for another time.`,
-        actionUrl: '/member/sessions',
-      }).catch(() => showToast('Decision saved, but the member could not be notified', 'error'));
+      const { notified } = await decideSession(r, decision);
+      if (!notified) showToast('Decision saved, but the member could not be notified', 'error');
       showToast(decision === 'approved' ? 'Session confirmed' : 'Session declined', 'success');
       await load();
     } catch (e) {

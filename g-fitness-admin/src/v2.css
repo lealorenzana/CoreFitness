@@ -800,3 +800,33 @@ button.v2-railrow:hover, .v2-railbtn:hover { background: rgb(var(--hair-rgb, 255
 @keyframes v2-spotlight { 0%, 70% { box-shadow: 0 0 0 2px var(--color-primary), 0 0 0 8px color-mix(in srgb, var(--color-primary) 22%, transparent); } 100% { box-shadow: 0 0 0 2px transparent, 0 0 0 8px transparent; } }
 [data-spotlight] { animation: v2-spotlight 3s var(--v2-ease, ease-out); border-radius: 12px; scroll-margin: 96px; }
 @media (prefers-reduced-motion: reduce) { [data-spotlight] { animation: none; box-shadow: 0 0 0 2px var(--color-primary); } }
+
+/* ── Notifications, mock-up B (owner, 2026-11-27; design/admin-v2/inbox-b.html): with nothing open, the reading
+   pane greets, sums up and lists what needs you, each item with its own buttons. One amber button in the area. */
+.nb-home { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.nb-hd { padding: 18px 22px 12px; border-bottom: 1px solid var(--color-border); }
+.nb-hd h2 { font-size: 16px; font-weight: 650; color: var(--color-text-primary); }
+.nb-hd p { font-size: 12.5px; color: var(--color-text-secondary); margin-top: 2px; }
+.nb-hd .nb-inbox { color: var(--color-text-muted); font-size: 12px; }
+.nb-sum { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 16px 22px 0; border: 1px solid var(--color-border); border-radius: 10px; }
+.nb-sum > div { padding: 10px 14px; min-width: 0; } .nb-sum > div + div { border-left: 1px solid var(--color-border); }
+.nb-sum b { display: block; font-size: 20px; font-weight: 650; color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
+.nb-sum span { font-size: 12px; color: var(--color-text-secondary); }
+.nb-fail { margin: 12px 22px 0; font-size: 12px; color: var(--v2-warn); }
+.nb-need { padding: 4px 22px 16px; }
+.nb-need h3 { display: flex; gap: 8px; margin: 16px 0 4px; font-size: 12px; font-weight: 600; color: var(--color-text-muted); }
+.nb-item { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--color-border); }
+section:last-child > .nb-item:last-child { border-bottom: 0; }
+.nb-item b { font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
+.nb-item p { font-size: 12.5px; color: var(--color-text-secondary); margin-top: 1px; text-wrap: pretty; }
+.nb-k { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; background: rgb(var(--hair-rgb, 255 255 255) / 0.06); color: var(--color-text-secondary); }
+.nb-acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.nb-btn { height: 28px; padding: 0 10px; border-radius: 6px; display: inline-flex; align-items: center; font-size: 12px; font-weight: 600; white-space: nowrap;
+  color: var(--color-text-secondary); border: 1px solid transparent; background: none; cursor: pointer; transition: background .15s, color .15s; }
+.nb-btn:hover { background: rgb(var(--hair-rgb, 255 255 255) / 0.06); color: var(--color-text-primary); }
+.nb-btn.strong { color: var(--color-text-primary); border-color: var(--color-border); }
+.nb-btn.go { background: var(--v2-act); color: var(--v2-on-act); }
+.nb-btn.go:hover { filter: brightness(1.06); background: var(--v2-act); color: var(--v2-on-act); }
+.nb-btn:disabled { opacity: .5; cursor: default; }
+.nb-none { padding: 18px 0; font-size: 12.5px; color: var(--color-text-secondary); }
+@media (max-width: 1400px) { .nb-item { grid-template-columns: 32px minmax(0, 1fr); } .nb-acts { grid-column: 2; justify-content: flex-start; } }

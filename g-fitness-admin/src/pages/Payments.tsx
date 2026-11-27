@@ -12,9 +12,10 @@ import { todayKey } from '../utils/dates';
 import { exportPaymentsToCSV } from '../utils/exportUtils';
 import { Banknote, CalendarRange, ChevronRight, Download, ImageOff, Plus, Receipt as ReceiptIcon, Send, Wallet } from 'lucide-react';
 import { showToast } from '../utils/toast';
-import { listPayments, recordPayment, updatePaymentStatus } from '../lib/api/payments';
+import { listPayments, updatePaymentStatus } from '../lib/api/payments';
+import { recordDeskPayment, renewalPayment, type MemberPlanInfo } from '../services/deskActions';
 import { listMembers } from '../lib/api/members';
-import { listMemberships, changeMembershipPlan } from '../lib/api/memberships';
+import { listMemberships } from '../lib/api/memberships';
 import { listPlans } from '../lib/api/membershipPlans';
 import type { MembershipPlanRow } from '../types/db';
 import { notifyUser } from '../lib/api/notify';
@@ -37,15 +38,7 @@ interface Payment {
 
 /** The member's current plan, shown in the Record Payment form so staff aren't
  *  typing an amount blind against a plan they can't see. */
-export interface MemberPlanInfo {
-  membershipId: string;
-  /** The plan the membership is on now — the form starts here, and a different pick switches it before recording. */
-  planId: string;
-  /** NULL on a non-expiring plan (0024) — recordPayment leaves the expiry unset. */
-  durationDays: number | null;
-  planName: string;
-  planPrice: number;
-}
+export type { MemberPlanInfo } from '../services/deskActions';
 
 interface MemberGroup {
   memberId: string; memberName: string;
@@ -210,39 +203,9 @@ export default function Payments() {
       return;
     }
     try {
-      // A different plan picked (the form's picker, or a renewal asking for another plan): switch the membership
-      // FIRST, then record — recording is what starts the term, from the new plan's days (CLAUDE.md: a plan change
-      // must precede recordPayment). One step for the desk instead of a trip to Members → Membership.
-      const switching = !!data.planId && data.planId !== membership.planId;
-      const newPlan = switching ? plans.find((pl) => pl.id === data.planId) : undefined;
-      if (switching && !newPlan) throw new Error('That plan is no longer offered. Pick another.');
-      if (newPlan) await changeMembershipPlan(membership.membershipId, newPlan.id);
-      await recordPayment({
-        member_id: data.memberId,
-        membership_id: membership.membershipId,
-        duration_days: newPlan ? newPlan.duration_days : membership.durationDays,
-        amount: data.amount,
-        method: data.method.toLowerCase(),
-        status: 'completed',
-        paid_on: data.date,
-        due_date: null,
-        notes: data.notes || null,
-        recorded_by: null,
-      });
-
-      // A cash payment at the desk extends the membership, so the receipt is
-      // the member's only proof it registered. Failing to notify must not read
-      // as a failed payment — the money has already changed hands.
-      await notifyUser({
-        userId: data.memberId,
-        type: 'payment',
-        title: 'Payment received',
-        message: `We received ₱${data.amount.toLocaleString('en-PH')}. Your membership has been extended.`,
-        actionUrl: '/member/payments',
-      }).catch(() => {
-        showToast('Payment recorded, but the member could not be notified', 'error');
-      });
-
+      // The plan switch (first), the payment and the member's notice: services/deskActions, shared with Notifications.
+      const { notified } = await recordDeskPayment(data, membership, plans);
+      if (!notified) showToast('Payment recorded, but the member could not be notified', 'error');
       showToast('Payment recorded!', 'success');
       await loadData();
     } catch (err) {
@@ -264,8 +227,6 @@ export default function Payments() {
    * row — the same asymmetry notify.ts describes between record and alert.
    */
   /** Record the payment a request asked for — the modal opens filled in. */
-  const methodOf = (r: OpenRenewalRequest) => !r.paid ? 'Cash'
-    : r.paid.kind === 'gcash' ? 'GCash' : r.paid.kind === 'maya' ? 'Maya' : 'Bank transfer';
   /**
    * One click (owner, 2026-11-10: "a button clicked then it's approved, so the transaction is fast"): the plan they
    * asked for, its price (or what they sent online), today, cash at the desk or the method they paid by — the plan
@@ -275,13 +236,7 @@ export default function Payments() {
     if (approving) return;
     setApproving(r.id);
     try {
-      await handleRecordPayment({
-        memberId: r.memberId, memberName: r.memberName, amount: r.paid?.amount ?? r.planPrice,
-        method: methodOf(r), date: todayKey(), planId: r.planId,
-        notes: r.paid
-          ? `Paid online by ${r.paid.method}, ref ${r.paid.reference}${r.paid.paidOn ? ` on ${r.paid.paidOn}` : ''}`
-          : `Paid at the desk for ${r.planName}`,
-      });
+      await handleRecordPayment(renewalPayment(r));
     } finally { setApproving(null); }
   };
 

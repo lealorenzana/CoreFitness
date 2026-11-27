@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Download, AlertTriangle, Calendar, ChevronLeft, ChevronRight, Medal, ListChecks, ArrowRight, Search, X } from 'lucide-react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Download, AlertTriangle, Calendar, ChevronLeft, ChevronRight, Medal, ArrowRight, Search, X } from 'lucide-react';
 import DatePicker from '../components/ui/DatePicker';
 import DetailSheet from '../components/ui/DetailSheet';
 import { useGymFirstDay } from '../hooks/useGymFirstDay';
-import { useFitRows } from '../hooks/useFitRows';
 import { checkInCodeOf } from '../utils/checkInCode';
 import { exportToCSV } from '../utils/exportUtils';
 import { listAttendanceBetween } from '../lib/api/attendance';
@@ -20,7 +19,10 @@ import './attendance/att.css';
  * Attendance → History — built to the owner's v2 mock-up (2026-10-18), in its
  * own stylesheet (attendance/att.css).
  *
- * Any day, any range, back to the gym's first record. Four cards compare the
+ * Mock-up B (owner, 2026-11-27, design/admin-v2/history-b.html): check-ins grouped by day, each with
+ * a 6 am to 10 pm bar; a weekday by hour busy grid under the calendar; a flat figure strip.
+ *
+ * Any day, any range, back to the gym's first record. Four figures compare the
  * range with the same length of time just before it; a calendar with each day's
  * count (click a day to open just that day) and the average for each weekday;
  * Most regular, whose "See all" opens beside the page; and the check-ins, with
@@ -63,6 +65,10 @@ const WD_LONG = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturd
 const STACK = ['var(--hx-1, #9578fb)', 'var(--hx-2, #6447c7)', 'var(--hx-3, #3b3560)'];
 
 type Preset = '7' | '30' | '90' | 'year' | 'all' | 'custom';
+const PAGE = 80;
+/** The day bar and the busy grid run 6 am to 10 pm; an earlier or later check-in sits at the bar's end. */
+const OPEN = 6, HOURS = 16;
+const minuteOf = (iso: string) => new Date(new Date(iso).getTime() + 8 * 3600_000).getUTCMinutes();
 const PRESETS: [Preset, string][] = [['7', 'Last 7 days'], ['30', 'Last 30 days'], ['90', 'Last 90 days'], ['year', 'This year'], ['all', 'All time']];
 
 export default function AttendanceHistory() {
@@ -82,11 +88,12 @@ export default function AttendanceHistory() {
   const [search, setSearch] = useState('');
   const [activity, setActivity] = useState('');
   const [method, setMethod] = useState<'' | 'qr' | 'manual'>('');
-  const [page, setPage] = useState(1);
+  /** How many check-ins the log draws; more arrive as it scrolls (older days load as you scroll). */
+  const [shown, setShown] = useState(PAGE);
+  const resetShown = () => setShown(PAGE);
   /** A day clicked in the calendar, narrowing the log to it. Null = whole range. */
   const [dayFilter, setDayFilter] = useState<string | null>(null);
   const [calMonth, setCalMonth] = useState<string>(() => manilaDate().slice(0, 7));
-  const { ref: fitRef, perPage, rowHeight } = useFitRows(8);
 
   useEffect(() => {
     let alive = true;
@@ -102,7 +109,8 @@ export default function AttendanceHistory() {
       ]);
       if (!alive) return;
       if (att === null) { setFailed(true); setLoading(false); return; }
-      setRows(att);
+      // Newest first, whatever the source returns: the log groups by day and a day must appear once.
+      setRows([...att].sort((x, y) => y.check_in_time.localeCompare(x.check_in_time)));
       setPrevTotal(prev ? prev.length : null);
       setPeople(new Map(members.map((m) => [m.profile.id, { name: `${m.profile.first_name} ${m.profile.last_name}`.trim(), photo: m.profile.photo_url ?? null }])));
       const usable = new Set<string>();
@@ -111,7 +119,7 @@ export default function AttendanceHistory() {
       setActivities(settings?.activity_options ?? []);
       setFailed(false);
       setLoading(false);
-      setPage(1);
+      resetShown();
       // A day picked inside the old range is meaningless in the new one, and
       // leaving it set would show an empty log with no visible reason why.
       setDayFilter(null);
@@ -166,16 +174,29 @@ export default function AttendanceHistory() {
     for (let i = 0; i < days; i++) wdDays[weekdayOf(shift(from, i))] += 1;
     for (const [d, n] of Object.entries(byDay)) wdCount[weekdayOf(d)] += n;
     const wdAvg = wdCount.map((n, i) => (wdDays[i] ? n / wdDays[i] : 0));
+    // Busy hours: each weekday by hour, the average check-ins in that hour on that weekday.
+    const grid = Array.from({ length: 7 }, () => new Array(HOURS).fill(0) as number[]);
+    for (const r of inRange) {
+      const h = hourOf(r.check_in_time) - OPEN;
+      if (h >= 0 && h < HOURS) grid[weekdayOf(dayOf(r.check_in_time))][h] += 1;
+    }
+    const busy = grid.map((row, w) => row.map((n) => (wdDays[w] ? n / wdDays[w] : 0)));
+    let peak: [number, number] | null = null;
+    busy.forEach((row, w) => row.forEach((v, h) => { if (v > 0 && (!peak || v > busy[peak[0]][peak[1]])) peak = [w, h]; }));
     const busiestWd = inRange.length ? wdAvg.indexOf(Math.max(...wdAvg)) : null;
     const busiestHour = inRange.length ? byHour.indexOf(Math.max(...byHour)) : null;
     const topList = [...byMember.entries()].sort((a, b) => b[1] - a[1]);
     const acts = [...byActivity.entries()].sort((a, b) => b[1] - a[1]);
-    return { byDay, days, wdAvg, busiestWd, busiestHour, topList, top: topList.slice(0, 8), acts, unique: byMember.size };
+    return { byDay, days, wdAvg, busy, peak: peak as [number, number] | null, busiestWd, busiestHour, topList, top: topList.slice(0, 8), acts, unique: byMember.size };
   }, [inRange, from, to]);
 
-  const pages = Math.max(1, Math.ceil(filtered.length / perPage));
-  const current = Math.min(page, pages);
-  const visible = filtered.slice((current - 1) * perPage, current * perPage);
+  // The log, day by day (rows arrive newest first).
+  const visible = filtered.slice(0, shown);
+  const groups: [string, AttendanceRow[]][] = [];
+  for (const r of visible) {
+    const d = dayOf(r.check_in_time);
+    if (groups.length && groups[groups.length - 1][0] === d) groups[groups.length - 1][1].push(r); else groups.push([d, [r]]);
+  }
   const rangeLabel = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
 
   // Grey shapes where the range, the figures and the log will be, instead of a line of text.
@@ -183,10 +204,10 @@ export default function AttendanceHistory() {
     <div className="att" data-history-loading aria-busy="true">
       <AttHead counts={counts} sub={<Skel w={260} h={12} />} />
       <div className="a-card flex-none" style={{ padding: '12px 14px' }}><Skel w="55%" h={24} /></div>
-      <div className="a-grid flex-none a-figstrip" style={{ gridTemplateColumns: 'repeat(4,minmax(0,1fr))' }}>
+      <div className="a-figs3 hb-figs">
         {[0, 1, 2, 3].map((i) => <div key={i} className="a-card" style={{ display: 'grid', gap: 10 }}><Skel w={90} h={12} /><Skel w={70} h={30} /><Skel w="70%" h={12} /></div>)}
       </div>
-      <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0,1.05fr) minmax(0,.95fr) minmax(0,1.9fr)', flex: 1 }}>
+      <div className="hb-wrap">
         {[0, 1, 2].map((i) => <div key={i} className="a-card" style={{ display: 'grid', alignContent: 'start', gap: 14 }}><Skel w={120} h={14} />{[0, 1, 2, 3].map((j) => <Skel key={j} w="100%" h={22} />)}</div>)}
       </div>
     </div>
@@ -221,38 +242,40 @@ export default function AttendanceHistory() {
   const maxDay = Math.max(1, ...Object.values(stats.byDay));
   const level = (n: number) => (n === 0 ? 'l0' : n / maxDay > 0.75 ? 'l4' : n / maxDay > 0.5 ? 'l3' : n / maxDay > 0.25 ? 'l2' : 'l1');
   const outsideMonth = calMonth < from.slice(0, 7) || calMonth > to.slice(0, 7);
-  const maxWd = Math.max(1, ...stats.wdAvg);
-  const todayKey = manilaDate();
+    const todayKey = manilaDate();
 
   return (
-    <div className="att" data-attendance-history>
+    <div className="att" data-attendance-history data-history-b>
       <AttHead counts={counts}
         sub={firstDay ? `Any day, any range, back to your first record on ${rangeLabel(firstDay)}` : 'Review check-ins across any date range.'}
         actions={<button type="button" className="a-btn amber" onClick={exportRows} data-tip="Export the check-ins shown below as CSV"><Download size={16} />Export {filtered.length}</button>} />
 
-      {/* ── The range ── */}
-      <div className="a-card flex-none" style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: '9px 12px' }} data-history-range>
-        {PRESETS.map(([p, label]) => (
-          <button key={p} type="button" className={`a-chip ${preset === p ? 'on' : ''}`} onClick={() => applyPreset(p)} aria-pressed={preset === p}>{label}</button>
-        ))}
-        <span style={{ width: 1, alignSelf: 'stretch', background: 'var(--a-line)', margin: '0 6px' }} />
-        <Calendar size={15} style={{ color: 'var(--a-muted)' }} />
+      {/* ── The range: presets and dates in one row ── */}
+      <div className="hb-filters" data-history-range>
+        <span className="hb-chips">
+          {PRESETS.map(([p, label]) => (
+            <button key={p} type="button" className={preset === p ? 'on' : ''} onClick={() => applyPreset(p)} aria-pressed={preset === p}>{label}</button>
+          ))}
+        </span>
+        <Calendar size={15} style={{ color: 'var(--a-muted)', marginLeft: 6 }} />
         <span className="a-sub">From</span>
         <div style={{ width: 150 }}><DatePicker mode="history" bounds={{ earliest: firstDay }} value={from} max={to} onChange={(v) => { setFrom(v || from); setPreset('custom'); }} /></div>
         <span className="a-sub">to</span>
         <div style={{ width: 150 }}><DatePicker mode="history" bounds={{ earliest: firstDay }} value={to} min={from} onChange={(v) => { setTo(v || to); setPreset('custom'); }} /></div>
-        <span className="a-sub" style={{ marginLeft: 'auto' }}>{preset === 'all' ? 'Since your first record' : `Compared with the ${stats.days} day${stats.days === 1 ? '' : 's'} before`}</span>
+        <span className="a-sub" style={{ marginLeft: 'auto', whiteSpace: 'nowrap' }}>{preset === 'all' ? 'Since your first record' : `Compared with the ${stats.days} day${stats.days === 1 ? '' : 's'} before`}</span>
       </div>
 
-      {/* ── Four cards ── */}
-      <div className="a-grid flex-none a-figstrip" style={{ gridTemplateColumns: 'repeat(4,minmax(0,1fr))' }} data-history-figures>
-        <div className="a-card">
+      {/* ── The figures: one flat strip ── */}
+      <div className="a-figs3 hb-figs" data-history-figures>
+        <div className="a-card" data-fig-today>
           <div className="a-lbl">Check-ins</div>
-          <div className="a-num"><CountUp value={total} /></div>
+          <div className="a-fig-row">
+            <div className="a-num"><CountUp value={total} /></div>
+            {/* Check-ins day by day across the range (the calendar's numbers, as a line). */}
+            {total > 0 && <div className="a-trend" data-history-trend><Spark values={dayLine} label={`Check-ins each day, ${rangeLabel(from)} to ${rangeLabel(to)}`} /></div>}
+          </div>
           <div className="a-sub">{change === null ? (prevTotal === 0 ? 'none in the days before' : `${rangeLabel(from)} to ${rangeLabel(to)}`)
             : <><span className={change >= 0 ? 'a-up' : 'a-dn'}>{change >= 0 ? '▲' : '▼'} {Math.abs(change)}%</span> vs {prevTotal!.toLocaleString('en-PH')} before</>}</div>
-          {/* Check-ins day by day across the range (the calendar's numbers, as a line). */}
-          {total > 0 && <div className="a-trend" data-history-trend><Spark values={dayLine} label={`Check-ins each day, ${rangeLabel(from)} to ${rangeLabel(to)}`} /></div>}
         </div>
         <div className="a-card">
           <div className="a-lbl">Different members</div>
@@ -269,7 +292,7 @@ export default function AttendanceHistory() {
           <div className="a-stack">{total > 0 && actTop.map(([a, n], i) => <i key={a} style={{ flex: n, background: STACK[i] }} />)}</div>
           <div className="a-legend">
             {total === 0 ? <span>nothing yet</span> : actTop.map(([a, n], i) => (
-              <button key={a} type="button" onClick={() => { if (a !== 'Not recorded') { setActivity(activity === a ? '' : a); setPage(1); } }} data-tip={a === 'Not recorded' ? undefined : 'Show only these'}>
+              <button key={a} type="button" onClick={() => { if (a !== 'Not recorded') { setActivity(activity === a ? '' : a); resetShown(); } }} data-tip={a === 'Not recorded' ? undefined : 'Show only these'}>
                 <span className="a-dot" style={{ background: STACK[i] }} />{a} {Math.round((n / total) * 100)}%
               </button>
             ))}
@@ -277,68 +300,149 @@ export default function AttendanceHistory() {
         </div>
       </div>
 
-      <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0,1.05fr) minmax(0,.95fr) minmax(0,1.9fr)', flex: 1 }}>
-        {/* ── The calendar ── */}
-        <div className="a-card" data-attendance-calendar>
-          <div className="a-ct">
-            <h3><Calendar size={16} />{new Date(Date.UTC(cy, cm - 1, 1)).toLocaleDateString('en-PH', { month: 'long', year: cy === Number(todayKey.slice(0, 4)) ? undefined : 'numeric', timeZone: 'UTC' })}</h3>
-            <div style={{ display: 'flex', gap: 4 }}>
-              <button type="button" className="a-btn ghost sm" aria-label="Previous month" onClick={() => setCalMonth(shift(firstOfMonth, -1).slice(0, 7))}><ChevronLeft size={14} /></button>
-              <button type="button" className="a-btn ghost sm" aria-label="Next month" disabled={calMonth >= todayKey.slice(0, 7)} onClick={() => setCalMonth(shift(firstOfMonth, monthDays).slice(0, 7))}><ChevronRight size={14} /></button>
+      <div className="hb-wrap">
+        <div className="hb-col">
+          {/* ── The calendar ── */}
+          <div className="a-card hb-cal" data-attendance-calendar>
+            <div className="a-ct">
+              <h3><Calendar size={16} />{new Date(Date.UTC(cy, cm - 1, 1)).toLocaleDateString('en-PH', { month: 'long', year: cy === Number(todayKey.slice(0, 4)) ? undefined : 'numeric', timeZone: 'UTC' })}</h3>
+              <div style={{ display: 'flex', gap: 4 }}>
+                <button type="button" className="a-btn ghost sm" aria-label="Previous month" onClick={() => setCalMonth(shift(firstOfMonth, -1).slice(0, 7))}><ChevronLeft size={14} /></button>
+                <button type="button" className="a-btn ghost sm" aria-label="Next month" disabled={calMonth >= todayKey.slice(0, 7)} onClick={() => setCalMonth(shift(firstOfMonth, monthDays).slice(0, 7))}><ChevronRight size={14} /></button>
+              </div>
+            </div>
+            <div className="a-cal">
+              {WD.map((w, i) => <span key={i}>{w}</span>)}
+              {Array.from({ length: lead }, (_, i) => <span key={`b${i}`} />)}
+              {Array.from({ length: monthDays }, (_, i) => {
+                const d = `${calMonth}-${String(i + 1).padStart(2, '0')}`;
+                const n = stats.byDay[d] ?? 0;
+                const loaded = d >= from && d <= to;
+                return (
+                  <button key={d} type="button" disabled={!loaded || d > todayKey} data-day={d}
+                    className={`${loaded ? level(n) : 'l0 a-out'} ${dayFilter === d ? 'sel' : ''} ${d === todayKey ? 'today' : ''}`}
+                    onClick={() => { setDayFilter(dayFilter === d ? null : d); resetShown(); }} data-tip={loaded ? `${n} check-in${n === 1 ? '' : 's'}` : 'Outside the range'}>
+                    {i + 1}{loaded && n > 0 && <small>{n}</small>}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="a-sub" style={{ marginTop: 6 }}>
+              {/* An empty month outside the loaded range would read as "nobody came" when it was never fetched. */}
+              {outsideMonth ? <span style={{ color: 'var(--a-a300)' }}>This month is outside the range above. Widen the range to load it.</span> : 'Pick a day to open just that day'}
             </div>
           </div>
-          <div className="a-cal">
-            {WD.map((w, i) => <span key={i}>{w}</span>)}
-            {Array.from({ length: lead }, (_, i) => <span key={`b${i}`} />)}
-            {Array.from({ length: monthDays }, (_, i) => {
-              const d = `${calMonth}-${String(i + 1).padStart(2, '0')}`;
-              const n = stats.byDay[d] ?? 0;
-              const loaded = d >= from && d <= to;
-              return (
-                <button key={d} type="button" disabled={!loaded || d > todayKey} data-day={d}
-                  className={`${loaded ? level(n) : 'l0 a-out'} ${dayFilter === d ? 'sel' : ''} ${d === todayKey ? 'today' : ''}`}
-                  onClick={() => { setDayFilter(dayFilter === d ? null : d); setPage(1); }} data-tip={loaded ? `${n} check-in${n === 1 ? '' : 's'}` : 'Outside the range'}>
-                  {i + 1}{loaded && n > 0 && <small>{n}</small>}
-                </button>
-              );
-            })}
-          </div>
-          <div className="a-sub" style={{ marginTop: 6 }}>
-            {/* An empty month outside the loaded range would read as "nobody came" when it was never fetched. */}
-            {outsideMonth ? <span style={{ color: 'var(--a-a300)' }}>This month is outside the range above. Widen the range to load it.</span> : 'Click a day to open just that day'}
-          </div>
-          <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--a-border)', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-            <div className="a-lbl" style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between' }}><span>By day of the week</span><span>avg check-ins</span></div>
-            <div style={{ display: 'flex', alignItems: 'stretch', gap: 6, flex: 1, minHeight: 60 }} data-weekday-bars>
-              {stats.wdAvg.map((v, i) => (
-                <div key={i} style={{ flex: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-                  <div className="a-sub" style={{ fontSize: 10, marginBottom: 3 }}>{v >= 10 ? Math.round(v) : v.toFixed(1).replace(/\.0$/, '')}</div>
-                  <div style={{ height: `${Math.max(2, (v / maxWd) * 75)}%`, background: i === stats.busiestWd ? 'var(--hx-1, #9578fb)' : v / maxWd < 0.7 ? 'var(--hx-3, #2a2250)' : 'var(--hx-2, #41317f)', borderRadius: '5px 5px 2px 2px' }} />
-                  <div className="a-sub" style={{ fontSize: 10, marginTop: 3, color: i === stats.busiestWd ? '#fff' : undefined }}>{WD[i]}</div>
+
+          {/* ── Busy hours: each weekday by hour (replaces the weekday bars) ── */}
+          <div className="a-card hb-heat" data-busy-hours>
+            <div className="a-ct"><h3>Busy hours <span className="a-sub" style={{ fontWeight: 500 }}>average check-ins</span></h3></div>
+            <div className="hb-heatg" data-weekday-bars>
+              <div className="hb-hrow"><span />{Array.from({ length: HOURS }, (_, i) => <span key={i}>{(i + OPEN) % 3 === 0 ? (i + OPEN) % 12 || 12 : ''}</span>)}</div>
+              {stats.busy.map((row, w) => (
+                <div key={w} className="hb-hrow">
+                  <span className="d">{WD[w]}</span>
+                  {row.map((v, h) => {
+                    const max = stats.peak ? stats.busy[stats.peak[0]][stats.peak[1]] : 1;
+                    return <u key={h} style={{ background: v ? `color-mix(in srgb, var(--color-primary) ${Math.round(15 + (v / max) * 70)}%, var(--a-raised))` : undefined }}
+                      data-tip={`${WD_LONG[w]}, ${hourLabel(h + OPEN)}: ${v >= 10 ? Math.round(v) : v.toFixed(1).replace(/\.0$/, '')} on average`} />;
+                  })}
                 </div>
               ))}
             </div>
+            <p className="a-sub hb-note">{stats.peak ? <>Busiest: <b>{WD_LONG[stats.peak[0]]}, {hourLabel(stats.peak[1] + OPEN)} to {hourLabel(stats.peak[1] + OPEN + 1)}</b></> : 'Nobody between 6 am and 10 pm in this range.'}</p>
           </div>
         </div>
 
+        {/* ── The check-ins, day by day ── */}
+        <div className="a-card hb-log" data-history-log>
+          <div className="hb-logbar">
+            <h3>Check-ins <span className="a-sub" style={{ fontWeight: 500 }}>{filtered.length.toLocaleString('en-PH')}</span></h3>
+            {/* Narrowed to a day: said out loud, with the way out attached. */}
+            {dayFilter && (
+              <button type="button" className="a-chip on" onClick={() => { setDayFilter(null); resetShown(); }}>
+                {new Date(`${dayFilter}T00:00:00`).toLocaleDateString('en-PH', { weekday: 'short', day: 'numeric', month: 'short' })} <X size={12} />
+              </button>
+            )}
+            <div className="hb-tools">
+              <label className="a-input sm" style={{ width: 160, minWidth: 0 }} data-history-search><Search size={14} />
+                <input value={search} onChange={(e) => { setSearch(e.target.value); resetShown(); }} placeholder="Name or code" aria-label="Search check-ins" /></label>
+              <select className="a-chip" value={method} onChange={(e) => { setMethod(e.target.value as '' | 'qr' | 'manual'); resetShown(); }} aria-label="Filter by method" style={{ maxWidth: 118 }}>
+                <option value="">Any method</option><option value="qr">Scanned</option><option value="manual">Typed</option>
+              </select>
+              {activities.length > 0 && (
+                <select className="a-chip" value={activity} onChange={(e) => { setActivity(e.target.value); resetShown(); }} aria-label="Filter by activity" style={{ maxWidth: 118 }}>
+                  <option value="">Any activity</option>{activities.map((a) => <option key={a} value={a}>{a}</option>)}
+                </select>
+              )}
+            </div>
+          </div>
+          <div className="hb-days" data-rd-table
+            onScroll={(e) => { const el = e.currentTarget; if (shown < filtered.length && el.scrollTop + el.clientHeight > el.scrollHeight - 200) setShown((n) => n + PAGE); }}>
+            {groups.map(([d, list]) => {
+              const label = d === todayKey ? 'Today' : d === shift(todayKey, -1) ? 'Yesterday' : WD_LONG[weekdayOf(d)];
+              return (
+                <Fragment key={d}>
+                  <div className="hb-dh" data-log-day={d}>
+                    <span><b>{label}</b><small>{new Date(`${d}T00:00:00`).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', year: d.slice(0, 4) === todayKey.slice(0, 4) ? undefined : 'numeric' })}</small></span>
+                    <div className="hb-tl" aria-hidden>
+                      <span className="track" />
+                      {[6, 10, 14, 18, 22].map((x) => <em key={x} style={{ left: `${((x - OPEN) / HOURS) * 100}%` }}>{hourLabel(x)}</em>)}
+                      {list.map((r, i) => <i key={`${r.id}:${i}`} style={{ left: `${Math.min(100, Math.max(0, ((hourOf(r.check_in_time) + minuteOf(r.check_in_time) / 60 - OPEN) / HOURS) * 100))}%` }} />)}
+                    </div>
+                    <span className="n">{list.length}</span>
+                  </div>
+                  <table className="a-table hb-rows">
+                    <tbody>
+                      {list.map((r, i) => {
+                        const p = people.get(r.member_id);
+                        return (
+                          <tr key={`${r.id}:${i}`}>
+                            <td className="hb-time">{clock(r.check_in_time)}</td>
+                            <td><div className="a-who"><Av name={p?.name ?? '?'} photo={p?.photo} small />{p ? <b className="truncate">{p.name}</b> : <span className="a-sub">Archived member</span>}</div></td>
+                            <td><HowPill row={r} /></td>
+                            {/* Never invented: a check-in taken without picking one says so. Whose tag it is (0200). */}
+                            <td>{r.activity ? (
+                              <span className="inline-flex items-center gap-2">{r.activity}
+                                {r.activity_by === 'member' && <span className="a-pill v">their pick</span>}
+                                {r.activity_by === 'desk' && <span className="a-pill a">desk</span>}
+                              </span>
+                            ) : <span className="a-sub">Not recorded</span>}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </Fragment>
+              );
+            })}
+            {filtered.length === 0 && <p className="a-sub text-center" style={{ padding: 22 }}>No check-ins match those filters.</p>}
+            {shown < filtered.length && <p className="a-sub" style={{ padding: '12px 16px' }}>Older days load as you scroll.</p>}
+          </div>
+          {filtered.length > 0 && (
+            <div className="hb-foot a-sub" data-rd-footer>
+              <span>Showing {Math.min(shown, filtered.length).toLocaleString('en-PH')} of {filtered.length.toLocaleString('en-PH')}</span>
+            </div>
+          )}
+        </div>
+
         {/* ── Most regular ── */}
-        <div className="a-card" data-most-regular>
+        <div className="a-card hb-reg" data-most-regular>
           <div className="a-ct">
             <h3><Medal size={16} />Most regular</h3>
-            {/* The whole list opens beside the page — it used to expand in place and push everything else down. */}
+            {/* The whole list opens beside the page; it used to expand in place and push everything else down. */}
             {stats.topList.length > stats.top.length && (
               <button type="button" className="a-btn sm" onClick={() => setShowAllTop(true)} data-see-all-regulars>See all {stats.topList.length} <ArrowRight size={13} /></button>
             )}
           </div>
           <div className="a-scroll" style={{ flex: 1 }}>
-            {stats.top.length === 0 ? <p className="a-sub" style={{ paddingTop: 10 }}>Nobody yet.</p> : stats.top.map(([id, n], i) => {
+            {stats.top.length === 0 ? <p className="a-sub" style={{ padding: '10px 16px' }}>Nobody yet.</p> : stats.top.map(([id, n], i) => {
               const p = people.get(id);
               return (
-                <button key={id} type="button" className="a-row w-full text-left" onClick={() => { setSearch(p?.name ?? ''); setPage(1); }} data-tip="Show only their check-ins">
+                <button key={id} type="button" className="a-row w-full text-left" onClick={() => { setSearch(p?.name ?? ''); resetShown(); }} data-tip="Show only their check-ins">
                   <span className={`a-rank ${i === 0 ? 'g' : ''}`}>{i + 1}</span>
                   <Av name={p?.name ?? '?'} photo={p?.photo} small />
                   <div className="t">
-                    {/* An archived member's rows stay — deleting history to tidy a name would be worse. */}
+                    {/* An archived member's rows stay; deleting history to tidy a name would be worse. */}
                     <b>{p?.name ?? 'Archived member'}</b>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 3 }}>
                       <div className="a-bar"><i style={{ width: `${(n / (stats.top[0]?.[1] || 1)) * 100}%` }} /></div><span className="a-sub">{n}</span>
@@ -349,71 +453,6 @@ export default function AttendanceHistory() {
             })}
           </div>
         </div>
-
-        {/* ── The check-ins ── */}
-        <div className="a-card" data-history-log>
-          <div className="a-ct">
-            <h3><ListChecks size={16} />Check-ins</h3>
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center', minWidth: 0 }}>
-              <label className="a-input sm" style={{ width: 160, minWidth: 0 }} data-history-search><Search size={14} />
-                <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Name or code…" aria-label="Search check-ins" /></label>
-              <select className="a-chip" value={method} onChange={(e) => { setMethod(e.target.value as '' | 'qr' | 'manual'); setPage(1); }} aria-label="Filter by method" style={{ maxWidth: 118 }}>
-                <option value="">Any method</option><option value="qr">Scanned</option><option value="manual">Typed</option>
-              </select>
-              {activities.length > 0 && (
-                <select className="a-chip" value={activity} onChange={(e) => { setActivity(e.target.value); setPage(1); }} aria-label="Filter by activity" style={{ maxWidth: 118 }}>
-                  <option value="">Any activity</option>{activities.map((a) => <option key={a} value={a}>{a}</option>)}
-                </select>
-              )}
-            </div>
-          </div>
-          {/* Narrowed to a day — said out loud, with the way out attached. */}
-          {dayFilter && (
-            <button type="button" className="a-chip on self-start" style={{ marginBottom: 8 }} onClick={() => { setDayFilter(null); setPage(1); }}>
-              {new Date(`${dayFilter}T00:00:00`).toLocaleDateString('en-PH', { weekday: 'short', day: 'numeric', month: 'short' })} <X size={12} />
-            </button>
-          )}
-          <div ref={fitRef} className="a-scroll" style={{ flex: 1 }} data-rd-table>
-            <table className="a-table">
-              <thead><tr><th>When</th><th>Member</th><th>How</th><th>Activity</th></tr></thead>
-              <tbody>
-                {visible.map((r) => {
-                  const p = people.get(r.member_id);
-                  return (
-                    <tr key={r.id} style={{ height: filtered.length > perPage ? rowHeight : undefined }}>
-                      <td className="whitespace-nowrap"><b>{new Date(`${dayOf(r.check_in_time)}T00:00:00`).toLocaleDateString('en-PH', { day: 'numeric', month: 'short' })}</b> <span className="a-sub">{clock(r.check_in_time)}</span></td>
-                      <td><div className="a-who"><Av name={p?.name ?? '?'} photo={p?.photo} small />{p ? <b className="truncate">{p.name}</b> : <span className="a-sub">Archived member</span>}</div></td>
-                      <td><HowPill row={r} /></td>
-                      {/* Never invented: a check-in taken without picking one says so. Whose tag it is (0200). */}
-                      <td>{r.activity ? (
-                        <span className="inline-flex items-center gap-2">{r.activity}
-                          {r.activity_by === 'member' && <span className="a-pill v">their pick</span>}
-                          {r.activity_by === 'desk' && <span className="a-pill a">desk</span>}
-                        </span>
-                      ) : <span className="a-sub">Not recorded</span>}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            {visible.length === 0 && <p className="a-sub text-center" style={{ padding: 22 }}>No check-ins match those filters.</p>}
-          </div>
-          {filtered.length > 0 && (
-            <div className="a-sub" style={{ paddingTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} data-rd-footer>
-              <span>{(current - 1) * perPage + 1} to {Math.min(filtered.length, current * perPage)} of {filtered.length.toLocaleString('en-PH')}</span>
-              {pages > 1 && (
-                <span style={{ display: 'flex', gap: 4 }}>
-                  {[...new Set([1, current - 1, current, current + 1, pages])].filter((n) => n >= 1 && n <= pages).sort((a, b) => a - b).map((n, i, arr) => (
-                    <span key={n} style={{ display: 'flex', gap: 4 }}>
-                      {i > 0 && n - arr[i - 1] > 1 && <span className="a-chip" style={{ padding: '3px 9px', cursor: 'default' }}>…</span>}
-                      <button type="button" className={`a-chip ${n === current ? 'v' : ''}`} style={{ padding: '3px 9px' }} onClick={() => setPage(n)} aria-current={n === current ? 'page' : undefined}>{n}</button>
-                    </span>
-                  ))}
-                </span>
-              )}
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Everyone who came in the range, by visits — beside the page, never pushing it down. */}
@@ -423,7 +462,7 @@ export default function AttendanceHistory() {
           {stats.topList.map(([id, n], i) => {
             const p = people.get(id);
             return (
-              <button key={id} type="button" className="a-row w-full text-left" onClick={() => { setSearch(p?.name ?? ''); setPage(1); setShowAllTop(false); }}>
+              <button key={id} type="button" className="a-row w-full text-left" onClick={() => { setSearch(p?.name ?? ''); resetShown(); setShowAllTop(false); }}>
                 <span className={`a-rank ${i === 0 ? 'g' : ''}`}>{i + 1}</span>
                 <Av name={p?.name ?? '?'} photo={p?.photo} small />
                 <div className="t"><b>{p?.name ?? 'Archived member'}</b>

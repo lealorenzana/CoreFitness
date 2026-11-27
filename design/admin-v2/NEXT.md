@@ -1,19 +1,6 @@
-# NEXT (2026-11-27, end of the long session): History and Notifications from mock-ups B
-
-Done and live today: Attendance = mock-up D (one list), the export window everywhere, Walk-ins = mock-up B.
-**Build next, approved by the owner (decision 14 in DECISIONS.md):**
-1. **History** (`pages/AttendanceHistory.tsx`) to `design/admin-v2/history-b.html`: presets + range in one row; a flat figure strip
-   (use `.a-figs3`-style classes, never `a-grid`/`a-figstrip`, which v2.css paints with the gradient hero); left column = the calendar
-   (kept, pick a day) + a weekday by hour **Busy hours** grid (replaces the weekday bars); centre = check-ins **grouped by day**, each day
-   with a 6 am to 10 pm bar and a dot per check-in, then its rows; right = Most regular (preview + See all). Keep search, How, Activity,
-   Export, See all, This year / All time. Checks: `admin-door-check.js` History section, `admin-redesign-check.js`, `admin-light-check.js`.
-2. **Notifications** (`/inbox` = `pages/Inbox.tsx`; the header's Notifications tab may be `pages/Notifications.tsx`: check which renders
-   the mail layout) to `design/admin-v2/inbox-b.html`: keep folders, list, reading pane; with nothing open the right side is a greeting,
-   a three-figure summary and **Needs you** grouped, each item with its own actions. Wire the EXISTING actions (approve registration =
-   `set_account_status`, payments, renewals, coach requests) by reusing the pages' services; invent no rule. One amber button per area.
-Run checks from `C:\Users\USER\Documents\CoreFitness-Staging-Tests\v2run`: `node <repo>/scripts/ci/run-ui-checks.mjs <check>`;
-judge by the "N of N checks passed" line / exit code. Then build, commit, push, `npx vercel deploy --prod --yes` in g-fitness-admin,
-compare the live `index-*.js` with `dist/`.
+# NEXT (2026-11-27): History and Notifications B are DONE and live (ROADMAP, first entry)
+Open: admin-ops-redesign-check fails on Payments' "coming to renew" line (failed before this work too); Needs you with
+items was not seen on screen (no fixture rows): add sign-ups and renewal requests to admin-inbox-check's fixtures.
 
 # Design V2: where it stands and what is next (2026-11-23)
 
