@@ -439,8 +439,27 @@ export default function Schedule() {
     el.scrollTop = Math.max(0, ((at - fromH * 60) / 60 - 0.5) * HOUR_PX);
   }, [view, weekStart, day, sessions, daySessions, fromH, nowMin, today]);
 
+  // Week and Day only, as wide as the calendar so its edges line up with the grid's; No-shows sits at the top of the rail.
+  const figs = (
+        <div className="sc-figs" data-schedule-figures>
+          <div><span>Classes {dayWord}</span><b>{figSessions.length}</b>
+            <small>{figDay === today ? `${figSessions.filter((s) => new Date(s.startsAt).getTime() > nowMs).length} still to come` : 'on the timetable'}</small></div>
+          <div><span>Seats booked</span><b>{seatsBooked}<em> of {seatsAll}</em></b>
+            <i className="bar"><i style={{ width: `${seatsAll ? Math.min(100, (seatsBooked / seatsAll) * 100) : 0}%` }} /></i></div>
+          <div><span>1-on-1s {dayWord}</span><b>{figPts.length}</b>
+            <small>{figPts.filter((x) => x.status === 'approved').length} confirmed · {figPts.filter((x) => x.status === 'pending').length} waiting</small></div>
+          <div><span>Open 1-on-1 slots</span><b>{openSlots.length}</b>
+            <small>{openSlots[0] ? `next ${timeOf(openSlots[0].at)}, ${trainerName(openSlots[0].coach).split(' ')[0]}` : 'none left'}</small></div>
+        </div>
+  );
+
   const rail = (
     <div className="a-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 12 }} data-schedule-rail>
+      {noshowsOn && (
+        <div className="sc-figs sc-figs-one" style={{ flexShrink: 0 }} data-rail-noshows>
+          <div><span>No-shows {dayWord}</span><b className={dayNoShows ? 'warn' : ''}>{dayNoShows}</b><small>marked so far</small></div>
+        </div>
+      )}
       {selected && (
         <div className="a-card glow" data-class-panel style={{ flexShrink: 0 }}>
                 <div className="a-ct"><h3 className="truncate"><CalendarDays size={16} />{selected.name}</h3>
@@ -595,24 +614,11 @@ export default function Schedule() {
         </div>
       )}
 
-      {/* Not on Month (owner, 2026-11-27): the strip is about one day, which the panel beside the month already lists; the month gets the room. */}
-      {!loading && (view === 'week' || view === 'day') && (
-        <div className="sc-figs" data-schedule-figures>
-          <div><span>Classes {dayWord}</span><b>{figSessions.length}</b>
-            <small>{figDay === today ? `${figSessions.filter((s) => new Date(s.startsAt).getTime() > nowMs).length} still to come` : 'on the timetable'}</small></div>
-          <div><span>Seats booked</span><b>{seatsBooked}<em> of {seatsAll}</em></b>
-            <i className="bar"><i style={{ width: `${seatsAll ? Math.min(100, (seatsBooked / seatsAll) * 100) : 0}%` }} /></i></div>
-          <div><span>1-on-1s {dayWord}</span><b>{figPts.length}</b>
-            <small>{figPts.filter((x) => x.status === 'approved').length} confirmed · {figPts.filter((x) => x.status === 'pending').length} waiting</small></div>
-          <div><span>Open 1-on-1 slots</span><b>{openSlots.length}</b>
-            <small>{openSlots[0] ? `next ${timeOf(openSlots[0].at)}, ${trainerName(openSlots[0].coach).split(' ')[0]}` : 'none left'}</small></div>
-          {noshowsOn && <div><span>No-shows {dayWord}</span><b className={dayNoShows ? 'warn' : ''}>{dayNoShows}</b><small>marked so far</small></div>}
-        </div>
-      )}
-
       {loading ? <SkelRows label="Loading the schedule…" /> : view === 'week' ? (
         <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0,1fr) 320px', flex: 1 }}>
-          <div className="a-card" style={{ padding: 12 }}>
+          <div className="sc-col">
+          {figs}
+          <div className="a-card" style={{ padding: 12, flex: 1 }}>
             <div className="a-ct" style={{ marginBottom: 8 }}>
               <div className="a-legendc">
                 {trainers.filter((t) => sessions.some((s) => s.trainerId === t.profile.id)).map((t) => (
@@ -666,6 +672,7 @@ export default function Schedule() {
             <div className="a-sub" style={{ paddingTop: 8 }}>
               {shownWeek.length === 0 ? (sessions.length ? 'Nothing matches the search or filters this week.' : 'No classes this week: click an hour to add one, or set up the weekly timetable.') : 'Click a class to see who booked · click an empty hour to add a class there'}
             </div>
+          </div>
           </div>
 
           {rail}
@@ -779,7 +786,9 @@ export default function Schedule() {
         </div>
       ) : view === 'day' ? (
         <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0,1fr) 320px', flex: 1 }}>
-          <div className="a-card" style={{ padding: 12 }}>
+          <div className="sc-col">
+          {figs}
+          <div className="a-card" style={{ padding: 12, flex: 1 }}>
             {(() => {
               // One column per coach who teaches, coaches or keeps hours that day; classes with no coach get their own.
               const dow = dowOf(day);
@@ -850,6 +859,7 @@ export default function Schedule() {
               );
             })()}
             <div className="a-sub" style={{ paddingTop: 8 }}>Shaded bands are each coach's 1-on-1 hours · click a class to see who booked</div>
+          </div>
           </div>
           {rail}
         </div>
