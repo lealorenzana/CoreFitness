@@ -9,7 +9,8 @@ import { listPtSessions, deskBookPt, type PtSessionRow } from '../../lib/api/ptS
 import { deskBookClass } from '../../lib/api/bookings';
 import { notifyUser } from '../../lib/api/notify';
 import { loadSessionsBetween, type CalendarSession } from '../../services/scheduleService';
-import { addDays, localDateKey, todayKey } from '../../utils/dates';
+import { addDays, todayKey } from '../../utils/dates';
+import { coachSlots } from '../../lib/coachSlots';
 import { showToast } from '../../utils/toast';
 import { Initials } from '../ui/rd';
 import GymMascot from '../ui/GymMascot';
@@ -30,7 +31,9 @@ const timeOf = (iso: string) => new Date(iso).toLocaleTimeString('en-PH', { hour
  * told (0204 for classes; pt_sessions_insert_frontdesk for 1-on-1). The database still refuses a full class, a plan
  * without classes, or a clash, and says which.
  */
-export default function DeskBookCard({ open, onClose, onBooked, only }: { open: boolean; onClose: () => void; onBooked: () => void;
+export default function DeskBookCard({ open, onClose, onBooked, only, preset }: { open: boolean; onClose: () => void; onBooked: () => void;
+  /** Opened from a slot (the Schedule's open 1-on-1 slots): that coach, day and time already picked. */
+  preset?: { coach: string; day: string; at: string } | null;
   /** One kind only (2026-11-14): Class bookings books classes, Personal training books 1-on-1, no switch between. */
   only?: 'class' | 'pt' }) {
   const [today] = useState(() => todayKey());
@@ -47,6 +50,14 @@ export default function DeskBookCard({ open, onClose, onBooked, only }: { open: 
   const [pick, setPick] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // A slot handed in fills the coach, day and time; the member is still the desk's to pick. Set while opening,
+  // during render (not an effect), keyed on the slot.
+  const [presetFor, setPresetFor] = useState<string | null>(null);
+  const presetKey = open && preset ? `${preset.coach}|${preset.at}` : null;
+  if (presetKey !== presetFor) {
+    setPresetFor(presetKey);
+    if (preset && presetKey) { setKind('pt'); setDay(preset.day); setCoach(preset.coach); setPick(preset.at); }
+  }
   useEffect(() => {
     if (!open) return;
     void (async () => {
@@ -75,25 +86,8 @@ export default function DeskBookCard({ open, onClose, onBooked, only }: { open: 
   const [nowMs] = useState(() => Date.now());
   const openClasses = (classes ?? []).filter((c) => new Date(c.startsAt).getTime() > nowMs);
 
-  /** A coach's free slots that day: their hours, cut into slots, minus what is taken. */
-  const slots = useMemo(() => {
-    if (!coach) return [];
-    const [y, m, d] = day.split('-').map(Number);
-    const dow = new Date(y, m - 1, d).getDay();
-    const taken = pts.filter((p) => p.trainer_id === coach && (p.status === 'pending' || p.status === 'approved') && localDateKey(p.starts_at) === day)
-      .map((p) => [new Date(p.starts_at).getTime(), new Date(p.starts_at).getTime() + p.duration_minutes * 60000]);
-    const out: { at: string; minutes: number; free: boolean }[] = [];
-    for (const a of avail.filter((x) => x.trainer_id === coach && x.day_of_week === dow)) {
-      const [sh, sm] = a.start_time.split(':').map(Number); const [eh, em] = a.end_time.split(':').map(Number);
-      for (let t = sh * 60 + sm; t + a.slot_minutes <= eh * 60 + em; t += a.slot_minutes) {
-        const start = new Date(y, m - 1, d, Math.floor(t / 60), t % 60).getTime();
-        const end = start + a.slot_minutes * 60000;
-        if (start <= nowMs) continue;
-        out.push({ at: new Date(start).toISOString(), minutes: a.slot_minutes, free: !taken.some(([s, e]) => s < end && start < e) });
-      }
-    }
-    return out.sort((p, r) => p.at.localeCompare(r.at));
-  }, [coach, day, avail, pts, nowMs]);
+  /** A coach's free slots that day (lib/coachSlots.ts, shared with the Schedule's open slots). */
+  const slots = useMemo(() => (coach ? coachSlots(avail, pts, coach, day, nowMs) : []), [coach, day, avail, pts, nowMs]);
 
   const chosenClass = openClasses.find((c) => c.id === pick) ?? null;
   const chosenSlot = slots.find((s) => s.at === pick) ?? null;

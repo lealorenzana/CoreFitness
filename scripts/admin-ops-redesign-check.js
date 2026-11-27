@@ -166,6 +166,20 @@ async (page) => {
   await page.waitForTimeout(600);
   has('day view: one day with a month to pick from', (await page.locator('[data-day]').count()) === 1 && (await page.locator('[data-minical] button').count()) >= 28);
   await page.screenshot({ path: 'shots/ops-schedule-day.png' });
+  // 2026-11-27 (owner, from the clinic and calendar references): the figure strip, a column per coach on the day,
+  // Up next and the open 1-on-1 slots in the rail; looked at in dark too, at both ends of the fit-page range.
+  has('the schedule: a figure strip, a coach column on the day, Up next and open slots beside it',
+    (await page.locator('[data-schedule-figures] > div').count()) >= 4 && (await page.locator('[data-day] .sc-coach').count()) >= 1
+    && (await page.locator('[data-up-next]').count()) === 1 && (await page.locator('[data-open-slots]').count()) === 1);
+  for (const [w, h] of [[1600, 900], [1280, 800]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.emulateMedia({ colorScheme: 'dark' }); await page.waitForTimeout(400);
+    await page.screenshot({ path: `shots/ops-schedule-day-dark-${w}.png` });
+    await page.getByRole('button', { name: 'Week', exact: true }).click(); await page.waitForTimeout(400);
+    await page.screenshot({ path: `shots/ops-schedule-week-dark-${w}.png` });
+    await page.locator('[data-view="day"]').click(); await page.waitForTimeout(300);
+  }
+  await page.emulateMedia({ colorScheme: 'light' }); await page.setViewportSize({ width: 1600, height: 900 });
   await page.locator('[data-view="plan"]').click();
   await page.waitForTimeout(400);
   t = await text();
