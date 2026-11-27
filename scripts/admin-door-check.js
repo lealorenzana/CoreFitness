@@ -44,7 +44,9 @@ async (page) => {
     membership_plans: PLANS,
     // Bea Reyes (7): her plan ended three days ago, so the desk cannot check her in. Hans Lim (8): his ends in two days.
     memberships: members.map((m, i) => ({ id: `ms${i}`, member_id: m.id, plan_id: 'p1', status: i === 7 ? 'expired' : 'active', start_date: day(-20),
-      expiry_date: i === 7 ? day(-3) : i === 8 ? day(2) : day(20), never_expires: false, frozen_at: null, created_at: iso(-20), membership_plans: PLANS[0] })),
+      expiry_date: i === 7 ? day(-3) : i === 8 ? day(2) : day(20), never_expires: false, frozen_at: null, created_at: iso(-20),
+      // Rhea Cruz (4) is on a second plan, for the list's Plan filter.
+      membership_plans: i === 4 ? { id: 'p2', name: 'Monthly', price: 900, duration_days: 30, tier: 'premium', is_active: true } : PLANS[0] })),
     attendance: [
       { id: 'a1', member_id: mid(0), check_in_time: iso(0, 8, 41), method: 'qr', activity: 'Class', activity_by: 'member', source: 'kiosk' },
       { id: 'a2', member_id: mid(2), check_in_time: iso(0, 8, 30), method: 'qr', activity: 'Cardio', activity_by: 'desk', source: 'desk' },
@@ -203,16 +205,10 @@ async (page) => {
   await page.screenshot({ path: 'shots/door-coaches.png' });
   await page.keyboard.press('Escape'); await page.waitForTimeout(300);
   has('the table header is solid, so a scrolled row never shows through', await page.locator('[data-att-list] thead th').first().evaluate((th) => getComputedStyle(th).backgroundImage !== 'none' || getComputedStyle(th).backgroundColor !== 'rgba(0, 0, 0, 0)'));
-  const urlBefore = page.url();
-  await page.locator('[data-open-full-log]').click(); await page.waitForTimeout(500);
-  const full = page.locator('[data-full-log]');
-  has("View all floats today's whole log over the page, no page change", (await full.count()) === 1 && page.url() === urlBefore && (await full.locator('[data-log-row]').count()) === 3);
-  await full.getByPlaceholder('Search today…').fill('Carlo'); await page.waitForTimeout(300);
-  has('…with its own search, and Undo on each row', (await full.locator('[data-log-row]').count()) === 1 && (await full.getByRole('button', { name: 'Undo' }).count()) === 1);
-  await page.screenshot({ path: 'shots/door-full-log.png' });
-  await full.getByPlaceholder('Search today…').fill('');
-  await page.keyboard.press('Escape'); await page.waitForTimeout(300);
-  has('…and Escape closes it', (await page.locator('[data-full-log]').count()) === 0);
+  has('no View all window any more (the list is the log)', (await page.locator('[data-open-full-log]').count()) === 0);
+  await page.locator('[data-plan-select]').selectOption('Monthly'); await page.waitForTimeout(300);
+  has('Plan filters the whole list to that plan', (await page.locator('[data-att-list] tbody tr:not([data-not-in-head])').count()) === 1 && /Rhea Cruz/.test(await page.locator('[data-att-list] tbody').innerText()));
+  await page.locator('[data-plan-select]').selectOption('all'); await page.waitForTimeout(200);
   await page.locator('[data-way-select]').selectOption('desk'); await page.waitForTimeout(300);
   has('How filters to that way of checking in', (await page.locator('[data-att-list] tbody tr').count()) === 1 && /Carlo Bautista/.test(await page.locator('[data-att-list] tbody').innerText()));
   await page.locator('[data-way-select]').selectOption('all');

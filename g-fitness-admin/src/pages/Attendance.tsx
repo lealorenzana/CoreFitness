@@ -3,11 +3,10 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import QRScanner from '../components/ui/QRScanner';
 import DetailSheet from '../components/ui/DetailSheet';
-import FloatingWindow from '../components/ui/FloatingWindow';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { useFitRows } from '../hooks/useFitRows';
 import {
-  QrCode, Download, Tablet, Tag, Search, Check, MonitorPlay, UserCheck, Maximize2, Smartphone, Users, Banknote, Dumbbell, DoorOpen, RefreshCw, CalendarClock,
+  QrCode, Download, Tablet, Tag, Search, Check, MonitorPlay, UserCheck, Smartphone, Users, Banknote, Dumbbell, DoorOpen, RefreshCw, CalendarClock,
 } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import { recordReason, REASON_FIELD } from '../lib/api/reasons';
@@ -105,13 +104,12 @@ export default function Attendance() {
   const [listPage, setListPage] = useState(1);
   const [toUndo, setToUndo] = useState<AttendanceRow | null>(null);
   const [coachesOpen, setCoachesOpen] = useState(false);
-  const [fullOpen, setFullOpen] = useState(false);
   /** The check-in just taken, with its own Undo: the desk sees it worked without reading the list. */
   const [last, setLast] = useState<{ kind: 'member' | 'coach'; id: string; name: string; at: string; activity: string | null; by: 'member' | 'desk' | null } | null>(null);
   const [show, setShow] = useState<Show>('all');
   const [way, setWay] = useState<Way>('all');
+  /** The list's Plan filter (owner, 2026-11-27): it replaced the View all window, the one thing that window added. */
   const [logPlan, setLogPlan] = useState('all');
-  const [logSearch, setLogSearch] = useState('');
   /** Rows that fit the list's own box: the page never scrolls (2026-10-11). */
   const { ref: fitRef, perPage, rowHeight: fitRowHeight } = useFitRows(ITEMS_PER_PAGE);
 
@@ -231,18 +229,14 @@ export default function Attendance() {
   /** The tag list: the activities used most today first, then the gym's own order. */
   const tagOrder = useMemo(() => [...activityOptions].sort((a, b) => (tagCount[b] ?? 0) - (tagCount[a] ?? 0)), [activityOptions, tagCount]);
 
-  /** The View all window: today's check-ins with their own filters. */
+  /** Plans a member here is on, for the Plan filter: only when there are two or more to choose from. */
   const plans = useMemo(() => [...new Set(Object.values(whoOf).map((p) => p.plan))].filter((p) => p !== 'No plan').sort(), [whoOf]);
-  const logRecords = useMemo(() => {
-    const q = logSearch.trim().toLowerCase();
-    return today
-      .filter((r) => way === 'all' || wayOf(r) === way)
-      .filter((r) => logPlan === 'all' || whoOf[r.member_id]?.plan === logPlan)
-      .filter((r) => !q || nameOf(r.member_id).toLowerCase().includes(q) || (r.activity ?? '').toLowerCase().includes(q)
-        || checkInCodeOf(r.member_id).includes(q.replace(/[\s-]/g, '')))
-      .sort((a, b) => b.check_in_time.localeCompare(a.check_in_time));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [today, way, logPlan, logSearch, whoOf, memberById]);
+  const planOk = (id: string) => logPlan === 'all' || (whoOf[id]?.plan ?? 'No plan') === logPlan;
+  /** What Export writes: today's check-ins under the list's How and Plan filters, newest first. */
+  const logRecords = useMemo(() => today
+    .filter((r) => way === 'all' || wayOf(r) === way)
+    .filter((r) => logPlan === 'all' || (whoOf[r.member_id]?.plan ?? 'No plan') === logPlan)
+    .sort((a, b) => b.check_in_time.localeCompare(a.check_in_time)), [today, way, logPlan, whoOf]);
 
   /** No connection (0211): saved on this computer with the time it was scanned, recorded when it is back. */
   const saveOffline = async (memberId: string, name: string, method: 'qr' | 'manual') => {
@@ -425,16 +419,16 @@ Let ${member.profile.first_name} in anyway?`)) return;
   type Item = { k: 'in'; row: AttendanceRow } | { k: 'out'; m: MemberWithProfile } | { k: 'coach'; c: DoorCoach };
   const notInCount = members.filter((m) => !inToday.has(m.profile.id)).length;
   const items: Item[] = (() => {
-    const inRows = (list: AttendanceRow[]) => list.filter((r) => way === 'all' || wayOf(r) === way)
+    const inRows = (list: AttendanceRow[]) => list.filter((r) => (way === 'all' || wayOf(r) === way) && planOk(r.member_id))
       .sort((a, b) => b.check_in_time.localeCompare(a.check_in_time)).map((row) => ({ k: 'in' as const, row }));
     if (q) {
       // Searching: whoever can be checked in first, then those already in.
-      const outs = memberHits.filter((m) => !inToday.has(m.profile.id)).sort(byName).map((m) => ({ k: 'out' as const, m }));
+      const outs = memberHits.filter((m) => !inToday.has(m.profile.id) && planOk(m.profile.id)).sort(byName).map((m) => ({ k: 'out' as const, m }));
       const ins = inRows(memberHits.map((m) => todayRowOf[m.profile.id]).filter((r): r is AttendanceRow => !!r));
       return [...coachHits.map((c) => ({ k: 'coach' as const, c })), ...(show === 'in' ? [] : outs), ...(show === 'out' ? [] : ins)];
     }
     const ins = show === 'out' ? [] : inRows(today);
-    const outs = show === 'in' || way !== 'all' ? [] : members.filter((m) => !inToday.has(m.profile.id)).sort(byName).map((m) => ({ k: 'out' as const, m }));
+    const outs = show === 'in' || way !== 'all' ? [] : members.filter((m) => !inToday.has(m.profile.id) && planOk(m.profile.id)).sort(byName).map((m) => ({ k: 'out' as const, m }));
     return [...ins, ...outs];
   })();
   const realCount = items.length;
@@ -569,6 +563,16 @@ Let ${member.profile.first_name} in anyway?`)) return;
               </nav>
               {q && <span className="a-sub" data-found><b>{matches}</b> found for “{query.trim()}”</span>}
               <div className="a-desk-tools">
+                {plans.length > 1 && (
+                  <label className={`a-tagsel sm ${logPlan !== 'all' ? 'on' : ''}`} data-tip="Show only members on this plan">
+                    Plan
+                    <select value={logPlan} onChange={(e) => { setLogPlan(e.target.value); setListPage(1); }} aria-label="Filter by membership" data-plan-select>
+                      <option value="all">All plans</option>
+                      {plans.map((p) => <option key={p} value={p}>{p}</option>)}
+                      <option value="No plan">No plan</option>
+                    </select>
+                  </label>
+                )}
                 <label className="a-tagsel sm" data-tip="How today's check-ins were taken">
                   How
                   <select value={way} onChange={(e) => { setWay(e.target.value as Way); setListPage(1); }} aria-label="How they checked in" data-way-select>
@@ -576,7 +580,6 @@ Let ${member.profile.first_name} in anyway?`)) return;
                   </select>
                 </label>
                 <button type="button" className="a-btn sm" onClick={exportLog} data-tip="Export today's check-ins as CSV"><Download size={14} />Export</button>
-                <button type="button" className="a-btn sm ghost" onClick={() => setFullOpen(true)} data-open-full-log aria-label="View all" data-tip="Every check-in today in one window"><Maximize2 size={14} /></button>
               </div>
             </div>
 
@@ -587,6 +590,7 @@ Let ${member.profile.first_name} in anyway?`)) return;
               ) : realCount === 0 ? (
                 <div className="a-sub text-center" style={{ padding: '32px 16px', fontSize: 13 }} data-no-match>
                   {q ? <><b className="block" style={{ color: 'var(--a-ink)', fontSize: 14, marginBottom: 4 }}>Nobody matches “{query.trim()}”</b>Check the spelling, or try their email or the code under their QR.</>
+                    : logPlan !== 'all' ? <>Nobody on {logPlan} here. <button type="button" className="a-link" style={{ color: 'var(--a-p300)' }} onClick={() => setLogPlan('all')}>Show all plans</button></>
                     : show === 'in' || way !== 'all' ? <>Nobody has checked in {way === 'all' ? '' : `by ${WAY_LABEL[way].toLowerCase()} `}yet today. <Link to="/attendance-history" className="a-link" style={{ color: 'var(--a-p300)' }}>See other days →</Link></>
                       : 'Everyone is in today.'}
                 </div>
@@ -732,35 +736,6 @@ Let ${member.profile.first_name} in anyway?`)) return;
           </div>
         </div>
       </div>
-
-      <FloatingWindow open={fullOpen} onClose={() => setFullOpen(false)} title="Today's check-ins" icon={Users} count={logRecords.length} data-full-log
-        tools={(
-          <div className="att" style={{ flexDirection: 'row', alignItems: 'center', gap: 8, height: 'auto', overflow: 'visible' }}>
-            <select className="a-chip" value={way} onChange={(e) => setWay(e.target.value as Way)} aria-label="How they checked in">
-              {(['all', 'kiosk', 'desk', 'typed'] as Way[]).map((k) => <option key={k} value={k}>{WAY_LABEL[k]} ({k === 'all' ? today.length : byWay[k]})</option>)}
-            </select>
-            <select className="a-chip" value={logPlan} onChange={(e) => setLogPlan(e.target.value)} aria-label="Filter by membership">
-              <option value="all">All memberships</option>
-              {plans.map((p) => <option key={p} value={p}>{p}</option>)}
-            </select>
-            <label className="a-input sm" style={{ width: 220 }}><Search size={14} />
-              <input autoFocus value={logSearch} onChange={(e) => setLogSearch(e.target.value)} placeholder="Search today…" aria-label="Search today" /></label>
-            <button type="button" className="a-btn sm" onClick={exportLog}><Download size={14} />Export</button>
-          </div>
-        )}>
-        <div className="att" style={{ height: 'auto', overflow: 'visible', padding: '0 12px' }}>
-          <table className="a-table">
-            <thead><tr><th>Member</th><th>Today</th><th>How</th><th>Activity</th><th>By</th><th /></tr></thead>
-            <tbody>
-              {logRecords.map((r) => (
-                <LogRow key={r.id} row={r} name={nameOf(r.member_id)} photo={memberById[r.member_id]?.profile.photo_url} plan={whoOf[r.member_id]?.plan}
-                  by={byOf(r)} onUndo={() => setToUndo(r)} fresh={last?.id === r.id} leaving={leaving.has(r.id)} />
-              ))}
-            </tbody>
-          </table>
-          {logRecords.length === 0 && <p className="a-sub text-center" style={{ padding: 24 }}>{today.length === 0 ? 'Nobody has checked in today yet.' : 'No check-ins match these filters.'}</p>}
-        </div>
-      </FloatingWindow>
 
       <QRScanner isOpen={isScannerOpen} onClose={() => setIsScannerOpen(false)} onScan={(code) => void checkInCode(code)} />
 
