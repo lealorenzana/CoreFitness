@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import GymMascot from './ui/GymMascot';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
@@ -101,7 +102,7 @@ export default function InviteMembersPanel({ onClose, onAddWalkIn }: { onClose: 
               : !app ? 'I could not read your join details. Reload and try again.'
               : open ? 'Show the code at the desk, or send the link. They wait for your approval under Sign-ups.'
               : 'Members join only at the desk right now, so there is nothing to share yet.'}</p>
-            <img src={open || app === undefined ? '/mockup-art/phone-journey-mascot.webp' : '/images/admin-art/mascot-map.webp'} alt="" className={open ? 'small' : ''} />
+            <GymMascot src={open || app === undefined ? '/mockup-art/phone-journey-mascot.webp' : '/images/admin-art/mascot-map.webp'} className={open ? 'small' : ''} />
           </div>
         </aside>
 

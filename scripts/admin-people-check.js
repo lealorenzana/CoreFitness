@@ -114,7 +114,7 @@ async (page) => {
   await page.getByLabel('Emergency contact name').fill('Rosa Reyes');
   await page.getByRole('radio', { name: 'Parent' }).click();
   await page.locator('.am-parts button', { hasText: 'Membership' }).click(); await page.waitForTimeout(900);
-  out.push('the mascot follows the part in view: ' + (/mascot-coin/.test(await page.locator('.am-buddy img').getAttribute('src')) ? 'yes' : 'NO'));
+  out.push('the mascot follows the part in view: ' + (/mascot-coin/.test(await page.locator('.am-buddy img').getAttribute('data-art')) ? 'yes' : 'NO'));
   out.push('plans as cards with price: ' + (/Monthly 30 days ₱1,500/.test(await text()) ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/admin-add-member-plan.png' });
   await page.getByRole('button', { name: 'Add member', exact: true }).last().click();

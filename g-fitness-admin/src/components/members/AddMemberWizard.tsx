@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import GymMascot from '../ui/GymMascot';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { Check, KeyRound, X } from 'lucide-react';
@@ -163,7 +164,7 @@ export default function AddMemberWizard({ plans, onClose, onCreated }: {
           )}
           <div className="am-buddy" aria-hidden>
             <p key={say} className="am-say">{say}</p>
-            <img key={art} src={art} alt="" />
+            <GymMascot key={art} src={art} />
           </div>
         </aside>
 

@@ -178,7 +178,7 @@ async (page) => {
     const t = await page.locator('[data-invite-panel]').innerText();
     say(policy === 'closed' ? 'invite, desk only: says so, two ways forward, the map mascot' : 'invite: the code, the link, a QR, one amber button',
       policy === 'closed'
-        ? (await page.locator('[data-invite-closed]').count()) === 1 && /Change how they join/.test(t) && /Add a walk-in/.test(t) && /mascot-map/.test(await page.locator('.am-buddy img').getAttribute('src'))
+        ? (await page.locator('[data-invite-closed]').count()) === 1 && /Change how they join/.test(t) && /Add a walk-in/.test(t) && /mascot-map/.test(await page.locator('.am-buddy img').getAttribute('data-art'))
         : /LAB4K2/.test(t) && /join\/core-fitness-lab/.test(t) && (await page.locator('[data-invite-qr] svg').count()) === 1 && (await page.locator('[data-invite-panel] .am-btn.go').count()) === 1,
       t.replace(/\s+/g, ' ').slice(0, 90));
     if (policy !== 'closed') {

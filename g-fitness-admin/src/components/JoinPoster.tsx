@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import GymMascot from './ui/GymMascot';
 import { createPortal } from 'react-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { X, Printer, ScanLine, UserPlus, Dumbbell } from 'lucide-react';
@@ -108,30 +109,40 @@ export default function JoinPoster({
           {/* The band: the gym's colour, cut on a slant, the mascot burst on its right. */}
           <div style={{ position: 'relative', background: deep, color: '#FFFFFF', padding: '30px 36px 150px',
             clipPath: 'polygon(0 0, 100% 0, 100% 78%, 0 100%)', overflow: 'hidden' }}>
+            {/* The burst spreads across the whole band (owner, 2026-11-27): rays from behind the mascot reach the logo,
+                the headline and both edges, fading as they go so the words stay easy to read. */}
+            <svg aria-hidden viewBox="0 0 640 500" preserveAspectRatio="xMidYMid slice" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
+              <defs>
+                <radialGradient id="poster-fade" cx="496" cy="150" r="560" gradientUnits="userSpaceOnUse">
+                  <stop offset="0" stopColor="#fff" stopOpacity="1" /><stop offset="0.35" stopColor="#fff" stopOpacity="0.75" /><stop offset="1" stopColor="#fff" stopOpacity="0.28" />
+                </radialGradient>
+                <mask id="poster-mask"><rect width="640" height="500" fill="url(#poster-fade)" /></mask>
+              </defs>
+              <g mask="url(#poster-mask)">
+                {Array.from({ length: 28 }, (_, i) => {
+                  const a0 = (i / 28) * Math.PI * 2, a1 = a0 + Math.PI / 42;
+                  return <polygon key={i} fill={accent.c400} opacity={i % 2 ? 0.2 : 0.34}
+                    points={`496,150 ${496 + Math.cos(a0) * 900},${150 + Math.sin(a0) * 900} ${496 + Math.cos(a1) * 900},${150 + Math.sin(a1) * 900}`} />;
+                })}
+              </g>
+              <circle cx="496" cy="150" r="96" fill={accent.c600} opacity="0.5" />
+              {[[378, 110, 1], [600, 250, 0.7], [466, 22, 0.8], [622, 58, 1], [400, 268, 0.7], [300, 40, 0.6], [24, 300, 0.7], [250, 300, 0.55], [140, 120, 0.5]].map(([x, y, k], i) => (
+                <path key={i} transform={`translate(${x} ${y}) scale(${k})`} fill={act} opacity={x < 330 ? 0.7 : 1}
+                  d="M0 -12 C2 -3 3 -2 12 0 C3 2 2 3 0 12 C-2 3 -3 2 -12 0 C-3 -2 -2 -3 0 -12 Z" />
+              ))}
+            </svg>
             {/* The Core Fitness mascot in a burst of gym kit (owner, 2026-11-27): rays in the gym's colour behind,
                 equipment flying out around it. Decoration only, kept above the QR card. */}
             <div aria-hidden style={{ position: 'absolute', right: -6, top: 4, width: 300, height: 300, pointerEvents: 'none' }} data-poster-burst>
-              <svg viewBox="-150 -150 300 300" width="300" height="300" style={{ position: 'absolute', inset: 0 }}>
-                <circle r="92" fill={accent.c600} opacity="0.55" />
-                {Array.from({ length: 18 }, (_, i) => {
-                  const a0 = (i / 18) * Math.PI * 2, a1 = a0 + Math.PI / 30;
-                  return <polygon key={i} fill={accent.c400} opacity={i % 2 ? 0.22 : 0.38}
-                    points={`0,0 ${Math.cos(a0) * 170},${Math.sin(a0) * 170} ${Math.cos(a1) * 170},${Math.sin(a1) * 170}`} />;
-                })}
-                {[[-118, -40], [104, 64], [-30, -128], [126, -92], [-96, 112]].map(([x, y], i) => (
-                  <path key={i} transform={`translate(${x} ${y}) scale(${i % 2 ? 0.7 : 1})`} fill={act}
-                    d="M0 -12 C2 -3 3 -2 12 0 C3 2 2 3 0 12 C-2 3 -3 2 -12 0 C-3 -2 -2 -3 0 -12 Z" />
-                ))}
-              </svg>
               {[
                 ['/images/admin-art/mascot-kettlebell.webp', { left: 6, top: 18, width: 78, transform: 'rotate(-18deg)' }],
                 ['/images/admin-art/mascot-stopwatch.webp', { right: 18, top: 0, width: 60, transform: 'rotate(16deg)' }],
                 ['/images/admin-art/mascot-plate.webp', { right: 0, top: 128, width: 62, transform: 'rotate(22deg)' }],
                 ['/images/admin-art/mascot-shoe.webp', { left: 0, top: 170, width: 84, transform: 'rotate(-12deg)' }],
               ].map(([src, st]) => (
-                <img key={src as string} src={src as string} alt="" style={{ position: 'absolute', height: 'auto', filter: 'drop-shadow(0 6px 8px rgba(0,0,0,0.28))', ...(st as React.CSSProperties) }} />
+                <GymMascot key={src as string} src={src as string} primary={accent.base} action={(action ?? accent).base} style={{ position: 'absolute', height: 'auto', filter: 'drop-shadow(0 6px 8px rgba(0,0,0,0.28))', ...(st as React.CSSProperties) }} />
               ))}
-              <img src="/images/admin-art/mascot-bottle.webp" alt="" style={{ position: 'absolute', left: 64, top: 52, width: 172, height: 'auto',
+              <GymMascot src="/images/admin-art/mascot-bottle.webp" primary={accent.base} action={(action ?? accent).base} style={{ position: 'absolute', left: 64, top: 52, width: 172, height: 'auto',
                 filter: 'drop-shadow(0 12px 16px rgba(0,0,0,0.35))' }} />
             </div>
 

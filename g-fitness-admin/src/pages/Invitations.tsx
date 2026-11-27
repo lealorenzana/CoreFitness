@@ -1,4 +1,5 @@
 import PageGuide from '../components/guides/PageGuide';
+import GymMascot from '../components/ui/GymMascot';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Copy, Upload, X, Users, CheckCircle2, Clock, UserPlus, FileText, Info, Send, Lock, Trash2, ArrowRight, RotateCw, Smartphone, Monitor, KeyRound, AlertTriangle } from 'lucide-react';
 import { usePaged } from '../hooks/usePaged';
@@ -204,7 +205,7 @@ export default function Invitations() {
                 ))}
               </div>
             </div>
-            <img key={way === 'group' ? 'group' : role} src={way === 'group' ? '/images/admin-art/mascot-bag.webp' : HERO[role].art} alt="" aria-hidden />
+            <GymMascot key={way === 'group' ? 'group' : role} src={way === 'group' ? '/images/admin-art/mascot-bag.webp' : HERO[role].art} aria-hidden />
           </div>
           <div className="rd-fit-scroll p-5">
         {/* ── One person ── */}
@@ -386,7 +387,7 @@ export default function Invitations() {
           empty={rows === null ? <SkelRows label="Loading…" />
             : rows.length === 0 ? (
               <div className="ivp-empty" data-invite-empty>
-                <img src="/images/admin-art/mascot-stopwatch.webp" alt="" aria-hidden />
+                <GymMascot src="/images/admin-art/mascot-stopwatch.webp" aria-hidden />
                 <b>{showDone ? 'Nobody has been invited yet.' : 'Nobody is waiting.'}</b>
                 <span>Invite one person or a whole list: each gets their own login by email.</span>
               </div>
