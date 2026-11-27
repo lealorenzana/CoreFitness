@@ -159,9 +159,16 @@ async (page) => {
   has('the page does not scroll', await noScroll());
   await page.locator('[data-week] [data-event]').first().click();
   await page.waitForTimeout(600);
-  has('a class opens beside the calendar: coach, room, seats, who booked, book a member', (await page.locator('[data-class-panel]').count()) === 1
-    && /Booked/.test(await page.locator('[data-class-panel]').innerText()));
+  // Since 2026-11-27 (owner) a picked class opens its own floating page, not a card in the rail.
+  has('a class opens its own floating page: coach, room, seats, who booked, book a member', (await page.locator('[role="dialog"][data-class-panel]').count()) === 1
+    && /Who booked/.test(await page.locator('[data-class-panel]').innerText()) && /Coach/.test(await page.locator('[data-class-panel]').innerText())
+    && (await page.locator('[data-schedule-rail] [data-class-panel]').count()) === 0);
   await page.screenshot({ path: 'shots/ops-schedule-class.png' });
+  await page.emulateMedia({ colorScheme: 'dark' }); await page.waitForTimeout(300);
+  await page.screenshot({ path: 'shots/ops-schedule-class-dark.png' });
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.keyboard.press('Escape'); await page.waitForTimeout(300);
+  has('…and Escape closes it', (await page.locator('[data-class-panel]').count()) === 0);
   await page.locator('[data-view="day"]').click();
   await page.waitForTimeout(600);
   has('day view: one day with a month to pick from', (await page.locator('[data-day]').count()) === 1 && (await page.locator('[data-minical] button').count()) >= 28);

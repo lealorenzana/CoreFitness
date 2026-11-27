@@ -11,7 +11,7 @@ import Popover from '../components/ui/Popover';
 import DetailSheet from '../components/ui/DetailSheet';
 import TimePicker from '../components/ui/TimePicker';
 import DatePicker from '../components/ui/DatePicker';
-import { RdSelect, RdButton, RdField } from '../components/ui/rd';
+import { RdSelect, RdButton, RdField, Initials } from '../components/ui/rd';
 import { RD_INPUT, RD_INPUT_STYLE } from '../components/ui/rdTokens';
 import {
   Plus, Trash2, RefreshCw, RotateCcw, AlertTriangle, CalendarDays, Clock, Users, Search, ChevronLeft, ChevronRight,
@@ -39,6 +39,8 @@ import {
 } from '../services/scheduleService';
 import type { ClassLevel } from '../types/db';
 import { Av } from './attendance/parts';
+import { createPortal } from 'react-dom';
+import GymMascot from '../components/ui/GymMascot';
 import './attendance/att.css';
 import SkelRows from '../components/ui/SkelRows';
 import DeskBookCard from '../components/bookings/DeskBookCard';
@@ -439,9 +441,9 @@ export default function Schedule() {
     el.scrollTop = Math.max(0, ((at - fromH * 60) / 60 - 0.5) * HOUR_PX);
   }, [view, weekStart, day, sessions, daySessions, fromH, nowMin, today]);
 
-  // Week and Day only, as wide as the calendar so its edges line up with the grid's; No-shows sits at the top of the rail.
+  // Week and Day only: a column on the left (owner, 2026-11-27), so the calendar and the rail both start at the top.
   const figs = (
-        <div className="sc-figs" data-schedule-figures>
+        <div className="sc-figs v" data-schedule-figures>
           <div><span>Classes {dayWord}</span><b>{figSessions.length}</b>
             <small>{figDay === today ? `${figSessions.filter((s) => new Date(s.startsAt).getTime() > nowMs).length} still to come` : 'on the timetable'}</small></div>
           <div><span>Seats booked</span><b>{seatsBooked}<em> of {seatsAll}</em></b>
@@ -450,55 +452,90 @@ export default function Schedule() {
             <small>{figPts.filter((x) => x.status === 'approved').length} confirmed · {figPts.filter((x) => x.status === 'pending').length} waiting</small></div>
           <div><span>Open 1-on-1 slots</span><b>{openSlots.length}</b>
             <small>{openSlots[0] ? `next ${timeOf(openSlots[0].at)}, ${trainerName(openSlots[0].coach).split(' ')[0]}` : 'none left'}</small></div>
+          {noshowsOn && <div><span>No-shows {dayWord}</span><b className={dayNoShows ? 'warn' : ''}>{dayNoShows}</b><small>marked so far</small></div>}
         </div>
   );
 
+
+  // A picked class opens its own floating page (owner, 2026-11-27), in the coach's colour, like Add member and Book.
+  useEffect(() => {
+    if (!selId) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !msgOpen) setSelId(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selId, msgOpen]);
+  const classWin = selected && (() => {
+    const left = Math.max(0, selected.capacity - selected.booked);
+    const wait = waiting.get(selected.id) ?? 0;
+    const past = new Date(selected.startsAt).getTime() + selected.durationMinutes * 60000 < nowMs;
+    const bookable = new Date(selected.startsAt).getTime() > Date.parse(`${today}T00:00:00`);
+    const say = past ? 'This class is over. The list shows who booked it.'
+      : left === 0 ? `Full.${wait ? ` ${wait} waiting for a seat.` : ''}`
+      : selected.booked === 0 ? `Nobody yet. ${left} seats open.` : `${selected.booked} booked, ${left} seat${left === 1 ? '' : 's'} still open.`;
+    return createPortal((
+      <div className="am-root" role="dialog" aria-modal="true" aria-label={selected.name} data-class-panel>
+        <div className="am-scrim" onClick={() => setSelId(null)} />
+        <div className="am-win cw-win" style={{ ['--cc' as string]: CC[colourOf(selected.trainerId)] }}>
+          <aside className="am-side cw-side">
+            <div>
+              <span className="cw-kick">{tpl ? `Every ${DAY_NAMES[tpl.day_of_week]}` : 'One-off class'}</span>
+              <h2>{selected.name}</h2>
+              <p>{fmtDay(localDateKey(selected.startsAt), { weekday: 'long', month: 'long', day: 'numeric' })} · {timeOf(selected.startsAt)} · {selected.durationMinutes} min</p>
+            </div>
+            <dl className="cw-facts">
+              <div><dt>Coach</dt><dd>{trainerName(selected.trainerId)}</dd></div>
+              <div><dt>Room</dt><dd>{selected.location ?? 'Not set'}</dd></div>
+              <div><dt>Seats</dt><dd>{selected.booked} of {selected.capacity}{wait ? ` · ${wait} waiting` : ''}</dd></div>
+            </dl>
+            <div className="am-buddy" aria-hidden>
+              <p key={say} className="am-say">{say}</p>
+              <GymMascot src="/images/admin-art/mascot-kettlebell.webp" />
+            </div>
+          </aside>
+          <section className="am-main">
+            <button type="button" aria-label="Close" onClick={() => setSelId(null)} className="am-x"><X size={16} /></button>
+            <div className="am-form">
+              <div className="cw-head">
+                <h3>Who booked</h3>
+                <b>{selected.booked}<em> of {selected.capacity}</em></b>
+              </div>
+              <i className="cw-bar"><i style={{ width: `${selected.capacity ? Math.min(100, (selected.booked / selected.capacity) * 100) : 0}%` }} /></i>
+              {bookable && !past && (
+                <div className="bk-find cw-find">
+                  <label className="bk-search"><UserPlus size={16} />
+                    <input value={bookQ} onChange={(e) => setBookQ(e.target.value)} placeholder="Book a member: type a name" aria-label="Book a member" disabled={booking} /></label>
+                  {bookHits.length > 0 && (
+                    <div className="bk-hits">
+                      {bookHits.map((m) => (
+                        <button key={m.id} type="button" onClick={() => void bookMember(m.id)} data-book-hit>
+                          <Initials name={m.name} photo={m.photo} size={32} /><span className="flex-1 min-w-0"><b>{m.name}</b></span><span className="cw-tag go">Book</span></button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              {roster === null ? <p className="am-hint">Could not read who booked.</p> : roster.length === 0 ? <p className="am-hint cw-empty">Nobody has booked this class yet.</p> : (
+                <ul className="cw-roster" data-roster>
+                  {roster.map((r) => (
+                    <li key={r.id}><Initials name={memberName(r.member_id)} size={32} /><b>{memberName(r.member_id)}</b>
+                      {r.status === 'pending' ? <span className="cw-tag">waiting</span> : <span className="cw-ok">booked</span>}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <footer className="am-foot">
+              <span className="am-sum">{trainerName(selected.trainerId)}{selected.location ? ` · ${selected.location}` : ''}</span>
+              {roster && roster.some((r) => r.status === 'approved') && <button type="button" className="am-btn" onClick={() => setMsgOpen(true)} data-message-booked><MessageSquare size={14} />Message booked</button>}
+              {tpl && <button type="button" className="am-btn go" onClick={() => { const t = tpl; setSelId(null); openEdit(t); }}><Pencil size={14} />Edit class</button>}
+            </footer>
+          </section>
+        </div>
+      </div>
+    ), document.body);
+  })();
+
   const rail = (
     <div className="a-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 12 }} data-schedule-rail>
-      {noshowsOn && (
-        <div className="sc-figs sc-figs-one" style={{ flexShrink: 0 }} data-rail-noshows>
-          <div><span>No-shows {dayWord}</span><b className={dayNoShows ? 'warn' : ''}>{dayNoShows}</b><small>marked so far</small></div>
-        </div>
-      )}
-      {selected && (
-        <div className="a-card glow" data-class-panel style={{ flexShrink: 0 }}>
-                <div className="a-ct"><h3 className="truncate"><CalendarDays size={16} />{selected.name}</h3>
-                  <button type="button" className="a-link" onClick={() => setSelId(null)} aria-label="Close"><X size={15} /></button></div>
-                <span className="a-pill v" style={{ alignSelf: 'flex-start', marginBottom: 6 }}>{fmtDay(localDateKey(selected.startsAt), { weekday: 'short', month: 'short', day: 'numeric' })} · {timeOf(selected.startsAt)}</span>
-                <div className="a-kv"><span>Coach</span><b>{trainerName(selected.trainerId)}</b></div>
-                <div className="a-kv"><span>Room</span><b>{selected.location ?? '—'}</b></div>
-                <div className="a-kv"><span>Seats</span><b>{selected.booked} of {selected.capacity}{waiting.get(selected.id) ? ` · ${waiting.get(selected.id)} waiting` : ''}</b></div>
-                <div className="a-kv"><span>Repeats</span><b>{tpl ? `Every ${DAY_NAMES[tpl.day_of_week]}` : 'One-off'}</b></div>
-                <div className="a-lbl" style={{ margin: '10px 0 6px' }}>Booked {roster ? `· ${roster.length}` : ''}</div>
-                {roster === null ? <p className="a-sub">Could not read who booked.</p> : roster.length === 0 ? <p className="a-sub">Nobody yet.</p> : (
-                  <div className="flex flex-col" style={{ maxHeight: 132, overflowY: 'auto' }} data-roster>
-                    {roster.map((r) => (
-                      <div key={r.id} className="a-row" style={{ padding: '5px 0' }}><Av name={memberName(r.member_id)} small />
-                        <div className="t"><b style={{ fontSize: 12.5 }}>{memberName(r.member_id)}</b></div>
-                        {r.status === 'pending' && <span className="a-pill a">waiting</span>}</div>
-                    ))}
-                  </div>
-                )}
-                {new Date(selected.startsAt).getTime() > Date.parse(`${today}T00:00:00`) && (
-                  <div className="relative" style={{ marginTop: 10 }}>
-                    <label className="a-input sm" style={{ fontSize: 12.5 }}><UserPlus size={14} />
-                      <input value={bookQ} onChange={(e) => setBookQ(e.target.value)} placeholder="Book a member: type a name…" aria-label="Book a member" disabled={booking} /></label>
-                    {bookHits.length > 0 && (
-                      <div className="a-card" style={{ position: 'absolute', zIndex: 5, left: 0, right: 0, top: 40, padding: '4px 10px' }}>
-                        {bookHits.map((m) => (
-                          <button key={m.id} type="button" className="a-row w-full text-left" onClick={() => void bookMember(m.id)} data-book-hit>
-                            <Av name={m.name} photo={m.photo} small /><div className="t"><b>{m.name}</b></div><span className="a-pill v">Book</span></button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-                <div className="flex gap-1.5 flex-wrap" style={{ marginTop: 10 }}>
-                  {tpl && <button type="button" className="a-btn sm" onClick={() => openEdit(tpl)}><Pencil size={12} />Edit class</button>}
-                  {roster && roster.some((r) => r.status === 'approved') && <button type="button" className="a-btn sm" onClick={() => setMsgOpen(true)} data-message-booked><MessageSquare size={12} />Message booked</button>}
-                </div>
-              </div>
-      )}
       {view === 'day' && (
         <div className="a-card" style={{ flexShrink: 0 }}>
             <div className="a-ct"><h3><CalendarDays size={16} />{fmtDay(`${day.slice(0, 7)}-01`, { month: 'long', year: 'numeric' })}</h3>
@@ -615,10 +652,9 @@ export default function Schedule() {
       )}
 
       {loading ? <SkelRows label="Loading the schedule…" /> : view === 'week' ? (
-        <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0,1fr) 320px', flex: 1 }}>
-          <div className="sc-col">
+        <div className="a-grid sc-3" style={{ flex: 1 }}>
           {figs}
-          <div className="a-card" style={{ padding: 12, flex: 1 }}>
+          <div className="a-card" style={{ padding: 12 }}>
             <div className="a-ct" style={{ marginBottom: 8 }}>
               <div className="a-legendc">
                 {trainers.filter((t) => sessions.some((s) => s.trainerId === t.profile.id)).map((t) => (
@@ -673,7 +709,6 @@ export default function Schedule() {
               {shownWeek.length === 0 ? (sessions.length ? 'Nothing matches the search or filters this week.' : 'No classes this week: click an hour to add one, or set up the weekly timetable.') : 'Click a class to see who booked · click an empty hour to add a class there'}
             </div>
           </div>
-          </div>
 
           {rail}
         </div>
@@ -722,45 +757,6 @@ export default function Schedule() {
             })()}
           </div>
           <div className="a-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 12 }} data-month-panel>
-            {selected && (
-              <div className="a-card glow" data-class-panel style={{ flexShrink: 0 }}>
-                <div className="a-ct"><h3 className="truncate"><CalendarDays size={16} />{selected.name}</h3>
-                  <button type="button" className="a-link" onClick={() => setSelId(null)} aria-label="Close"><X size={15} /></button></div>
-                <span className="a-pill v" style={{ alignSelf: 'flex-start', marginBottom: 6 }}>{fmtDay(localDateKey(selected.startsAt), { weekday: 'short', month: 'short', day: 'numeric' })} · {timeOf(selected.startsAt)}</span>
-                <div className="a-kv"><span>Coach</span><b>{trainerName(selected.trainerId)}</b></div>
-                <div className="a-kv"><span>Room</span><b>{selected.location ?? '—'}</b></div>
-                <div className="a-kv"><span>Seats</span><b>{selected.booked} of {selected.capacity}{waiting.get(selected.id) ? ` · ${waiting.get(selected.id)} waiting` : ''}</b></div>
-                <div className="a-kv"><span>Repeats</span><b>{tpl ? `Every ${DAY_NAMES[tpl.day_of_week]}` : 'One-off'}</b></div>
-                <div className="a-lbl" style={{ margin: '10px 0 6px' }}>Booked {roster ? `· ${roster.length}` : ''}</div>
-                {roster === null ? <p className="a-sub">Could not read who booked.</p> : roster.length === 0 ? <p className="a-sub">Nobody yet.</p> : (
-                  <div className="flex flex-col" style={{ maxHeight: 132, overflowY: 'auto' }} data-roster>
-                    {roster.map((r) => (
-                      <div key={r.id} className="a-row" style={{ padding: '5px 0' }}><Av name={memberName(r.member_id)} small />
-                        <div className="t"><b style={{ fontSize: 12.5 }}>{memberName(r.member_id)}</b></div>
-                        {r.status === 'pending' && <span className="a-pill a">waiting</span>}</div>
-                    ))}
-                  </div>
-                )}
-                {new Date(selected.startsAt).getTime() > Date.parse(`${today}T00:00:00`) && (
-                  <div className="relative" style={{ marginTop: 10 }}>
-                    <label className="a-input sm" style={{ fontSize: 12.5 }}><UserPlus size={14} />
-                      <input value={bookQ} onChange={(e) => setBookQ(e.target.value)} placeholder="Book a member: type a name…" aria-label="Book a member" disabled={booking} /></label>
-                    {bookHits.length > 0 && (
-                      <div className="a-card" style={{ position: 'absolute', zIndex: 5, left: 0, right: 0, top: 40, padding: '4px 10px' }}>
-                        {bookHits.map((m) => (
-                          <button key={m.id} type="button" className="a-row w-full text-left" onClick={() => void bookMember(m.id)} data-book-hit>
-                            <Av name={m.name} photo={m.photo} small /><div className="t"><b>{m.name}</b></div><span className="a-pill v">Book</span></button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-                <div className="flex gap-1.5 flex-wrap" style={{ marginTop: 10 }}>
-                  {tpl && <button type="button" className="a-btn sm" onClick={() => openEdit(tpl)}><Pencil size={12} />Edit class</button>}
-                  {roster && roster.some((r) => r.status === 'approved') && <button type="button" className="a-btn sm" onClick={() => setMsgOpen(true)} data-message-booked><MessageSquare size={12} />Message booked</button>}
-                </div>
-              </div>
-            )}
             <div className="a-card sc-card" style={{ flexShrink: 0 }}>
               <div className="a-ct"><h3><CalendarDays size={16} />{fmtDay(day, { weekday: 'long', month: 'long', day: 'numeric' })}</h3>
                 <small>{daySessions.filter(passes).length + pts.length === 0 ? 'nothing on' : `${daySessions.filter(passes).length + pts.length} on the schedule`}</small></div>
@@ -785,10 +781,9 @@ export default function Schedule() {
           </div>
         </div>
       ) : view === 'day' ? (
-        <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0,1fr) 320px', flex: 1 }}>
-          <div className="sc-col">
+        <div className="a-grid sc-3" style={{ flex: 1 }}>
           {figs}
-          <div className="a-card" style={{ padding: 12, flex: 1 }}>
+          <div className="a-card" style={{ padding: 12 }}>
             {(() => {
               // One column per coach who teaches, coaches or keeps hours that day; classes with no coach get their own.
               const dow = dowOf(day);
@@ -859,7 +854,6 @@ export default function Schedule() {
               );
             })()}
             <div className="a-sub" style={{ paddingTop: 8 }}>Shaded bands are each coach's 1-on-1 hours · click a class to see who booked</div>
-          </div>
           </div>
           {rail}
         </div>
@@ -1012,6 +1006,7 @@ export default function Schedule() {
         message={toDeleteHours ? `Remove ${trainerName(toDeleteHours.trainer_id)}'s ${DAY_NAMES[toDeleteHours.day_of_week]} ${clock(toDeleteHours.start_time)}–${clock(toDeleteHours.end_time)}? No new 1-on-1 slots will be offered then. Sessions already booked are not cancelled.` : ''}
         confirmText="Remove" type="danger" />
 
+      {classWin}
       <Modal isOpen={msgOpen} onClose={() => setMsgOpen(false)} size="md" title={`Message everyone booked into ${selected?.name ?? 'this class'}`}
         subtitle={selected ? `${roster?.filter((r) => r.status === 'approved').length ?? 0} confirmed · in the app` : undefined}
         footer={<><RdButton variant="ghost" onClick={() => setMsgOpen(false)}>Cancel</RdButton><RdButton variant="primary" onClick={() => void sendMessage()} disabled={!msg.trim()}>Send</RdButton></>}>

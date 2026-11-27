@@ -1103,3 +1103,28 @@ section:last-child > .nb-item:last-child { border-bottom: 0; }
 .bk-find .bk-hits { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 5; max-height: 320px; overflow-y: auto;
   background: var(--color-surface); box-shadow: 0 18px 40px -16px rgb(0 0 0 / .55); }
 .bk-find > .am-hint { position: absolute; top: calc(100% + 8px); left: 2px; }
+
+/* A class, picked on the Schedule (owner, 2026-11-27): its own floating page, the side in the coach's colour. */
+.cw-win { width: min(880px, 100%); height: min(620px, calc(100vh - 32px)); grid-template-columns: 300px minmax(0, 1fr); }
+.cw-side { background: color-mix(in srgb, var(--cc, var(--color-primary)) 18%, var(--color-surface)); border-top: 3px solid var(--cc, var(--color-primary)); }
+.cw-kick { display: inline-block; font-size: 11.5px; font-weight: 600; padding: 3px 9px; border-radius: 99px; margin-bottom: 10px;
+  color: var(--color-text-primary); background: color-mix(in srgb, var(--cc, var(--color-primary)) 28%, transparent); }
+.cw-facts { display: grid; gap: 0; }
+.cw-facts > div { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid rgb(var(--hair-rgb, 255 255 255) / .1); }
+.cw-facts dt { font-size: 12.5px; color: var(--color-text-secondary); }
+.cw-facts dd { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--color-text-primary); text-align: right; min-width: 0; }
+.cw-win .am-buddy img { width: 160px; height: 160px; }
+.cw-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-right: 36px; }
+.cw-head h3 { font-size: 17px; font-weight: 650; color: var(--color-text-primary); }
+.cw-head b { font-size: 26px; font-weight: 650; color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
+.cw-head b em { font-style: normal; font-size: 13px; font-weight: 500; color: var(--color-text-secondary); }
+.cw-bar { display: block; height: 6px; border-radius: 3px; margin: 10px 0 18px; background: rgb(var(--hair-rgb, 255 255 255) / .1); overflow: hidden; }
+.cw-bar i { display: block; height: 100%; border-radius: 3px; background: var(--cc, var(--color-primary)); }
+.cw-find { position: relative; margin-bottom: 14px; }
+.cw-tag { font-size: 11.5px; font-weight: 600; padding: 3px 9px; border-radius: 99px; color: var(--color-text-primary); background: rgb(var(--hair-rgb, 255 255 255) / .1); }
+.cw-tag.go { background: var(--amber-solid, #f59e0b); color: var(--on-amber, #1a1205); }
+.cw-roster b { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cw-roster { display: grid; }
+.cw-roster li { display: flex; align-items: center; gap: 10px; padding: 9px 2px; border-bottom: 1px solid rgb(var(--hair-rgb, 255 255 255) / .07); }
+.cw-ok { font-size: 12px; color: var(--color-text-secondary); }
+.cw-empty { padding: 18px 0; }
