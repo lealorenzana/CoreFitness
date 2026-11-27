@@ -24,3 +24,18 @@ Rules come from `design/lessons/LESSONS.md`; the kit stays `components/ui/rd.tsx
    device and Log out on all devices; the separate Logout row and the header's sun/moon go away.
 7. **Attendance = mock-up A, "desk console"** (`attendance-a.html`, 2026-11-22): check-in and the log on the left; the day's figures and At the door (kiosk, lobby TV, coaches) on a right rail. Walk-ins and History follow its style.
 8. **Notifications = the mail-app layout** (`inbox.html`, 2026-11-22): folders (Needs attention, Unread, All, Archived, then kinds), the list, the open message.
+
+## The whole system (owner, 2026-11-27)
+9. **One shared language across all four apps** (member/trainer, gym owner, super admin, website): the same
+   tokens and rules (type scale, spacing, radius, buttons, status dot and word, one action colour, empty and
+   loading states), while each app keeps its own layout (phone tabs, desk rail, platform console, marketing page).
+10. **Flat everywhere**: Design V2's material spreads to every app. The member app's drifting glass (2026-11-07)
+    and the platform's aurora go; the gym colour shows only on what is selected and on data marks.
+11. **Order**: finish the gym owner's Design V2 first (Attendance next, see NEXT.md), then carry its rules to the
+    platform, member/trainer and the website.
+12. **Mock-ups**: the owner says whether a step gets mock-ups before it is built. Build nothing until the owner says go.
+13. **Attendance = mock-up D** (`attendance-d.html`, 2026-11-27, owner's idea): the search box and the log are one
+    list of every member. Nothing typed: In today first (newest first), then Not in yet A to Z, each with Check in.
+    Typing narrows it; members you can check in rise to the top. A member the rules refuse shows why, not hidden.
+    Enter checks in only when exactly one member matches. Filters: Everyone · In today · Not in yet, plus How.
+    One orange button (Scan QR); slim terms line; figures in one strip; the rail is only At the door.

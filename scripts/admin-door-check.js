@@ -42,8 +42,9 @@ async (page) => {
     profiles: [admin, ...members],
     member_profiles: members.map((m) => ({ profile_id: m.id, gym_id: 'gym-1', qr_code: m.id, experience_level: 'beginner', created_at: m.created_at, profiles: m })),
     membership_plans: PLANS,
-    memberships: members.map((m, i) => ({ id: `ms${i}`, member_id: m.id, plan_id: 'p1', status: 'active', start_date: day(-20), expiry_date: day(20),
-      never_expires: false, frozen_at: null, created_at: iso(-20), membership_plans: PLANS[0] })),
+    // Bea Reyes (7): her plan ended three days ago, so the desk cannot check her in. Hans Lim (8): his ends in two days.
+    memberships: members.map((m, i) => ({ id: `ms${i}`, member_id: m.id, plan_id: 'p1', status: i === 7 ? 'expired' : 'active', start_date: day(-20),
+      expiry_date: i === 7 ? day(-3) : i === 8 ? day(2) : day(20), never_expires: false, frozen_at: null, created_at: iso(-20), membership_plans: PLANS[0] })),
     attendance: [
       { id: 'a1', member_id: mid(0), check_in_time: iso(0, 8, 41), method: 'qr', activity: 'Class', activity_by: 'member', source: 'kiosk' },
       { id: 'a2', member_id: mid(2), check_in_time: iso(0, 8, 30), method: 'qr', activity: 'Cardio', activity_by: 'desk', source: 'desk' },
@@ -57,7 +58,9 @@ async (page) => {
         'Spinning', 'Dance', 'Boxing', 'Muay Thai', 'Martial Arts', 'Stretching & Mobility', 'Sports', 'Personal Training', 'Other'], closing_time: '21:00:00',
       member_activity_pick: true, coach_checkin_on: true, day_pass_on: true, day_pass_price: 150, pack5_price: 650, pack10_price: null, guest_nudge_visits: 3, day_pass_classes: false, updated_at: iso(-2), updated_by: null }],
     gyms: [{ id: 'gym-1', created_at: iso(-30) }],
-    payments: [], notifications: [], bookings: [], pt_sessions: [], gym_invitations: [],
+    payments: [], notifications: [], bookings: [], gym_invitations: [], classes: [],
+    // One confirmed 1-on-1 an hour from now, with Leo Navarro (not in yet): the rail's Coming up today.
+    pt_sessions: [{ id: 's1', starts_at: new Date(Date.now() + 3600000).toISOString(), duration_minutes: 60, member_id: mid(5), trainer_id: COACH, status: 'approved' }],
   };
   const COACHES = [
     { trainer_id: COACH, first_name: 'Gabby', last_name: 'Coach', photo_url: null, checked_in_at: null, checkin_id: null },
@@ -107,7 +110,7 @@ async (page) => {
     }
     if (pathname.startsWith('/rest/v1/')) {
       const t = pathname.split('/rest/v1/')[1].replace('gym_people', 'profiles');
-      if (req.method() !== 'GET') return json([], 201);
+      if (req.method() !== 'GET') { CALLS.push([`${req.method()} ${t}`, req.postData()]); return json([], 201); }
       let rows = TABLES[t] ?? [];
       for (const [k, v] of params) {
         if (['select', 'order', 'limit', 'offset'].includes(k)) continue;
@@ -142,52 +145,64 @@ async (page) => {
   };
   await page.setViewportSize({ width: 1440, height: 900 });
 
-  // ── Today ──
+  // ── Check-ins (mock-up D, 2026-11-27): one list of every member, search narrows it, Check in on each row ──
   let t = await visit('/attendance', 'today');
-  has('Today fits the screen (no page scroll)', (await noScroll()) <= 2);
-  has('…with room for the log (3+ rows at 1440×900)', (await page.locator('[data-log-row]').count()) === 3 && await page.locator('[data-log-row]').last().evaluate((r) => { const b = r.closest('[data-rd-table]').getBoundingClientRect(); const x = r.getBoundingClientRect(); return x.bottom <= b.bottom + 1; }));
-  has('one check-in box with Scan QR, and the tag chips', (await page.locator('[data-checkin-box]').count()) === 1 && (await page.locator('[data-scan-qr]').count()) === 1 && (await page.locator('[data-tag-chips] button').count()) === 5 && (await page.locator('[data-tag-select] option').count()) === 27);
-  has('thirty activities: the four used most as chips (with counts), the rest under More — one line', await page.locator('[data-tag-picker]').evaluate((e) => e.getBoundingClientRect().height < 44) && /Cardio\s*1/.test(await page.locator('[data-tag-chips]').innerText()));
+  has('the page fits the screen (no page scroll)', (await noScroll()) <= 2);
+  has('one desk box: the search, a Tag menu with every activity, and Scan QR', (await page.locator('[data-att-desk]').count()) === 1 && (await page.locator('[data-scan-qr]').count()) === 1
+    && (await page.locator('[data-tag-select] option').count()) === 31 && await page.locator('[data-tag-picker]').evaluate((e) => e.getBoundingClientRect().height < 50));
+  has('one amber button on the page (Scan QR); the door buttons are plain', (await page.locator('.a-btn.amber:visible').count()) === 1
+    && (await page.getByRole('button', { name: 'Open kiosk' }).count()) === 1 && (await page.getByRole('button', { name: 'Open lobby TV' }).count()) === 1);
   has('the kiosk says what it did today, never a "Running" it cannot know', /1 today · last/.test(await page.locator('[data-kiosk-status]').innerText()) && !/Running/.test(t));
   has('the newest check-in shows, with Undo, before anyone is checked in here', /Andrea Santos is in/.test(await page.locator('[data-last-checkin]').innerText()));
-  has('At the door: kiosk and lobby TV, big', (await page.getByRole('button', { name: 'Open kiosk' }).count()) === 1 && (await page.getByRole('button', { name: 'Open lobby TV' }).count()) === 1);
-  has('the coaches who are in', /1 of 3 coaches in/.test(t) && /Paolo/.test(t));
-  has('the log says Kiosk / Desk scan / Typed', /Kiosk/.test(t) && /Desk scan/.test(t) && /Typed/.test(t) && (await page.locator('[data-log-row]').count()) === 3);
-  has("the log says whose tag it is (their pick / desk)", (await page.locator('[data-tag-by="member"]').count()) === 1 && (await page.locator('[data-tag-by="desk"]').count()) === 1);
-  has('the four cards: today vs last week with its hours, how they came in, walk-ins with the drawer, the week', /Checked in today/.test(t) && /vs last|same as last/.test(t) && (await page.locator('[data-vs-last-week]').count()) === 1 && /How they came in/.test(t) && /Walk-ins today/.test(t) && /₱150 in the drawer/.test(t) && /Members this week/.test(t) && /open until 9:00/.test(t));
+  has('the coaches who are in', /1 of 3 in/.test(t) && /Paolo/.test(t));
+  has('the list: who is in today first, then everyone not in yet', (await page.locator('[data-att-list] tr[data-in]').count()) === 3 && (await page.locator('[data-not-in-head]').count()) === 1
+    && await page.locator('[data-att-list] tbody tr').first().evaluate((r) => r.hasAttribute('data-in')) && (await page.locator('[data-att-list] [data-check-in]').count()) >= 1);
+  has('the tabs count everyone, in today and not in yet', /Everyone\s*9/.test(await page.locator('[data-show="all"]').innerText()) && /In today\s*3/.test(await page.locator('[data-show="in"]').innerText())
+    && /Not in yet\s*6/.test(await page.locator('[data-show="out"]').innerText()));
+  has('the rows say Kiosk / Desk scan / Typed, and whose tag it is', /Kiosk/.test(t) && /Desk scan/.test(t) && /Typed/.test(t)
+    && (await page.locator('[data-tag-by="member"]').count()) === 1 && (await page.locator('[data-tag-by="desk"]').count()) === 1);
+  has("a member whose plan ended shows why, with no Check in", /Plan ended/.test(await page.locator('[data-att-list] tr', { hasText: 'Bea Reyes' }).innerText())
+    && (await page.locator('[data-att-list] tr', { hasText: 'Bea Reyes' }).locator('[data-check-in]').count()) === 0);
+  has('the three figures: today vs last week, walk-ins with the drawer, the week as a share of active members (never past 100%)', /Checked in today/.test(t)
+    && (await page.locator('[data-vs-last-week]').count()) === 1 && /Walk-ins today/.test(t) && /₱150 in the drawer/.test(t)
+    && /\d+ of \d+ active members came, (\d|[1-9]\d|100)%/.test(await page.locator('[data-fig-week]').innerText()) && /open until 9:00/.test(t));
+  has('no gradient behind the figures', await page.locator('[data-fig-today]').evaluate((e) => getComputedStyle(e).backgroundImage === 'none'));
+  has('Plans ending soon: the plan ending in two days and the one that ended, each with Renew', (await page.locator('[data-ending-row]').count()) === 2
+    && /Hans Lim/.test(await page.locator('[data-plans-ending]').innerText()) && /ends in 2 days/.test(await page.locator('[data-plans-ending]').innerText())
+    && /Bea Reyes/.test(await page.locator('[data-plans-ending]').innerText()) && (await page.locator('[data-plans-ending]').getByRole('button', { name: 'Renew' }).count()) === 2);
+  has("Coming up today: the 1-on-1 session, and whether the member is in", (await page.locator('[data-up-session]').count()) === 1 && /Leo Navarro/.test(await page.locator('[data-coming-up]').innerText())
+    && /Not in yet/.test(await page.locator('[data-up-session]').innerText()));
   const box = page.getByLabel('Check-in code or name');
-  // The 2026-10-18 report: one character matched nearly every member (it searched
-  // inside each full id) and the list grew the page past the screen.
+  // The 2026-10-18 report: one character matched nearly every member (it searched inside each full id).
   await box.fill('1'); await page.waitForTimeout(300);
-  has('one digit matches nobody by their id, and the page does not grow', (await page.locator('[data-quick-list] > div').count()) === 0 && (await noScroll()) <= 2);
+  has('one digit matches nobody by their id, says so, and the page does not grow', (await page.locator('[data-no-match]').count()) === 1 && (await noScroll()) <= 2);
   await box.fill('a'); await page.waitForTimeout(300);
-  // Since 2026-11-11 what the search finds floats over the page (the 96px box held two names); the page still never grows.
-  const aHits = await page.locator('[data-quick-list-float] .a-row').count();
-  has('one letter matches names that start with it, floating over the page, which does not grow', aHits === 3 && (await noScroll()) <= 2
-    && await page.locator('[data-quick-list-float]').evaluate((e) => getComputedStyle(e).position === 'fixed' && e.getBoundingClientRect().height > 100));
+  has('one letter matches names that start with it, in the list itself; whoever can be checked in comes first', (await page.locator('[data-att-list] tbody tr').count()) === 3
+    && await page.locator('[data-att-list] tbody tr').first().evaluate((r) => r.hasAttribute('data-out')) && /3\s*found/.test(await page.locator('[data-found]').innerText()) && (await noScroll()) <= 2);
   await box.fill('Andrea'); await page.waitForTimeout(300);
   t = await text();
-  has("typing finds members, with the member's own pick", (await page.locator('[data-quick-list-float]').innerText()).includes('Andrea Tolentino') && /picked Class/.test(t) && /already in/.test(t));
-  await page.keyboard.press('Escape'); await page.waitForTimeout(200);
-  has('Esc puts the list away', (await page.locator('[data-quick-list-float]').count()) === 0);
-  await box.click(); await page.waitForTimeout(200);
-  has('…and the search brings it back', (await page.locator('[data-quick-list-float]').count()) === 1);
+  has("typing finds members, with the member's own pick, and who is already in", /Andrea Tolentino/.test(t) && /picked Class/.test(t) && (await page.locator('[data-att-list] tr[data-in]').count()) === 1);
+  const before = CALLS.length;
+  await box.press('Enter'); await page.waitForTimeout(400);
+  has('Enter with two matches checks nobody in', !CALLS.slice(before).some(([f]) => /attendance|check_?in/.test(f)));
+  await box.press('Escape'); await page.waitForTimeout(200);
+  has('Esc clears the search and the whole list comes back', (await box.inputValue()) === '' && (await page.locator('[data-not-in-head]').count()) === 1);
   await box.fill('Gabby'); await page.waitForTimeout(300);
-  has('…and coaches, marked Coach', (await page.locator('[data-quick-coach]').count()) === 1);
+  has('…coaches show too, marked Coach', (await page.locator('[data-quick-coach]').count()) === 1);
   await box.fill('C1A B00');
   await box.press('Enter'); await page.waitForTimeout(900);
   const cc = CALLS.find(([f]) => f === 'record_coach_checkin');
   has("a coach's typed code checks the coach in, at the desk", !!cc && cc[1].p_trainer === COACH && cc[1].p_source === 'desk' && cc[1].p_method === 'manual');
   has('…and says so with an Undo', (await page.locator('[data-last-checkin]').count()) === 1 && /Gabby Coach is in/.test(await text()));
   await page.locator('[data-tag-select]').selectOption('Yoga'); await page.waitForTimeout(200);
-  has('an activity from More becomes a chip, amber while set', (await page.locator('[data-tag-chips] button[aria-pressed="true"]').innerText()).includes('Yoga') && await page.locator('[data-tag-chips] button[aria-pressed="true"]').evaluate((e) => e.classList.contains('on')));
-  await page.locator('[data-tag-chips]').getByRole('button', { name: 'None' }).click(); await page.waitForTimeout(150);
-  has('…and None clears it', (await page.locator('[data-tag-chips] button[aria-pressed="true"]').innerText()) === 'None');
+  has('a tag for the next check-in shows while set', await page.locator('[data-tag-picker]').evaluate((e) => e.classList.contains('on')));
+  await page.locator('[data-tag-select]').selectOption(''); await page.waitForTimeout(150);
+  has('…and None clears it', await page.locator('[data-tag-picker]').evaluate((e) => !e.classList.contains('on')));
   await page.locator('[data-coaches-row]').click(); await page.waitForTimeout(500);
   has('the coaches row opens the coaches, with Check in / Undo', (await page.locator('[data-coaches-sheet] > div').count()) === 3);
   await page.screenshot({ path: 'shots/door-coaches.png' });
   await page.keyboard.press('Escape'); await page.waitForTimeout(300);
-  has('the table header is solid, so a scrolled row never shows through', await page.locator('[data-today-log] thead th').first().evaluate((th) => getComputedStyle(th).backgroundImage !== 'none' || getComputedStyle(th).backgroundColor !== 'rgba(0, 0, 0, 0)'));
+  has('the table header is solid, so a scrolled row never shows through', await page.locator('[data-att-list] thead th').first().evaluate((th) => getComputedStyle(th).backgroundImage !== 'none' || getComputedStyle(th).backgroundColor !== 'rgba(0, 0, 0, 0)'));
   const urlBefore = page.url();
   await page.locator('[data-open-full-log]').click(); await page.waitForTimeout(500);
   const full = page.locator('[data-full-log]');
@@ -198,10 +213,14 @@ async (page) => {
   await full.getByPlaceholder('Search today…').fill('');
   await page.keyboard.press('Escape'); await page.waitForTimeout(300);
   has('…and Escape closes it', (await page.locator('[data-full-log]').count()) === 0);
-  await page.locator('[data-way="desk"]').click(); await page.waitForTimeout(300);
-  has('a chip filters the log', (await page.locator('[data-log-row]').count()) === 1);
-  await page.locator('[data-stats-strip] button', { hasText: 'Kiosk' }).click(); await page.waitForTimeout(300);
-  has('…and so does the legend in How they came in', (await page.locator('[data-log-row]').count()) === 1 && /Andrea Santos/.test(await page.locator('[data-log-row]').innerText()));
+  await page.locator('[data-way-select]').selectOption('desk'); await page.waitForTimeout(300);
+  has('How filters to that way of checking in', (await page.locator('[data-att-list] tbody tr').count()) === 1 && /Carlo Bautista/.test(await page.locator('[data-att-list] tbody').innerText()));
+  await page.locator('[data-way-select]').selectOption('all');
+  await page.locator('[data-show="out"]').click(); await page.waitForTimeout(300);
+  has('Not in yet shows only those not in, A to Z', (await page.locator('[data-att-list] tr[data-in]').count()) === 0 && (await page.locator('[data-att-list] tr[data-out]').count()) === 6);
+  await page.locator('[data-show="all"]').click();
+  await page.locator('[data-plans-ending]').getByRole('button', { name: 'Renew' }).first().click(); await page.waitForTimeout(400);
+  has('Renew opens that member on Members', /\/members\?open=/.test(page.url()));
 
   // ── History ──
   t = await visit('/attendance-history', 'history');

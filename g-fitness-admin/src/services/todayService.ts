@@ -127,7 +127,7 @@ export interface Today {
   perHour: number[] | null;
 }
 
-export interface TodaySession { id: string; startsAt: string; member: string | null; coach: string | null; done: boolean; minutes: number }
+export interface TodaySession { id: string; startsAt: string; member: string | null; memberId: string; coach: string | null; done: boolean; minutes: number }
 
 /** The hour of the day in Manila (UTC+8), whatever the computer's own zone. */
 const manilaHour = (iso: string) => new Date(new Date(iso).getTime() + 8 * 3600000).getUTCHours();
@@ -187,7 +187,7 @@ export async function loadToday(): Promise<Today> {
       .map((p) => [p.id, `${p.first_name} ${p.last_name}`.trim()]));
     const now = Date.now();
     return rows.map((r) => ({
-      id: r.id, startsAt: r.starts_at, member: names.get(r.member_id) ?? null, coach: names.get(r.trainer_id) ?? null, minutes: r.duration_minutes ?? 60,
+      id: r.id, startsAt: r.starts_at, member: names.get(r.member_id) ?? null, memberId: r.member_id, coach: names.get(r.trainer_id) ?? null, minutes: r.duration_minutes ?? 60,
       done: new Date(r.starts_at).getTime() + (r.duration_minutes ?? 60) * 60000 < now,
     }));
   })().catch(() => null);

@@ -1,6 +1,5 @@
 import PageGuide from '../components/guides/PageGuide';
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { createPortal } from 'react-dom';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import QRScanner from '../components/ui/QRScanner';
 import DetailSheet from '../components/ui/DetailSheet';
@@ -8,8 +7,7 @@ import FloatingWindow from '../components/ui/FloatingWindow';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { useFitRows } from '../hooks/useFitRows';
 import {
-  QrCode, Download, Tablet, Tag, ScanLine, Search, Check, MonitorPlay, DoorOpen, UserCheck, ListChecks, Maximize2,
-  Smartphone, ChevronLeft, ChevronRight, Users, Banknote, Dumbbell,
+  QrCode, Download, Tablet, Tag, Search, Check, MonitorPlay, UserCheck, Maximize2, Smartphone, Users, Banknote, Dumbbell, DoorOpen, RefreshCw, CalendarClock,
 } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import { recordReason, REASON_FIELD } from '../lib/api/reasons';
@@ -25,37 +23,38 @@ import { getDoorSettings, listDoorCoaches, listTodayPicks, undoCoachCheckin, typ
 import { performCheckIn, performCoachCheckIn, resolveCheckInCode } from '../services/checkInService';
 import { membershipIsUsable } from '../lib/api/memberships';
 import type { AttendanceRow } from '../types/db';
-import { Av, HowPill, AttHead } from './attendance/parts';
+import { Av, HowPill, AttHead, Pager } from './attendance/parts';
 import { CountUp, Skel, Spark, EmptyBlock } from '../components/ui/rd';
 import { useAttCounts, peso, clock } from './attendance/attData';
 import './attendance/att.css';
 import OfflineScans from './attendance/OfflineScans';
 import { isOffline, resolveOffline, saveScan } from '../lib/checkinOutbox';
 import { getGymContext } from '../lib/gymContext';
+import { loadToday, type Today } from '../services/todayService';
 
 const ITEMS_PER_PAGE = 10;
 type Who = { plan: string; status: string; expiry: string | null; usable: boolean };
 type Way = 'all' | 'kiosk' | 'desk' | 'typed';
+type Show = 'all' | 'in' | 'out';
 const wayOf = (r: AttendanceRow): Exclude<Way, 'all'> => (r.source === 'kiosk' ? 'kiosk' : r.method === 'qr' ? 'desk' : 'typed');
-const WAY_LABEL: Record<Way, string> = { all: 'All', kiosk: 'Kiosk', desk: 'Desk scan', typed: 'Typed' };
+const WAY_LABEL: Record<Way, string> = { all: 'Any way', kiosk: 'Kiosk', desk: 'Desk scan', typed: 'Typed' };
+const fmtDay = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
 
-/** One row of today's log — the card and the floating window draw the same row. */
+/** One check-in taken today: the list and the View all window draw the same row. */
 function LogRow({ row: r, name, photo, plan, by, onUndo, height, fresh, leaving }: {
   row: AttendanceRow; name: string; photo?: string | null; plan?: string; by: string; onUndo: () => void; height?: number; fresh?: boolean; leaving?: boolean;
 }) {
   return (
-    <tr data-log-row style={{ height }} data-fresh={fresh || undefined} data-leaving={leaving || undefined}>
-      <td style={{ width: 90 }}><b>{clock(r.check_in_time)}</b></td>
+    <tr data-log-row data-in style={{ height }} data-fresh={fresh || undefined} data-leaving={leaving || undefined}>
       <td>
         <div className="a-who">
           <Av name={name} photo={photo} small />
-          <b className="truncate">{name}</b>
-          {plan && <span className="a-pill">{plan}</span>}
-          <span className="a-code" style={{ fontSize: 10.5 }}>{formatCheckInCode(r.member_id)}</span>
+          <span className="min-w-0"><b className="truncate block">{name}</b><small className="a-sub">{plan ?? 'No plan'}</small></span>
         </div>
       </td>
+      <td><span className="a-pill v" data-in-at>In at {clock(r.check_in_time)}</span></td>
       <td><HowPill row={r} /></td>
-      {/* The activity tag (0018), and whose it is (0200). A dash means nobody picked one — not "no activity". */}
+      {/* The activity tag (0018), and whose it is (0200). Nobody picked one: "Not recorded", never a guess. */}
       <td>
         {r.activity ? (
           <span className="inline-flex items-center gap-2">
@@ -63,26 +62,22 @@ function LogRow({ row: r, name, photo, plan, by, onUndo, height, fresh, leaving 
             {r.activity_by === 'member' && <span className="a-pill v" data-tag-by="member"><Smartphone size={12} />their pick</span>}
             {r.activity_by === 'desk' && <span className="a-pill a" data-tag-by="desk"><Tag size={12} />desk</span>}
           </span>
-        ) : <span className="a-sub">—</span>}
+        ) : <span className="a-sub">Not recorded</span>}
       </td>
-      <td className={by === '—' ? 'a-sub' : ''}>{by}</td>
-      <td style={{ width: 60, textAlign: 'right' }}><button type="button" className="a-link" onClick={onUndo} data-tip="Undo this check-in">Undo</button></td>
+      <td className={by ? '' : 'a-sub'}>{by}</td>
+      <td style={{ width: 120, textAlign: 'right' }}><button type="button" className="a-link" onClick={onUndo} data-tip="Undo this check-in">Undo</button></td>
     </tr>
   );
 }
 
 /**
- * Attendance → Today, the desk — built to the owner's v2 mock-up (2026-10-18),
- * in its own stylesheet (attendance/att.css).
+ * Attendance → Check-ins, the desk (owner's mock-up D, 2026-11-27; design/admin-v2/attendance-d.html).
  *
- * One box checks anyone in: scan, a name, or the six-character code under their
- * QR, members and — when the owner has it on (0200) — coaches. The tag chips
- * are the activities used most today, with a "More" list for the rest (a gym
- * can have thirty). At the door: the kiosk and lobby TV, and the coaches who are
- * in. Four cards: today against the same weekday last week (up to this hour)
- * with the day's hours, how they came in, walk-ins and the drawer, and the
- * week's members. The log says how each check-in was taken, whose activity
- * tag it carries and who took it; View all floats the whole day over the page.
+ * The search box and the log are one list of every member: who is in today first (newest first), then
+ * everyone not in yet, A to Z, each with Check in. Typing narrows it, and whoever can be checked in rises
+ * to the top. A scanned or typed code checks in at once; Enter on a name only when exactly one person
+ * matches. A member the rules refuse shows why instead of a button. Above it, the day's three figures in
+ * one strip; on the right, only what is at the door: the kiosk, the lobby TV and the coaches.
  */
 export default function Attendance() {
   const navigate = useNavigate();
@@ -99,29 +94,25 @@ export default function Attendance() {
   const [coaches, setCoaches] = useState<DoorCoach[]>([]);
   const [picks, setPicks] = useState<Map<string, string>>(new Map());
   const [walkIns, setWalkIns] = useState<{ amount: number; method: string; kind: string; voided: boolean }[] | null>(null);
+  /** Today's classes and 1-on-1 sessions for the rail (the dashboard's own service). Null: it could not load. */
+  const [day, setDay] = useState<Today | null>(null);
   const [hours, setHours] = useState<{ open: number; close: number; closing: string | null }>({ open: 6, close: 21, closing: null });
 
   const [query, setQuery] = useState('');
-  /** The search's results float over the page (owner, 2026-11-11: "the box is so small when searching"). Open while
-   *  there is something typed; a click elsewhere or Esc puts it away, focusing the search brings it back. */
-  const [listOpen, setListOpen] = useState(true);
-  const [anchor, setAnchor] = useState<{ top: number; left: number; width: number; maxH: number } | null>(null);
-  const checkinBox = useRef<HTMLDivElement>(null);
-  const searchRow = useRef<HTMLDivElement>(null);
-  const floatList = useRef<HTMLDivElement>(null);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [activity, setActivity] = useState('');
   const [activityOptions, setActivityOptions] = useState<string[]>([]);
-  const [logPage, setLogPage] = useState(1);
+  const [listPage, setListPage] = useState(1);
   const [toUndo, setToUndo] = useState<AttendanceRow | null>(null);
   const [coachesOpen, setCoachesOpen] = useState(false);
   const [fullOpen, setFullOpen] = useState(false);
-  /** The check-in just taken, with its own Undo — the desk sees it worked without reading the log. */
+  /** The check-in just taken, with its own Undo: the desk sees it worked without reading the list. */
   const [last, setLast] = useState<{ kind: 'member' | 'coach'; id: string; name: string; at: string; activity: string | null; by: 'member' | 'desk' | null } | null>(null);
+  const [show, setShow] = useState<Show>('all');
   const [way, setWay] = useState<Way>('all');
   const [logPlan, setLogPlan] = useState('all');
   const [logSearch, setLogSearch] = useState('');
-  /** Rows that fit the log's own box — the page never scrolls (2026-10-11). */
+  /** Rows that fit the list's own box: the page never scrolls (2026-10-11). */
   const { ref: fitRef, perPage, rowHeight: fitRowHeight } = useFitRows(ITEMS_PER_PAGE);
 
   const loadData = async (): Promise<AttendanceRow[]> => {
@@ -137,18 +128,20 @@ export default function Attendance() {
       setReadAt(Date.now());
       setAdminId(user?.id ?? null);
       // Everything below is optional: check-in never depends on it.
-      const [ms, settings, d, pk, wv] = await Promise.all([
+      const [ms, settings, d, pk, wv, dy] = await Promise.all([
         listMemberships().catch(() => []),
         getGymSettings().catch(() => null),
         getDoorSettings(),
         listTodayPicks(),
         supabase.rpc('guest_visits_on', { p_day: todayKey() }).then(({ data, error }) => (error ? null
           : ((data ?? []) as { amount: number; method: string; kind: string; voided: boolean }[]).map((v) => ({ ...v, amount: Number(v.amount) }))), () => null),
+        loadToday().catch(() => null),
       ]);
+      setDay(dy);
       const map: Record<string, Who> = {};
       for (const m of ms) {
         if (map[m.member_id]) continue;
-        map[m.member_id] = { plan: m.membership_plans?.name ?? '—', status: m.status, expiry: m.expiry_date ?? null,
+        map[m.member_id] = { plan: m.membership_plans?.name ?? 'No plan', status: m.status, expiry: m.expiry_date ?? null,
           usable: membershipIsUsable(m.status, m.expiry_date, m.never_expires) };
       }
       setWhoOf(map);
@@ -159,7 +152,7 @@ export default function Attendance() {
       setPicks(pk);
       setWalkIns(wv);
       setCoaches(d?.coachCheckin ? await listDoorCoaches().catch(() => []) : []);
-      // Who took each check-in, for the log's By column. A failed read leaves a dash.
+      // Who took each check-in, for the By column. A failed read leaves it blank.
       const ids = [...new Set(attendanceRows.map((r) => r.recorded_by).filter((x): x is string => !!x))];
       if (ids.length) {
         const { data } = await supabase.from('gym_people').select('id, first_name, last_name').in('id', ids);
@@ -187,46 +180,42 @@ export default function Attendance() {
     const m = memberById[id];
     return m ? `${m.profile.first_name} ${m.profile.last_name}` : 'Unknown member';
   };
-  const byOf = (r: AttendanceRow) => (r.source === 'kiosk' ? '—' : (r.recorded_by && staff[r.recorded_by]) || '—');
+  const byOf = (r: AttendanceRow) => (r.source === 'kiosk' ? 'Kiosk' : (r.recorded_by && staff[r.recorded_by]) || '');
 
-  // Manila dates from utils/dates — never the UTC date out of the timestamp.
+  // Manila dates from utils/dates, never the UTC date out of the timestamp.
   const todayStr = todayKey();
   const today = useMemo(() => rows.filter((a) => localDateKey(a.check_in_time) === todayStr), [rows, todayStr]);
   const inToday = useMemo(() => new Set(today.map((a) => a.member_id)), [today]);
-  /** The same weekday last week, up to this time of day — a fair comparison at 10 am. */
+  const todayRowOf = useMemo(() => {
+    const map: Record<string, AttendanceRow> = {};
+    for (const r of today) if (!map[r.member_id] || r.check_in_time > map[r.member_id].check_in_time) map[r.member_id] = r;
+    return map;
+  }, [today]);
+  /** The same weekday last week, up to this time of day: a fair comparison at 10 am. */
   const lastWeek = useMemo(() => {
     const day = addDays(todayStr, -7), cut = readAt - 7 * 86_400_000;
     return rows.filter((a) => localDateKey(a.check_in_time) === day && new Date(a.check_in_time).getTime() <= cut).length;
   }, [rows, todayStr, readAt]);
-  const weekUnique = useMemo(() => {
+  const weekIds = useMemo(() => {
     const from = addDays(todayStr, -6);
-    return new Set(rows.filter((a) => localDateKey(a.check_in_time) >= from).map((a) => a.member_id)).size;
+    return new Set(rows.filter((a) => localDateKey(a.check_in_time) >= from).map((a) => a.member_id));
   }, [rows, todayStr]);
   const activeMembers = useMemo(() => Object.values(whoOf).filter((w) => w.usable).length, [whoOf]);
-  /** Today's check-ins per opening hour, for the little bars. */
-  const perHour = useMemo(() => {
+  /** Of this week's visitors, those whose plan is usable now: the share can never pass 100% (it once read "40 of 39"). */
+  const activeCame = useMemo(() => [...weekIds].filter((id) => whoOf[id]?.usable).length, [weekIds, whoOf]);
+  const perHourOf = useCallback((list: AttendanceRow[]) => {
     const out: number[] = [];
     for (let h = hours.open; h < hours.close; h++) out.push(0);
-    for (const a of today) {
+    for (const a of list) {
       const h = Number(new Date(a.check_in_time).toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: 'Asia/Manila' }));
       if (h >= hours.open && h < hours.close) out[h - hours.open] += 1;
     }
     return out;
-  }, [today, hours]);
+  }, [hours]);
+  const perHour = useMemo(() => perHourOf(today), [perHourOf, today]);
+  const lastWeekPerHour = useMemo(() => perHourOf(rows.filter((a) => localDateKey(a.check_in_time) === addDays(todayStr, -7))), [perHourOf, rows, todayStr]);
   const nowHour = Number(new Date().toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: 'Asia/Manila' }));
-  /** The same weekday last week, hour by hour over the whole day: the dashed line under today's. */
-  const lastWeekPerHour = useMemo(() => {
-    const out: number[] = [];
-    for (let h = hours.open; h < hours.close; h++) out.push(0);
-    const day = addDays(todayStr, -7);
-    for (const a of rows) {
-      if (localDateKey(a.check_in_time) !== day) continue;
-      const h = Number(new Date(a.check_in_time).toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: 'Asia/Manila' }));
-      if (h >= hours.open && h < hours.close) out[h - hours.open] += 1;
-    }
-    return out;
-  }, [rows, todayStr, hours]);
-  /** Rows on their way out after Undo: they fade while the log reloads, instead of vanishing. */
+  /** Rows on their way out after Undo: they fade while the list reloads, instead of vanishing. */
   const [leaving, setLeaving] = useState<Set<string>>(new Set());
 
   const byWay = useMemo(() => {
@@ -234,15 +223,16 @@ export default function Attendance() {
     for (const r of today) c[wayOf(r)] += 1;
     return c;
   }, [today]);
-  /** The tag chips: the activities used most today (then the gym's own order), four of them; the rest under More. */
   const tagCount = useMemo(() => {
     const c: Record<string, number> = {};
     for (const r of today) if (r.activity) c[r.activity] = (c[r.activity] ?? 0) + 1;
     return c;
   }, [today]);
-  const topTags = useMemo(() => [...activityOptions].sort((a, b) => (tagCount[b] ?? 0) - (tagCount[a] ?? 0)).slice(0, 4), [activityOptions, tagCount]);
+  /** The tag list: the activities used most today first, then the gym's own order. */
+  const tagOrder = useMemo(() => [...activityOptions].sort((a, b) => (tagCount[b] ?? 0) - (tagCount[a] ?? 0)), [activityOptions, tagCount]);
 
-  const plans = useMemo(() => [...new Set(Object.values(whoOf).map((p) => p.plan))].filter((p) => p !== '—').sort(), [whoOf]);
+  /** The View all window: today's check-ins with their own filters. */
+  const plans = useMemo(() => [...new Set(Object.values(whoOf).map((p) => p.plan))].filter((p) => p !== 'No plan').sort(), [whoOf]);
   const logRecords = useMemo(() => {
     const q = logSearch.trim().toLowerCase();
     return today
@@ -253,8 +243,6 @@ export default function Attendance() {
       .sort((a, b) => b.check_in_time.localeCompare(a.check_in_time));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [today, way, logPlan, logSearch, whoOf, memberById]);
-  const pages = Math.max(1, Math.ceil(logRecords.length / perPage));
-  const page = Math.min(logPage, pages);
 
   /** No connection (0211): saved on this computer with the time it was scanned, recorded when it is back. */
   const saveOffline = async (memberId: string, name: string, method: 'qr' | 'manual') => {
@@ -309,7 +297,7 @@ Let ${member.profile.first_name} in anyway?`)) return;
     setLast(c?.checkinId ? { kind: 'coach', id: c.checkinId, name: coach.name, at: c.checkedInAt ?? new Date().toISOString(), activity: null, by: null } : null);
   };
 
-  /** A scanned or typed code — the member app's QR, a coach's QR, the six-character code, a pasted id. */
+  /** A scanned or typed code: the member app's QR, a coach's QR, the six-character code, a pasted id. */
   const checkInCode = async (raw: string) => {
     const code = raw.trim();
     if (!code) return showToast('Scan a code or type one in', 'error');
@@ -328,10 +316,9 @@ Let ${member.profile.first_name} in anyway?`)) return;
   const q = query.trim().toLowerCase();
   const qCode = normaliseCheckInCode(q);
   /**
-   * Who the box means (2026-10-18). One character matched nearly everyone — the
-   * search also looked inside each full member id — so: a name by the start of
-   * any word (one letter is enough), anywhere in it from two letters; an email
-   * from three; the six-character code by its start from three; the full id only
+   * Who the box means (2026-10-18). One character matched nearly everyone (the search also looked inside
+   * each full member id), so: a name by the start of any word (one letter is enough), anywhere in it from
+   * two letters; an email from three; the six-character code by its start from three; the full id only
    * whole. Never a substring of a UUID.
    */
   const nameHit = (name: string) => (q.length === 1
@@ -344,45 +331,17 @@ Let ${member.profile.first_name} in anyway?`)) return;
     (m.member.qr_code ?? '').toLowerCase() === q ||
     codeHit(m.profile.id)) : [];
   const coachHits = q ? coaches.filter((c) => nameHit(c.name) || codeHit(c.id)) : [];
-  const floating = !!q && listOpen && memberHits.length + coachHits.length > 0;
-  useEffect(() => {
-    if (!floating) return;
-    const place = () => {
-      const row = searchRow.current?.getBoundingClientRect();
-      const box = checkinBox.current?.getBoundingClientRect();
-      if (!row || !box) return;
-      const top = row.bottom + 8;
-      setAnchor({ top, left: box.left + 12, width: box.width - 24, maxH: Math.max(220, Math.min(window.innerHeight * 0.6, window.innerHeight - top - 16)) });
-    };
-    place();
-    const away = (e: MouseEvent) => {
-      const t = e.target as Node;
-      if (!floatList.current?.contains(t) && !searchRow.current?.contains(t)) setListOpen(false);
-    };
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setListOpen(false); };
-    window.addEventListener('resize', place);
-    window.addEventListener('scroll', place, true);
-    document.addEventListener('mousedown', away);
-    document.addEventListener('keydown', esc);
-    return () => {
-      window.removeEventListener('resize', place);
-      window.removeEventListener('scroll', place, true);
-      document.removeEventListener('mousedown', away);
-      document.removeEventListener('keydown', esc);
-    };
-  }, [floating]);
+  const matches = memberHits.length + coachHits.length;
 
-  /** Enter: a code (or a QR's text) is checked in; a name with exactly one match is that person. */
+  /** Enter: a code (or a QR's text) is checked in; a name only when exactly one person matches. */
   const submitQuery = () => {
     const looksLikeCode = /^cfc?1\./i.test(query.trim()) || /^[0-9a-f]{6}$/.test(normaliseCheckInCode(query)) || /^[0-9a-f-]{36}$/i.test(query.trim());
     if (looksLikeCode) return void checkInCode(query);
-    if (memberHits.length + coachHits.length === 1) {
-      return memberHits.length ? void doCheckIn(memberHits[0], 'manual') : void doCoachCheckIn(coachHits[0], 'manual');
-    }
-    showToast(memberHits.length + coachHits.length === 0 ? 'Nobody matches that.' : 'More than one match. Pick one from the list.', 'error');
+    if (matches === 1) return memberHits.length ? void doCheckIn(memberHits[0], 'manual') : void doCoachCheckIn(coachHits[0], 'manual');
+    showToast(matches === 0 ? 'Nobody matches that.' : 'More than one match. Pick one from the list.', 'error');
   };
 
-  /** Undo a check-in (0035): the wrong person scanned. Only today's — what RLS allows. */
+  /** Undo a check-in (0035): the wrong person scanned. Only today's, which is what RLS allows. */
   const handleUndo = async (why?: string) => {
     if (!toUndo) return;
     try {
@@ -413,7 +372,7 @@ Let ${member.profile.first_name} in anyway?`)) return;
     }
   };
 
-  /** Exports what the log shows, built from the real row shape. */
+  /** Exports today's check-ins as the list's How filter shows them, built from the real row shape. */
   const exportLog = () => {
     if (logRecords.length === 0) return showToast('Nothing to export yet. Nobody has checked in today.', 'error');
     exportToCSV(logRecords.map((r) => ({
@@ -428,13 +387,12 @@ Let ${member.profile.first_name} in anyway?`)) return;
       <AttHead counts={{ today: null, walkIns: counts.walkIns }} sub={<Skel w={240} h={12} />} />
       <div className="a-v2">
         <div className="a-v2-main">
-          <div className="a-card" style={{ flex: 'none', display: 'grid', gap: 12 }}><Skel w={140} h={14} /><Skel w="100%" h={44} /><Skel w="60%" h={28} /></div>
+          <div className="a-card" style={{ flex: 'none', display: 'grid', gridTemplateColumns: '1.3fr 1fr 1fr', gap: 16 }}><Skel w={120} h={40} /><Skel w={90} h={40} /><Skel w={90} h={40} /></div>
           <div className="a-card" style={{ flex: 1, display: 'grid', alignContent: 'start', gap: 14 }}>
-            <Skel w={160} h={14} />{[0, 1, 2, 3, 4].map((i) => <Skel key={i} w="100%" h={22} />)}
+            <Skel w="100%" h={46} />{[0, 1, 2, 3, 4, 5].map((i) => <Skel key={i} w="100%" h={22} />)}
           </div>
         </div>
         <div className="a-v2-side">
-          <div className="a-card" style={{ flex: 'none', display: 'grid', gap: 12 }}><Skel w={110} h={12} /><Skel w={64} h={40} /><Skel w="100%" h={40} /></div>
           <div className="a-card" style={{ flex: 1, display: 'grid', alignContent: 'start', gap: 14 }}><Skel w={100} h={14} /><Skel w="100%" h={40} /><Skel w="100%" h={40} /></div>
         </div>
       </div>
@@ -456,11 +414,70 @@ Let ${member.profile.first_name} in anyway?`)) return;
   const todayLine = running(perHour).slice(0, Math.max(0, Math.min(perHour.length, nowHour - hours.open + 1)));
   const lastWeekLine = running(lastWeekPerHour);
   const lastWeekAll = lastWeekLine.at(-1) ?? 0;
-  const weekShare = activeMembers ? Math.min(100, Math.round((weekUnique / activeMembers) * 100)) : null;
-  const scanned = byWay.kiosk + byWay.desk;
-  // The check-in just taken here, or else the newest one today — so the desk always sees the latest, with Undo.
+  const weekShare = activeMembers ? Math.round((activeCame / activeMembers) * 100) : null;
+  // The check-in just taken here, or else the newest one today: the desk always sees the latest, with Undo.
   const newest = today.reduce<AttendanceRow | null>((m, r) => (!m || r.check_in_time > m.check_in_time ? r : m), null);
   const shown = last ?? (newest ? { kind: 'member' as const, id: newest.id, name: nameOf(newest.member_id), at: newest.check_in_time, activity: newest.activity, by: newest.activity_by ?? null } : null);
+
+  // ── The one list ──
+  const byName = (a: MemberWithProfile, b: MemberWithProfile) =>
+    `${a.profile.first_name} ${a.profile.last_name}`.localeCompare(`${b.profile.first_name} ${b.profile.last_name}`);
+  type Item = { k: 'in'; row: AttendanceRow } | { k: 'out'; m: MemberWithProfile } | { k: 'coach'; c: DoorCoach };
+  const notInCount = members.filter((m) => !inToday.has(m.profile.id)).length;
+  const items: Item[] = (() => {
+    const inRows = (list: AttendanceRow[]) => list.filter((r) => way === 'all' || wayOf(r) === way)
+      .sort((a, b) => b.check_in_time.localeCompare(a.check_in_time)).map((row) => ({ k: 'in' as const, row }));
+    if (q) {
+      // Searching: whoever can be checked in first, then those already in.
+      const outs = memberHits.filter((m) => !inToday.has(m.profile.id)).sort(byName).map((m) => ({ k: 'out' as const, m }));
+      const ins = inRows(memberHits.map((m) => todayRowOf[m.profile.id]).filter((r): r is AttendanceRow => !!r));
+      return [...coachHits.map((c) => ({ k: 'coach' as const, c })), ...(show === 'in' ? [] : outs), ...(show === 'out' ? [] : ins)];
+    }
+    const ins = show === 'out' ? [] : inRows(today);
+    const outs = show === 'in' || way !== 'all' ? [] : members.filter((m) => !inToday.has(m.profile.id)).sort(byName).map((m) => ({ k: 'out' as const, m }));
+    return [...ins, ...outs];
+  })();
+  const realCount = items.length;
+  /** The "Not in yet" heading sits right above the first member not in, on whichever page that falls (never alone at a page's end). */
+  const firstOut = !q && show === 'all' ? items.findIndex((i) => i.k === 'out') : -1;
+  // The heading takes about a row's height, so a list that has it pages one row shorter: no row is ever cut off.
+  const per = firstOut > 0 ? Math.max(1, perPage - 1) : perPage;
+  const pages = Math.max(1, Math.ceil(items.length / per));
+  const page = Math.min(listPage, pages);
+  const pageItems = items.slice((page - 1) * per, page * per);
+  const onlyOne = q && matches === 1;
+  const rowH = items.length > per ? fitRowHeight : undefined;
+
+  /** A member not in yet: why the desk cannot check them in, when the plan says so (the service still decides). */
+  const outState = (id: string): { text: string; tone: 'v' | 'a' | ''; blocked: boolean } => {
+    const w = whoOf[id];
+    if (!w) return { text: 'Not in yet · no plan', tone: '', blocked: false };
+    if (w.usable) {
+      const left = w.expiry ? daysBetween(todayStr, w.expiry) : null;
+      return { text: left === null || left > 7 ? 'Not in yet' : left === 0 ? 'Not in yet · plan ends today' : `Not in yet · plan ends in ${left} day${left === 1 ? '' : 's'}`, tone: '', blocked: false };
+    }
+    if (w.status === 'frozen') return { text: 'Frozen', tone: 'a', blocked: true };
+    if (w.status === 'pending') return { text: 'Plan waiting for payment', tone: 'a', blocked: true };
+    return { text: w.expiry ? `Plan ended ${fmtDay(w.expiry)}` : 'Plan ended', tone: 'a', blocked: true };
+  };
+  const setShowTo = (s: Show) => { setShow(s); setListPage(1); };
+
+  /** Plans ending within a week, and those that ended in the last week: the desk can renew them as they walk in. */
+  const ending = members.map((m) => {
+    const w = whoOf[m.profile.id];
+    if (!w?.expiry || w.status === 'frozen' || w.status === 'pending') return null;
+    const left = daysBetween(todayStr, w.expiry);
+    const ok = w.usable ? left >= 0 && left <= 7 : left < 0 && left >= -7;
+    return ok ? { m, w, left } : null;
+  }).filter((x): x is { m: MemberWithProfile; w: Who; left: number } => !!x)
+    .sort((a, b) => Number(inToday.has(b.m.profile.id)) - Number(inToday.has(a.m.profile.id)) || a.left - b.left);
+  const endsText = (left: number, expiry: string) => (left < 0 ? `ended ${fmtDay(expiry)}` : left === 0 ? 'ends today' : left === 1 ? 'ends tomorrow' : `ends in ${left} days`);
+  /** Coming up: the gym's classes today, or its confirmed 1-on-1 sessions when it runs none. */
+  const upClasses = day?.classes ?? null, upSessions = day?.sessions ?? null;
+  const useClasses = !!upClasses?.length;
+  const upAll: (NonNullable<Today['classes']>[number] | NonNullable<Today['sessions']>[number])[] = useClasses ? upClasses! : upSessions ?? [];
+  const upNext = upAll.filter((x) => !x.done);
+  const upDone = upAll.length - upNext.length;
 
   return (
     <div className="att" data-attendance-today>
@@ -468,33 +485,73 @@ Let ${member.profile.first_name} in anyway?`)) return;
         sub={<><span className="a-live">Live</span>&nbsp; {longDate}{closesAt ? ` · open until ${closesAt}` : ''}</>} />
       <OfflineScans onRecorded={reloadAfterSend} />
 
-      {/* Design V2 (owner's pick "desk console", 2026-11-22): the desk's one job on the left (find, check in,
-          see it land, the log); the day's figures and the door on a right rail. */}
+      {/* Owner's mock-up D (2026-11-27): the figures in one strip, then one box that finds, checks in and lists
+          everyone; the rail is only what is at the door. */}
       <div className="a-v2" data-att-v2>
         <div className="a-v2-main">
-          {/* ── Check someone in ── */}
-          <div className="a-card glow" data-checkin-box ref={checkinBox}>
-            <div className="a-ct"><h3><ScanLine size={16} />Check someone in</h3><small>scan, type a name, or the code under their QR</small></div>
-            <div style={{ display: 'flex', gap: 10 }} ref={searchRow}>
-              <label className="a-input big" style={{ flex: 1 }}>
+          {/* ── The day's three figures ── */}
+          <div className="a-figs3" data-att-figures>
+            <div className="a-card" data-fig-today>
+              <div className="a-lbl">Checked in today</div>
+              <div className="a-fig-row">
+                <div className="a-num"><CountUp value={today.length} /></div>
+                {/* Today's running total by the hour over last week's same day (dashed); before two hours have passed there is no line to draw. */}
+                {today.length + lastWeekAll > 0 && todayLine.length > 1 && (
+                  <div className="a-trend" data-today-trend data-tip={`Today so far, with last ${lastWeekday} dashed (${lastWeekAll} all day), ${hours.open}:00 to ${hours.close}:00`}>
+                    <Spark values={todayLine} compare={lastWeekLine} label={`Check-ins so far today by the hour, against ${lastWeekAll} all of last ${lastWeekday}`} />
+                  </div>
+                )}
+              </div>
+              <div className="a-sub" data-vs-last-week>{today.length === 0
+                ? (lastWeek > 0 ? `By this time last ${lastWeekday}, ${lastWeek} had checked in` : `Nobody yet. Last ${lastWeekday} had none by now either`)
+                : diff === 0 ? `Same as last ${lastWeekday} by now`
+                  : <><b className={diff > 0 ? 'a-up' : 'a-dn'}>{Math.abs(diff)} {diff > 0 ? 'more' : 'fewer'}</b> than last {lastWeekday} by now</>}</div>
+            </div>
+            <button type="button" className="a-card press text-left" onClick={() => navigate('/attendance/walk-ins')} data-tip="Open Walk-ins">
+              <div className="a-lbl">Walk-ins today</div>
+              <div className="a-num">{walkIns ? <CountUp value={liveWalkIns.length} /> : '0'}</div>
+              <div className="a-sub inline-flex items-center gap-1.5">
+                <Banknote size={13} />{walkIns ? `${peso(walkCash)} in the drawer${packVisits ? ` · ${packVisits} pack visit${packVisits === 1 ? '' : 's'}` : ''}` : 'Walk-ins are not set up'}
+              </div>
+            </button>
+            <button type="button" className="a-card press text-left" onClick={() => navigate('/attendance-history')} data-tip="Open History" data-fig-week>
+              <div className="a-lbl">Members this week</div>
+              <div className="a-num"><CountUp value={weekIds.size} /></div>
+              <div className="a-sub">{weekShare === null ? 'No active members yet' : `${activeCame} of ${activeMembers} active members came, ${weekShare}%`}</div>
+            </button>
+          </div>
+
+          {/* ── Find, check in, and the list of everyone ── */}
+          <div className="a-card a-desk" data-att-desk>
+            <div className="a-desk-find">
+              <label className="a-input big" style={{ flex: 1, minWidth: 0 }}>
                 <Search size={19} />
-                <input value={query} onChange={(e) => { setQuery(e.target.value); setListOpen(true); }} onFocus={() => setListOpen(true)} onClick={() => setListOpen(true)}
-                  onKeyDown={(e) => e.key === 'Enter' && submitQuery()}
-                  placeholder="Name, email or code (A3F 92B)" aria-label="Check-in code or name" />
-                {query && <span className="a-kbd">Enter ↵</span>}
+                <input value={query} onChange={(e) => { setQuery(e.target.value); setListPage(1); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') submitQuery(); if (e.key === 'Escape') setQuery(''); }}
+                  placeholder={`${door?.coachCheckin ? 'Member or coach' : 'Member'}: name, email or the code under their QR`} aria-label="Check-in code or name" />
+                {query && <button type="button" className="a-link" onClick={() => setQuery('')}>Clear</button>}
+                {query && <span className="a-kbd">{onlyOne ? 'Enter checks in' : 'Enter ↵'}</span>}
               </label>
-              <button type="button" className="a-btn amber" style={{ padding: "0 20px", fontSize: 13 }} onClick={() => setIsScannerOpen(true)} data-scan-qr
+              {/* The next check-in's tag: the activities used most today first. Set, it shows in amber; the desk's tag beats a member's own pick. */}
+              {activityOptions.length > 0 && (
+                <label className={`a-tagsel ${activity ? 'on' : ''}`} data-tag-picker data-tip="Tag the next check-in with an activity">
+                  <Tag size={15} />Tag
+                  <select value={activity} onChange={(e) => setActivity(e.target.value)} aria-label="Tag the next check-in" data-tag-select>
+                    <option value="">None</option>
+                    {tagOrder.map((o) => <option key={o} value={o}>{o}{tagCount[o] ? ` (${tagCount[o]})` : ''}</option>)}
+                  </select>
+                </label>
+              )}
+              <button type="button" className="a-btn amber a-scan" onClick={() => setIsScannerOpen(true)} data-scan-qr
                 data-tip="Open the camera to scan a member's or coach's code"><QrCode size={19} />Scan QR</button>
             </div>
 
-            {/* What the box found — members, and coaches when the owner has coach check-in on. A fixed box that scrolls itself. */}
-            <div className="a-scroll" data-quick-list style={{ marginTop: 10, borderRadius: 14, background: 'var(--a-well, #0f0f19)', border: '1px solid var(--a-line)', padding: '4px 12px', height: 96 }}>
-              {!q && shown ? (
-              <div key={shown.id} className="a-toast" style={{ margin: '-4px -12px', height: 'calc(100% + 8px)', borderRadius: 13, border: 0 }} data-last-checkin>
-                <span className="ok"><Check size={16} /></span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <b style={{ fontSize: 13 }}>{shown.name} is in</b>
-                  <div className="a-sub truncate">{clock(shown.at)}{shown.kind === 'coach' ? ' · coach' : shown.activity ? ` · ${shown.activity} · ${shown.by === 'member' ? 'their pick' : 'set at desk'}` : ''}{!last ? ' · the latest today' : ''}</div>
+            {!q && shown && (
+              <div key={shown.id} className="a-toast a-desk-last" data-last-checkin>
+                <span className="ok"><Check size={14} /></span>
+                <div className="min-w-0 flex-1 truncate">
+                  <b>{shown.name} is in</b>
+                  <span className="a-sub">&nbsp; {clock(shown.at)}{shown.kind === 'coach' ? ' · coach' : shown.activity ? ` · ${shown.activity} · ${shown.by === 'member' ? 'their pick' : 'set at the desk'}` : ''}{!last ? ' · the latest today' : ''}</span>
                 </div>
                 <button type="button" className="a-btn ghost sm" onClick={() => {
                   if (shown.kind === 'coach') return setToUndoCoach({ id: shown.id, name: shown.name });
@@ -502,224 +559,176 @@ Let ${member.profile.first_name} in anyway?`)) return;
                   if (row) setToUndo(row);
                 }}>Undo</button>
               </div>
-              ) : !q ? (
-                <p className="a-sub h-full grid place-items-center text-center" style={{ fontSize: 12 }}>
-                  Start typing to find a member{door?.coachCheckin ? ' or a coach' : ''}. A scanned or typed code checks them in at once.
-                </p>
-              ) : memberHits.length + coachHits.length === 0 ? (
-                <p className="a-sub h-full grid place-items-center" style={{ fontSize: 12 }}>No members found</p>
-              ) : (
-                <button type="button" className="a-sub h-full w-full grid place-items-center" style={{ fontSize: 12 }} onClick={() => setListOpen(true)} data-found-note>
-                  {memberHits.length + coachHits.length} found{listOpen ? ', pick one in the list' : '. Show the list'}
-                </button>
-              )}
-            </div>
-            {floating && anchor && createPortal(
-              <div ref={floatList} className="att a-float-list" role="listbox" aria-label="People found" data-quick-list-float
-                style={{ position: 'fixed', top: anchor.top, left: anchor.left, width: anchor.width, maxHeight: anchor.maxH }}>
-                <div className="a-float-list__head">
-                  <span>{memberHits.length + coachHits.length} found{memberHits.length > 20 ? ' · the first 20, type more to narrow it' : ''}</span>
-                  <button type="button" className="a-btn ghost sm" onClick={() => setListOpen(false)}>Close</button>
-                </div>
-                <div className="a-float-list__body">
-                  {coachHits.slice(0, 5).map((c) => (
-                    <div key={c.id} className="a-row" data-quick-coach>
-                      <Av name={c.name} photo={c.photo} />
-                      <div className="t"><b>{c.name}</b><small><span className="a-dot a" /> Coach · <span className="a-code">{formatCheckInCode(c.id)}</span></small></div>
-                      <span className="a-pill a"><Dumbbell size={12} />Coach</span>
-                      {c.checkedInAt ? <span className="a-sub">in at {clock(c.checkedInAt)}</span>
-                        : <button type="button" className="a-btn amber sm" onClick={() => void doCoachCheckIn(c, 'manual')}>Check in</button>}
-                    </div>
-                  ))}
-                  {memberHits.slice(0, 20).map((m) => {
-                    const w = whoOf[m.profile.id];
-                    const name = `${m.profile.first_name} ${m.profile.last_name}`;
-                    const pick = picks.get(m.profile.id);
-                    const left = w?.expiry ? daysBetween(todayStr, w.expiry) : null;
-                    return (
-                      <div key={m.profile.id} className="a-row">
-                        <Av name={name} photo={m.profile.photo_url} />
-                        <div className="t">
-                          <b>{name}</b>
-                          <small>
-                            <span className={`a-dot ${w?.usable ? 'v' : 'a'}`} />
-                            {w ? `${w.plan} · ${w.usable ? (left !== null && left <= 7 ? `ends in ${left} day${left === 1 ? '' : 's'}` : 'active') : w.status === 'frozen' ? 'frozen' : 'expired'}` : 'No plan'} ·
-                            <span className="a-code">{formatCheckInCode(m.profile.id)}</span>
-                          </small>
-                        </div>
-                        {pick && !activity && <span className="a-pill v" data-tip="What they picked on their QR screen"><Smartphone size={12} />picked {pick}</span>}
-                        {inToday.has(m.profile.id) ? <span className="a-sub">already in</span>
-                          : <button type="button" className="a-btn amber sm" onClick={() => void doCheckIn(m, 'manual')}>Check in</button>}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>, document.body)}
-
-            {/* The next check-in's tag: the four used most today, the rest under More. Amber while set, with None to clear.
-                The desk's tag beats a member's own pick. */}
-            {activityOptions.length > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 12, flexWrap: 'nowrap', minWidth: 0 }} data-tag-picker>
-                <span className="a-lbl inline-flex items-center gap-1.5 flex-none" style={{ marginRight: 3, color: activity ? 'var(--a-a300)' : undefined }}><Tag size={13} />Tag the next check-in</span>
-                <div className="flex items-center gap-[7px] min-w-0 overflow-hidden" data-tag-chips>
-                  <button type="button" className={`a-chip ${activity === '' ? 'v' : ''}`} onClick={() => setActivity('')} aria-pressed={activity === ''}>None</button>
-                  {[...topTags, ...(activity && !topTags.includes(activity) ? [activity] : [])].map((t) => (
-                    <button key={t} type="button" className={`a-chip ${activity === t ? 'on' : ''}`} onClick={() => setActivity(activity === t ? '' : t)} aria-pressed={activity === t}>
-                      {activity === t && <Check size={12} />}{t}{tagCount[t] ? <em>{tagCount[t]}</em> : null}
-                    </button>
-                  ))}
-                </div>
-                {activityOptions.length > topTags.length && (
-                  <select className="a-chip flex-none" value="" onChange={(e) => e.target.value && setActivity(e.target.value)} aria-label="More activities" data-tag-select>
-                    <option value="">More…</option>
-                    {activityOptions.filter((o) => !topTags.includes(o)).map((o) => <option key={o} value={o}>{o}{tagCount[o] ? ` (${tagCount[o]})` : ''}</option>)}
-                  </select>
-                )}
-              </div>
             )}
 
-          </div>
-
-          {/* ── Today's log ── */}
-          <div className="a-card" style={{ flex: 1 }} data-today-log>
-            <div className="a-ct">
-              <h3><ListChecks size={16} />Today’s check-ins</h3>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                {(['all', 'kiosk', 'desk', 'typed'] as Way[]).map((k) => (
-                  <button key={k} type="button" className={`a-chip ${way === k ? 'v' : ''}`} onClick={() => { setWay(k); setLogPage(1); }} data-way={k}>
-                    {WAY_LABEL[k]} <em>{k === 'all' ? today.length : byWay[k]}</em>
-                  </button>
+            <div className="a-desk-bar">
+              <nav className="a-tabs a-show" aria-label="Who to show">
+                {([['all', 'Everyone', members.length], ['in', 'In today', today.length], ['out', 'Not in yet', notInCount]] as const).map(([k, label, n]) => (
+                  <button key={k} type="button" className={show === k ? 'on' : ''} onClick={() => setShowTo(k)} aria-pressed={show === k} data-show={k}>{label}<em>{n}</em></button>
                 ))}
-                <label className="a-input sm" style={{ width: 210 }}><Search size={14} />
-                  <input value={logSearch} onChange={(e) => { setLogSearch(e.target.value); setLogPage(1); }} placeholder="Search today…" aria-label="Search today" /></label>
-                <button type="button" className="a-btn sm" onClick={exportLog} data-tip="Export what the log shows as CSV"><Download size={14} />Export</button>
-                <button type="button" className="a-btn sm" onClick={() => setFullOpen(true)} data-open-full-log data-tip="Every check-in today in one window"><Maximize2 size={14} />View all</button>
+              </nav>
+              {q && <span className="a-sub" data-found><b>{matches}</b> found for “{query.trim()}”</span>}
+              <div className="a-desk-tools">
+                <label className="a-tagsel sm" data-tip="How today's check-ins were taken">
+                  How
+                  <select value={way} onChange={(e) => { setWay(e.target.value as Way); setListPage(1); }} aria-label="How they checked in" data-way-select>
+                    {(['all', 'kiosk', 'desk', 'typed'] as Way[]).map((k) => <option key={k} value={k}>{WAY_LABEL[k]}{k === 'all' ? '' : ` (${byWay[k]})`}</option>)}
+                  </select>
+                </label>
+                <button type="button" className="a-btn sm" onClick={exportLog} data-tip="Export today's check-ins as CSV"><Download size={14} />Export</button>
+                <button type="button" className="a-btn sm ghost" onClick={() => setFullOpen(true)} data-open-full-log aria-label="View all" data-tip="Every check-in today in one window"><Maximize2 size={14} /></button>
               </div>
             </div>
-            <div ref={fitRef} className="a-scroll" style={{ flex: 1 }} data-rd-table data-empty={today.length === 0 || undefined}>
-              {today.length > 0 && <table className="a-table">
-                <thead><tr><th>Time</th><th>Member</th><th>How</th><th>Activity</th><th>By</th><th /></tr></thead>
-                <tbody>
-                  {logRecords.slice((page - 1) * perPage, page * perPage).map((r) => (
-                    <LogRow key={r.id} row={r} name={nameOf(r.member_id)} photo={memberById[r.member_id]?.profile.photo_url} plan={whoOf[r.member_id]?.plan}
-                      by={byOf(r)} onUndo={() => setToUndo(r)} height={logRecords.length > perPage ? fitRowHeight : undefined}
-                      fresh={last?.id === r.id} leaving={leaving.has(r.id)} />
-                  ))}
-                </tbody>
-              </table>}
-              {today.length === 0 ? (
-                <EmptyBlock icon={ScanLine} title="Nobody has checked in yet today"
-                  body={<>Scan a QR or type a name above. Kiosk scans land here too.{lastWeek > 0 ? ` By this time last ${lastWeekday}, ${lastWeek} had checked in.` : ''}</>}
-                  action={<Link to="/attendance-history" className="a-link" style={{ color: 'var(--a-p300)' }}>See other days →</Link>} />
-              ) : logRecords.length === 0 && (
-                <div className="a-sub text-center" style={{ padding: '22px 0', fontSize: 12.5 }}>
-                  No check-ins match these filters.{' '}
-                  <button type="button" className="a-link" style={{ color: 'var(--a-p300)' }} onClick={() => { setWay('all'); setLogSearch(''); setLogPlan('all'); }}>Clear filters</button>
+
+            <div ref={fitRef} className="a-scroll" style={{ flex: 1 }} data-rd-table data-att-list>
+              {members.length === 0 && coaches.length === 0 ? (
+                <EmptyBlock icon={Users} title="No members yet" body="Members show here once they join, each with a Check in button."
+                  action={<Link to="/members" className="a-link" style={{ color: 'var(--a-p300)' }}>Open Members →</Link>} />
+              ) : realCount === 0 ? (
+                <div className="a-sub text-center" style={{ padding: '32px 16px', fontSize: 13 }} data-no-match>
+                  {q ? <><b className="block" style={{ color: 'var(--a-ink)', fontSize: 14, marginBottom: 4 }}>Nobody matches “{query.trim()}”</b>Check the spelling, or try their email or the code under their QR.</>
+                    : show === 'in' || way !== 'all' ? <>Nobody has checked in {way === 'all' ? '' : `by ${WAY_LABEL[way].toLowerCase()} `}yet today. <Link to="/attendance-history" className="a-link" style={{ color: 'var(--a-p300)' }}>See other days →</Link></>
+                      : 'Everyone is in today.'}
                 </div>
+              ) : (
+                <table className="a-table">
+                  <thead><tr><th>Member</th><th>Today</th><th>How</th><th>Activity</th><th>By</th><th /></tr></thead>
+                  <tbody>
+                    {pageItems.map((it, i) => [
+                      firstOut > 0 && (page - 1) * per + i === firstOut
+                        && <tr key="sub" className="a-subrow" data-not-in-head><td colSpan={6}>Not in yet · A to Z</td></tr>,
+                      (() => {
+                      if (it.k === 'in') return (
+                        <LogRow key={it.row.id} row={it.row} name={nameOf(it.row.member_id)} photo={memberById[it.row.member_id]?.profile.photo_url}
+                          plan={whoOf[it.row.member_id]?.plan} by={byOf(it.row)} onUndo={() => setToUndo(it.row)} height={rowH}
+                          fresh={last?.id === it.row.id} leaving={leaving.has(it.row.id)} />
+                      );
+                      if (it.k === 'coach') {
+                        const c = it.c;
+                        return (
+                          <tr key={`c-${c.id}`} style={{ height: rowH }} data-quick-coach>
+                            <td><div className="a-who"><Av name={c.name} photo={c.photo} small /><span className="min-w-0"><b className="truncate block">{c.name}</b><small className="a-sub">Coach · <span className="a-code">{formatCheckInCode(c.id)}</span></small></span></div></td>
+                            <td>{c.checkedInAt ? <span className="a-pill v">In at {clock(c.checkedInAt)}</span> : <span className="a-pill">Not in yet</span>}</td>
+                            <td><span className="a-pill"><Dumbbell size={12} />Coach</span></td><td /><td />
+                            <td style={{ textAlign: 'right' }}>{c.checkedInAt ? null
+                              : <button type="button" className={`a-btn sm ${onlyOne ? 'amber' : ''}`} onClick={() => void doCoachCheckIn(c, 'manual')}>Check in</button>}</td>
+                          </tr>
+                        );
+                      }
+                      const m = it.m, id = m.profile.id, name = `${m.profile.first_name} ${m.profile.last_name}`;
+                      const st = outState(id), pick = picks.get(id);
+                      return (
+                        <tr key={id} style={{ height: rowH }} data-out>
+                          <td><div className="a-who"><Av name={name} photo={m.profile.photo_url} small /><span className="min-w-0"><b className="truncate block">{name}</b><small className="a-sub">{whoOf[id]?.plan ?? 'No plan'} · <span className="a-code">{formatCheckInCode(id)}</span></small></span></div></td>
+                          <td><span className={`a-pill ${st.tone}`}>{st.text}</span></td>
+                          <td />
+                          <td>{pick && !activity && <span className="a-pill v" data-tip="What they picked on their QR screen"><Smartphone size={12} />picked {pick}</span>}</td>
+                          <td />
+                          <td style={{ textAlign: 'right' }}>
+                            {st.blocked
+                              ? <span className="a-sub" data-tip={`${st.text}. Renew or unfreeze the plan on Members first.`}>Can't check in</span>
+                              : <button type="button" className={`a-btn sm ${onlyOne ? 'amber' : ''}`} onClick={() => void doCheckIn(m, 'manual')} data-check-in>Check in</button>}
+                          </td>
+                        </tr>
+                      );
+                    })()])}
+                  </tbody>
+                </table>
               )}
             </div>
-            {logRecords.length > 0 && (
-              <div className="a-sub" style={{ paddingTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} data-rd-footer>
-                <span>Showing {(page - 1) * perPage + 1} to {Math.min(logRecords.length, page * perPage)} of {logRecords.length} check-ins today</span>
-                <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  {pages > 1 && <>
-                    <button type="button" className="a-chip" style={{ padding: '3px 8px' }} disabled={page <= 1} onClick={() => setLogPage(page - 1)} aria-label="Previous page"><ChevronLeft size={13} /></button>
-                    <span>{page} / {pages}</span>
-                    <button type="button" className="a-chip" style={{ padding: '3px 8px' }} disabled={page >= pages} onClick={() => setLogPage(page + 1)} aria-label="Next page"><ChevronRight size={13} /></button>
-                  </>}
-                  <Link to="/attendance-history" className="a-link" style={{ color: 'var(--a-p300)', marginLeft: 8 }}>Other days →</Link>
+            {realCount > 0 && (
+              <div className="a-sub a-desk-foot" data-rd-footer>
+                <span>{q ? `${realCount} found` : show === 'in' ? `${realCount} checked in today` : show === 'out' ? `${realCount} not in yet` : `${today.length} in today, ${notInCount} not in yet`}</span>
+                <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <Pager page={page} pages={pages} onPage={setListPage} />
+                  <Link to="/attendance-history" className="a-link" style={{ color: 'var(--a-p300)', marginLeft: 4 }}>Other days →</Link>
                 </span>
               </div>
             )}
           </div>
-
         </div>
-        <div className="a-v2-side">
-          {/* ── Four cards ── */}
-          <div className="a-grid flex-none" data-stats-strip>
-            <div className="a-card">
-              <div className="a-lbl">Checked in today</div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                <div className="a-num"><CountUp value={today.length} /></div>
-                <span className="a-sub" data-vs-last-week>{diff === 0
-                  ? `same as last ${lastWeekday} by now`
-                  : <><span className={diff > 0 ? 'a-up' : 'a-dn'}>{diff > 0 ? '▲' : '▼'} {Math.abs(diff)}</span> vs last {lastWeekday} by now</>}</span>
-              </div>
-              {/* Today's running total by the hour over last week's same day (dashed); before two hours have passed there is no line to draw. */}
-              {today.length + lastWeekAll > 0 && todayLine.length > 1 && (
-                <div className="a-trend" data-today-trend data-tip={`Today so far, with last ${lastWeekday} dashed (${lastWeekAll} all day), ${hours.open}:00 to ${hours.close}:00`}>
-                  <Spark values={todayLine} compare={lastWeekLine} label={`Check-ins so far today by the hour, against ${lastWeekAll} all of last ${lastWeekday}`} />
-                </div>
-              )}
-            </div>
-            <div className="a-card">
-              <div className="a-lbl">How they came in</div>
-              <div className="a-num"><CountUp value={scanned} /> <span style={{ fontSize: 15, color: 'var(--a-text2)', fontWeight: 600 }}>scanned</span></div>
-              <div className="a-stack">
-                {today.length > 0 && <><i style={{ flex: byWay.kiosk, background: 'var(--hx-1, #9578fb)' }} /><i style={{ flex: byWay.desk, background: 'var(--hx-2, #6447c7)' }} /><i style={{ flex: byWay.typed, background: 'var(--hx-3, #3b3560)' }} /></>}
-              </div>
-              <div className="a-legend">
-                {(['kiosk', 'desk', 'typed'] as const).map((k) => (
-                  <button key={k} type="button" onClick={() => { setWay(way === k ? 'all' : k); setLogPage(1); }} style={way === k ? { color: 'var(--a-ink)', fontWeight: 600 } : undefined} data-tip="Show only these in the log">
-                    <span className={`a-dot ${k === 'kiosk' ? 'v' : k === 'desk' ? 'd' : 'm'}`} />{WAY_LABEL[k]} {byWay[k]}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <button type="button" className="a-card press text-left" onClick={() => navigate('/attendance/walk-ins')} data-tip="Open Walk-ins">
-              <div className="a-lbl">Walk-ins today</div>
-              <div className="a-num">{walkIns ? <CountUp value={liveWalkIns.length} /> : '—'}</div>
-              <div className="a-sub inline-flex items-center gap-1.5" style={{ marginTop: 6 }}>
-                <Banknote size={13} />{walkIns ? `${peso(walkCash)} in the drawer${packVisits ? ` · ${packVisits} pack visit${packVisits === 1 ? '' : 's'}` : ''}` : 'Walk-ins are not set up'}
-              </div>
-            </button>
-            <button type="button" className="a-card press text-left" onClick={() => navigate('/attendance-history')} data-tip="Open History">
-              <div className="a-lbl">Members this week</div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}><div className="a-num"><CountUp value={weekUnique} /></div><span className="a-sub">of {activeMembers} active</span></div>
-              {weekShare !== null && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}><div className="a-bar"><i style={{ width: `${weekShare}%` }} /></div><span className="a-sub">{weekShare}%</span></div>
-              )}
-            </button>
-          </div>
 
-          {/* ── At the door ── */}
-          <div className="a-card" data-at-the-door>
-            <div className="a-ct"><h3><DoorOpen size={16} />At the door</h3><small>screens for the gym floor</small></div>
-            <div className="a-grid" style={{ gridTemplateColumns: '1fr 1fr', flex: 1 }}>
-              <div className="a-door" data-door-screen="kiosk">
-                {/* What the kiosk did today — never a "Running" it cannot know. */}
-                <div className="a-screen"><span className="a-qrm"><QrCode size={24} /></span></div>
-                <div><div className="flex items-center justify-between gap-2"><b>Kiosk</b>
-                  <span className={`a-status ${kioskRows.length ? '' : 'off'}`} style={{ position: 'static' }} data-kiosk-status>{kioskRows.length ? `${kioskRows.length} today · last ${clock(lastKiosk!)}` : 'No scans yet'}</span></div><div className="a-sub">Members scan their own QR on a tablet by the door{door?.coachCheckin ? '. Coaches scan theirs too' : ''}.</div></div>
-                <div className="flex items-center gap-2" style={{ marginTop: 'auto', flexWrap: 'wrap' }}>
-                  <button type="button" className="a-btn amber" onClick={() => navigate('/kiosk')}><Tablet size={16} />Open kiosk</button>
-                  <PageGuide id="kiosk" label="How it works" />
-                </div>
-              </div>
-              <div className="a-door" data-door-screen="tv">
-                <div className="a-screen"><div className="a-tv"><span /><span /><span /><span /><span /></div></div>
-                <div><b>Lobby TV</b><div className="a-sub">Today’s classes, records and the gym goal, big.</div></div>
-                <button type="button" className="a-btn amber" style={{ marginTop: 'auto' }} onClick={() => navigate('/tv')}><MonitorPlay size={16} />Open lobby TV</button>
-              </div>
+        <div className="a-v2-side">
+          {/* ── At the door (owner, 2026-11-27): one short row each, the same shape: what it is, what it did today, one button. ── */}
+          <div className="a-card a-railcard a-doorcard" data-at-the-door>
+            <div className="a-ct"><h3><DoorOpen size={15} />At the door</h3></div>
+            <div className="a-row" data-door-screen="kiosk">
+              <span className="a-ic"><Tablet size={15} /></span>
+              {/* What the kiosk did today, never a "Running" it cannot know. */}
+              <div className="t"><b>Kiosk</b><small className={`a-status ${kioskRows.length ? '' : 'off'}`} data-kiosk-status
+                data-tip={`Members scan their own QR on a tablet by the door${door?.coachCheckin ? '. Coaches scan theirs too' : ''}.`}>
+                {kioskRows.length ? `${kioskRows.length} today · last ${clock(lastKiosk!)}` : 'No scans yet'}</small></div>
+              <button type="button" className="a-btn sm" onClick={() => navigate('/kiosk')} aria-label="Open kiosk">Open</button>
+            </div>
+            <div className="a-row" data-door-screen="tv">
+              <span className="a-ic"><MonitorPlay size={15} /></span>
+              <div className="t"><b>Lobby TV</b><small>Classes, records and the gym goal</small></div>
+              <button type="button" className="a-btn sm" onClick={() => navigate('/tv')} aria-label="Open lobby TV">Open</button>
             </div>
             {door?.coachCheckin ? (
-              <button type="button" className="a-row text-left w-full" style={{ marginTop: 8, borderTop: '1px solid var(--a-border)', paddingTop: 8, paddingBottom: 0 }}
-                onClick={() => setCoachesOpen(true)} data-coaches-row>
+              <div className="a-row" data-coaches-row-wrap>
                 <span className="a-ic"><UserCheck size={15} /></span>
-                <div className="t">
-                  <b>{coachesIn.length} of {coaches.length} coaches in</b>
-                  <small>{coachesIn.length ? coachesIn.map((c) => `${c.name} ${clock(c.checkedInAt!)}`).join(' · ') : 'Nobody yet today. They scan their own QR.'}</small>
-                </div>
-                <div style={{ display: 'flex' }}>
-                  {coachesIn.slice(0, 3).map((c, i) => <span key={c.id} style={{ marginLeft: i ? -8 : 0, borderRadius: 999, border: '2px solid var(--a-surface)' }}><Av name={c.name} photo={c.photo} small /></span>)}
-                </div>
-              </button>
+                <div className="t"><b>Coaches</b><small>{coachesIn.length ? `${coachesIn.length} of ${coaches.length} in · ${coachesIn.map((c) => c.name.split(' ')[0]).join(', ')}` : `0 of ${coaches.length} in yet`}</small></div>
+                <button type="button" className="a-btn sm" onClick={() => setCoachesOpen(true)} data-coaches-row>See</button>
+              </div>
             ) : door ? (
-              <Link to="/settings?tab=gym" className="a-row" style={{ marginTop: 8, borderTop: '1px solid var(--a-border)', paddingTop: 8, paddingBottom: 0 }} data-coaches-off>
+              <div className="a-row" data-coaches-off>
                 <span className="a-ic"><UserCheck size={15} /></span>
-                <div className="t"><b>Coaches can check in too</b><small>The owner turns it on in Settings → Gym Information</small></div>
-              </Link>
+                <div className="t"><b>Coaches</b><small>Coach check-in is off</small></div>
+                <Link to="/settings?tab=gym" className="a-btn sm">Turn on</Link>
+              </div>
             ) : null}
+            <div className="a-doorfoot"><PageGuide id="kiosk" label="How the kiosk works" /></div>
+          </div>
+
+          {/* ── Plans ending soon (owner, 2026-11-27): renew them while they are at the desk. ── */}
+          <div className="a-card a-railcard" data-plans-ending>
+            <div className="a-ct"><h3><RefreshCw size={15} />Plans ending soon</h3>{ending.length > 0 && <small>{ending.length}</small>}</div>
+            <div className="a-railbody">
+              {ending.length === 0 ? <p className="a-sub a-railempty">No plan ends this week, and none ended last week.</p>
+                : ending.map(({ m, w, left }) => {
+                  const name = `${m.profile.first_name} ${m.profile.last_name}`;
+                  const here = inToday.has(m.profile.id);
+                  return (
+                    <div key={m.profile.id} className="a-row" data-ending-row>
+                      <Av name={name} photo={m.profile.photo_url} small />
+                      <div className="t"><b>{name}</b><small>{w.plan} · {endsText(left, w.expiry!)}{here ? ' · in today' : ''}</small></div>
+                      <button type="button" className="a-btn sm" onClick={() => navigate(`/members?open=${m.profile.id}`)} data-tip={`Open ${m.profile.first_name} on Members to renew`}>Renew</button>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+
+          {/* ── Coming up today: classes by time, or 1-on-1 sessions when the gym runs no classes. ── */}
+          <div className="a-card a-railcard" data-coming-up>
+            <div className="a-ct"><h3><CalendarClock size={15} />Coming up today</h3>
+              <Link to={useClasses ? '/schedule' : '/personal-training?tab=sessions'} className="a-link" style={{ color: 'var(--a-p300)', marginLeft: 'auto' }}>{useClasses ? 'Schedule' : 'Sessions'} →</Link></div>
+            <div className="a-railbody">
+              {day === null || (upClasses === null && upSessions === null) ? <p className="a-sub a-railempty">Today's classes and sessions could not be read.</p>
+                : upNext.length === 0 ? <p className="a-sub a-railempty">{upAll.length ? `Nothing more today. ${upDone} earlier.` : 'No classes or sessions today.'}</p>
+                : <>
+                  {upNext.map((x) => {
+                    const at = clock(x.startsAt);
+                    if ('booked' in x) return (
+                      <div key={x.id} className="a-row" data-up-class>
+                        <span className="a-time">{at}</span>
+                        <div className="t"><b>{x.name}</b><small>{[x.coach, x.location].filter(Boolean).join(' · ') || 'No coach set'}</small></div>
+                        <span className="a-sub" style={{ whiteSpace: 'nowrap' }}>{x.capacity ? `${x.booked} of ${x.capacity}` : `${x.booked} booked`}</span>
+                      </div>
+                    );
+                    const here = inToday.has(x.memberId);
+                    return (
+                      <div key={x.id} className="a-row" data-up-session>
+                        <span className="a-time">{at}</span>
+                        <div className="t"><b>{x.member ?? 'A member'}</b><small>with {x.coach ?? 'a coach'} · {x.minutes} min</small></div>
+                        <span className={`a-pill ${here ? 'v' : ''}`}>{here ? 'In' : 'Not in yet'}</span>
+                      </div>
+                    );
+                  })}
+                  {upDone > 0 && <p className="a-sub" style={{ padding: '6px 16px 10px', fontSize: 12 }}>{upDone} earlier today</p>}
+                </>}
+            </div>
           </div>
         </div>
       </div>
@@ -727,9 +736,9 @@ Let ${member.profile.first_name} in anyway?`)) return;
       <FloatingWindow open={fullOpen} onClose={() => setFullOpen(false)} title="Today's check-ins" icon={Users} count={logRecords.length} data-full-log
         tools={(
           <div className="att" style={{ flexDirection: 'row', alignItems: 'center', gap: 8, height: 'auto', overflow: 'visible' }}>
-            {(['all', 'kiosk', 'desk', 'typed'] as Way[]).map((k) => (
-              <button key={k} type="button" className={`a-chip ${way === k ? 'v' : ''}`} onClick={() => setWay(k)}>{WAY_LABEL[k]} <em>{k === 'all' ? today.length : byWay[k]}</em></button>
-            ))}
+            <select className="a-chip" value={way} onChange={(e) => setWay(e.target.value as Way)} aria-label="How they checked in">
+              {(['all', 'kiosk', 'desk', 'typed'] as Way[]).map((k) => <option key={k} value={k}>{WAY_LABEL[k]} ({k === 'all' ? today.length : byWay[k]})</option>)}
+            </select>
             <select className="a-chip" value={logPlan} onChange={(e) => setLogPlan(e.target.value)} aria-label="Filter by membership">
               <option value="all">All memberships</option>
               {plans.map((p) => <option key={p} value={p}>{p}</option>)}
@@ -741,7 +750,7 @@ Let ${member.profile.first_name} in anyway?`)) return;
         )}>
         <div className="att" style={{ height: 'auto', overflow: 'visible', padding: '0 12px' }}>
           <table className="a-table">
-            <thead><tr><th>Time</th><th>Member</th><th>How</th><th>Activity</th><th>By</th><th /></tr></thead>
+            <thead><tr><th>Member</th><th>Today</th><th>How</th><th>Activity</th><th>By</th><th /></tr></thead>
             <tbody>
               {logRecords.map((r) => (
                 <LogRow key={r.id} row={r} name={nameOf(r.member_id)} photo={memberById[r.member_id]?.profile.photo_url} plan={whoOf[r.member_id]?.plan}

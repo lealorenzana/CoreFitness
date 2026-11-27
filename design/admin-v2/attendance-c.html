@@ -1,0 +1,152 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Attendance C: one column, said once</title>
+<!-- ?mode=light flips the theme, ?state=empty shows the morning before anyone arrives. Sample data. -->
+<script>{const q=new URLSearchParams(location.search);document.documentElement.dataset.mode=q.get('mode')==='light'?'light':'dark';document.documentElement.dataset.state=q.get('state')==='empty'?'empty':'busy';}</script>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="shell2.css"><style>
+.pg { flex: 1; min-height: 0; padding: 16px 24px 20px; display: flex; flex-direction: column; gap: 14px; }
+/* terms: one slim line, still says what and lets the owner agree */
+.terms { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 6px 0 12px; border: 1px solid var(--line); border-left: 2px solid var(--action); border-radius: 8px; background: var(--surface); font-size: 12px; color: var(--text-2); flex: none; white-space: nowrap; overflow: hidden; }
+.terms b { color: var(--text); font-weight: 600; }
+.terms a { color: var(--primary-fg); font-weight: 600; }
+.terms .btn { margin-left: auto; height: 26px; font-size: 12px; }
+.ph { display: flex; align-items: center; gap: 20px; flex: none; }
+.ph h1 { font-size: 22px; font-weight: 650; letter-spacing: -.02em; }
+.ph p { color: var(--text-2); font-size: 13px; margin-top: 2px; }
+.live { display: inline-flex; align-items: center; gap: 6px; color: var(--text); font-weight: 600; }
+.live::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--primary-fg); }
+.views { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--line-strong); border-radius: 8px; }
+.views a { padding: 5px 12px; border-radius: 6px; color: var(--text-2); font-weight: 600; cursor: pointer; white-space: nowrap; }
+.views a.on { background: var(--raised); color: var(--text); }
+.views a em { font-style: normal; color: var(--text-3); font-weight: 500; margin-left: 4px; }
+
+.wrap { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; }
+.col { display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+
+/* figures: one strip, three numbers, no gradient */
+.strip { grid-template-columns: 1.3fr 1fr 1fr; flex: none; }
+.fig .n.hero { font-size: 36px; }
+.fig .row-n { display: flex; align-items: flex-end; gap: 16px; }
+.fig svg.trend { flex: 1; height: 34px; min-width: 60px; }
+.trend .then { stroke: var(--text-3); stroke-dasharray: 3 3; fill: none; stroke-width: 1.5; }
+.trend .now { stroke: var(--primary-fg); fill: none; stroke-width: 2; }
+.up { color: var(--primary-fg) !important; } .down { color: var(--action) !important; }
+
+/* the work box: find, then the log, one box */
+.work { flex: 1; }
+.find { display: flex; gap: 8px; padding: 14px 16px 12px; }
+.find .in { flex: 1; height: 46px; border: 1px solid var(--line-strong); border-radius: 8px; display: flex; align-items: center; gap: 10px; padding: 0 12px 0 14px; font-size: 15px; color: var(--text-3); background: var(--ground); min-width: 0; }
+.find .in span.ph2 { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.find .kb { font-size: 11px; border: 1px solid var(--line-strong); border-radius: 4px; padding: 1px 6px; color: var(--text-3); }
+.find .go { height: 46px; padding: 0 18px; border-radius: 8px; background: var(--action); color: var(--on-action); font-weight: 650; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.tag { height: 46px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line-strong); display: inline-flex; align-items: center; gap: 8px; color: var(--text-2); white-space: nowrap; }
+.tag b { color: var(--text); font-weight: 600; }
+.tag .chev { color: var(--text-3); font-size: 10px; }
+.hint { padding: 0 16px 12px; color: var(--text-3); font-size: 12px; }
+.okbar { margin: 0 16px 12px; display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-radius: 8px; background: var(--raised); }
+.okbar .c { width: 22px; height: 22px; border-radius: 50%; background: var(--fill-primary); color: #fff; display: grid; place-items: center; flex: none; }
+.okbar .t { flex: 1; min-width: 0; } .okbar .t b { font-weight: 600; } .okbar .t span { color: var(--text-2); font-size: 12px; margin-left: 8px; }
+.btn.sm { height: 28px; font-size: 12px; padding: 0 10px; }
+.btn.q { border-color: transparent; color: var(--text-2); }
+
+.loghead { display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 16px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); flex: none; }
+.loghead h2 { font-size: 13px; font-weight: 600; }
+.loghead .aside { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.chips { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--line-strong); border-radius: 7px; }
+.chips a { padding: 3px 10px; border-radius: 5px; color: var(--text-2); font-weight: 600; font-size: 12px; cursor: pointer; }
+.chips a.on { background: var(--raised); color: var(--text); }
+.chips a em { font-style: normal; color: var(--text-3); font-weight: 500; margin-left: 4px; }
+.mini { height: 28px; border: 1px solid var(--line-strong); border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; color: var(--text-3); font-size: 12px; width: 160px; }
+table.log { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.log th { text-align: left; font-size: 12px; color: var(--text-3); font-weight: 500; padding: 8px 16px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--surface); }
+table.log td { padding: 9px 16px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.log td.n b { font-weight: 600; } table.log td.n span { color: var(--text-3); margin-left: 8px; font-size: 12px; }
+table.log td.m { color: var(--text-2); } table.log td.r { text-align: right; }
+table.log .how { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); }
+table.log tr:hover td { background: rgb(255 255 255 / .02); }
+
+.empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 32px; text-align: center; }
+.empty b { font-size: 14px; font-weight: 600; }
+.empty p { color: var(--text-2); max-width: 46ch; }
+.empty .link { margin-top: 6px; font-size: 12px; }
+
+/* rail: only what is at the door */
+.door { flex: 1; }
+.kv { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.kv > svg.i { color: var(--text-3); margin-top: 2px; }
+.kv .t { flex: 1; min-width: 0; }
+.kv .t b { display: block; font-weight: 600; }
+.kv .t span { display: block; color: var(--text-2); font-size: 12px; margin-top: 2px; }
+.kv .t .state { display: flex; margin-top: 6px; }
+.kv .t .state .dot { display: inline-block; }
+.ann { left: auto; right: 12px; }
+.kv .btn { margin-top: -2px; }
+.foot { padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
+.foot a { color: var(--primary-fg); font-weight: 600; cursor: pointer; }
+
+/* state switch */
+[data-state="empty"] .busy-only { display: none !important; }
+[data-state="busy"] .empty-only { display: none !important; }
+:root[data-mode="light"] table.log tr:hover td { background: rgb(0 0 0 / .02); }
+</style></head><body>
+<div class="sb"><nav class="sb-rail"><span class="logo">CF</span><a class="on"><svg class="i" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z"/></svg>Desk</a><a><svg class="i" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg>People</a><a><svg class="i" viewBox="0 0 24 24"><path d="M6.5 6.5h11M6.5 17.5h11M4 9v6M20 9v6M2 11v2M22 11v2"/></svg>Coaching</a><a><svg class="i" viewBox="0 0 24 24"><path d="M2 6h20v12H2zM2 10h20"/></svg>Money</a><a><svg class="i" viewBox="0 0 24 24"><path d="M3 3v18h18M7 15l4-4 3 3 5-6"/></svg>Reports</a><a><svg class="i" viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/></svg>Engage</a><a><svg class="i" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Messages</a><a><svg class="i" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V2H6.5A2.5 2.5 0 0 0 4 4.5zM4 19.5V22h16"/></svg>Library</a><a class="push"><svg class="i" viewBox="0 0 24 24"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6M19 12l2-1-2-4-2 .5-1.5-1.2L15 4h-6l-.5 2.3L7 7.5 5 7l-2 4 2 1-2 1 2 4 2-.5 1.5 1.2L9 20h6l.5-2.3 1.5-1.2 2 .5 2-4z"/></svg>Gym</a><a><svg class="i" viewBox="0 0 24 24"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></svg>Help</a><span class="av me">LL</span></nav>
+<div class="main"><div class="sb-top"><div class="row1"><span class="gymname">Core Fitness Lab <small>Where Core Fitness is tried first</small></span>
+<div class="cmd"><svg class="i" viewBox="0 0 24 24"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16M21 21l-4.3-4.3"/></svg>Search anything<span class="kbd">Ctrl K</span></div><button class="ico-btn"><svg class="i" width="18" height="18" viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 21h4"/></svg><span class="n">38</span></button></div>
+<div class="row2"><span class="sec">Desk</span><a>Today</a><a class="on">Attendance</a><a>Notifications</a></div></div>
+
+<div class="pg">
+  <div class="terms"><svg class="i" viewBox="0 0 24 24"><path d="M14 3H6v18h12V7zM14 3v4h4M9 13h6M9 17h4"/></svg><b>New terms for gyms</b><span>version of November 27, 2026 · read the <a>Terms</a>, the <a>Data Processing Agreement</a> and the <a>Privacy Policy</a></span><button class="btn">I agree for my gym</button></div>
+
+  <div class="ph"><div><h1>Attendance</h1><p><span class="live">Live</span> · Friday, November 27 · open until 11:00 pm</p></div>
+    <div class="views"><a class="on">Check-ins<em class="busy-only">42</em><em class="empty-only">0</em></a><a>Walk-ins<em class="busy-only">3</em><em class="empty-only">0</em></a><a>History</a></div></div>
+
+  <div class="wrap">
+    <div class="col">
+      <section class="strip">
+        <div class="fig"><div class="l">Checked in today</div>
+          <div class="row-n"><div class="n hero"><span class="busy-only">42</span><span class="empty-only">0</span></div>
+            <svg class="trend" viewBox="0 0 160 34" preserveAspectRatio="none"><path class="then" d="M0 32 L20 28 L40 22 L60 20 L80 16 L100 14 L120 10 L140 8 L160 6"/><path class="now busy-only" d="M0 32 L20 26 L40 18 L60 15 L80 12 L100 9"/></svg></div>
+          <div class="d busy-only"><b class="up">9 more</b> than last Friday by now</div><div class="d empty-only">Last Friday had <b>5</b> by now</div></div>
+        <div class="fig"><div class="l">Walk-ins today</div><div class="n"><span class="busy-only">3</span><span class="empty-only">0</span></div><div class="d"><b class="busy-only">₱450</b><b class="empty-only">₱0</b> in the drawer</div></div>
+        <div class="fig"><div class="l">Members this week</div><div class="n">96</div><div class="d">of 128 active, 75%</div></div>
+      </section>
+
+      <section class="box work">
+        <div class="find"><div class="in"><svg class="i" width="18" height="18" viewBox="0 0 24 24"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16M21 21l-4.3-4.3"/></svg><span class="ph2">Name, email or the code under their QR</span><span class="kb">Enter</span></div>
+          <button class="tag"><svg class="i" viewBox="0 0 24 24"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8zM7.5 7.5h.01"/></svg>Tag <b>None</b><span class="chev">▼</span></button>
+          <button class="go"><svg class="i" width="18" height="18" viewBox="0 0 24 24"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h3v3h-3zM18 18h3v3h-3z"/></svg>Scan QR</button></div>
+        <div class="okbar busy-only"><span class="c"><svg class="i" width="13" height="13" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span><div class="t"><b>Ana Par is in</b><span>6:05 pm · Cardio · tagged at the desk</span></div><button class="btn sm">Undo</button></div>
+        <div class="hint empty-only">A scanned or typed code checks them in at once. Kiosk scans land here too.</div>
+
+        <div class="loghead"><h2>Today's check-ins</h2>
+          <span class="aside busy-only"><span class="chips"><a class="on">All<em>42</em></a><a>Kiosk<em>24</em></a><a>Desk scan<em>11</em></a><a>Typed<em>7</em></a></span>
+            <span class="mini"><svg class="i" width="14" height="14" viewBox="0 0 24 24"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16M21 21l-4.3-4.3"/></svg>Find in today</span>
+            <button class="btn sm"><svg class="i" width="14" height="14" viewBox="0 0 24 24"><path d="M12 3v12M6 11l6 6 6-6M4 21h16"/></svg>Export</button>
+            <button class="btn sm q" aria-label="View all"><svg class="i" width="14" height="14" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button></span></div>
+
+        <div class="scroll busy-only"><table class="log"><thead><tr><th>Time</th><th>Member</th><th>How</th><th>Activity</th><th>Tagged by</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
+        <div class="empty empty-only"><b>Nobody has checked in yet today</b><p>By this time last Friday, 5 had. The first scan shows here the moment it happens.</p><a class="link">See other days →</a></div>
+      </section>
+    </div>
+
+    <aside class="col">
+      <section class="box door">
+        <header><h2>At the door</h2></header>
+        <div class="kv"><svg class="i" width="18" height="18" viewBox="0 0 24 24"><path d="M5 2h14v20H5zM11 18h2"/></svg><div class="t"><b>Kiosk</b><span>Members scan their own QR on a tablet by the door.</span>
+          <span class="state busy-only"><span class="dot"></span>24 today · last at 5:48 pm</span><span class="state empty-only"><span class="dot off"></span>No scans yet</span></div><button class="btn sm">Open</button></div>
+        <div class="kv"><svg class="i" width="18" height="18" viewBox="0 0 24 24"><path d="M2 7h20v12H2zM8 3l4 4 4-4"/></svg><div class="t"><b>Lobby TV</b><span>Today's classes, records and the gym goal, big.</span></div><button class="btn sm">Open</button></div>
+        <div class="kv"><svg class="i" width="18" height="18" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M17 11l2 2 4-4"/></svg><div class="t"><b>Coaches</b>
+          <span class="busy-only">2 of 3 in · Jen 5:50 am, Dante 1:10 pm</span><span class="empty-only">Coaches can check in too. Turn it on in Settings.</span></div><button class="btn sm busy-only">See all</button></div>
+        <div class="foot"><a>How the kiosk works</a><a>Open settings for check-in</a></div>
+      </section>
+    </aside>
+  </div>
+</div></div></div>
+<span class="ann">Attendance C · sample data · ?mode=light · ?state=empty</span>
+<script>
+const qr='<svg class="i" width="14" height="14" viewBox="0 0 24 24"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h3v3h-3zM18 18h3v3h-3z"/></svg>';
+const kio='<svg class="i" width="14" height="14" viewBox="0 0 24 24"><path d="M5 2h14v20H5zM11 18h2"/></svg>';
+const typ='<svg class="i" width="14" height="14" viewBox="0 0 24 24"><path d="M2 6h20v12H2zM6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg>';
+const H={d:[qr,'Desk scan'],k:[kio,'Kiosk'],t:[typ,'Typed']};
+const R=[['6:05 pm','Ana Par','Free Plan','d','Cardio','Front desk'],['5:48 pm','Ben Cruz','Premium','k','Weight Training','Their pick'],['5:31 pm','Carla Diaz','Premium','k','Strength','Their pick'],['4:12 pm','Ana Iturralde','Premium','t','Weight Training','Front desk'],['3:40 pm','Dino Santos','Free Trial','k','Not recorded',''],['12:05 pm','Ana Andrada','Free Trial','d','Cardio','Front desk'],['10:05 am','Angelica Lopez','Premium','k','Weight Training','Their pick'],['9:05 am','Aileen Navarro','Free Plan','d','Cardio','Front desk'],['7:30 am','Ella Reyes','Premium','k','Strength','Their pick'],['6:12 am','Franco Lim','Premium','k','Cardio','Their pick']];
+document.getElementById('rows').innerHTML=R.map(r=>`<tr><td>${r[0]}</td><td class="n"><b>${r[1]}</b><span>${r[2]}</span></td><td><span class="how">${H[r[3]][0]}${H[r[3]][1]}</span></td><td class="m">${r[4]}</td><td class="m">${r[5]}</td><td class="r"><button class="btn sm q">Undo</button></td></tr>`).join('');
+</script>
+</body></html>

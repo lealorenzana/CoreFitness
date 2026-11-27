@@ -63,7 +63,7 @@ export function AttHead({ sub, counts, actions }: { sub: React.ReactNode; counts
         <p>{sub}</p>
       </div>
       <nav className="a-tabs" data-rd-tabs aria-label="Attendance views">
-        {tab('/attendance', Sun, 'Today', counts.today, true)}
+        {tab('/attendance', Sun, 'Check-ins', counts.today, true)}
         {tab('/attendance/walk-ins', Footprints, 'Walk-ins', counts.walkIns)}
         {tab('/attendance-history', History, 'History')}
       </nav>

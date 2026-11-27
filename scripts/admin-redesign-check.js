@@ -127,16 +127,16 @@ async (page) => {
 
   // ── Attendance · Today ──
   let t = await visit('/attendance', 'attendance');
-  has("today's count in the strip", (await page.locator('[data-stats-strip]').count()) === 1 && /Checked in today\s*2/.test(t));
-  has('tabs Today · Walk-ins · History', (await page.locator('[data-rd-tabs] a').count()) === 3);
+  has("today's count in the figures", (await page.locator('[data-att-figures]').count()) === 1 && /Checked in today\s*2/.test(t));
+  has('tabs Check-ins · Walk-ins · History', (await page.locator('[data-rd-tabs] a').count()) === 3);
   has('Scan QR and the one check-in box', (await page.locator('[data-scan-qr]').count()) === 1 && (await page.getByLabel('Check-in code or name').count()) === 1);
-  has('the four cards: today, how they came in, walk-ins, the week', /How they came in/.test(t) && /Typed/.test(t) && /Walk-ins today/.test(t) && /Members this week/.test(t));
+  has('the three figures: today, walk-ins, the week; how they came in is the How filter', /Typed/.test(t) && /Walk-ins today/.test(t) && /Members this week/.test(t) && (await page.locator('[data-way-select]').count()) === 1);
   has("today's log with method, membership and notes", (await page.locator('[data-log-row]').count()) === 2 && /Weight Training/.test(t) && /Premium|Free Plan|Free Trial/.test(t));
   has('kept: undo, export, other days', /Undo/.test(t) && /Export/.test(t) && /Other days/.test(t));
-  has('kept: search, typed code, activity tag, kiosk, lobby TV', /Tag the next check-in/.test(t) && /Open kiosk/.test(t) && /Open lobby TV/.test(t));
-  await page.locator('[data-way="desk"]').click();
+  has('kept: search, typed code, activity tag, kiosk, lobby TV', (await page.locator('[data-tag-select]').count()) === 1 && (await page.getByRole('button', { name: 'Open kiosk' }).count()) === 1 && (await page.getByRole('button', { name: 'Open lobby TV' }).count()) === 1);
+  await page.locator('[data-way-select]').selectOption('desk');
   await page.waitForTimeout(300);
-  has('a tile filters the log', (await page.locator('[data-log-row]').count()) === 1);
+  has('How filters the list', (await page.locator('[data-log-row]').count()) === 1);
 
   // ── Attendance · Walk-ins ──
   t = await visit('/attendance/walk-ins', 'walkins');
