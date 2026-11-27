@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { X, Printer } from 'lucide-react';
+import { X, Printer, ScanLine, UserPlus, Dumbbell } from 'lucide-react';
 import Button from './ui/Button';
 import type { Ramp } from '../lib/gymTheme';
 
@@ -69,13 +69,17 @@ export default function JoinPoster({
   }, []);
 
   const deep = accent.c800;
-  const step2 = (action ?? accent).c700;
+  const act = (action ?? accent).c600;
   const initials = gymName.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '?';
-  const steps = [
-    ['Scan', 'Point your phone camera at the code'],
-    ['Sign up', 'Fill in your name and a password'],
-    ['Come in', 'We approve you at the desk'],
+  const steps: [typeof ScanLine, string, string][] = [
+    [ScanLine, 'Scan', 'Point your phone camera at the code'],
+    [UserPlus, 'Sign up', 'Your name and a password, that is all'],
+    [Dumbbell, 'Come in', 'We approve you at the desk'],
   ];
+  // Corner marks around the QR: the gym's second colour, the scanning frame people already know.
+  const corner = (pos: React.CSSProperties) => (
+    <span style={{ position: 'absolute', width: 34, height: 34, borderColor: act, borderStyle: 'solid', borderWidth: 0, ...pos }} />
+  );
 
   return createPortal((
     // The dimmed backdrop is a class, not an inline style, so print can turn it white (it printed as grey margins).
@@ -96,69 +100,101 @@ export default function JoinPoster({
         </div>
       </div>
 
-      {/* Paper: white, with the gym's colour where it carries meaning. */}
-      <div className="mx-auto my-6 print:my-0" style={{ maxWidth: 640, WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
-        <div style={{ background: '#FFFFFF', color: '#111827', textAlign: 'center', fontFamily: 'Inter, system-ui, sans-serif' }}>
-          {/* The band: the gym's colour, its logo, its name. */}
-          <div style={{ background: deep, color: '#FFFFFF', padding: '36px 36px 64px', position: 'relative' }}>
-            <div style={{ width: 104, height: 104, margin: '0 auto 16px', borderRadius: '50%', background: '#FFFFFF', display: 'grid', placeItems: 'center',
-              overflow: 'hidden', boxShadow: `0 0 0 6px ${accent.c600}` }} data-poster-logo>
-              {logoUrl
-                ? <img src={logoUrl} alt="" style={{ width: '86%', height: '86%', objectFit: 'contain' }} />
-                : <span style={{ fontSize: 38, fontWeight: 800, color: deep }}>{initials}</span>}
+      {/* One A4 page at 640 by 905: nothing is absolutely placed except decoration, so Letter paper survives too. */}
+      {/* keep-dark: paper looks the same in light mode (light.css turns inline white words dark elsewhere). */}
+      <div className="mx-auto my-6 print:my-0 keep-dark" style={{ width: 640, maxWidth: '100%', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
+        <div style={{ background: '#FFFFFF', color: '#0F172A', fontFamily: 'Inter, system-ui, sans-serif', overflow: 'hidden', position: 'relative' }}>
+
+          {/* The band: the gym's colour, cut on a slant, its initials as a faint giant watermark. */}
+          <div style={{ position: 'relative', background: deep, color: '#FFFFFF', padding: '30px 36px 150px',
+            clipPath: 'polygon(0 0, 100% 0, 100% 78%, 0 100%)', overflow: 'hidden' }}>
+            <span aria-hidden style={{ position: 'absolute', right: -24, top: -40, fontSize: 300, fontWeight: 900, lineHeight: 1, letterSpacing: '-0.06em',
+              color: accent.c600, opacity: 0.35, userSelect: 'none' }}>{initials}</span>
+
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{ width: 64, height: 64, borderRadius: 16, background: '#FFFFFF', display: 'grid', placeItems: 'center', overflow: 'hidden', flex: 'none' }} data-poster-logo>
+                {logoUrl
+                  ? <img src={logoUrl} alt="" style={{ width: '84%', height: '84%', objectFit: 'contain' }} />
+                  : <span style={{ fontSize: 24, fontWeight: 900, color: deep }}>{initials}</span>}
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ margin: 0, fontSize: 20, fontWeight: 800, letterSpacing: '-0.01em', lineHeight: 1.15 }}>{gymName}</p>
+                {tagline && <p style={{ margin: '3px 0 0', fontSize: 13, color: accent.c200 }}>{tagline}</p>}
+              </div>
             </div>
-            <h1 style={{ fontSize: 36, fontWeight: 800, lineHeight: 1.08, margin: 0, letterSpacing: '-0.02em' }}>{gymName}</h1>
-            {tagline && <p style={{ fontSize: 15, marginTop: 8, color: accent.c200 }}>{tagline}</p>}
+
+            <h1 style={{ position: 'relative', margin: '34px 0 0', fontSize: 76, fontWeight: 900, lineHeight: 0.92, letterSpacing: '-0.045em', textTransform: 'uppercase' }}>
+              Scan<br />to join
+            </h1>
+            <p style={{ position: 'relative', margin: '14px 0 0', fontSize: 16, fontWeight: 500, color: accent.c200, maxWidth: 262 }}>
+              Your membership, on your phone. Sign up here and the desk does the rest.
+            </p>
           </div>
 
-          {/* The card that overlaps the band: the headline and the three steps. */}
-          <div style={{ margin: '-40px 32px 0', background: '#FFFFFF', borderRadius: 18, padding: '22px 20px 18px', position: 'relative',
-            boxShadow: '0 12px 30px -14px rgba(17,24,39,0.35)', border: `1px solid ${accent.c200}` }}>
-            <p style={{ fontSize: 24, fontWeight: 800, margin: 0, letterSpacing: '-0.01em' }}>Join us on your phone</p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginTop: 16 }}>
-              {steps.map(([t, s], i) => (
-                <div key={t} style={{ display: 'grid', justifyItems: 'center', alignContent: 'start', gap: 4 }}>
-                  <span style={{ width: 30, height: 30, borderRadius: '50%', background: step2, color: '#FFFFFF', display: 'grid', placeItems: 'center',
-                    fontWeight: 800, fontSize: 14 }}>{i + 1}</span>
-                  <b style={{ fontSize: 14 }}>{t}</b>
-                  <span style={{ fontSize: 11.5, color: '#4B5563', lineHeight: 1.35 }}>{s}</span>
+          {/* The QR on a white card that rides up over the band. */}
+          <div style={{ position: 'relative', margin: '-176px 44px 0 auto', width: 268, padding: 18, background: '#FFFFFF', borderRadius: 22,
+            boxShadow: '0 22px 44px -18px rgba(15,23,42,0.45)', border: '1px solid #E5E7EB' }}>
+            <div style={{ position: 'relative', padding: 12 }}>
+              {corner({ top: 0, left: 0, borderTopWidth: 5, borderLeftWidth: 5, borderTopLeftRadius: 12 })}
+              {corner({ top: 0, right: 0, borderTopWidth: 5, borderRightWidth: 5, borderTopRightRadius: 12 })}
+              {corner({ bottom: 0, left: 0, borderBottomWidth: 5, borderLeftWidth: 5, borderBottomLeftRadius: 12 })}
+              {corner({ bottom: 0, right: 0, borderBottomWidth: 5, borderRightWidth: 5, borderBottomRightRadius: 12 })}
+              <QRCodeSVG
+                value={joinLink}
+                size={208}
+                level="M"
+                // Stated rather than defaulted: qrcode.react's defaults changed
+                // between majors, and a quiet zone that silently goes to 0 makes
+                // a printed code unreadable against a dark wall (CheckInSheet.tsx
+                // carries the same note for the same reason).
+                marginSize={0}
+                bgColor="#FFFFFF"
+                fgColor="#0F172A"
+                style={{ display: 'block' }}
+              />
+            </div>
+            <p style={{ margin: '10px 0 0', textAlign: 'center', fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: deep }}>
+              Point your camera here
+            </p>
+          </div>
+
+          <div style={{ padding: '0 44px' }}>
+            {/* The code, for a camera that will not focus. */}
+            {joinCode ? (
+              <div style={{ marginTop: 26, display: 'flex', alignItems: 'center', gap: 18, padding: '14px 18px', borderRadius: 16, background: accent.c200 }}>
+                <p style={{ margin: 0, fontSize: 13.5, fontWeight: 600, color: accent.c900, lineHeight: 1.35, flex: 1 }}>
+                  Camera not working? Open the app, tap <b>Have a join code</b>, and type
+                </p>
+                <p style={{ margin: 0, fontSize: 40, fontWeight: 900, letterSpacing: '0.16em', color: accent.c900, fontVariantNumeric: 'tabular-nums' }}>{joinCode}</p>
+              </div>
+            ) : (
+              <p style={{ marginTop: 26, fontSize: 13, color: '#475569', wordBreak: 'break-all' }}>Or open <b style={{ color: '#0F172A' }}>{joinLink}</b></p>
+            )}
+
+            {/* Three steps on one line, joined like a route. */}
+            <div style={{ position: 'relative', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginTop: 30 }}>
+              <span aria-hidden style={{ position: 'absolute', top: 23, left: '17%', right: '17%', height: 3, borderRadius: 2, background: accent.c200 }} />
+              {steps.map(([Icon, t, s], i) => (
+                <div key={t} style={{ position: 'relative', display: 'grid', justifyItems: 'center', alignContent: 'start', textAlign: 'center', gap: 6 }}>
+                  <span style={{ width: 48, height: 48, borderRadius: '50%', background: i === 0 ? act : deep, color: '#FFFFFF', display: 'grid', placeItems: 'center',
+                    boxShadow: '0 0 0 5px #FFFFFF' }}><Icon size={22} strokeWidth={2.4} /></span>
+                  <b style={{ fontSize: 15, fontWeight: 800, marginTop: 2 }}>{i + 1}. {t}</b>
+                  <span style={{ fontSize: 12, color: '#475569', lineHeight: 1.35, maxWidth: 150 }}>{s}</span>
                 </div>
               ))}
             </div>
+
+            {/* The honest last line. Members are approved at the desk (0078), and
+                a poster that implies instant access sets up an argument at the
+                counter on day one. */}
+            <p style={{ margin: '26px 0 0', textAlign: 'center', fontSize: 13, color: '#334155' }}>
+              Ask at the desk once you have signed up. We approve every new member.
+            </p>
           </div>
 
-          {/* The QR, framed in the gym's colour. */}
-          <div style={{ margin: '28px auto 0', width: 260, padding: 14, borderRadius: 20, background: '#FFFFFF', border: `5px solid ${deep}` }}>
-            <QRCodeSVG
-              value={joinLink}
-              size={222}
-              level="M"
-              // Stated rather than defaulted: qrcode.react's defaults changed
-              // between majors, and a quiet zone that silently goes to 0 makes
-              // a printed code unreadable against a dark wall (CheckInSheet.tsx
-              // carries the same note for the same reason).
-              marginSize={0}
-              bgColor="#FFFFFF"
-              fgColor="#111827"
-            />
-          </div>
-          <p style={{ fontSize: 12.5, marginTop: 10, color: '#4B5563', wordBreak: 'break-all', padding: '0 40px' }}>{joinLink}</p>
-
-          {joinCode && (
-            <div style={{ margin: '22px 48px 0', padding: '14px 16px', borderRadius: 14, background: accent.c200 }}>
-              <p style={{ fontSize: 13.5, color: deep, margin: 0, fontWeight: 600 }}>Camera not working? Open the app, tap Have a join code, and type</p>
-              <p style={{ fontSize: 42, fontWeight: 800, letterSpacing: '0.2em', margin: '4px 0 0', color: accent.c900 }}>{joinCode}</p>
-            </div>
-          )}
-
-          {/* The honest last line. Members are approved at the desk (0078), and
-              a poster that implies instant access sets up an argument at the
-              counter on day one. */}
-          <p style={{ fontSize: 13, marginTop: 22, color: '#374151', padding: '0 40px' }}>
-            Ask at the desk once you have signed up. We approve every new member.
-          </p>
-          <div style={{ marginTop: 22, background: deep, color: accent.c200, padding: '10px 16px', fontSize: 11 }}>
-            {gymName} · Powered by Core Fitness
+          <div style={{ marginTop: 24, background: deep, color: accent.c200, padding: '12px 44px', display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 11.5 }}>
+            <span style={{ fontWeight: 700, color: '#FFFFFF' }}>{gymName}</span>
+            <span>Powered by Core Fitness</span>
           </div>
         </div>
       </div>
