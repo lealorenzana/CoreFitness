@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { CalendarPlus, Check, Search, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { Check, Search, X } from 'lucide-react';
 import { listMembers } from '../../lib/api/members';
 import { listMemberships } from '../../lib/api/memberships';
 import { listTrainers, type TrainerWithProfile } from '../../lib/api/trainers';
@@ -10,25 +11,27 @@ import { notifyUser } from '../../lib/api/notify';
 import { loadSessionsBetween, type CalendarSession } from '../../services/scheduleService';
 import { addDays, localDateKey, todayKey } from '../../utils/dates';
 import { showToast } from '../../utils/toast';
-import { Av } from '../../pages/attendance/parts';
+import { Initials } from '../ui/rd';
+import GymMascot from '../ui/GymMascot';
 
 const dayLabel = (key: string, today: string) => {
   if (key === today) return 'Today';
-  if (key === addDays(today, 1)) return 'Tmrw';
+  if (key === addDays(today, 1)) return 'Tomorrow';
   const [y, m, d] = key.split('-').map(Number);
   return new Date(y, m - 1, d).toLocaleDateString('en-PH', { weekday: 'short' });
 };
+const dateOf = (key: string) => { const [y, m, d] = key.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }); };
 const timeOf = (iso: string) => new Date(iso).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
 
 /**
- * Book for a member, at the desk (2026-10-20, the Bookings mock-up): pick the
- * member, a class with seats left on a day — or a coach's free 1-on-1 slot —
- * and book. A desk booking is confirmed at once and the member is told (0204
- * for classes; pt_sessions_insert_frontdesk for 1-on-1). The database still
- * refuses a full class, a plan without classes, or a clash, and says which.
+ * Book for a member, at the desk. Since 2026-11-27 (owner) a floating page like Add member (`am-*` in v2.css): a
+ * panel in the gym's colour with the three steps and the kettlebell, then who, the day, and a class with seats left
+ * or a coach's free 1-on-1 slot, and one amber Book button. A desk booking is confirmed at once and the member is
+ * told (0204 for classes; pt_sessions_insert_frontdesk for 1-on-1). The database still refuses a full class, a plan
+ * without classes, or a clash, and says which.
  */
-export default function DeskBookCard({ onBooked, focusKey, only }: { onBooked: () => void; focusKey?: number;
-  /** One kind only (2026-11-14): Class bookings books classes, Personal training books 1-on-1 — no switch between. */
+export default function DeskBookCard({ open, onClose, onBooked, only }: { open: boolean; onClose: () => void; onBooked: () => void;
+  /** One kind only (2026-11-14): Class bookings books classes, Personal training books 1-on-1, no switch between. */
   only?: 'class' | 'pt' }) {
   const [today] = useState(() => todayKey());
   const [members, setMembers] = useState<{ id: string; name: string; photo: string | null; plan: string }[]>([]);
@@ -43,20 +46,9 @@ export default function DeskBookCard({ onBooked, focusKey, only }: { onBooked: (
   const [classes, setClasses] = useState<CalendarSession[] | null>(null);
   const [pick, setPick] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  // The page's "Book for a member" button bumps focusKey: bring this card into view and put the cursor
-  // in the member search (it used to only reload the lists, so the button looked dead).
-  useEffect(() => {
-    if (!focusKey) return;
-    const el = rootRef.current;
-    if (!el) return;
-    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    (inputRef.current ?? el).focus({ preventScroll: true });
-    el.animate?.([{ boxShadow: '0 0 0 2px var(--color-primary)' }, { boxShadow: '0 0 0 2px transparent' }], { duration: 900, easing: 'ease-out' });
-  }, [focusKey]);
 
   useEffect(() => {
+    if (!open) return;
     void (async () => {
       const [ms, ts, av, pt, mships] = await Promise.all([listMembers().catch(() => []), listTrainers().catch(() => []), listAllAvailability().catch(() => []), listPtSessions().catch(() => []), listMemberships().catch(() => [])]);
       const planOf = new Map<string, { at: string; name: string }>();
@@ -66,12 +58,19 @@ export default function DeskBookCard({ onBooked, focusKey, only }: { onBooked: (
       setAvail(av);
       setPts(pt);
     })();
-  }, [focusKey]);
+  }, [open]);
   useEffect(() => {
+    if (!open) return;
     void (async () => { setClasses(await loadSessionsBetween(day, day).catch(() => [])); })();
-  }, [day, busy]);
+  }, [day, busy, open]);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
 
-  const hits = q.trim() ? members.filter((m) => m.name.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 5) : [];
+  const hits = q.trim() ? members.filter((m) => m.name.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 8) : [];
   const member = members.find((m) => m.id === who) ?? null;
   const [nowMs] = useState(() => Date.now());
   const openClasses = (classes ?? []).filter((c) => new Date(c.startsAt).getTime() > nowMs);
@@ -98,6 +97,7 @@ export default function DeskBookCard({ onBooked, focusKey, only }: { onBooked: (
 
   const chosenClass = openClasses.find((c) => c.id === pick) ?? null;
   const chosenSlot = slots.find((s) => s.at === pick) ?? null;
+  const coachName = (id: string) => { const t = trainers.find((x) => x.profile.id === id); return t ? `${t.profile.first_name} ${t.profile.last_name}` : ''; };
   const book = async () => {
     if (!member) return;
     setBusy(true);
@@ -107,13 +107,14 @@ export default function DeskBookCard({ onBooked, focusKey, only }: { onBooked: (
         showToast(`${member.name} is booked into ${chosenClass.name}: they have been told`, 'success');
       } else if (kind === 'pt' && chosenSlot && coach) {
         await deskBookPt({ trainerId: coach, memberId: member.id, startsAt: chosenSlot.at, durationMinutes: chosenSlot.minutes });
-        const coachName = trainers.find((t) => t.profile.id === coach)?.profile.first_name ?? 'your coach';
-        await notifyUser({ userId: member.id, type: 'booking', title: 'Booked by the gym', message: `A 1-on-1 with ${coachName} on ${dayLabel(day, today) === 'Today' ? 'today' : day} at ${timeOf(chosenSlot.at)} is confirmed.`, actionUrl: '/member/bookings' }).catch(() => undefined);
+        const first = trainers.find((t) => t.profile.id === coach)?.profile.first_name ?? 'your coach';
+        await notifyUser({ userId: member.id, type: 'booking', title: 'Booked by the gym', message: `A 1-on-1 with ${first} on ${dayLabel(day, today) === 'Today' ? 'today' : day} at ${timeOf(chosenSlot.at)} is confirmed.`, actionUrl: '/member/bookings' }).catch(() => undefined);
         setPts(await listPtSessions().catch(() => pts));
         showToast(`${member.name} has a 1-on-1 at ${timeOf(chosenSlot.at)}: they have been told`, 'success');
       }
       setPick(null);
       onBooked();
+      onClose();
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not book that', 'error');
     } finally {
@@ -121,62 +122,115 @@ export default function DeskBookCard({ onBooked, focusKey, only }: { onBooked: (
     }
   };
 
+  if (!open) return null;
   const days = Array.from({ length: 7 }, (_, i) => addDays(today, i));
-  return (
-    <div ref={rootRef} tabIndex={-1} className="a-card" data-desk-book style={{ flexShrink: 0, outline: 'none' }}>
-      <div className="a-ct"><h3><CalendarPlus size={16} />Book for a member</h3><small>at the desk, in 3 taps</small></div>
-      {member ? (
-        <div className="a-input" style={{ fontSize: 12.5 }}><Av name={member.name} photo={member.photo} small /><span className="truncate" style={{ color: '#fff' }}>{member.name}</span>
-          {member.plan && <span className="a-pill" style={{ marginLeft: 'auto' }}>{member.plan}</span>}
-          <button type="button" className="a-link" onClick={() => { setWho(null); setPick(null); }} aria-label="Change member"><X size={14} /></button></div>
-      ) : (
-        <div className="relative">
-          <label className="a-input" style={{ fontSize: 12.5 }}><Search size={14} />
-            <input ref={inputRef} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find the member…" aria-label="Member to book" /></label>
-          {hits.length > 0 && (
-            <div className="a-card" style={{ position: 'absolute', zIndex: 6, left: 0, right: 0, top: 46, padding: '4px 10px' }}>
-              {hits.map((m) => (
-                <button key={m.id} type="button" className="a-row w-full text-left" onClick={() => { setWho(m.id); setQ(''); }}>
-                  <Av name={m.name} photo={m.photo} small /><div className="t"><b>{m.name}</b>{m.plan && <small>{m.plan}</small>}</div></button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-      {!only && (
-        <div className="a-seg" style={{ margin: '10px 0' }}>
-          <button type="button" className={kind === 'class' ? 'on' : ''} onClick={() => { setKind('class'); setPick(null); }}>Class</button>
-          <button type="button" className={kind === 'pt' ? 'on' : ''} onClick={() => { setKind('pt'); setPick(null); }}>1-on-1</button>
-        </div>
-      )}
-      {only && <div style={{ height: 10 }} />}
-      <div className="flex gap-1 flex-wrap">
-        {days.map((k) => <button key={k} type="button" className={`a-chip ${day === k ? 'v' : ''}`} style={{ padding: '5px 9px' }} onClick={() => { setDay(k); setPick(null); }}>{dayLabel(k, today)}</button>)}
+  const picked = !!(chosenClass || chosenSlot);
+  const steps = [
+    { title: 'Who it is for', done: !!member },
+    { title: kind === 'pt' ? 'The day, coach and time' : 'The day and class', done: picked },
+    { title: 'Book it', done: false },
+  ];
+  const say = !member ? 'Who is it for? Type their name.'
+    : !picked ? (kind === 'pt' && !coach ? `Now the day and a coach for ${member.name.split(' ')[0]}.` : 'Now pick a time.')
+    : 'Ready. They are told the moment you book.';
+
+  return createPortal((
+    <div className="am-root" role="dialog" aria-modal="true" aria-label="Book for a member" data-desk-book>
+      <div className="am-scrim" onClick={onClose} />
+      <div className="am-win bk-win">
+        <aside className="am-side">
+          <div>
+            <h2>Book for a member</h2>
+            <p>A desk booking is confirmed at once, and the member is told.</p>
+          </div>
+          <ol className="am-parts" aria-label="Steps">
+            {steps.map((s, i) => (
+              <li key={s.title}><span className={`bk-step ${s.done ? 'done' : ''}`}><span className={`n ${s.done ? 'ok' : ''}`}>{s.done ? <Check size={12} /> : i + 1}</span>{s.title}</span></li>
+            ))}
+          </ol>
+          <div className="am-buddy" aria-hidden>
+            <p key={say} className="am-say">{say}</p>
+            <GymMascot src="/images/admin-art/mascot-kettlebell.webp" />
+          </div>
+        </aside>
+
+        <section className="am-main">
+          <button type="button" aria-label="Close" onClick={onClose} className="am-x"><X size={16} /></button>
+          <div className="am-form">
+            <section className="am-part" aria-labelledby="bk-p0">
+              <h3 id="bk-p0"><span>1</span>Who it is for</h3>
+              {member ? (
+                <div className="bk-chosen"><Initials name={member.name} photo={member.photo} size={32} />
+                  <span className="flex-1 min-w-0"><b>{member.name}</b><small>{member.plan || 'no plan'}</small></span>
+                  <button type="button" className="am-btn sm" onClick={() => { setWho(null); setPick(null); }}>Change</button></div>
+              ) : (
+                <div className="grid gap-2">
+                  <label className="bk-search"><Search size={16} />
+                    <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Type the member's name" aria-label="Member to book" /></label>
+                  {hits.length > 0 && (
+                    <div className="bk-hits">
+                      {hits.map((m) => (
+                        <button key={m.id} type="button" onClick={() => { setWho(m.id); setQ(''); }}>
+                          <Initials name={m.name} photo={m.photo} size={32} /><span className="flex-1 min-w-0"><b>{m.name}</b><small>{m.plan || 'no plan'}</small></span></button>
+                      ))}
+                    </div>
+                  )}
+                  {q.trim() && hits.length === 0 && <p className="am-hint">No active member by that name.</p>}
+                </div>
+              )}
+            </section>
+
+            <section className="am-part" aria-labelledby="bk-p1">
+              <h3 id="bk-p1"><span>2</span>{kind === 'pt' ? 'The day, coach and time' : 'The day and class'}</h3>
+              {!only && (
+                <div className="v2-seg" style={{ justifySelf: 'start' }}>
+                  <button type="button" data-on={kind === 'class' ? '' : undefined} onClick={() => { setKind('class'); setPick(null); }}>Class</button>
+                  <button type="button" data-on={kind === 'pt' ? '' : undefined} onClick={() => { setKind('pt'); setPick(null); }}>1-on-1</button>
+                </div>
+              )}
+              <div className="bk-days">
+                {days.map((k) => (
+                  <button key={k} type="button" className={day === k ? 'on' : ''} onClick={() => { setDay(k); setPick(null); }}>
+                    <b>{dayLabel(k, today)}</b><small>{dateOf(k)}</small></button>
+                ))}
+              </div>
+              {kind === 'pt' && (
+                <div className="bk-coaches" role="radiogroup" aria-label="Coach for the 1-on-1">
+                  {trainers.map((t) => (
+                    <button key={t.profile.id} type="button" role="radio" aria-checked={coach === t.profile.id} className={coach === t.profile.id ? 'on' : ''}
+                      onClick={() => { setCoach(t.profile.id); setPick(null); }}>
+                      <Initials name={`${t.profile.first_name} ${t.profile.last_name}`} photo={t.profile.photo_url ?? null} size={26} />{t.profile.first_name} {t.profile.last_name}
+                    </button>
+                  ))}
+                  {trainers.length === 0 && <p className="am-hint">No active coaches yet.</p>}
+                </div>
+              )}
+              <div className="bk-slots" data-desk-slots>
+                {kind === 'class' ? (
+                  classes === null ? <span className="am-hint">Loading the classes</span> : openClasses.length === 0 ? <span className="am-hint">No classes left that day.</span> : openClasses.map((c) => {
+                    const left = c.capacity - c.booked;
+                    return (
+                      <button key={c.id} type="button" className={`wide ${pick === c.id ? 'on' : ''}`} disabled={left <= 0} onClick={() => setPick(c.id)}>
+                        <b>{timeOf(c.startsAt)}</b><span>{c.name}</span><small>{left <= 0 ? 'full' : `${left} left`}</small></button>
+                    );
+                  })
+                ) : !coach ? <span className="am-hint">Pick a coach to see their free times.</span> : slots.length === 0 ? <span className="am-hint">{coachName(coach)} has no hours set for that day.</span> : slots.map((s) => (
+                  <button key={s.at} type="button" className={pick === s.at ? 'on' : ''} disabled={!s.free} onClick={() => setPick(s.at)} data-tip={s.free ? undefined : 'Taken'}>
+                    <b>{timeOf(s.at)}</b><small>{s.free ? `${s.minutes} min` : 'taken'}</small></button>
+                ))}
+              </div>
+            </section>
+          </div>
+          <footer className="am-foot">
+            <span className="am-sum">{member && chosenClass ? <><b>{member.name}</b> · {chosenClass.name}, {dayLabel(day, today)} {timeOf(chosenClass.startsAt)}</>
+              : member && chosenSlot ? <><b>{member.name}</b> · 1-on-1 with {coachName(coach)}, {dayLabel(day, today)} {timeOf(chosenSlot.at)}</>
+              : 'Pick a member and a time.'}</span>
+            <button type="button" className="am-btn" onClick={onClose} disabled={busy}>Cancel</button>
+            <button type="button" className="am-btn go" disabled={busy || !member || !picked} onClick={() => void book()} data-desk-book-go>
+              <Check size={15} />{busy ? 'Booking' : member && picked ? `Book ${member.name.split(' ')[0]}` : 'Book'}</button>
+          </footer>
+        </section>
       </div>
-      {kind === 'pt' && (
-        <select className="a-in" style={{ marginTop: 8, fontSize: 12.5, padding: '7px 10px' }} value={coach} onChange={(e) => { setCoach(e.target.value); setPick(null); }} aria-label="Coach for the 1-on-1">
-          <option value="">Pick a coach…</option>
-          {trainers.map((t) => <option key={t.profile.id} value={t.profile.id}>{t.profile.first_name} {t.profile.last_name}</option>)}
-        </select>
-      )}
-      <div className="a-slots" style={{ marginTop: 8, maxHeight: 120, overflowY: 'auto' }} data-desk-slots>
-        {kind === 'class' ? (
-          classes === null ? <span className="a-sub">Loading…</span> : openClasses.length === 0 ? <span className="a-sub">No classes left that day.</span> : openClasses.map((c) => {
-            const left = c.capacity - c.booked;
-            return (
-              <button key={c.id} type="button" className={`a-slot ${pick === c.id ? 'on' : ''}`} disabled={left <= 0} onClick={() => setPick(c.id)}>
-                {timeOf(c.startsAt)} {c.name} · {left <= 0 ? 'full' : `${left} left`}</button>
-            );
-          })
-        ) : !coach ? <span className="a-sub">Pick a coach to see their free times.</span> : slots.length === 0 ? <span className="a-sub">No hours set for that day.</span> : slots.map((s) => (
-          <button key={s.at} type="button" className={`a-slot ${pick === s.at ? 'on' : ''}`} disabled={!s.free} onClick={() => setPick(s.at)}>{timeOf(s.at)}</button>
-        ))}
-      </div>
-      <button type="button" className="a-btn amber" style={{ marginTop: 12 }} disabled={busy || !member || !(chosenClass || chosenSlot)} onClick={() => void book()} data-desk-book-go>
-        <Check size={15} />{member && chosenClass ? `Book ${member.name.split(' ')[0]} into ${chosenClass.name} · ${timeOf(chosenClass.startsAt)}`
-          : member && chosenSlot ? `Book ${member.name.split(' ')[0]} a 1-on-1 · ${timeOf(chosenSlot.at)}` : 'Pick a member and a time'}
-      </button>
-      <div className="a-sub" style={{ marginTop: 6 }}>A desk booking is confirmed at once: the member is told.</div>
     </div>
-  );
+  ), document.body);
 }

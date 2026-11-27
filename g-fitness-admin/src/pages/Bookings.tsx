@@ -10,7 +10,7 @@ import { todayKey, addDays, localDateKey } from '../utils/dates';
 import { usePaged } from '../hooks/usePaged';
 import { useFitRows } from '../hooks/useFitRows';
 import {
-  CheckCircle, XCircle, AlertTriangle, RotateCcw, ShieldCheck, Settings2, CalendarDays, Hourglass, History, CalendarPlus,
+  CheckCircle, XCircle, AlertTriangle, RotateCcw, CalendarDays, Hourglass, History, CalendarPlus,
   Search, CalendarRange, Download,
 } from 'lucide-react';
 import { showToast } from '../utils/toast';
@@ -97,7 +97,7 @@ export default function Bookings({ scope, embedded = false }: { scope?: 'pt' | '
   const [pickDay, setPickDay] = useState('');
   const [historyFrom, setHistoryFrom] = useState('');
   /** Bumped by the head's button: the desk-booking card reloads its lists. */
-  const [focusBook, setFocusBook] = useState(0);
+  const [bookOpen, setBookOpen] = useState(false);
   const range = preset === 'today' ? { from: today, to: today } : preset === 'tomorrow' ? { from: addDays(today, 1), to: addDays(today, 1) }
     : preset === 'week' ? { from: today, to: addDays(today, 6) } : preset === 'month' ? { from: today, to: addDays(today, 29) } : { from: pickDay || today, to: pickDay || today };
 
@@ -334,8 +334,6 @@ export default function Bookings({ scope, embedded = false }: { scope?: 'pt' | '
   // The kind this page is about (2026-11-14): Class bookings counts classes, Personal training counts 1-on-1.
   const scoped = scope ? rows.filter((r) => r.kind === scope) : rows;
   const pendingCount = scoped.filter((r) => r.status === 'pending').length;
-  const yours = scoped.filter((r) => r.status === 'pending' && gymMayApprove(r)).length;
-  const flaggedCount = scoped.filter((r) => r.status === 'pending' && r.warnings.length > 0).length;
   const bookedToday = scoped.filter((r) => r.status === 'approved' && r.when && localDateKey(r.when) === today);
   const weekRows = rows.filter((r) => r.kind === 'class' && r.when && localDateKey(r.when) >= today && localDateKey(r.when) <= addDays(today, 6) && r.seats);
   const seatsByClass = new Map<string, { t: number; c: number }>();
@@ -384,7 +382,7 @@ export default function Bookings({ scope, embedded = false }: { scope?: 'pt' | '
           <button type="button" className={view === 'waiting' ? 'on' : ''} onClick={() => { setView('waiting'); setFilter('pending'); }} data-view="waiting"><Hourglass size={14} />Waiting <em>{pendingCount}</em></button>
           <button type="button" className={view === 'history' ? 'on' : ''} onClick={() => { setView('history'); setFilter('all'); }} data-view="history"><History size={14} />History</button>
         </nav>
-        <button type="button" className="a-btn amber" onClick={() => setFocusBook((n) => n + 1)}><CalendarPlus size={15} />Book for a member</button>
+        <button type="button" className="a-btn amber" onClick={() => setBookOpen(true)} data-book-open><CalendarPlus size={15} />Book for a member</button>
       </div>
 
       <div className="flex items-center gap-2 flex-none flex-wrap">
@@ -412,27 +410,22 @@ export default function Bookings({ scope, embedded = false }: { scope?: 'pt' | '
             <option value="all">Any status</option><option value="pending">Waiting</option><option value="approved">Confirmed</option><option value="rejected">Declined</option><option value="cancelled">Cancelled</option>
           </select>
         )}
-        {view === 'history' && <button type="button" className="a-btn" style={{ padding: '7px 11px', marginLeft: 'auto' }} onClick={exportCsv}><Download size={15} />Export</button>}
-      </div>
-
-      <div className="a-grid flex-none" style={{ gridTemplateColumns: `repeat(${scope === 'pt' ? 3 : 4},minmax(0,1fr))` }} data-booking-cards>
-        <button type="button" className="a-card press text-left" style={pendingCount ? { borderColor: 'var(--a-warn-line, #3e310f)', padding: '12px 14px' } : { padding: '12px 14px' }} onClick={() => { setView('waiting'); setFilter('pending'); }}>
-          <div className="a-lbl" style={pendingCount ? { color: 'var(--a-a300)' } : undefined}>Waiting for a decision</div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}><div className="a-num">{pendingCount}</div><span className="a-sub">{pendingCount - yours} with coaches · {yours} yours</span></div>
-        </button>
-        <div className="a-card" style={{ padding: '12px 14px' }}><div className="a-lbl">Booked today</div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}><div className="a-num">{bookedToday.length}</div><span className="a-sub">{scope === 'pt' ? '1-on-1 sessions' : scope === 'class' ? 'in classes' : `${bookedToday.filter((r) => r.kind === 'class').length} in classes · ${bookedToday.filter((r) => r.kind === 'pt').length} 1-on-1`}</span></div></div>
-        {/* Seats belong to classes: not on Personal training. */}
-        {scope !== 'pt' && <div className="a-card" style={{ padding: '12px 14px' }}><div className="a-lbl">Seats filled · next 7 days</div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}><div className="a-num">{seatC ? `${Math.round((seatT / seatC) * 100)}%` : '—'}</div><span className="a-sub">{seatC ? `${seatT} of ${seatC} in booked classes` : 'no class bookings yet'}</span></div></div>}
-        <button type="button" className="a-card press text-left" style={flaggedCount ? { borderColor: 'var(--a-warn-line, #3e310f)', padding: '12px 14px' } : { padding: '12px 14px' }} onClick={() => { setView('waiting'); setFilter('pending'); }}>
-          <div className="a-lbl" style={flaggedCount ? { color: 'var(--a-a300)' } : undefined}>Need checking</div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}><div className="a-num">{flaggedCount}</div><span className="a-sub">waiting with a warning</span></div>
-        </button>
+        {view === 'history' && <button type="button" className="a-btn" style={{ padding: '7px 11px' }} onClick={exportCsv}><Download size={15} />Export</button>}
+        {/* What the cards and the rail said that nothing else does (owner, 2026-11-27: no repeats). Waiting has its own
+            tab count, a warning sits on its row, and Book for a member is the button above. */}
+        <span className="bk-notes" data-booking-notes>
+          <span data-booked-today><b>{bookedToday.length}</b> booked today</span>
+          {scope !== 'pt' && seatC > 0 && <span><b>{Math.round((seatT / seatC) * 100)}%</b> of seats filled, next 7 days</span>}
+          {modes && (
+            <span data-who-decides>Who decides: {scope === 'class' ? MODE_SAY[modes.class] : scope === 'pt' ? MODE_SAY[modes.pt] : `classes, ${MODE_SAY[modes.class]}; 1-on-1, ${MODE_SAY[modes.pt]}`}
+              {' '}<button type="button" className="a-link" onClick={() => navigate('/settings?tab=bookings&focus=booking-approval')}>Change</button></span>
+          )}
+        </span>
       </div>
 
       {/* The rail gets real room (an empty list left dead space while the rail scrolled): side by side when wide. */}
-      <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0,1fr) 400px', gridTemplateRows: 'minmax(0,1fr)', flex: 1, minHeight: 0 }}>
+      {/* The list takes the whole width; the rail takes a column only while something requires attention. */}
+      <div className="a-grid bk-grid" style={{ gridTemplateRows: 'minmax(0,1fr)', flex: 1, minHeight: 0 }}>
         <div className="a-card" style={{ padding: '6px 14px 12px' }} data-queue>
           {selectablePending.length > 0 && (
             <div className="flex items-center gap-3 py-2" style={{ borderBottom: '1px solid var(--a-border)' }} data-bulk>
@@ -527,16 +520,10 @@ export default function Bookings({ scope, embedded = false }: { scope?: 'pt' | '
         <div className="a-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }} data-bookings-rail>
           {/* What nobody answered comes first: it is the urgent part of the rail. */}
           <BookingAttentionPanel onChanged={load} only={scope} />
-          <DeskBookCard onBooked={() => void load()} focusKey={focusBook} only={scope} />
-          {modes && (
-            <div className="a-card" style={{ flexShrink: 0 }}>
-              <div className="a-ct"><h3><ShieldCheck size={16} />Who decides here</h3><button type="button" className="a-btn ghost sm" onClick={() => navigate('/settings?tab=bookings&focus=booking-approval')}><Settings2 size={13} />Change</button></div>
-              {scope !== 'pt' && <div className="a-row"><span className="a-dot v" /><div className="t"><b>Classes</b><small>{MODE_SAY[modes.class]}</small></div></div>}
-              {scope !== 'class' && <div className="a-row"><span className="a-dot a" /><div className="t"><b>1-on-1</b><small>{MODE_SAY[modes.pt]}</small></div></div>}
-            </div>
-          )}
         </div>
       </div>
+
+      <DeskBookCard open={bookOpen} onClose={() => setBookOpen(false)} onBooked={() => void load()} only={scope} />
 
       <ConfirmDialog
         isOpen={!!bulk}

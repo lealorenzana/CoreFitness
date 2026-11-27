@@ -198,13 +198,21 @@ async (page) => {
   // ── Bookings (rebuilt to the approved mock-up, 2026-10-20). Since the simplify (2026-10-28) the
   //    same page is drawn twice: Class bookings (/bookings/classes) and Personal training → Sessions. ──
   t = await visit('/bookings/classes', 'bookings');
-  has('one search, date chips, kind and status, four cards', (await page.getByLabel('Search bookings').count()) === 1 && /This week/.test(t) && /Next 30 days/.test(t)
-    && (await page.locator('[data-booking-cards] > *').count()) === 4 && /Waiting for a decision/.test(t) && /Need checking/.test(t));
+  // 2026-11-27 (owner: no repeats): the four cards went; what only they said is a note in the toolbar.
+  has('one search, date chips, kind and status, and the toolbar notes', (await page.getByLabel('Search bookings').count()) === 1 && /This week/.test(t) && /Next 30 days/.test(t)
+    && (await page.locator('[data-booking-cards]').count()) === 0 && /booked today/.test(t));
   has('the week grouped by day', (await page.locator('[data-queue] .a-daygroup').count()) >= 2);
   has('the queue fits its box — no sideways scroll', await page.evaluate(() => { const b = document.querySelector('[data-queue] [data-rd-table]'); return !!b && b.scrollWidth <= b.clientWidth + 1; }));
   has('decided rows say by whom; in coach modes the gym cannot change them (0203)', /Accepted by (Bianca Soriano \(their trainer\)|front desk)/.test(t)
     && (await page.getByRole('button', { name: 'Change decision' }).count()) === 0);
-  has('the rail: book for a member, who decides here', (await page.locator('[data-desk-book]').count()) === 1 && /Who decides here/.test(t) && /the coach accepts, then you confirm/.test(t));
+  has('who decides is one line; Book for a member opens a floating page', /Who decides/.test(t) && /the coach accepts, then you confirm/.test(t) && (await page.locator('[data-desk-book]').count()) === 0);
+  await page.locator('[data-book-open]').click(); await page.waitForTimeout(600);
+  has('…with the steps, the kettlebell, the member search and the day', (await page.locator('[data-desk-book] .am-parts li').count()) === 3 && (await page.getByLabel('Member to book').count()) === 1
+    && (await page.locator('[data-desk-book] .bk-days button').count()) === 7 && /mascot-kettlebell/.test(await page.locator('[data-desk-book] .am-buddy img').getAttribute('data-art')));
+  await page.getByLabel('Member to book').fill('a'); await page.waitForTimeout(300);
+  await page.screenshot({ path: 'shots/ops-book-window.png' });
+  await page.keyboard.press('Escape'); await page.waitForTimeout(300);
+  await page.screenshot({ path: 'shots/ops-bookings-clean.png' });
   has('the page does not scroll', await noScroll());
   await page.locator('[data-view="waiting"]').click();
   await page.waitForTimeout(400);
