@@ -595,7 +595,8 @@ export default function Schedule() {
         </div>
       )}
 
-      {!loading && (view === 'week' || view === 'day' || view === 'month') && (
+      {/* Not on Month (owner, 2026-11-27): the strip is about one day, which the panel beside the month already lists; the month gets the room. */}
+      {!loading && (view === 'week' || view === 'day') && (
         <div className="sc-figs" data-schedule-figures>
           <div><span>Classes {dayWord}</span><b>{figSessions.length}</b>
             <small>{figDay === today ? `${figSessions.filter((s) => new Date(s.startsAt).getTime() > nowMs).length} still to come` : 'on the timetable'}</small></div>
