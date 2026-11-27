@@ -76,7 +76,7 @@ export default function InviteMembersPanel({ onClose, onAddWalkIn }: { onClose: 
       <JoinPoster gymName={app.gym_name} tagline={app.tagline} logoUrl={app.logo_url} joinLink={joinLink}
         /* A listed gym has no code, so the poster leaves that half out rather than printing a blank box. */
         joinCode={app.join_policy === 'code' ? app.join_code : null}
-        accent={rampFor(app.accent, 'violet').base} onClose={() => setPoster(false)} />
+        accent={rampFor(app.accent, 'violet')} action={rampFor(app.accent_action, 'amber')} onClose={() => setPoster(false)} />
     );
   }
 

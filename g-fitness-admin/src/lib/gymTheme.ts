@@ -14,7 +14,7 @@ export type AccentKey =
   | 'violet' | 'indigo' | 'blue' | 'sky' | 'cyan' | 'teal' | 'emerald'
   | 'lime' | 'amber' | 'orange' | 'red' | 'rose' | 'fuchsia' | 'slate';
 
-interface Ramp {
+export interface Ramp {
   label: string;
   /** --color-primary, -hover, -lift, -deep, -light (the dark tint behind a selected row). */
   base: string; hover: string; lift: string; deep: string; light: string;

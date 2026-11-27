@@ -164,9 +164,9 @@ async (page) => {
     }
   }
   // Invite members (2026-11-27): the Add member window's look, a QR and a mascot; desk-only gyms told what to do instead.
-  for (const policy of ['closed', 'invite_only']) {
+  for (const policy of ['closed', 'code']) {
     await page.route('**/rest/v1/rpc/my_gym_app*', (r) => r.fulfill({ status: 200, contentType: 'application/json',
-      body: JSON.stringify([{ slug: 'core-fitness-lab', gym_name: 'Core Fitness Lab', join_code: 'LAB4K2', join_policy: policy }]) }));
+      body: JSON.stringify([{ slug: 'core-fitness-lab', gym_name: 'Core Fitness Lab', join_code: 'LAB4K2', join_policy: policy, accent: 'teal', accent_action: 'rose', logo_url: LOGO, tagline: 'Where Core Fitness is tried first' }]) }));
     for (const mode of ['dark', 'light']) {
       await page.emulateMedia({ colorScheme: mode });
       await page.setViewportSize({ width: 1400, height: 900 });
@@ -184,7 +184,12 @@ async (page) => {
     if (policy !== 'closed') {
       await page.locator('[data-print-poster]').click(); await page.waitForTimeout(500);
       say('Print a poster opens the poster from the invite window', (await page.locator('[data-invite-panel]').count()) === 0 && (await page.getByRole('button', { name: /Print/ }).count()) >= 1, 'poster');
-      await page.screenshot({ path: '.tmp-shots/admin-invite-poster.png' });
+      say('the poster wears the gym: its logo, its colour', (await page.locator('[data-poster-logo] img').count()) === 1
+        && await page.evaluate(() => [...document.querySelectorAll('[data-join-poster] div')].some((d) => getComputedStyle(d).backgroundColor === 'rgb(17, 94, 89)')), 'teal 800');
+      await page.screenshot({ path: '.tmp-shots/admin-invite-poster.png', fullPage: true });
+      await page.emulateMedia({ media: 'print' }); await page.setViewportSize({ width: 800, height: 1130 }); await page.waitForTimeout(300);
+      await page.screenshot({ path: '.tmp-shots/admin-invite-poster-print.png', fullPage: true });
+      await page.emulateMedia({ media: 'screen' }); await page.setViewportSize({ width: 1400, height: 900 });
     } else say('a desk-only gym is offered no poster it cannot print', (await page.locator('[data-print-poster]').count()) === 0, 'none');
     await page.unroute('**/rest/v1/rpc/my_gym_app*');
   }

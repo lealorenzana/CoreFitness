@@ -628,7 +628,7 @@ export default function GymApp() {
           joinLink={joinLink}
           /* A listed gym has no code, so the poster leaves that half out rather than printing a blank box. */
           joinCode={app.join_policy === 'code' ? app.join_code : null}
-          accent={rampFor(app.accent, 'violet').base}
+          accent={rampFor(app.accent, 'violet')} action={rampFor(app.accent_action, 'amber')}
           onClose={() => setPoster(false)}
         />
       )}
