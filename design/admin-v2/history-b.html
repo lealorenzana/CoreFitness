@@ -1,0 +1,137 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>History B: days you can read</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="shell2.css"><link rel="stylesheet" href="mock-b.css"><style>
+.filters { display: flex; align-items: center; gap: 8px; flex: none; }
+.filters .range { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 6px; color: var(--text-2); font-size: 12px; font-weight: 600; }
+.filters .range b { color: var(--text); }
+.filters .cmp { margin-left: auto; color: var(--text-3); font-size: 12px; }
+.strip { grid-template-columns: 1.3fr 1fr 1fr 1.4fr; }
+.fig .row-n { display: flex; align-items: flex-end; gap: 14px; }
+.fig svg.trend { flex: 1; height: 34px; min-width: 60px; }
+.trend .now { stroke: var(--primary-fg); fill: none; stroke-width: 2; } .trend .then { stroke: var(--text-3); stroke-dasharray: 3 3; fill: none; stroke-width: 1.5; }
+.for { display: flex; height: 6px; border-radius: 3px; overflow: hidden; gap: 2px; margin-top: 10px; }
+.for i { display: block; background: var(--primary-fg); } .for i.b { opacity: .55; } .for i.c { background: var(--line-strong); }
+.leg { display: flex; gap: 12px; margin-top: 6px; font-size: 12px; color: var(--text-2); white-space: nowrap; }
+.leg span { display: inline-flex; align-items: center; gap: 5px; }
+.wrap { flex: 1; min-height: 0; display: grid; grid-template-columns: 300px minmax(0, 1fr) 270px; gap: 14px; }
+.col { display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+/* calendar */
+.cal { padding: 10px 14px 12px; }
+.cal .hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; font-weight: 600; }
+.cal .hd span { display: flex; gap: 4px; }
+.cal .hd button { width: 24px; height: 24px; border-radius: 6px; border: 1px solid var(--line-strong); color: var(--text-2); }
+.cal .g { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.cal .g i { font-style: normal; font-size: 11px; color: var(--text-3); text-align: center; padding: 2px 0; }
+.cal .g b { height: 30px; border-radius: 6px; display: grid; place-items: center; font-size: 12px; font-weight: 500; color: var(--text-2); background: var(--raised); line-height: 1.05; }
+.cal .g b small { display: block; font-size: 9.5px; color: var(--text-3); }
+.cal .g b.l1 { background: color-mix(in srgb, var(--primary) 30%, var(--surface)); color: var(--text); }
+.cal .g b.l2 { background: color-mix(in srgb, var(--primary) 55%, var(--surface)); color: #fff; } .cal .g b.l2 small { color: rgb(255 255 255 / .75); }
+.cal .g b.sel { outline: 2px solid var(--primary-fg); outline-offset: 1px; }
+.cal .g b.x { background: transparent; color: var(--text-3); }
+/* busy hours: weekday x hour */
+.heat { padding: 10px 14px 12px; }
+.heat .g { display: grid; grid-template-columns: 22px repeat(16, 1fr); gap: 2px; }
+.heat .g span { font-size: 10.5px; color: var(--text-3); text-align: center; }
+.heat .g span.d { text-align: left; }
+.heat .g u { height: 15px; border-radius: 3px; background: var(--raised); display: block; text-decoration: none; }
+.heat .note { font-size: 12px; color: var(--text-2); margin-top: 8px; }
+.heat .note b { color: var(--text); }
+/* the log, day by day */
+.logbar { display: flex; align-items: center; gap: 8px; height: 46px; padding: 0 16px; border-bottom: 1px solid var(--line); flex: none; }
+.logbar h2 { font-size: 13px; font-weight: 600; }
+.logbar .tools { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.day { border-bottom: 1px solid var(--line); }
+.day .dh { display: grid; grid-template-columns: 118px minmax(0, 1fr) 54px; align-items: center; gap: 14px; padding: 10px 16px 8px; position: sticky; top: 0; background: var(--surface); z-index: 1; }
+.day .dh b { font-size: 13px; } .day .dh small { display: block; color: var(--text-3); font-size: 12px; }
+.tl { position: relative; height: 22px; }
+.tl .track { position: absolute; left: 0; right: 0; top: 10px; height: 2px; background: var(--raised); border-radius: 1px; }
+.tl i { position: absolute; top: 5px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: var(--primary-fg); border: 2px solid var(--surface); }
+.tl em { position: absolute; top: -2px; font-style: normal; font-size: 10px; color: var(--text-3); transform: translateX(-50%); white-space: nowrap; }
+.tl em:last-of-type { transform: translateX(-100%); }
+.day .dh .n { text-align: right; font-weight: 650; font-size: 15px; }
+.day .row { padding: 7px 16px 7px 148px; border: 0; }
+.day .row .time { width: 70px; color: var(--text-2); font-size: 12.5px; }
+.day .row .how { width: 110px; color: var(--text-2); font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px; }
+.day .row .act { border: 0; height: auto; padding: 0; font-weight: 500; color: var(--text-2); width: 150px; font-size: 12.5px; }
+.day .row b { font-weight: 600; }
+.day .more { padding: 2px 16px 10px 148px; font-size: 12px; }
+/* most regular */
+.reg .row { padding: 8px 14px; gap: 10px; }
+.reg .rk { width: 16px; color: var(--text-3); font-size: 12px; font-weight: 600; }
+.reg .bar { height: 3px; border-radius: 2px; background: var(--raised); margin-top: 5px; overflow: hidden; }
+.reg .bar i { display: block; height: 100%; background: var(--primary-fg); }
+.reg .num { width: 24px; text-align: right; font-weight: 600; color: var(--text); font-size: 13px; }
+</style></head><body data-tab="Attendance">
+<div class="sb"><div id="rail"></div><div class="main"><div id="top"></div>
+<div class="pg">
+  <div class="ph"><div><h1>Attendance</h1><p>Any day, any range, back to your first record on Oct 28, 2026</p></div>
+    <div class="end"><div class="views"><a>Check-ins<em>3</em></a><a>Walk-ins<em>1</em></a><a class="on">History</a></div>
+      <button class="btn"><span id="dl"></span>Export</button></div></div>
+
+  <div class="filters">
+    <span class="chips"><a>Last 7 days</a><a class="on">Last 30 days</a><a>Last 90 days</a><a>This year</a><a>All time</a></span>
+    <span class="range"><span id="cal"></span><b>Oct 29</b> to <b>Nov 27, 2026</b></span>
+    <span class="cmp">Compared with the 30 days before</span>
+  </div>
+
+  <section class="strip">
+    <div class="fig"><div class="l">Check-ins</div><div class="row-n"><div class="n hero">43</div>
+      <svg class="trend" viewBox="0 0 160 34" preserveAspectRatio="none"><path class="then" d="M0 32 L40 31 L80 30 L120 30 L160 29"/><path class="now" d="M0 32 L20 30 L40 26 L60 22 L80 18 L100 14 L120 11 L140 7 L160 4"/></svg></div>
+      <div class="d"><b class="up" style="color:var(--primary-fg)">43 more</b> than the 30 days before</div></div>
+    <div class="fig"><div class="l">Different members</div><div class="n">9</div><div class="d">7 of 8 active members came, 88%</div></div>
+    <div class="fig"><div class="l">Average a day</div><div class="n">1.4</div><div class="d">busiest: Monday around 8 am</div></div>
+    <div class="fig"><div class="l">What they came for</div>
+      <div class="for"><i style="flex:49" class="c"></i><i style="flex:47"></i><i style="flex:4" class="b"></i></div>
+      <div class="leg"><span><span class="dot off"></span>Not recorded 49%</span><span><span class="dot"></span>Gym floor 47%</span><span><span class="dot" style="opacity:.55"></span>Class 4%</span></div></div>
+  </section>
+
+  <div class="wrap">
+    <div class="col">
+      <section class="box cal" style="flex:none"><div class="hd">November 2026<span><button>‹</button><button>›</button></span></div><div class="g" id="calg"></div>
+        <p class="muted" style="font-size:12px;margin-top:8px">Pick a day to open just that day.</p></section>
+      <section class="box heat" style="flex:1"><div class="hd" style="font-weight:600;margin-bottom:8px">Busy hours <span class="muted" style="font-weight:500;font-size:12px">· average check-ins</span></div>
+        <div class="g" id="heatg"></div><p class="note">Busiest: <b>Monday, 8 to 9 am</b>. Quietest open hour: Sunday, 2 pm.</p></section>
+    </div>
+
+    <section class="box" style="min-height:0">
+      <div class="logbar"><h2>Check-ins <span class="muted" style="font-weight:500">43</span></h2>
+        <div class="tools"><span class="mini"><span id="s1"></span>Name or code</span><span class="sel">How <b>Any way</b> ▾</span><span class="sel">Activity <b>Any</b> ▾</span></div></div>
+      <div class="scroll" id="days" style="flex:1"></div>
+    </section>
+
+    <section class="box reg" style="min-height:0">
+      <header><h2>Most regular</h2><span class="aside"><a class="link">See all 9 →</a></span></header>
+      <div id="reg"></div>
+    </section>
+  </div>
+</div></div></div>
+<span class="ann">History B · sample data · ?mode=light</span>
+<script src="shell-b.js"></script><script>
+const I = window.ICON;
+document.getElementById('dl').outerHTML = I('M12 3v12M6 11l6 6 6-6M4 21h16');
+document.getElementById('cal').outerHTML = I('M4 5h16v15H4zM4 10h16M9 3v4M15 3v4');
+document.getElementById('s1').outerHTML = I('M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16M21 21l-4.3-4.3');
+// calendar: Nov 2026 starts on a Sunday (Mon-first grid: 6 blanks)
+let c = ['M','T','W','T','F','S','S'].map((d) => `<i>${d}</i>`).join('') + '<b class="x"></b>'.repeat(6);
+for (let d = 1; d <= 30; d++) { const n = d < 7 ? 0 : d > 27 ? 0 : (d % 3 ? 2 : 1); const k = d === 27 ? 3 : n;
+  c += `<b class="${k === 0 ? (d > 27 ? 'x' : '') : k >= 2 ? 'l2' : 'l1'}${d === 27 ? ' sel' : ''}">${d}${k ? `<small>${k}</small>` : ''}</b>`; }
+document.getElementById('calg').innerHTML = c;
+// busy hours: rows Mon..Sun, columns 6..21
+const days = ['M','T','W','T','F','S','S']; let h = '<span></span>' + Array.from({length: 16}, (_, i) => `<span>${(i + 6) % 3 === 0 ? ((i + 6) > 12 ? i + 6 - 12 : i + 6) : ''}</span>`).join('');
+days.forEach((d, r) => { h += `<span class="d">${d}</span>`; for (let i = 0; i < 16; i++) { const v = Math.max(0, Math.sin((i - 2) / 2.6) * 0.6 + (i > 10 && i < 14 ? .5 : 0) + (r === 0 && i === 2 ? .9 : 0) - (r > 4 ? .3 : 0)); h += `<u style="background:color-mix(in srgb, var(--primary) ${Math.round(Math.min(1, v) * 85)}%, var(--raised))"></u>`; } });
+document.getElementById('heatg').innerHTML = h;
+// the log, day by day: each day a timeline (6 am to 10 pm) with a dot per check-in, then its rows
+const HOW = { k: [I('M5 2h14v20H5zM11 18h2'), 'Kiosk'], d: [I('M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h3v3h-3zM18 18h3v3h-3z'), 'Desk scan'], t: [I('M2 6h20v12H2zM6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10'), 'Typed'] };
+const D = [['Today', 'Fri, Nov 27', [['8:41 am', 'Andrea Santos', 'k', 'Class · their pick'], ['8:30 am', 'Carlo Bautista', 'd', 'Cardio · desk'], ['7:05 am', 'Mika Ramos', 't', 'Not recorded']]],
+  ['Yesterday', 'Thu, Nov 26', [['6:05 pm', 'Andrea Santos', 't', 'Not recorded'], ['7:10 am', 'Rhea Cruz', 'k', 'Gym floor']]],
+  ['Wednesday', 'Nov 25', [['7:05 am', 'Andrea Tolentino', 'd', 'Gym floor'], ['6:40 am', 'Leo Navarro', 'k', 'Gym floor']]],
+  ['Tuesday', 'Nov 24', [['8:05 am', 'Carlo Bautista', 'd', 'Not recorded'], ['5:30 pm', 'Ivy Aquino', 'k', 'Gym floor']]],
+  ['Monday', 'Nov 23', [['9:05 am', 'Mika Ramos', 't', 'Gym floor'], ['8:12 am', 'Bea Reyes', 'k', 'Class'], ['8:02 am', 'Hans Lim', 'k', 'Gym floor']]]];
+const pos = (t) => { const [hm, ap] = t.split(' '); let [hh, mm] = hm.split(':').map(Number); if (ap === 'pm' && hh !== 12) hh += 12; return ((hh + mm / 60) - 6) / 16 * 100; };
+document.getElementById('days').innerHTML = D.map(([a, b, rows]) => `<div class="day"><div class="dh"><span><b>${a}</b><small>${b}</small></span>
+  <div class="tl"><span class="track"></span>${[6, 10, 14, 18, 22].map((x) => `<em style="left:${(x - 6) / 16 * 100}%">${x > 12 ? x - 12 + ' pm' : x + ' am'}</em>`).join('')}${rows.map((r) => `<i style="left:${pos(r[0])}%" title="${r[1]} ${r[0]}"></i>`).join('')}</div>
+  <span class="n">${rows.length}</span></div>
+  ${rows.map((r) => `<div class="row"><span class="time">${r[0]}</span><span class="ini" style="width:24px;height:24px;font-size:10px">${r[1].split(' ').map((w) => w[0]).join('')}</span><span class="t"><b>${r[1]}</b></span><span class="how">${HOW[r[2]][0]}${HOW[r[2]][1]}</span><span class="act">${r[3]}</span></div>`).join('')}</div>`).join('')
+  + '<p class="muted" style="padding:12px 16px;font-size:12px">Older days load as you scroll.</p>';
+document.getElementById('reg').innerHTML = [['Andrea Santos', 6], ['Carlo Bautista', 6], ['Mika Ramos', 6], ['Andrea Tolentino', 5], ['Rhea Cruz', 4], ['Leo Navarro', 4], ['Ivy Aquino', 4]]
+  .map(([n, v], i) => `<div class="row"><span class="rk">${i + 1}</span><span class="ini">${n.split(' ').map((w) => w[0]).join('')}</span><div class="t"><b>${n}</b><div class="bar"><i style="width:${v / 6 * 100}%"></i></div></div><span class="num">${v}</span></div>`).join('');
+</script></body></html>

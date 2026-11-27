@@ -1,0 +1,89 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Notifications B: what needs you, answered in place</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="shell2.css"><link rel="stylesheet" href="mock-b.css"><style>
+.mail { flex: 1; min-height: 0; display: grid; grid-template-columns: 220px minmax(0, 380px) minmax(0, 1fr); background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.folders { border-right: 1px solid var(--line); padding: 10px; display: flex; flex-direction: column; gap: 1px; overflow: auto; }
+.folders a { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 10px; border-radius: 6px; color: var(--text-2); cursor: pointer; font-weight: 500; }
+.folders a.on { background: var(--raised); color: var(--text); font-weight: 600; }
+.folders a em { margin-left: auto; font-style: normal; font-size: 12px; color: var(--text-3); }
+.folders a em.due { color: var(--action); font-weight: 700; }
+.folders .h { font-size: 11px; font-weight: 600; color: var(--text-3); padding: 12px 10px 4px; letter-spacing: .02em; }
+.list { border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+.list .top { padding: 10px; border-bottom: 1px solid var(--line); display: flex; gap: 8px; }
+.list .top .mini { flex: 1; width: auto; height: 32px; }
+.msgs { flex: 1; overflow: auto; }
+.msg { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 10px; padding: 11px 14px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.msg.on { background: var(--raised); box-shadow: inset 2px 0 0 var(--primary-fg); }
+.msg .k { width: 28px; height: 28px; border-radius: 8px; background: var(--raised); display: grid; place-items: center; color: var(--text-2); }
+.msg b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.msg p { color: var(--text-2); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.msg time { font-size: 11.5px; color: var(--text-3); white-space: nowrap; }
+.msg.unread b::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--primary-fg); margin-right: 7px; vertical-align: middle; }
+.read { display: flex; flex-direction: column; min-height: 0; overflow: auto; }
+.read .hd { padding: 18px 22px 12px; border-bottom: 1px solid var(--line); }
+.read .hd h2 { font-size: 16px; font-weight: 650; }
+.read .hd p { color: var(--text-2); font-size: 12.5px; margin-top: 2px; }
+.need { padding: 6px 22px 16px; }
+.need .grp { font-size: 12px; font-weight: 600; color: var(--text-3); margin: 14px 0 6px; display: flex; gap: 8px; }
+.item { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.item:last-child { border-bottom: 0; }
+.item b { font-weight: 600; } .item p { color: var(--text-2); font-size: 12.5px; margin-top: 1px; }
+.item .acts { display: flex; gap: 6px; }
+.btn.strong { color: var(--text); }
+.btn.go2 { background: var(--action); color: var(--on-action); border-color: transparent; }
+.sum { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); border-radius: 10px; margin: 16px 22px 0; }
+.sum div { padding: 10px 14px; } .sum div + div { border-left: 1px solid var(--line); }
+.sum b { display: block; font-size: 20px; font-weight: 650; } .sum span { font-size: 12px; color: var(--text-2); }
+.body { padding: 18px 22px; line-height: 1.6; color: var(--text); max-width: 640px; }
+.body .card { margin-top: 14px; border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 4px; font-size: 13px; }
+.body .card span { color: var(--text-2); }
+[data-open="0"] .opened { display: none; } [data-open="1"] .home { display: none; }
+</style></head><body data-tab="Notifications">
+<div class="sb"><div id="rail"></div><div class="main"><div id="top"></div>
+<div class="pg">
+  <div class="ph"><div><h1>Notifications</h1><p>What needs you now, and every message sent to you</p></div>
+    <div class="end"><button class="btn">Mark all read</button></div></div>
+  <div class="mail" id="mail">
+    <nav class="folders">
+      <a class="on">Needs you<em class="due">4</em></a><a>Unread<em>6</em></a><a>All<em>38</em></a><a>Archived<em>112</em></a>
+      <div class="h">KINDS</div><a>Payments<em>9</em></a><a>Renewals<em>5</em></a><a>Registrations<em>3</em></a><a>Bookings<em>11</em></a><a>Coaches<em>4</em></a><a>Core Fitness<em>6</em></a>
+    </nav>
+    <section class="list">
+      <div class="top"><span class="mini"><span id="s1"></span>Search messages</span><span class="sel">Newest ▾</span></div>
+      <div class="msgs" id="msgs"></div>
+    </section>
+    <section class="read">
+      <div class="home">
+        <div class="hd"><h2>Good afternoon, Lea</h2><p>Four things wait on you. Answer them here; the rest of the inbox is for reading.</p></div>
+        <div class="sum"><div><b>2</b><span>to approve</span></div><div><b>₱1,450</b><span>waiting to be paid</span></div><div><b>1</b><span>coach request</span></div></div>
+        <div class="need" id="need"></div>
+      </div>
+      <div class="opened">
+        <div class="hd"><h2>Renewal request: Kat Mendoza</h2><p>Renewals · 2:14 pm today · from the member app</p></div>
+        <div class="body">Kat Mendoza asked to renew her <b>Monthly</b> plan, which ends today. She says she will pay cash at the desk.
+          <div class="card"><span>Plan</span><b>Monthly, ₱800, Nov 28 to Dec 27</b><span>Paid so far</span><b>₱0, cash at the desk</b></div>
+          <div style="display:flex;gap:8px;margin-top:16px"><button class="btn go2">Record ₱800 and renew</button><button class="btn">Open Kat</button><button class="btn q">Archive</button></div></div>
+      </div>
+    </section>
+  </div>
+</div></div></div>
+<span class="ann">Notifications B · sample data · ?mode=light · ?open=1 shows a message</span>
+<script src="shell-b.js"></script><script>
+const I = window.ICON;
+document.getElementById('mail').dataset.open = new URLSearchParams(location.search).get('open') === '1' ? '1' : '0';
+document.getElementById('s1').outerHTML = I('M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16M21 21l-4.3-4.3');
+const K = { pay: 'M2 6h20v12H2zM2 10h20', ren: 'M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5', reg: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 8v6M22 11h-6', book: 'M4 5h16v15H4zM4 10h16M9 3v4M15 3v4', cf: 'M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5' };
+const M = [['ren', 'Renewal request: Kat Mendoza', 'Monthly ends today. Will pay cash at the desk.', '2:14 pm', 1, 1],
+  ['reg', 'New registration: Paolo Reyes', 'Signed up on the app and waits for approval.', '1:02 pm', 1, 0],
+  ['pay', 'Online payment to check: Bea Castillo', 'GCash ₱650, reference GC-998877, with a screenshot.', '11:40 am', 1, 0],
+  ['book', 'Jen asked to coach Hans Lim', '8 sessions, Tuesdays and Thursdays at 6 pm.', '10:05 am', 0, 0],
+  ['cf', 'What is new in Core Fitness', 'Attendance is now one list: find, check in, see who is in.', '9:00 am', 1, 0],
+  ['pay', 'Payment recorded: Carlo Bautista', '₱800 cash, receipt CF-2026-0412.', 'Yesterday', 0, 0],
+  ['book', 'Class full: Saturday HIIT', '12 of 12 booked. 3 are waiting for a seat.', 'Yesterday', 0, 0]];
+document.getElementById('msgs').innerHTML = M.map(([k, t, p, tm, un, on]) => `<div class="msg ${un ? 'unread' : ''} ${on && document.getElementById('mail').dataset.open === '1' ? 'on' : ''}"><span class="k">${I(K[k])}</span><div style="min-width:0"><b>${t}</b><p>${p}</p></div><time>${tm}</time></div>`).join('');
+const N = [['To approve', [['reg', 'Paolo Reyes registered', 'Signed up on the app 1:02 pm. He starts on the free tier when approved.', ['Approve', 'Decline']],
+  ['pay', 'Bea Castillo paid ₱650 by GCash', 'Reference GC-998877, screenshot attached. Check it on your GCash app first.', ['Mark paid', 'See proof']]]],
+  ['Renewals', [['ren', 'Kat Mendoza wants to renew Monthly', 'Ends today. She pays ₱800 cash at the desk.', ['Record and renew', 'Open']]]],
+  ['Coaching', [['book', 'Jen asked to coach Hans Lim', '8 sessions, Tue and Thu 6 pm. Your rule: the desk approves after the coach.', ['Approve', 'Decline']]]]];
+document.getElementById('need').innerHTML = N.map(([g, items]) => `<div class="grp">${g} <span>${items.length}</span></div>` + items.map(([k, t, p, a]) =>
+  `<div class="item"><span class="k" style="width:32px;height:32px;border-radius:8px;background:var(--raised);display:grid;place-items:center;color:var(--text-2)">${I(K[k])}</span><div><b>${t}</b><p>${p}</p></div><div class="acts">${a.map((x, i) => `<button class="btn sm ${i === 0 ? 'strong' : 'q'}">${x}</button>`).join('')}</div></div>`).join('')).join('');
+</script></body></html>

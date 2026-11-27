@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Footprints, UserPlus, Settings2, Wallet, Undo2, HelpCircle, Download, Check, Banknote, QrCode, Phone, Lightbulb, HeartHandshake, History, Tags } from 'lucide-react';
+import { Footprints, UserPlus, Undo2, HelpCircle, Download, Check, Banknote, QrCode, Phone, Lightbulb, HeartHandshake, History } from 'lucide-react';
 import { RdButton, Pill, EmptyBlock, Initials, SearchField, RdTable, Tr, Td, CountUp, Skel } from '../components/ui/rd';
 import { Av, AttHead } from './attendance/parts';
 import { useAttCounts } from './attendance/attData';
@@ -70,7 +70,7 @@ export default function WalkIns() {
   /** Guests with pack visits left (0219) — picked from a list, until their last visit is used. */
   const [packGuests, setPackGuests] = useState<Guest[]>([]);
   /** The phone of a guest picked from that list — already known, so it is not looked up again over them. */
-  const pickedPhone = useRef<string | null>(null);
+  const [pickedPhone, setPickedPhone] = useState<string | null>(null);
   const [packOpen, setPackOpen] = useState(false);
   const [packQ, setPackQ] = useState('');
   const [cheapest, setCheapest] = useState<{ name: string; price: number } | null>(null);
@@ -121,7 +121,7 @@ export default function WalkIns() {
   // The phone, once it is long enough to be one, asks who this is.
   useEffect(() => {
     if (phone.replace(/\D/g, '').length < 10) return;
-    if (pickedPhone.current === phone) return;
+    if (pickedPhone === phone) return;
     const asked = phone;
     const t = setTimeout(() => {
       void (async () => {
@@ -130,7 +130,7 @@ export default function WalkIns() {
       })();
     }, 300);
     return () => clearTimeout(t);
-  }, [phone]);
+  }, [phone, pickedPhone]);
 
   const priceOf = (k: Kind): number => (k === 'day' ? prices?.day ?? 0 : k === 'pack5' ? prices?.pack5 ?? 0 : k === 'pack10' ? prices?.pack10 ?? 0 : 0);
   // A pack visit is only for a guest with one left; a chosen kind the guest cannot use falls back to nothing.
@@ -172,7 +172,7 @@ export default function WalkIns() {
   const named = !!guest || name.trim().length > 0;
   /** A pack needs a phone — it is how the desk finds the guest's visits next time (0219). */
   const needsPhone = !guest && (chosen === 'pack5' || chosen === 'pack10') && phone.replace(/\D/g, '').length < 7;
-  const pickPackGuest = (g: Guest) => { const ph = g.phone ?? ''; pickedPhone.current = ph; setPhone(ph); setFound({ phone: ph, guest: g }); setName(''); setKind('pack_visit'); };
+  const pickPackGuest = (g: Guest) => { const ph = g.phone ?? ''; setPickedPhone(ph); setPhone(ph); setFound({ phone: ph, guest: g }); setName(''); setKind('pack_visit'); };
   /** Pack holders, newest visit first, narrowed by a name or phone (the typed one, or the list's own search). */
   const packMatch = (q: string) => {
     const t = q.trim().toLowerCase(), d = t.replace(/\D/g, '');
@@ -189,156 +189,153 @@ export default function WalkIns() {
   const nudgeAt = prices?.nudge ?? null;
   const willSuggest = !!guest && nudgeAt !== null && guest.visits_this_month + 1 >= nudgeAt;
 
+  const first = (guest?.name ?? name.trim()).split(/\s+/)[0];
+  const recordLabel = !named ? 'Type their name' : needsPhone ? 'Type their phone, a pack needs it' : !chosen ? 'Choose what they are paying for'
+    : chosen === 'pack_visit' ? `Record ${first}'s pack visit` : `Record ${peso(priceOf(chosen))} ${method === 'cash' ? 'cash' : 'online'}`;
+  const clock = (iso: string) => new Date(iso).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' }).toLowerCase();
+  const online = live.filter((v) => v.method === 'online').reduce((a, v) => a + v.amount, 0);
+
   return (
     <div className="att" data-walkins>
-      <AttHead counts={{ today: counts.today, walkIns: live.length }} sub="Guests who aren’t members · paid at the desk · counted in the drawer"
-        actions={(
-          <div className="flex items-center gap-2">
-            <button type="button" className="a-btn" onClick={() => setHistOpen(true)} data-open-walkin-history><History size={15} />Past walk-ins</button>
-            <button type="button" className="a-btn" onClick={() => navigate('/settings?tab=walk-ins&focus=day-passes')}><Settings2 size={15} />Walk-in prices</button>
-          </div>
-        )} />
+      <AttHead counts={{ today: counts.today, walkIns: live.length }} sub="Guests who are not members: paid at the desk, counted in the drawer" />
 
-      {/* Design V2 (the desk console, as on Today): record and see today's walk-ins on the left; the drawer,
-          prices, guests worth a call and the guide on the right rail. */}
+      {/* Mock-up B (owner, 2026-11-27; design/admin-v2/walkins-b.html): one form (who, what as the gym's price tiles, how,
+          one Record button that says what it will do), today's walk-ins under it; the drawer, pack visits left and the
+          guests who could join on the rail. */}
       <div className="a-v2" data-att-v2>
         <div className="a-v2-main">
         {prices === undefined ? <div className="a-card" aria-busy="true" style={{ display: 'grid', gap: 12, flex: 'none' }}><Skel w={140} h={14} /><Skel w="100%" h={40} /><Skel w="100%" h={40} /><Skel w="45%" h={36} /></div>
           : !canSell ? (
-            <div className="a-card glow" style={{ alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 10 }}>
-              <Footprints size={40} style={{ color: 'var(--a-p300)' }} />
+            <div className="a-card" style={{ alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 10, flex: 'none', padding: 28 }}>
+              <Footprints size={32} style={{ color: 'var(--a-muted)' }} />
               <b style={{ fontSize: 15 }}>{prices === null ? 'Walk-ins need the 0185 update to the database.' : 'Day passes are off at this gym.'}</b>
-              {prices !== null && <button type="button" className="a-btn violet" onClick={() => navigate('/settings?tab=walk-ins&focus=day-passes')}>Turn them on in Settings → Walk-ins</button>}
+              {prices !== null && <button type="button" className="a-btn" onClick={() => navigate('/settings?tab=walk-ins&focus=day-passes')}>Turn them on in Settings, Walk-ins</button>}
             </div>
           ) : (
-            <div className="a-card glow a-scroll" data-walkin-card>
-              <div className="a-ct"><h3><UserPlus size={16} />Record a walk-in</h3><small>the gym’s own prices, never typed in</small></div>
-
+            <div className="a-card wb-form" data-walkin-card>
               {/* 1 · Who */}
-              <div className="a-step"><span>1</span>Who is it?</div>
-              <div className="a-grid" style={{ gridTemplateColumns: '1fr 1.2fr' }} data-walkin-form>
-                <label className="a-input"><Phone size={16} />
-                  <input aria-label="Guest phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone (finds them next time)" /></label>
-                {guest ? (
-                  <div className="a-input" style={{ borderColor: 'color-mix(in srgb, var(--color-primary) 50%, transparent)' }} data-guest-found>
-                    <Av name={guest.name} small />{guest.name}
-                    <span className="a-pill v" style={{ marginLeft: 'auto' }}>been here {guest.visits_this_month}× this month</span>
-                  </div>
-                ) : (
-                  <label className="a-input"><UserPlus size={16} />
-                    <input aria-label="Guest name" value={name} onChange={(e) => setName(e.target.value)} placeholder={looked ? 'New guest, their name' : 'Name'} /></label>
-                )}
-              </div>
-              <div className="a-sub inline-flex items-center gap-1.5" style={{ margin: '7px 0 14px' }}>
-                <History size={13} />
-                {guest
-                  ? <>Last came {ago(guest.last_visit) ?? 'never'}{guest.visits_left ? <> · has <b style={{ color: 'var(--a-ink)' }}>{guest.visits_left} pack visit{guest.visits_left === 1 ? '' : 's'}</b> left</> : ' · no pack visits left'}</>
-                  : 'Type their phone first. A returning guest is found, with their visits and any pack.'}
-              </div>
-              {/* Guests with pack visits left: one line however many there are. What is typed narrows them;
-                  otherwise the four who came last, and the rest in a searchable list beside the page. */}
-              {packGuests.length > 0 && (
-                <div style={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center', gap: 6, margin: '-6px 0 14px', minWidth: 0, overflow: 'hidden' }} data-pack-guests>
-                  <span className="a-sub flex-none">Has pack visits left:</span>
-                  {packRow.length === 0 && <span className="a-sub">nobody by that name or phone</span>}
-                  {packRow.map((g) => (
-                    <button key={g.id} type="button" className={`a-chip flex-none ${guest?.id === g.id ? 'on' : ''}`} onClick={() => pickPackGuest(g)} data-pack-guest={g.name}>
-                      {g.name} · {g.visits_left} left
-                    </button>
-                  ))}
-                  {packAll.length > packRow.length && (
-                    <button type="button" className="a-chip flex-none" onClick={() => setPackOpen(true)} data-pack-more>
-                      {packRow.length ? `+${packAll.length - packRow.length} more` : `See all ${packGuests.length}`}
-                    </button>
+              <div>
+                <div className="wb-lbl"><span className="k">1</span>Who is it? <span className="a-sub">Type their phone first: a returning guest is found.</span></div>
+                <div className="wb-who" data-walkin-form>
+                  <label className="a-input"><Phone size={16} />
+                    <input aria-label="Guest phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone (finds them next time)" /></label>
+                  {guest ? (
+                    <div className="a-input wb-picked" data-guest-found><Av name={guest.name} small /><b>{guest.name}</b></div>
+                  ) : (
+                    <label className="a-input"><UserPlus size={16} />
+                      <input aria-label="Guest name" value={name} onChange={(e) => setName(e.target.value)} placeholder={looked ? 'New guest, their name' : 'Name'} /></label>
                   )}
                 </div>
-              )}
-
-              {/* 2 · What */}
-              <div className="a-step"><span>2</span>What are they paying for?</div>
-              <div className="a-grid" style={{ gridTemplateColumns: 'repeat(4,minmax(0,1fr))' }}>
-                <Option on={chosen === 'day'} title="Day pass" price={peso(prices!.day ?? 0)} sub="today only" onClick={() => setKind('day')} />
-                {/* A pack the gym does not sell is not offered at all. */}
-                {prices!.pack5 != null && <Option on={chosen === 'pack5'} title="5 visits" price={peso(prices!.pack5)} sub={<><em>{peso(prices!.pack5 / 5)}</em> a visit</>} onClick={() => setKind('pack5')} />}
-                {prices!.pack10 != null && <Option on={chosen === 'pack10'} title="10 visits" price={peso(prices!.pack10)} sub={<><em>{peso(prices!.pack10 / 10)}</em> a visit</>} onClick={() => setKind('pack10')} />}
-                {guest && guest.visits_left > 0 && (
-                  <Option amber on={chosen === 'pack_visit'} title="Use a pack visit" price={peso(0)} sub={`${guest.visits_left} left → ${guest.visits_left - 1} after`} onClick={() => setKind('pack_visit')} />
+                {guest && (
+                  <div className="wb-found"><span className="a-dot v" />
+                    <span><b>{guest.name}</b> came {guest.visits_this_month} time{guest.visits_this_month === 1 ? '' : 's'} this month
+                      {guest.visits_left ? <> and has <b>{guest.visits_left} pack visit{guest.visits_left === 1 ? '' : 's'} left</b></> : ', no pack visits left'}. Last came {ago(guest.last_visit) ?? 'never'}.</span>
+                  </div>
                 )}
               </div>
 
-              {/* 3 · How paid */}
-              <div className="a-step" style={{ marginTop: 14 }}><span>3</span>How did they pay?</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {(['cash', 'online'] as const).map((m) => (
-                  <button key={m} type="button" className={`a-chip ${method === m && chosen !== 'pack_visit' ? 'on' : ''}`} aria-pressed={method === m}
-                    disabled={chosen === 'pack_visit'} style={chosen === 'pack_visit' ? { opacity: 0.4 } : undefined} onClick={() => setMethod(m)}>
-                    {m === 'cash' ? <Banknote size={14} /> : <QrCode size={14} />}{m === 'cash' ? 'Cash' : 'Online'}
-                  </button>
-                ))}
-                <button type="button" className="a-btn amber" style={{ marginLeft: 'auto', padding: '11px 26px', fontSize: 13 }} disabled={busy || !named || !chosen || needsPhone} onClick={() => void record()} data-record-visit>
-                  <Check size={16} />{!named ? 'Type their name' : needsPhone ? 'Type their phone, a pack needs it' : chosen ? `Record visit · ${peso(priceOf(chosen))}` : 'Choose what they are paying for'}
+              {/* 2 · What: the gym's prices are on the tiles; a guest with pack visits sees that first. */}
+              <div>
+                <div className="wb-lbl"><span className="k">2</span>What are they paying for?</div>
+                <div className="a-grid" style={{ gridTemplateColumns: 'repeat(4,minmax(0,1fr))' }}>
+                  {guest && guest.visits_left > 0 && (
+                    <Option amber on={chosen === 'pack_visit'} title="Use a pack visit" price={`${guest.visits_left} left → ${guest.visits_left - 1}`} sub="nothing to pay" onClick={() => setKind('pack_visit')} />
+                  )}
+                  <Option on={chosen === 'day'} title="Day pass" price={peso(prices!.day ?? 0)} sub="today only" onClick={() => setKind('day')} />
+                  {/* A pack the gym does not sell is not offered at all. */}
+                  {prices!.pack5 != null && <Option on={chosen === 'pack5'} title="5 visits" price={peso(prices!.pack5)} sub={<>{peso(prices!.pack5 / 5)} a visit</>} onClick={() => setKind('pack5')} />}
+                  {prices!.pack10 != null && <Option on={chosen === 'pack10'} title="10 visits" price={peso(prices!.pack10)} sub={<>{peso(prices!.pack10 / 10)} a visit</>} onClick={() => setKind('pack10')} />}
+                </div>
+                <p className="a-sub" style={{ marginTop: 6 }}>The gym's own prices, never typed at the desk. <button type="button" className="a-link" style={{ color: 'var(--a-p300)', fontWeight: 600 }} onClick={() => navigate('/settings?tab=walk-ins&focus=day-passes')}>Edit in Settings</button></p>
+              </div>
+
+              {/* 3 · How paid, and the one button */}
+              <div className="wb-last">
+                <div>
+                  <div className="wb-lbl"><span className="k">3</span>How did they pay?</div>
+                  <div className="a-tabs" role="group" aria-label="How they paid">
+                    {(['cash', 'online'] as const).map((m) => (
+                      <button key={m} type="button" className={method === m && chosen !== 'pack_visit' ? 'on' : ''} aria-pressed={method === m}
+                        disabled={chosen === 'pack_visit'} style={chosen === 'pack_visit' ? { opacity: 0.4 } : undefined} onClick={() => setMethod(m)}>
+                        {m === 'cash' ? <Banknote size={14} /> : <QrCode size={14} />}{m === 'cash' ? 'Cash' : 'Online'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <button type="button" className="a-btn amber wb-go" disabled={busy || !named || !chosen || needsPhone} onClick={() => void record()} data-record-visit>
+                  <Check size={16} />{recordLabel}
                 </button>
               </div>
 
-              {/* The walk-in who should be a member — the gym's own nudge (Settings → Walk-ins). */}
+              {/* The walk-in who should be a member: the gym's own nudge (Settings → Walk-ins). */}
               {willSuggest && (
-                <div className="a-toast amber" style={{ marginTop: 14 }} data-walkin-tip>
-                  <span className="ok"><Lightbulb size={16} /></span>
-                  <div>
-                    <b style={{ fontSize: 12.5 }}>{guest!.name} has come {guest!.visits_this_month + 1} times this month with today</b>
-                    <div className="a-sub">
-                      {spentOf(guest!.id) !== null ? `${peso(spentOf(guest!.id)!)} on walk-ins in 30 days. ` : ''}
-                      {cheapest ? `${cheapest.name} is ${peso(cheapest.price)}, worth suggesting.` : 'Worth suggesting a membership.'}
-                    </div>
-                  </div>
+                <div className="wb-found" data-walkin-tip>
+                  <Lightbulb size={15} style={{ color: 'var(--a-a300)', flex: 'none' }} />
+                  <span><b>{guest!.name} has come {guest!.visits_this_month + 1} times this month with today.</b>{' '}
+                    {spentOf(guest!.id) !== null ? `${peso(spentOf(guest!.id)!)} on walk-ins in 30 days. ` : ''}
+                    {cheapest ? `${cheapest.name} is ${peso(cheapest.price)}, worth suggesting.` : 'Worth suggesting a membership.'}</span>
                 </div>
               )}
-
             </div>
           )}
 
-          <div className="a-card" style={{ minHeight: 200, flex: 1 }} data-walkins-today>
-            <div className="a-ct"><h3><Footprints size={16} />Today's walk-ins</h3><button type="button" className="a-link" style={{ color: 'var(--a-p300)' }} onClick={() => setHistOpen(true)}>Past walk-ins →</button></div>
+          <div className="a-card wb-today" data-walkins-today>
+            <div className="a-ct"><h3><Footprints size={16} />Today's walk-ins <span className="a-sub">{live.length}</span></h3>
+              <button type="button" className="a-link" style={{ color: 'var(--a-p300)', fontWeight: 600 }} onClick={() => setHistOpen(true)} data-open-walkin-history>Past walk-ins →</button></div>
             {visits.length === 0 ? <EmptyBlock icon={Footprints} compact title="No walk-ins yet today" body="A guest who pays for a visit shows here, with the cash and the time." /> : (
               <div className="a-scroll" style={{ flex: '1 1 0' }} data-walkin-list>
                 {visits.map((v) => (
-                  <div key={v.id} className="a-row" style={{ opacity: v.voided ? 0.55 : 1 }}>
+                  <div key={v.id} className={`a-row wb-row ${v.voided ? 'void' : ''}`}>
+                    <span className="wb-time">{clock(v.visited_at)}</span>
                     <Av name={v.name} small />
-                    <div className="t"><b>{v.name}{v.voided ? ' · voided' : ''}</b>
-                      <small>{KIND[v.kind]} · {v.amount > 0 ? `${peso(v.amount)} · ${v.method}` : '₱0'} · {new Date(v.visited_at).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' }).toLowerCase()}</small></div>
-                    {!v.voided && <button type="button" className="a-btn ghost sm" disabled={busy} onClick={() => setToVoid({ id: v.id, name: v.name })}><Undo2 size={12} />Void</button>}
+                    <div className="t"><b>{v.name}</b>{v.voided && <small>Voided</small>}</div>
+                    <span className="wb-what">{KIND[v.kind]}{v.kind === 'pack_visit' && v.visits_left ? ` (${v.visits_left} left)` : ''}</span>
+                    <span className="wb-how">{v.amount > 0 ? (v.method === 'online' ? 'Online' : 'Cash') : 'From a pack'}</span>
+                    <span className="wb-amt">{peso(v.amount)}</span>
+                    <span className="wb-void">{!v.voided && <button type="button" className="a-btn ghost sm" disabled={busy} onClick={() => setToVoid({ id: v.id, name: v.name })}><Undo2 size={12} />Void</button>}</span>
                   </div>
                 ))}
               </div>
             )}
-            <div className="a-sub" style={{ marginTop: 'auto', paddingTop: 8 }}>Void a mistake before the drawer closes.</div>
+            <div className="a-sub wb-foot"><span>Void a mistake before the drawer closes.</span><span>{peso(cash)} cash · {peso(online)} online</span></div>
           </div>
         </div>
 
         {/* ── The rail ── */}
         <div className="a-v2-side" data-walkins-rail>
           <div className="a-card" data-walkins-hero>
-            <div className="a-ct"><h3><Wallet size={16} />Today in the drawer</h3><small>from walk-ins</small></div>
-            <div className="a-num">{peso(cash)}</div>
-            <div className="a-sub" style={{ color: 'var(--a-a300)' }}>{peso(cash)} cash in the drawer</div>
-            <div className="a-grid" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginTop: 10, gap: 8 }}>
-              <div><b style={{ fontSize: 16 }}><CountUp value={sold('day')} /></b><div className="a-sub">Day passes</div></div>
-              <div><b style={{ fontSize: 16 }}><CountUp value={sold('pack5') + sold('pack10')} /></b><div className="a-sub">packs sold</div></div>
-              <div><b style={{ fontSize: 16 }}><CountUp value={sold('pack_visit')} /></b><div className="a-sub">pack visits</div></div>
+            <div className="a-lbl">Today in the drawer</div>
+            <div className="a-num" style={{ fontSize: 32 }}>{peso(cash)}</div>
+            <div className="a-sub">{peso(cash)} cash in the drawer{online ? ` · ${peso(online)} online` : ''}</div>
+            <div className="wb-tri">
+              <div><b><CountUp value={sold('day')} /></b><span>Day passes</span></div>
+              <div><b><CountUp value={sold('pack5') + sold('pack10')} /></b><span>packs sold</span></div>
+              <div><b><CountUp value={sold('pack_visit')} /></b><span>pack visits</span></div>
             </div>
           </div>
-          <div className="a-card">
-            <div className="a-ct"><h3><Tags size={16} />Prices</h3><button type="button" className="a-btn ghost sm" onClick={() => navigate('/settings?tab=walk-ins&focus=day-passes')}>Edit in Settings</button></div>
-            <div className="a-sub">
-              {prices && prices.on
-                ? [prices.day != null && `Day ${peso(prices.day)}`, prices.pack5 != null && `5 visits ${peso(prices.pack5)}`, prices.pack10 != null && `10 visits ${peso(prices.pack10)}`].filter(Boolean).join(' · ') + ' · the desk never types a price'
-                : 'Day passes are off.'}
+          {/* Guests with pack visits left (0219): the four who came last; the rest, searchable, beside the page. */}
+          <div className="a-card wb-railcard" data-pack-guests>
+            <div className="a-ct"><h3>Pack visits left</h3><small>{packGuests.length} guest{packGuests.length === 1 ? '' : 's'}</small></div>
+            <div className="a-scroll">
+              {packGuests.length === 0 ? <p className="a-sub" style={{ padding: '10px 16px' }}>Nobody has pack visits left.</p>
+                : packRow.map((g) => (
+                  <button key={g.id} type="button" className={`a-row wb-pack ${guest?.id === g.id ? 'on' : ''}`} onClick={() => pickPackGuest(g)} data-pack-guest={g.name}
+                    data-tip={`Use one of ${g.name}'s visits`}>
+                    <Av name={g.name} small />
+                    <div className="t"><b>{g.name}</b><small>last came {ago(g.last_visit) ?? 'never'}</small></div>
+                    <b>{g.visits_left}</b><span className="a-sub">left</span>
+                  </button>
+                ))}
+              {packAll.length > packRow.length && (
+                <button type="button" className="a-link" style={{ color: 'var(--a-p300)', fontWeight: 600, padding: '8px 16px' }} onClick={() => setPackOpen(true)} data-pack-more>
+                  See all {packGuests.length} →</button>
+              )}
             </div>
           </div>
           {regulars && (
-            <div className="a-card" style={{ minHeight: 0, flex: 1 }} data-regular-guests>
-              <div className="a-ct"><h3><HeartHandshake size={16} />Guests who could join</h3><small>3+ visits in 30 days</small></div>
-              {regulars.length === 0 ? <p className="a-sub">Nobody yet. A guest who comes three times in a month shows here.</p> : (
+            <div className="a-card wb-railcard" data-regular-guests>
+              <div className="a-ct"><h3><HeartHandshake size={16} />Guests who could join</h3><small>3+ visits, 30 days</small></div>
+              {regulars.length === 0 ? <p className="a-sub" style={{ padding: '10px 16px' }}>Nobody yet. A guest who comes three times in a month shows here.</p> : (
                 <div className="a-scroll">
                   {regulars.slice(0, 6).map((g) => (
                     <div key={g.guest_id} className="a-row" style={{ alignItems: 'center' }}>
@@ -356,8 +353,8 @@ export default function WalkIns() {
               )}
             </div>
           )}
-          <button type="button" className="a-card press text-left" style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: '11px 14px' }} onClick={() => setGuideOpen(true)} data-walkin-guide-open>
-            <HelpCircle size={15} style={{ color: 'var(--a-p300)' }} /><b style={{ fontSize: 12.5 }}>How walk-ins and day passes work</b>
+          <button type="button" className="a-link wb-guide" onClick={() => setGuideOpen(true)} data-walkin-guide-open>
+            <HelpCircle size={15} />How walk-ins and day passes work
           </button>
         </div>
       </div>

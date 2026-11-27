@@ -1,0 +1,109 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Walk-ins B: one form, one line at a time</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="shell2.css"><link rel="stylesheet" href="mock-b.css"><style>
+.wrap { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; }
+.col { display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+.form { flex: none; padding: 16px; display: grid; gap: 14px; }
+.lbl { font-size: 12px; font-weight: 600; color: var(--text-2); margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+.lbl .k { width: 18px; height: 18px; border-radius: 50%; background: var(--raised); display: grid; place-items: center; font-size: 11px; color: var(--text); }
+.who { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+.in { height: 44px; border: 1px solid var(--line-strong); border-radius: 8px; display: flex; align-items: center; gap: 10px; padding: 0 12px; background: var(--ground); color: var(--text-3); font-size: 14px; }
+.in b { color: var(--text); font-weight: 500; }
+.in.on { border-color: var(--primary-fg); }
+.found { display: flex; align-items: center; gap: 10px; margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: var(--raised); font-size: 12.5px; color: var(--text-2); }
+.found b { color: var(--text); }
+.tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.tile { border: 1px solid var(--line-strong); border-radius: 10px; padding: 10px 12px; cursor: pointer; }
+.tile .l { font-size: 12px; color: var(--text-2); font-weight: 600; }
+.tile .p { font-size: 20px; font-weight: 650; letter-spacing: -.02em; margin-top: 2px; }
+.tile .s { font-size: 12px; color: var(--text-3); }
+.tile.on { border-color: var(--primary-fg); box-shadow: inset 0 0 0 1px var(--primary-fg); }
+.tile.pack .p { font-size: 15px; margin-top: 6px; }
+.last { display: flex; align-items: center; gap: 10px; }
+.seg { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--line-strong); border-radius: 8px; }
+.seg a { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 6px; font-weight: 600; color: var(--text-2); cursor: pointer; }
+.seg a.on { background: var(--raised); color: var(--text); }
+.go { margin-left: auto; height: 44px; padding: 0 20px; border-radius: 8px; background: var(--action); color: var(--on-action); font-weight: 650; display: inline-flex; align-items: center; gap: 8px; }
+.note { font-size: 12px; color: var(--text-3); }
+.note a { color: var(--primary-fg); font-weight: 600; }
+.today .row { padding: 9px 16px; }
+.today .row .time { width: 72px; }
+.today .amt { width: 80px; text-align: right; font-weight: 650; }
+.today .how2 { width: 90px; color: var(--text-2); font-size: 12.5px; }
+.today .what { width: 140px; color: var(--text-2); font-size: 12.5px; }
+.today .row.void { opacity: .55; } .today .row.void .amt { text-decoration: line-through; }
+.foot { display: flex; justify-content: space-between; padding: 8px 16px 10px; border-top: 1px solid var(--line); font-size: 12px; color: var(--text-3); }
+.drawer { padding: 14px 16px; }
+.drawer .big { font-size: 32px; font-weight: 650; letter-spacing: -.03em; line-height: 1.1; }
+.drawer .tri { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
+.drawer .tri b { display: block; font-size: 16px; } .drawer .tri span { font-size: 12px; color: var(--text-2); }
+.rail .row { padding: 9px 16px; }
+</style></head><body data-tab="Attendance">
+<div class="sb"><div id="rail"></div><div class="main"><div id="top"></div>
+<div class="pg">
+  <div class="ph"><div><h1>Attendance</h1><p>Guests who are not members: paid at the desk, counted in the drawer</p></div>
+    <div class="end"><div class="views"><a>Check-ins<em>3</em></a><a class="on">Walk-ins<em>3</em></a><a>History</a></div></div></div>
+
+  <div class="wrap">
+    <div class="col">
+      <section class="box form">
+        <div>
+          <div class="lbl"><span class="k">1</span>Who is it? <span class="muted" style="font-weight:500">Type their phone first: a returning guest is found.</span></div>
+          <div class="who"><div class="in on"><span id="ph"></span><b>0917 555 0102</b></div><div class="in"><span id="pe"></span><b>Lyn Soriano</b></div></div>
+          <div class="found"><span class="dot"></span><span><b>Lyn Soriano</b> came 3 times this month and has <b>3 visits left</b> on her 5 visit pack. Last visit Nov 24.</span></div>
+        </div>
+        <div>
+          <div class="lbl"><span class="k">2</span>What are they paying for?</div>
+          <div class="tiles">
+            <div class="tile pack on"><div class="l">Use a pack visit</div><div class="p">3 left → 2</div><div class="s">nothing to pay</div></div>
+            <div class="tile"><div class="l">Day pass</div><div class="p">₱150</div><div class="s">today only</div></div>
+            <div class="tile"><div class="l">5 visits</div><div class="p">₱650</div><div class="s">₱130 a visit</div></div>
+            <div class="tile"><div class="l">10 visits</div><div class="p">₱1,200</div><div class="s">₱120 a visit</div></div>
+          </div>
+          <p class="note" style="margin-top:6px">The gym's own prices. <a>Edit in Settings</a></p>
+        </div>
+        <div class="last">
+          <div><div class="lbl"><span class="k">3</span>How did they pay?</div>
+            <div class="seg"><a class="on"><span id="c1"></span>Cash</a><a><span id="c2"></span>Online</a></div></div>
+          <button class="go"><span id="ok"></span>Record Lyn's pack visit</button>
+        </div>
+      </section>
+
+      <section class="box today" style="flex:1">
+        <header><h2>Today's walk-ins <span class="count">3</span></h2><span class="aside"><a class="link">Past walk-ins →</a></span></header>
+        <div class="scroll" style="flex:1" id="rows"></div>
+        <div class="foot"><span>Void a mistake before the drawer closes.</span><span>₱800 cash · ₱0 online</span></div>
+      </section>
+    </div>
+
+    <aside class="col rail">
+      <section class="box drawer" style="flex:none">
+        <div class="l" style="font-size:12px;color:var(--text-2);font-weight:600">Today in the drawer</div>
+        <div class="big">₱800</div><div class="muted" style="font-size:12px">from walk-ins, all cash</div>
+        <div class="tri"><div><b>1</b><span>day pass</span></div><div><b>1</b><span>pack sold</span></div><div><b>1</b><span>pack visit</span></div></div>
+      </section>
+      <section class="box" style="flex:1;min-height:0">
+        <header><h2>Pack visits left</h2><span class="aside">4 guests</span></header>
+        <div id="packs"></div>
+      </section>
+      <section class="box" style="flex:1;min-height:0">
+        <header><h2>Could become members</h2><span class="aside" style="white-space:nowrap">3+ visits, 30 days</span></header>
+        <div id="join"></div>
+      </section>
+      <a class="link" style="padding:0 4px">How walk-ins and day passes work</a>
+    </aside>
+  </div>
+</div></div></div>
+<span class="ann">Walk-ins B · sample data · ?mode=light</span>
+<script src="shell-b.js"></script><script>
+const I = window.ICON;
+const set = (id, d) => { document.getElementById(id).outerHTML = I(d); };
+set('ph', 'M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z');
+set('pe', 'M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8');
+set('c1', 'M2 6h20v12H2zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6'); set('c2', 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h3v3h-3z'); set('ok', 'M20 6 9 17l-5-5');
+const R = [['10:21 am', 'Rico Abad', 'Day pass', 'Cash', '₱150', 0], ['9:40 am', 'Jules Tan', '5 visits', 'Cash', '₱650', 0], ['8:05 am', 'Ana Ituralde', 'Pack visit (2 left)', 'From pack', '₱0', 0], ['7:30 am', 'Dan Cruz', 'Day pass', 'Cash', '₱150', 1]];
+document.getElementById('rows').innerHTML = R.map((r) => `<div class="row ${r[5] ? 'void' : ''}"><span class="time">${r[0]}</span><span class="ini">${r[1].split(' ').map((w) => w[0]).join('')}</span><div class="t"><b>${r[1]}</b>${r[5] ? '<span>Voided, wrong price</span>' : ''}</div><span class="what">${r[2]}</span><span class="how2">${r[3]}</span><span class="amt">${r[4]}</span><button class="btn sm q">${r[5] ? '' : 'Void'}</button></div>`).join('');
+document.getElementById('packs').innerHTML = [['Lyn Soriano', 3, 'Nov 24'], ['Ana Ituralde', 2, 'today'], ['gab', 9, 'Nov 20'], ['neil', 4, 'Nov 18']]
+  .map(([n, v, d]) => `<div class="row"><span class="ini">${n.split(' ').map((w) => w[0].toUpperCase()).join('')}</span><div class="t"><b>${n}</b><span>last visit ${d}</span></div><span style="font-weight:650">${v}</span><span class="muted" style="font-size:12px">left</span></div>`).join('');
+document.getElementById('join').innerHTML = [['Ana Ituralde', '3 visits · ₱650 of ₱800 a month']].map(([n, s]) => `<div class="row"><span class="ini">AI</span><div class="t"><b>${n}</b><span>${s}</span></div><button class="btn sm">Call</button></div>`).join('')
+  + '<p class="muted" style="padding:10px 16px;font-size:12px">A guest who has spent most of a month\'s fee in walk-ins is worth a call.</p>';
+</script></body></html>

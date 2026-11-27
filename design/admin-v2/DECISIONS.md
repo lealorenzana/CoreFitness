@@ -39,3 +39,9 @@ Rules come from `design/lessons/LESSONS.md`; the kit stays `components/ui/rd.tsx
     Typing narrows it; members you can check in rise to the top. A member the rules refuse shows why, not hidden.
     Enter checks in only when exactly one member matches. Filters: Everyone · In today · Not in yet, plus How.
     One orange button (Scan QR); slim terms line; figures in one strip; the rail is only At the door.
+14. **History, Walk-ins and Notifications = mock-ups B** (`history-b.html`, `walkins-b.html`, `inbox-b.html`, 2026-11-27):
+    History groups check-ins by day with an hour bar per day, a weekday by hour busy grid, the calendar kept, Most
+    regular on the right, a flat figure strip. Walk-ins is one form (who, what as price tiles, how, one Record button
+    that names the action), today's list, and a rail of the drawer, pack visits left and guests who could join; the
+    Prices card and the extra header buttons go. Notifications keeps the mail layout; with nothing open the right side
+    is a greeting, a summary and what needs you, each item with its own actions.

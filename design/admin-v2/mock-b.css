@@ -1,0 +1,30 @@
+/* Shared by the 2026-11-27 mock-ups: page head, views, figures strip, boxes, rows, buttons. Sample data only. */
+.pg { flex: 1; min-height: 0; padding: 16px 24px 20px; display: flex; flex-direction: column; gap: 14px; }
+.ph { display: flex; align-items: center; gap: 20px; flex: none; }
+.ph h1 { font-size: 22px; font-weight: 650; letter-spacing: -.02em; }
+.ph p { color: var(--text-2); font-size: 13px; margin-top: 2px; }
+.ph .end { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.views { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--line-strong); border-radius: 8px; }
+.views a { padding: 5px 12px; border-radius: 6px; color: var(--text-2); font-weight: 600; cursor: pointer; white-space: nowrap; }
+.views a.on { background: var(--raised); color: var(--text); }
+.views a em { font-style: normal; color: var(--text-3); font-weight: 500; margin-left: 4px; }
+.btn.sm { height: 28px; font-size: 12px; padding: 0 10px; }
+.btn.q { border-color: transparent; color: var(--text-2); }
+svg.i { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.strip { display: grid; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; flex: none; }
+.fig .n { font-size: 24px; }
+.fig .n.hero { font-size: 36px; letter-spacing: -.03em; line-height: 1.05; }
+.box > header .count { color: var(--text-3); font-weight: 500; margin-left: 4px; }
+.chips { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--line-strong); border-radius: 7px; }
+.chips a { padding: 3px 10px; border-radius: 5px; color: var(--text-2); font-weight: 600; font-size: 12px; cursor: pointer; white-space: nowrap; }
+.chips a.on { background: var(--raised); color: var(--text); }
+.chips a em { font-style: normal; color: var(--text-3); font-weight: 500; margin-left: 4px; }
+.sel { height: 28px; border: 1px solid var(--line-strong); border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; color: var(--text-2); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.sel b { color: var(--text); }
+.mini { height: 28px; border: 1px solid var(--line-strong); border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; color: var(--text-3); font-size: 12px; width: 170px; }
+.ini { width: 28px; height: 28px; border-radius: 50%; background: var(--raised); color: var(--text-2); display: grid; place-items: center; font-size: 11px; font-weight: 600; flex: none; }
+.ini.on { background: var(--fill-primary); color: #fff; }
+.link { color: var(--primary-fg); font-weight: 600; font-size: 12px; cursor: pointer; }
+.muted { color: var(--text-3); }
+.ann { position: fixed; right: 12px; left: auto; bottom: 6px; font-size: 11px; color: var(--text-3); }
+.scroll { overflow: auto; }

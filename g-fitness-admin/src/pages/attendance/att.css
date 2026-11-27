@@ -700,3 +700,39 @@
 .att .a-doorfoot button { font-size: 12px; }
 .att .a-doorcard .a-status { position: static !important; padding: 0; background: transparent; }
 .att .a-doorcard [data-coaches-row] { margin: 0 !important; padding: 0 10px !important; height: 30px; }
+
+/* ── Walk-ins, mock-up B (owner, 2026-11-27; design/admin-v2/walkins-b.html) ── */
+.att[data-walkins] .wb-form { flex: none; padding: 16px; display: grid; gap: 14px; }
+.att[data-walkins] .wb-lbl { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--a-ink); margin-bottom: 6px; }
+.att[data-walkins] .wb-lbl .k { width: 18px; height: 18px; border-radius: 50%; background: var(--a-raised); display: grid; place-items: center; font-size: 11px; }
+.att[data-walkins] .wb-lbl .a-sub { font-weight: 500; }
+.att[data-walkins] .wb-who { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+.att[data-walkins] .wb-picked { border-color: var(--color-primary); gap: 10px; }
+.att[data-walkins] .wb-found { display: flex; align-items: center; gap: 10px; margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: var(--a-raised); font-size: 12.5px; color: var(--a-text2); }
+.att[data-walkins] .wb-found b { color: var(--a-ink); }
+.att[data-walkins] .wb-last { display: flex; align-items: flex-end; gap: 12px; }
+.att[data-walkins] .wb-last .a-tabs { display: inline-flex; }
+.att[data-walkins] .wb-last .a-tabs button { display: inline-flex; align-items: center; gap: 6px; }
+.att[data-walkins] .wb-go { margin-left: auto; height: 44px; padding: 0 20px; font-size: 13px; }
+.att[data-walkins] .a-opt { min-height: 0; padding: 10px 12px; border-radius: 10px; }
+.att[data-walkins] .a-opt .price { font-size: 20px; }
+.att[data-walkins] .wb-today { flex: 1; min-height: 180px; padding: 0; display: flex; flex-direction: column; overflow: hidden; }
+.att[data-walkins] .wb-today > .a-ct { height: 46px; margin: 0; padding: 0 16px; border-bottom: 1px solid var(--a-border); }
+.att[data-walkins] .wb-row { padding: 9px 16px; gap: 12px; border-bottom: 1px solid var(--a-border); margin: 0; }
+.att[data-walkins] .wb-row.void { opacity: .55; } .att[data-walkins] .wb-row.void .wb-amt { text-decoration: line-through; }
+.att[data-walkins] .wb-time { width: 70px; flex: none; color: var(--a-text2); font-size: 12.5px; }
+.att[data-walkins] .wb-what { width: 150px; flex: none; color: var(--a-text2); font-size: 12.5px; }
+.att[data-walkins] .wb-how { width: 90px; flex: none; color: var(--a-text2); font-size: 12.5px; }
+.att[data-walkins] .wb-amt { width: 80px; flex: none; text-align: right; font-weight: 650; }
+.att[data-walkins] .wb-void { width: 70px; flex: none; text-align: right; }
+.att[data-walkins] .wb-foot { margin-top: auto; display: flex; justify-content: space-between; padding: 8px 16px 10px; border-top: 1px solid var(--a-border); font-size: 12px; }
+.att[data-walkins] .wb-tri { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--a-border); }
+.att[data-walkins] .wb-tri b { display: block; font-size: 16px; } .att[data-walkins] .wb-tri span { font-size: 12px; color: var(--a-text2); }
+.att[data-walkins] .wb-railcard { padding: 0; display: flex; flex-direction: column; overflow: hidden; flex: 1 1 0; min-height: 120px; }
+.att[data-walkins] .wb-railcard > .a-ct { height: 44px; margin: 0; padding: 0 16px; border-bottom: 1px solid var(--a-border); flex: none; }
+.att[data-walkins] .wb-railcard > .a-ct small { white-space: nowrap; }
+.att[data-walkins] .wb-railcard .a-row { padding: 8px 16px; margin: 0; border-bottom: 1px solid var(--a-border); width: 100%; text-align: left; }
+.att[data-walkins] .wb-pack.on { background: var(--a-raised); box-shadow: inset 2px 0 0 var(--color-primary); }
+.att[data-walkins] .wb-pack > b { font-size: 15px; }
+.att[data-walkins] .wb-guide { display: inline-flex; align-items: center; gap: 6px; color: var(--a-p300); font-weight: 600; font-size: 12.5px; padding: 2px 4px; flex: none; }
+.att[data-walkins] [data-walkins-rail] > .a-card.wb-railcard, :root[data-mode="light"] .att[data-walkins] [data-walkins-rail] > .a-card.wb-railcard { padding: 0; flex: 1 1 0; min-height: 120px; }
