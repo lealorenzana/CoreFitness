@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { Copy, Download, Mail, Smartphone, X } from 'lucide-react';
-import Button from './ui/Button';
+import { ArrowRight, Check, Copy, Download, Mail, MessageSquare, Smartphone, UserPlus, X } from 'lucide-react';
 import { getGymApp, type GymApp } from '../lib/api/gymApp';
 import SkelRows from './ui/SkelRows';
 
@@ -17,11 +16,12 @@ export const MEMBER_APP = 'https://corefitness-gym.vercel.app';
 export const APP_PAGE = `${MEMBER_APP}/get-app`;
 
 /**
- * Every way a member gets into this gym, in one place on the Members page —
- * where an owner looks for it. Until now the link and code lived only on
- * "Your app", and Members offered a walk-in form and nothing else.
+ * Every way a member gets into this gym, in one place on the Members page. Since 2026-11-27 (owner) the same
+ * floating window as Add member (`am-*` in v2.css): a panel in the gym's colour with the QR code to show at the
+ * desk and a mascot, the link, code and app beside it, one amber button (copy a ready message). A gym that signs
+ * members up only at the desk has nothing to share, and the window says so with the two ways forward.
  */
-export default function InviteMembersPanel({ onClose }: { onClose: () => void }) {
+export default function InviteMembersPanel({ onClose, onAddWalkIn }: { onClose: () => void; onAddWalkIn?: () => void }) {
   const [app, setApp] = useState<GymApp | null | undefined>(undefined);
   const [copied, setCopied] = useState<string | null>(null);
 
@@ -30,6 +30,11 @@ export default function InviteMembersPanel({ onClose }: { onClose: () => void })
     void getGymApp().then((a) => { if (alive) setApp(a); });
     return () => { alive = false; };
   }, []);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
   const copy = (key: string, text: string) => {
     void navigator.clipboard.writeText(text).then(() => setCopied(key), () => setCopied(null));
@@ -42,84 +47,96 @@ export default function InviteMembersPanel({ onClose }: { onClose: () => void })
     app.join_code ? `Already have the app? Open it, tap "Have a join code?" and type ${app.join_code}.` : null,
     `Android app: ${APP_PAGE}`,
   ].filter(Boolean).join('\n') : '';
+  const open = !!app && app.join_policy !== 'closed';
 
-  const row = (key: string, label: string, value: string) => (
-    <div className="rounded-lg border p-3" style={{ borderColor: 'var(--color-border)' }}>
-      <p className="text-[11px] uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>{label}</p>
-      <div className="mt-1 flex items-center gap-2">
-        <span className="flex-1 min-w-0 break-all text-sm" style={{ color: 'var(--color-text-primary)' }}>{value}</span>
-        <Button variant="outline" size="sm" onClick={() => copy(key, value)}>
-          <Copy size={13} /> {copied === key ? 'Copied' : 'Copy'}
-        </Button>
+  const field = (key: string, label: string, value: string, big?: boolean) => (
+    <div className="iv-field">
+      <span>{label}</span>
+      <div><b className={big ? 'big' : ''}>{value}</b>
+        <button type="button" className="am-btn sm" onClick={() => copy(key, value)} aria-label={`Copy the ${label.toLowerCase()}`}>
+          {copied === key ? <Check size={13} /> : <Copy size={13} />}{copied === key ? 'Copied' : 'Copy'}
+        </button>
       </div>
     </div>
   );
+  const more = (to: string, icon: React.ReactNode, title: string, sub: string, external?: boolean) => {
+    const inner = <>{icon}<span className="flex-1 min-w-0"><b>{title}</b><small>{sub}</small></span><ArrowRight size={14} className="go" /></>;
+    return external
+      ? <a href={to} target="_blank" rel="noreferrer" className="iv-more">{inner}</a>
+      : <Link to={to} onClick={onClose} className="iv-more">{inner}</Link>;
+  };
 
   return createPortal((
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }}
-      onMouseDown={onClose}>
-      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border p-5"
-        style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
-        onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-label="Invite members">
-        <div className="flex items-start gap-3">
-          <div className="flex-1">
-            <h2 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>Invite members</h2>
-            <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-              Send the link, show the QR code at the desk, or give the code to someone who already has the app.
-            </p>
+    <div className="am-root" role="dialog" aria-modal="true" aria-label="Invite members" data-invite-panel>
+      <div className="am-scrim" onClick={onClose} />
+      <div className="am-win iv-win">
+        <aside className="am-side">
+          <div>
+            <h2>Invite members</h2>
+            <p>{open ? 'Send the link, show the code at the desk, or give the code to someone who already has the app.'
+              : 'How people get into your gym, and what to hand them.'}</p>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close" style={{ color: 'var(--color-text-muted)' }}><X size={18} /></button>
-        </div>
-
-        {app === undefined && <SkelRows label="Loading…" />}
-        {app === null && <p className="mt-4 text-sm" style={{ color: 'var(--color-text-muted)' }}>Your gym's join details could not be read.</p>}
-
-        {app && app.join_policy === 'closed' && (
-          <p className="mt-4 rounded-lg p-3 text-sm" style={{ background: 'var(--color-secondary-light, rgba(245,158,11,0.1))', color: 'var(--color-text-primary)' }}>
-            Your gym signs members up only at the desk, so there is no link or code to share. Change it under{' '}
-            <Link to="/gym-app" className="underline">Your app → How they join</Link>, or add a walk-in here.
-          </p>
-        )}
-
-        {app && app.join_policy !== 'closed' && (
-          <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto]">
-            <div className="space-y-2.5 min-w-0">
-              {row('link', 'Join link', joinLink)}
-              {app.join_code && row('code', 'Join code', app.join_code)}
-              {row('app', 'Android app', APP_PAGE)}
-              <Button className="w-full" onClick={() => copy('message', message)}>
-                <Copy size={14} /> {copied === 'message' ? 'Message copied — paste it in Messenger or SMS' : 'Copy a ready-to-send message'}
-              </Button>
-              <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                {app.join_policy === 'open'
-                  ? 'Your gym is listed, so people can also find it by name in the app.'
-                  : 'Your gym is not listed: people join only with this link or code. Nobody can find it by searching.'}
-                {' '}Anyone who joins this way waits for the desk to approve them under Pending.
-              </p>
+          {open && (
+            <div className="iv-qr" data-invite-qr>
+              <div className="card"><QRCodeSVG value={app.join_code ? codeLink : joinLink} size={148} /></div>
+              <small>Scanning opens the sign-up for {app.gym_name}</small>
             </div>
-            <div className="flex flex-col items-center gap-2">
-              <div className="rounded-xl bg-white p-3"><QRCodeSVG value={app.join_code ? codeLink : joinLink} size={150} /></div>
-              <span className="text-[11px] text-center" style={{ color: 'var(--color-text-muted)', maxWidth: 170 }}>
-                Scanning opens the sign-up for {app.gym_name}
-              </span>
-            </div>
+          )}
+          <div className="am-buddy" aria-hidden>
+            <p className="am-say">{app === undefined ? 'Getting your gym’s join details.'
+              : !app ? 'I could not read your join details. Reload and try again.'
+              : open ? 'Show the code at the desk, or send the link. They wait for your approval under Sign-ups.'
+              : 'Members join only at the desk right now, so there is nothing to share yet.'}</p>
+            <img src={open || app === undefined ? '/mockup-art/phone-journey-mascot.webp' : '/images/admin-art/mascot-map.webp'} alt="" className={open ? 'small' : ''} />
           </div>
-        )}
+        </aside>
 
-        <div className="mt-5 grid gap-2 sm:grid-cols-3">
-          <a href={APP_PAGE} target="_blank" rel="noreferrer"
-            className="flex items-center gap-2 rounded-lg border p-3 text-sm" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}>
-            <Download size={16} /> Android app page
-          </a>
-          <Link to="/invitations" onClick={onClose}
-            className="flex items-center gap-2 rounded-lg border p-3 text-sm" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}>
-            <Mail size={16} /> Invite one person by email
-          </Link>
-          <Link to="/gym-app" onClick={onClose}
-            className="flex items-center gap-2 rounded-lg border p-3 text-sm" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}>
-            <Smartphone size={16} /> Poster and joining rules
-          </Link>
-        </div>
+        <section className="am-main">
+          <button type="button" aria-label="Close" onClick={onClose} className="am-x"><X size={16} /></button>
+          <div className="am-form iv-body">
+            {app === undefined && <SkelRows label="Loading" />}
+            {app === null && <p className="am-hint">Your gym's join details could not be read. Reload the page to try again.</p>}
+
+            {app && !open && (
+              <div className="iv-closed" data-invite-closed>
+                <h3>Your gym signs members up at the desk only</h3>
+                <p className="am-hint">There is no link or code to share while it does. Let people join from the app under <b>Your app, How they join</b>, or add them at the desk.</p>
+                <div className="flex gap-2 flex-wrap">
+                  <Link to="/gym-app" onClick={onClose} className="am-btn go"><Smartphone size={14} />Change how they join</Link>
+                  {onAddWalkIn && <button type="button" className="am-btn" onClick={() => { onClose(); onAddWalkIn(); }}><UserPlus size={14} />Add a walk-in</button>}
+                </div>
+              </div>
+            )}
+
+            {app && open && (
+              <div className="iv-share">
+                <h3>Share it</h3>
+                {app.join_code && field('code', 'Join code', app.join_code, true)}
+                {field('link', 'Join link', joinLink)}
+                {field('app', 'Android app', APP_PAGE)}
+                <button type="button" className="am-btn go iv-send" onClick={() => copy('message', message)} data-copy-message>
+                  {copied === 'message' ? <Check size={15} /> : <MessageSquare size={15} />}
+                  {copied === 'message' ? 'Copied. Paste it in Messenger or a text' : 'Copy a ready-to-send message'}
+                </button>
+                <p className="am-hint">
+                  {app.join_policy === 'open'
+                    ? 'Your gym is listed, so people can also find it by name in the app.'
+                    : 'Your gym is not listed: people join only with this link or code. Nobody can find it by searching.'}
+                  {' '}Anyone who joins this way waits for the desk to approve them under Sign-ups.
+                </p>
+              </div>
+            )}
+
+            {app !== undefined && (
+              <div className="iv-mores">
+                <h3>More ways</h3>
+                {more(APP_PAGE, <Download size={16} />, 'Android app page', 'Where members download the app', true)}
+                {more('/invitations', <Mail size={16} />, 'Invite one person by email', 'They get a login straight away')}
+                {more('/gym-app', <Smartphone size={16} />, 'Poster and joining rules', 'Print a poster; choose who may join')}
+              </div>
+            )}
+          </div>
+        </section>
       </div>
     </div>
   ), document.body);

@@ -617,7 +617,7 @@ export default function Members() {
 
   return (
     <div className="att" data-members>
-      {showInvite && <InviteMembersPanel onClose={() => setShowInvite(false)} />}
+      {showInvite && <InviteMembersPanel onClose={() => setShowInvite(false)} onAddWalkIn={() => setIsAddOpen(true)} />}
 
       <div className="a-head">
         <div className="min-w-0">

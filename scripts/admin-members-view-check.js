@@ -163,5 +163,25 @@ async (page) => {
       await dl.saveAs('.tmp-shots/member-full.docx');
     }
   }
+  // Invite members (2026-11-27): the Add member window's look, a QR and a mascot; desk-only gyms told what to do instead.
+  for (const policy of ['closed', 'invite_only']) {
+    await page.route('**/rest/v1/rpc/my_gym_app*', (r) => r.fulfill({ status: 200, contentType: 'application/json',
+      body: JSON.stringify([{ slug: 'core-fitness-lab', gym_name: 'Core Fitness Lab', join_code: 'LAB4K2', join_policy: policy }]) }));
+    for (const mode of ['dark', 'light']) {
+      await page.emulateMedia({ colorScheme: mode });
+      await page.setViewportSize({ width: 1400, height: 900 });
+      await page.goto('http://localhost:5174/members?invite=1', { waitUntil: 'domcontentloaded' });
+      await page.locator('[data-invite-panel] .iv-mores').waitFor({ timeout: 15000 });
+      await page.waitForTimeout(500);
+      await page.screenshot({ path: `.tmp-shots/admin-invite-${policy}-${mode}.png` });
+    }
+    const t = await page.locator('[data-invite-panel]').innerText();
+    say(policy === 'closed' ? 'invite, desk only: says so, two ways forward, the map mascot' : 'invite: the code, the link, a QR, one amber button',
+      policy === 'closed'
+        ? (await page.locator('[data-invite-closed]').count()) === 1 && /Change how they join/.test(t) && /Add a walk-in/.test(t) && /mascot-map/.test(await page.locator('.am-buddy img').getAttribute('src'))
+        : /LAB4K2/.test(t) && /join\/core-fitness-lab/.test(t) && (await page.locator('[data-invite-qr] svg').count()) === 1 && (await page.locator('[data-invite-panel] .am-btn.go').count()) === 1,
+      t.replace(/\s+/g, ' ').slice(0, 90));
+    await page.unroute('**/rest/v1/rpc/my_gym_app*');
+  }
   return out.join('\n');
 }
