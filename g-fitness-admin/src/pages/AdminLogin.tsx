@@ -197,7 +197,7 @@ export default function AdminLogin() {
           <h2>Your gym, run from one desk.</h2>
           <p>Check-ins, members, payments and coaching, in one place.</p>
         </div>
-        <img className="al-crew" src="/images/login-crew.webp" alt="" width={1563} height={519} />
+        <img className="al-crew" src="/images/login-crew.webp" alt="" width={1600} height={533} />
       </section>
 
       <section className="al-side">
