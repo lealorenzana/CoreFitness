@@ -106,6 +106,13 @@ async (page) => {
     await pick('List');
     await page.waitForTimeout(600);
     say(`${mode}: List with the pane at 1280`, (await rows()) >= 3 && await noScroll(), `${await rows()} rows`);
+    // Every filter chip whole and in view with the pane open (the toolbar wraps; before, the chips hid behind the search).
+    const clipped = await page.evaluate(() => {
+      const box = document.querySelector('[data-rd-chips]').getBoundingClientRect();
+      return [...document.querySelectorAll('[data-rd-chips] [data-chip]')].filter((c) => { const r = c.getBoundingClientRect();
+        return r.width === 0 || r.right > box.right + 1 || r.bottom > box.bottom + 1; }).map((c) => c.dataset.chip);
+    });
+    say(`${mode}: every filter chip shows with the pane at 1280`, clipped.length === 0 && (await page.locator('[data-rd-chips] [data-chip]').count()) === 7, clipped.join(', ') || 'all 7');
     await page.screenshot({ path: `.tmp-shots/admin-members-list-pane-${mode}-1280.png` });
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.locator('[data-member-row]').first().waitFor({ timeout: 20000 });

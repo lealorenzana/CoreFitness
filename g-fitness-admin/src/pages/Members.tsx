@@ -693,7 +693,7 @@ export default function Members() {
       </FloatingWindow>
 
       {/* ── The roster ── */}
-      <div className="a-roster" data-view={view}>
+      <div className="a-roster" data-view={view} data-pane={pane ? '' : undefined}>
       <div className="a-card" style={{ flex: 1, minWidth: 0 }} data-members-table>
         <div className="a-ct" data-members-toolbar>
           <div className="flex gap-1.5 min-w-0 overflow-hidden" data-rd-chips>

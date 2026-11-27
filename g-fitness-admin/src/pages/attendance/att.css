@@ -662,3 +662,8 @@
 .a-viewmenu hr { border: 0; border-top: 1px solid rgb(var(--hair-rgb, 255 255 255) / .12); margin: 6px 4px; }
 .a-tick { width: 14px; display: grid; place-items: center; }
 .a-tick i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+/* With the pane open the roster is narrow: the toolbar takes two lines, chips first, so no chip hides behind the search. */
+.att .a-roster[data-pane] [data-members-toolbar] { flex-wrap: wrap; row-gap: 8px; }
+.att .a-roster[data-pane] [data-members-toolbar] > [data-rd-chips] { flex: 1 1 100%; flex-wrap: wrap; row-gap: 6px; }
+.att .a-roster[data-pane] [data-rd-chips] { gap: 4px !important; }
+.att .a-roster[data-pane] [data-rd-chips] .a-chip { padding: 6px 8px; }
