@@ -105,16 +105,41 @@ export default function JoinPoster({
       <div className="mx-auto my-6 print:my-0 keep-dark" style={{ width: 640, maxWidth: '100%', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
         <div style={{ background: '#FFFFFF', color: '#0F172A', fontFamily: 'Inter, system-ui, sans-serif', overflow: 'hidden', position: 'relative' }}>
 
-          {/* The band: the gym's colour, cut on a slant, its initials as a faint giant watermark. */}
+          {/* The band: the gym's colour, cut on a slant, the mascot burst on its right. */}
           <div style={{ position: 'relative', background: deep, color: '#FFFFFF', padding: '30px 36px 150px',
             clipPath: 'polygon(0 0, 100% 0, 100% 78%, 0 100%)', overflow: 'hidden' }}>
-            <span aria-hidden style={{ position: 'absolute', right: -24, top: -40, fontSize: 300, fontWeight: 900, lineHeight: 1, letterSpacing: '-0.06em',
-              color: accent.c600, opacity: 0.35, userSelect: 'none' }}>{initials}</span>
+            {/* The Core Fitness mascot in a burst of gym kit (owner, 2026-11-27): rays in the gym's colour behind,
+                equipment flying out around it. Decoration only, kept above the QR card. */}
+            <div aria-hidden style={{ position: 'absolute', right: -6, top: 4, width: 300, height: 300, pointerEvents: 'none' }} data-poster-burst>
+              <svg viewBox="-150 -150 300 300" width="300" height="300" style={{ position: 'absolute', inset: 0 }}>
+                <circle r="92" fill={accent.c600} opacity="0.55" />
+                {Array.from({ length: 18 }, (_, i) => {
+                  const a0 = (i / 18) * Math.PI * 2, a1 = a0 + Math.PI / 30;
+                  return <polygon key={i} fill={accent.c400} opacity={i % 2 ? 0.22 : 0.38}
+                    points={`0,0 ${Math.cos(a0) * 170},${Math.sin(a0) * 170} ${Math.cos(a1) * 170},${Math.sin(a1) * 170}`} />;
+                })}
+                {[[-118, -40], [104, 64], [-30, -128], [126, -92], [-96, 112]].map(([x, y], i) => (
+                  <path key={i} transform={`translate(${x} ${y}) scale(${i % 2 ? 0.7 : 1})`} fill={act}
+                    d="M0 -12 C2 -3 3 -2 12 0 C3 2 2 3 0 12 C-2 3 -3 2 -12 0 C-3 -2 -2 -3 0 -12 Z" />
+                ))}
+              </svg>
+              {[
+                ['/images/admin-art/mascot-kettlebell.webp', { left: 6, top: 18, width: 78, transform: 'rotate(-18deg)' }],
+                ['/images/admin-art/mascot-stopwatch.webp', { right: 18, top: 0, width: 60, transform: 'rotate(16deg)' }],
+                ['/images/admin-art/mascot-plate.webp', { right: 0, top: 128, width: 62, transform: 'rotate(22deg)' }],
+                ['/images/admin-art/mascot-shoe.webp', { left: 0, top: 170, width: 84, transform: 'rotate(-12deg)' }],
+              ].map(([src, st]) => (
+                <img key={src as string} src={src as string} alt="" style={{ position: 'absolute', height: 'auto', filter: 'drop-shadow(0 6px 8px rgba(0,0,0,0.28))', ...(st as React.CSSProperties) }} />
+              ))}
+              <img src="/images/admin-art/mascot-bottle.webp" alt="" style={{ position: 'absolute', left: 64, top: 52, width: 172, height: 'auto',
+                filter: 'drop-shadow(0 12px 16px rgba(0,0,0,0.35))' }} />
+            </div>
 
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 14 }}>
-              <div style={{ width: 64, height: 64, borderRadius: 16, background: '#FFFFFF', display: 'grid', placeItems: 'center', overflow: 'hidden', flex: 'none' }} data-poster-logo>
+              <div style={{ width: 66, height: 66, borderRadius: '50%', background: '#FFFFFF', display: 'grid', placeItems: 'center', overflow: 'hidden', flex: 'none',
+                boxShadow: '0 0 0 3px rgba(255,255,255,0.9)' }} data-poster-logo>
                 {logoUrl
-                  ? <img src={logoUrl} alt="" style={{ width: '84%', height: '84%', objectFit: 'contain' }} />
+                  ? <img src={logoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
                   : <span style={{ fontSize: 24, fontWeight: 900, color: deep }}>{initials}</span>}
               </div>
               <div style={{ minWidth: 0 }}>
