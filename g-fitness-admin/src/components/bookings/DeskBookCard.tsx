@@ -164,7 +164,7 @@ export default function DeskBookCard({ open, onClose, onBooked, only }: { open: 
                   <span className="flex-1 min-w-0"><b>{member.name}</b><small>{member.plan || 'no plan'}</small></span>
                   <button type="button" className="am-btn sm" onClick={() => { setWho(null); setPick(null); }}>Change</button></div>
               ) : (
-                <div className="grid gap-2">
+                <div className="bk-find">
                   <label className="bk-search"><Search size={16} />
                     <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Type the member's name" aria-label="Member to book" /></label>
                   {hits.length > 0 && (

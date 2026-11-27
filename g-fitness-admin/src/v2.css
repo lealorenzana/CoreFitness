@@ -1098,3 +1098,8 @@ section:last-child > .nb-item:last-child { border-bottom: 0; }
 .bk-slots button:disabled { opacity: .4; cursor: not-allowed; }
 .bk-win .am-part { gap: 14px; }
 .bk-slots > .am-hint { grid-column: 1 / -1; }
+/* The member search's results float over the form (owner, 2026-11-27): typing never pushes the day and time down. */
+.bk-find { position: relative; }
+.bk-find .bk-hits { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 5; max-height: 320px; overflow-y: auto;
+  background: var(--color-surface); box-shadow: 0 18px 40px -16px rgb(0 0 0 / .55); }
+.bk-find > .am-hint { position: absolute; top: calc(100% + 8px); left: 2px; }

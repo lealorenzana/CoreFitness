@@ -9,7 +9,6 @@ import { getSessionPersistence, setSessionPersistence } from '../lib/authStorage
 import { realEmail, signInWithLogin } from '../lib/api/logins';
 import { clearAdminCaches } from '../lib/adminCaches';
 import './login.css';
-import LoginFloorPlan from './LoginFloorPlan';
 
 const MEMBER_APP = 'https://corefitness-gym.vercel.app';
 const SITE = 'https://corefitness-site.vercel.app';
@@ -176,7 +175,6 @@ export default function AdminLogin() {
   return (
     // A dark branded page in both modes (0234): .keep-dark keeps light mode's overrides off it.
     <div className="al keep-dark">
-      <LoginFloorPlan />
       {already && (
         <div className="al-dialog" role="dialog" aria-modal="true" aria-label="Already signed in" data-already-signed-in>
           <div>
@@ -190,8 +188,21 @@ export default function AdminLogin() {
         </div>
       )}
 
+      {/* The brand side (owner, 2026-11-27): the Core Fitness crew along the bottom, a short line above. Core Fitness
+          colours on purpose: no gym's theme applies before a gym. Decoration only; the form needs none of it. */}
+      <section className="al-hero">
+        <a className="al-brand" href={SITE}><img src="/core-fitness-logo.png" alt="" width={32} height={32} />Core Fitness</a>
+        <div className="al-pitch">
+          <p className="al-kicker">For gym owners and the front desk</p>
+          <h2>Your gym, run from one desk.</h2>
+          <p>Check-ins, members, payments and coaching, in one place.</p>
+        </div>
+        <img className="al-crew" src="/images/login-crew.webp" alt="" width={1563} height={519} />
+      </section>
+
+      <section className="al-side">
       <header className="al-edge">
-        <a className="al-brand" href={SITE}><img src="/core-fitness-logo.png" alt="" width={28} height={28} />Core Fitness</a>
+        <a className="al-brand al-brand-sm" href={SITE}><img src="/core-fitness-logo.png" alt="" width={28} height={28} />Core Fitness</a>
         <span className="al-quiet">New gym? <a href={`${SITE}/#apply`}>Register <ArrowRight size={14} aria-hidden /></a></span>
       </header>
 
@@ -268,6 +279,7 @@ export default function AdminLogin() {
           <a href={SITE}>About Core Fitness</a>
         </span>
       </footer>
+      </section>
     </div>
   );
 }
