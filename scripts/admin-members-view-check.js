@@ -121,5 +121,47 @@ async (page) => {
     await pick('Details');
     say(`${mode}: back to the table, no pane`, !/view=|pane=/.test(page.url()) && (await page.locator('[data-member-pane]').count()) === 0, 'reset');
   }
+  // The member drawer, two columns (owner, 2026-11-27): who they are on the left, figures, recent activity, attendance by day, Export.
+  // A logo, so the documents' header is tested with one (a data URL: no network).
+  const LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAAAgCAYAAADtwH1UAAAAWElEQVR4nO3RMREAIBDAsNeFNiyjAWQwNEP33mX2Olf/mt8D9QAAaAcAQDsAANoBANAOAIB2AAC0AwCgHQAA7QAAaAcAQDsAANoBANAOAIB2AAC0AwCg3QPVSJnSjOv6xwAAAABJRU5ErkJggg==';
+  await page.route('**/rest/v1/gym_settings*', (r) => { const row = { name: 'Core Fitness Lab', logo_url: LOGO, address: 'Mamburao, Occidental Mindoro', tagline: null };
+    return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(/vnd\.pgrst\.object/.test(r.request().headers().accept ?? '') ? row : [row]) }); });
+  const readDl = async (dl) => { const chunks = []; for await (const c of await dl.createReadStream()) chunks.push(c); return Buffer.concat(chunks); };
+  for (const mode of ['dark', 'light']) {
+    await page.emulateMedia({ colorScheme: mode });
+    await page.setViewportSize({ width: 1600, height: 1000 });
+    await page.goto('http://localhost:5174/members', { waitUntil: 'domcontentloaded' });
+    await page.locator('[data-member-row]').first().waitFor({ timeout: 20000 });
+    await page.waitForTimeout(800);
+    await page.locator('[data-member-row]', { hasText: 'Ben Ramos' }).first().click();
+    await page.locator('[data-member-drawer-wide]').waitFor({ timeout: 15000 });
+    await page.waitForTimeout(900);
+    const side = await page.locator('.md-side').innerText();
+    say(`${mode}: the drawer is two columns, contact with copy buttons on the left`, /Ben/.test(side) && /Contact/.test(side) && (await page.locator('.md-side [data-copy-field]').count()) >= 1, side.replace(/\s+/g, ' ').slice(0, 80));
+    say(`${mode}: four figures and recent activity`, (await page.locator('[data-member-figures] > div').count()) === 4 && (await page.getByText('Recent activity').count()) === 1, 'figures');
+    await page.screenshot({ path: `.tmp-shots/admin-member-drawer-${mode}-1600.png` });
+    await page.locator('.md-tabs button', { hasText: 'Attendance' }).click(); await page.waitForTimeout(400);
+    await page.screenshot({ path: `.tmp-shots/admin-member-drawer-attendance-${mode}-1600.png` });
+    say(`${mode}: attendance by day, or says they never came`, (await page.locator('[data-member-days] .md-day').count()) > 0 || /never checked in/.test(await page.locator('.md-main').innerText()), `${await page.locator('[data-member-days] .md-day').count()} days`);
+    if (mode === 'dark') {
+      await page.locator('[data-member-export]').click(); await page.waitForTimeout(300);
+      await page.screenshot({ path: '.tmp-shots/admin-member-export-menu.png' });
+      let [dl] = await Promise.all([page.waitForEvent('download'), page.locator('[data-export-pick="report-docx"]').click()]);
+      let buf = await readDl(dl); await dl.saveAs('.tmp-shots/member-report.docx');
+      say('the profile report downloads as a real Word file', /\.docx$/.test(dl.suggestedFilename()) && buf[0] === 0x50 && buf[1] === 0x4b && buf.includes('word/document.xml') && buf.includes('word/header1.xml') && buf.includes('word/media/logo.png'), dl.suggestedFilename());
+      await page.locator('[data-member-export]').click(); await page.waitForTimeout(300);
+      const [pop] = await Promise.all([page.waitForEvent('popup'), page.locator('[data-export-pick="report-pdf"]').click()]);
+      await pop.waitForLoadState('domcontentloaded'); await pop.waitForTimeout(300);
+      const ptxt = await pop.locator('body').innerText();
+      await pop.setViewportSize({ width: 900, height: 1200 }); await pop.screenshot({ path: '.tmp-shots/admin-member-report-pdf.png', fullPage: true });
+      say('the PDF report opens for printing: the gym, the member, payments, attendance', /Member profile/.test(ptxt) && /Mamburao/.test(ptxt) && (await pop.locator('header img').count()) === 1 && /Ben/.test(ptxt) && /Payments/.test(ptxt) && /Attendance/.test(ptxt), ptxt.replace(/\s+/g, ' ').slice(0, 80));
+      await pop.close();
+      await page.locator('[data-member-export]').click(); await page.waitForTimeout(300);
+      [dl] = await Promise.all([page.waitForEvent('download'), page.locator('[data-export-pick="full-docx"]').click()]);
+      buf = await readDl(dl);
+      say('everything held downloads as Word too', /\.docx$/.test(dl.suggestedFilename()) && buf[0] === 0x50 && buf.includes('word/document.xml'), dl.suggestedFilename());
+      await dl.saveAs('.tmp-shots/member-full.docx');
+    }
+  }
   return out.join('\n');
 }

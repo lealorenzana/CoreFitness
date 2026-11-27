@@ -3,11 +3,11 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, User, CreditCard, CalendarCheck, TrendingUp, CalendarClock, MessageSquare,
-  Mail, Phone, MapPin, Cake, ShieldAlert, QrCode, FileCheck, Trash2, Banknote, Pause, Play, Ban,
+  Mail, Phone, MapPin, Cake, ShieldAlert, QrCode, FileCheck, Trash2, Banknote, Pause, Play, Ban, Copy, Download, ChevronDown,
 } from 'lucide-react';
 import { Initials } from './rd';
 import DatePicker from './DatePicker';
-import { todayKey } from '../../utils/dates';
+import { todayKey, localDateKey, addDays, daysBetween } from '../../utils/dates';
 import Badge from './Badge';
 import { platformSuspendedIds } from '../../lib/api/platformSuspensions';
 import { gymSwitchMarks } from '../../lib/api/gymSwitches';
@@ -40,6 +40,10 @@ import { showToast } from '../../utils/toast';
 import { supabase } from '../../lib/supabaseClient';
 import { memberCoaching, STATUS_WORDS as COACHING_STATUS_WORDS, type CoachingRow } from '../../lib/api/coaching';
 import { exportMemberData, downloadExport } from '../../lib/memberDataExport';
+import { profileReport, fullDataReport, printReport, wordReport } from '../../lib/memberReport';
+import { useBranding } from '../../hooks/useBranding';
+import Popover from './Popover';
+import CallButton from './CallButton';
 import { loadMemberDetail, type MemberDetail } from '../../services/memberDetailService';
 import { memberAgreements, type Agreement, type MemberAgreements } from '../../lib/api/termsAcceptance';
 import { memberHouseRulesVersion } from '../../lib/api/houseRules';
@@ -164,7 +168,7 @@ export default function MemberDetailDrawer({ memberId, onClose, onChanged, docke
   ) : error ? (
     <DrawerMessage onClose={onClose} text={error} />
   ) : detail ? (
-    <DrawerBody detail={detail} onClose={onClose} tab={tab} setTab={setTab} onRefresh={refresh} byPlatform={byPlatform} switchMark={switchMark} />
+    <DrawerBody detail={detail} onClose={onClose} tab={tab} setTab={setTab} onRefresh={refresh} byPlatform={byPlatform} switchMark={switchMark} wide={!docked} />
   ) : null;
 
   // The Members View menu's Details pane (2026-11-27): the same record, beside the roster instead of over it.
@@ -188,7 +192,7 @@ export default function MemberDetailDrawer({ memberId, onClose, onChanged, docke
           <motion.aside
             initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 260 }}
-            className="fixed top-0 right-0 bottom-0 w-full max-w-3xl z-[150] flex flex-col shadow-2xl"
+            className="fixed top-0 right-0 bottom-0 w-full max-w-[1140px] z-[150] flex flex-col shadow-2xl"
             style={{ background: 'var(--color-surface)', borderLeft: '1px solid var(--color-border)' }}
           >
             {body}
@@ -217,8 +221,10 @@ function DrawerMessage({ text, onClose }: { text: string; onClose: () => void })
 /* ─────────────────────────── Body ─────────────────────────── */
 
 function DrawerBody({
-  detail, onClose, tab, setTab, onRefresh, byPlatform, switchMark,
+  detail, onClose, tab, setTab, onRefresh, byPlatform, switchMark, wide,
 }: {
+  /** The sliding drawer (owner, 2026-11-27): a side column of who they are; the docked pane stays one column. */
+  wide: boolean;
   switchMark: 'in' | 'out' | null;
   detail: MemberDetail;
   /** 0226: Core Fitness suspended this person. */
@@ -228,7 +234,7 @@ function DrawerBody({
   setTab: (t: TabId) => void;
   onRefresh: () => Promise<void>;
 }) {
-  const { identity, stats } = detail;
+  const { identity } = detail;
   const { profile, member } = identity;
   const fullName = `${profile.first_name} ${profile.last_name}`.trim();
   const current = detail.memberships[0] ?? null;
@@ -249,127 +255,256 @@ function DrawerBody({
     }
   };
 
-  return (
+  const badges = (
     <>
-      {/* Header */}
-      <div className="p-5 flex items-start justify-between flex-shrink-0"
-        style={{ borderBottom: '1px solid var(--color-border)' }}>
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="relative flex-shrink-0">
-            <Initials name={fullName} photo={photoUrl} size={44} />
-            {photoUrl && (
-              <button onClick={removePhoto} disabled={removingPhoto}
-                data-tip="Remove this member's photo"
-                className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center disabled:opacity-50"
-                style={{ background: 'var(--color-surface)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.16)', color: 'var(--color-text-secondary)' }}>
-                <Trash2 size={11} />
-              </button>
-            )}
-          </div>
-          <div className="min-w-0">
-            <h2 className="text-[18px] font-semibold text-white truncate">{fullName}</h2>
-            <div className="flex items-center gap-x-3 gap-y-1 mt-0.5 flex-wrap">
-              {current
-                ? <Badge variant={MEMBERSHIP_BADGE[current.status]}>{current.status}</Badge>
-                : <Badge variant="Inactive">no membership</Badge>}
-              {profile.status !== 'active' && <Badge variant="Suspended">{profile.status.replace('_', ' ')}</Badge>}
-              {switchMark === 'in' && <span data-switching-in data-tip="Their training history comes with them once you accept their request."><Badge variant="Pending">Switching in from another gym</Badge></span>}
-              {switchMark === 'out' && <span data-switched-out data-tip="Their payments and visits stay here; their training went with them."><Badge variant="Inactive">Switched to another gym</Badge></span>}
-              {byPlatform && <span data-platform-suspended-mark data-tip="Core Fitness suspended this account in every gym. Only Core Fitness can lift it."><Badge variant="Suspended">Suspended by Core Fitness</Badge></span>}
-              {current?.membership_plans?.name && (
-                <span className="text-[13px]" style={{ color: 'var(--color-text-secondary)' }}>
-                  {current.membership_plans.name}
-                </span>
-              )}
+      {current
+        ? <Badge variant={MEMBERSHIP_BADGE[current.status]}>{current.status}</Badge>
+        : <Badge variant="Inactive">no membership</Badge>}
+      {profile.status !== 'active' && <Badge variant="Suspended">{profile.status.replace('_', ' ')}</Badge>}
+      {switchMark === 'in' && <span data-switching-in data-tip="Their training history comes with them once you accept their request."><Badge variant="Pending">Switching in from another gym</Badge></span>}
+      {switchMark === 'out' && <span data-switched-out data-tip="Their payments and visits stay here; their training went with them."><Badge variant="Inactive">Switched to another gym</Badge></span>}
+      {byPlatform && <span data-platform-suspended-mark data-tip="Core Fitness suspended this account in every gym. Only Core Fitness can lift it."><Badge variant="Suspended">Suspended by Core Fitness</Badge></span>}
+      {current?.membership_plans?.name && (
+        <span className="text-[13px]" style={{ color: 'var(--color-text-secondary)' }}>{current.membership_plans.name}</span>
+      )}
+    </>
+  );
+  const photo = (size: number) => (
+    <div className="relative flex-shrink-0">
+      <Initials name={fullName} photo={photoUrl} size={size} />
+      {photoUrl && (
+        <button onClick={removePhoto} disabled={removingPhoto} aria-label="Remove this member's photo"
+          data-tip="Remove this member's photo"
+          className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center disabled:opacity-50"
+          style={{ background: 'var(--color-surface)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.16)', color: 'var(--color-text-secondary)' }}>
+          <Trash2 size={11} />
+        </button>
+      )}
+    </div>
+  );
+  const close = <button aria-label="Close" onClick={onClose} className="md-icon"><X size={16} /></button>;
+  const tabs = (
+    <div className="md-tabs">
+      {TABS.map((t) => {
+        const Icon = t.icon;
+        const active = tab === t.id;
+        return (
+          <button key={t.id} onClick={() => setTab(t.id)} aria-pressed={active} className={active ? 'on' : ''}>
+            <Icon size={14} /> {t.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+  const panel = (
+    <div className="flex-1 min-h-0 overflow-y-auto p-5 scrollbar-thin scrollbar-thumb-dark-border">
+      {tab === 'overview'   && <OverviewTab detail={detail} wide={wide} />}
+      {tab === 'membership' && <MembershipTab detail={detail} onRefresh={onRefresh} />}
+      {tab === 'attendance' && <AttendanceTab detail={detail} />}
+      {tab === 'progress'   && <ProgressTab detail={detail} />}
+      {tab === 'bookings'   && <BookingsTab detail={detail} />}
+      {tab === 'notes'      && <NotesTab detail={detail} />}
+    </div>
+  );
+
+  // The docked pane beside the roster: one column, as before.
+  if (!wide) {
+    return (
+      <>
+        <div className="p-5 flex items-start justify-between gap-3 flex-shrink-0" style={{ borderBottom: '1px solid var(--color-border)' }}>
+          <div className="flex items-center gap-3 min-w-0">
+            {photo(44)}
+            <div className="min-w-0">
+              <h2 className="text-[18px] font-semibold text-white truncate">{fullName}</h2>
+              <div className="flex items-center gap-x-3 gap-y-1 mt-0.5 flex-wrap">{badges}</div>
             </div>
           </div>
+          <div className="flex items-center gap-1 flex-shrink-0"><ExportMenu detail={detail} />{close}</div>
         </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
-          {/* RA 10173's right to a copy, at the counter: the same file the
-              member downloads from Settings → Your data (lib/memberDataExport.ts). */}
-          <button
-            onClick={async () => {
-              try {
-                const exp = await exportMemberData(profile.id);
-                downloadExport(exp, fullName);
-                const missing = Object.keys(exp.unavailable).length;
-                showToast(missing ? `Exported. ${missing} section(s) could not be read and are listed in the file` : 'Member data exported', 'success');
-              } catch (err) {
-                showToast(err instanceof Error ? err.message : 'Could not export', 'error');
-              }
-            }}
-            className="px-3 h-9 rounded-lg text-[13px] font-medium hover:bg-white/[0.05]"
-            data-tip="Everything held about this member, as one file, for a data request"
-            style={{ color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>
-            Export data
-          </button>
-          <button aria-label="Close" onClick={onClose} className="w-9 h-9 grid place-items-center rounded-lg hover:bg-white/[0.06]" style={{ color: 'var(--color-text-secondary)' }}>
-            <X size={16} />
-          </button>
+        <FigureStrip detail={detail} />
+        {tabs}
+        {panel}
+      </>
+    );
+  }
+
+  // The drawer (owner, 2026-11-27, from the CRM reference): who they are on the left, the record on the right.
+  return (
+    <div className="md-wide" data-member-drawer-wide>
+      <aside className="md-side" aria-label={`${fullName}, at a glance`}>
+        <div className="md-who">
+          {photo(72)}
+          <h2>{fullName}</h2>
+          <div className="flex items-center justify-center gap-x-2 gap-y-1 flex-wrap">{badges}</div>
         </div>
-      </div>
+        <div className="md-quick">
+          <button type="button" className="md-btn go" onClick={() => setTab('membership')} data-quick-pay><Banknote size={14} />Record payment</button>
+          {profile.phone && <CallButton phone={profile.phone} name={profile.first_name} className="md-btn" />}
+        </div>
+        <div className="md-sect">
+          <h3>Contact</h3>
+          <SideField icon={Mail} label="Email" value={realEmail(profile.email)} copy />
+          <SideField icon={Phone} label="Phone" value={profile.phone ? formatPhoneNumber(profile.phone) : null} copy />
+          <SideField icon={MapPin} label="Address" value={member.address} />
+          <SideField icon={QrCode} label="Check-in code" value={formatCheckInCode(profile.id)} copy mono />
+        </div>
+        <div className="md-sect">
+          <h3>Emergency contact</h3>
+          {member.emergency_contact_name || member.emergency_contact_phone ? (
+            <>
+              <SideField icon={User} label={member.emergency_contact_relationship || 'Name'} value={member.emergency_contact_name} />
+              <SideField icon={Phone} label="Their phone" value={member.emergency_contact_phone ? formatPhoneNumber(member.emergency_contact_phone) : null} copy />
+            </>
+          ) : (
+            // Called out, not three dashes: in a room full of heavy objects this is the blank that can matter.
+            <p className="md-warn"><ShieldAlert size={14} />No emergency contact on file. Ask at their next visit and add it with Edit.</p>
+          )}
+        </div>
+        <div className="md-sect">
+          <h3>Membership</h3>
+          <SideField icon={CreditCard} label="Plan" value={current?.membership_plans?.name ?? null} />
+          <SideField icon={CalendarClock} label="Ends" value={current ? (current.never_expires ? 'Never expires' : current.expiry_date ? formatDate(current.expiry_date) : null) : null} />
+          <SideField icon={CalendarCheck} label="Member since" value={member.created_at ? formatDate(member.created_at) : null} />
+        </div>
+      </aside>
+      <section className="md-main">
+        <div className="md-top">
+          {tabs}
+          <div className="flex items-center gap-1 flex-shrink-0"><ExportMenu detail={detail} />{close}</div>
+        </div>
+        <FigureStrip detail={detail} />
+        {panel}
+      </section>
+    </div>
+  );
+}
 
-      {/* Tabs */}
-      <div className="flex gap-5 px-5 overflow-x-auto flex-shrink-0" style={{ borderBottom: '1px solid var(--color-border)' }}>
-        {TABS.map((t) => {
-          const Icon = t.icon;
-          const active = tab === t.id;
-          return (
-            <button key={t.id} onClick={() => setTab(t.id)} aria-pressed={active}
-              className="flex items-center gap-1.5 py-3 -mb-px text-[13px] font-medium whitespace-nowrap transition-colors hover:text-white"
-              style={{
-                borderBottom: `2px solid ${active ? 'var(--color-primary)' : 'transparent'}`,
-                color: active ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
-              }}>
-              <Icon size={14} /> {t.label}
-            </button>
-          );
-        })}
+/** A label, its value, and a copy button (HR reference). An absent value says so; it never borrows another's. */
+function SideField({ icon: Icon, label, value, copy, mono }: { icon: typeof User; label: string; value: string | null | undefined; copy?: boolean; mono?: boolean }) {
+  const doCopy = async () => {
+    try { await navigator.clipboard.writeText(value!); showToast(`${label} copied`, 'success'); }
+    catch { showToast(`Could not copy. It is ${value}`, 'error'); }
+  };
+  return (
+    <div className="md-field">
+      <Icon size={14} />
+      <div className="min-w-0 flex-1">
+        <span>{label}</span>
+        <b className={`${value ? '' : 'none'} ${mono ? 'mono' : ''}`}>{value || 'Not on file'}</b>
       </div>
+      {copy && value && <button type="button" className="md-icon sm" onClick={() => void doCopy()} aria-label={`Copy ${label.toLowerCase()}`} data-tip={`Copy ${label.toLowerCase()}`} data-copy-field><Copy size={13} /></button>}
+    </div>
+  );
+}
 
-      {/* Panel */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-5 scrollbar-thin scrollbar-thumb-dark-border">
-        {tab === 'overview'   && <OverviewTab detail={detail} />}
-        {tab === 'membership' && <MembershipTab detail={detail} onRefresh={onRefresh} />}
-        {tab === 'attendance' && <AttendanceTab detail={detail} />}
-        {tab === 'progress'   && <ProgressTab detail={detail} />}
-        {tab === 'bookings'   && <BookingsTab detail={detail} />}
-        {tab === 'notes'      && <NotesTab detail={detail} />}
-      </div>
+/** Four numbers the desk is asked for, each with what to compare it to (attendance reference). */
+function FigureStrip({ detail }: { detail: MemberDetail }) {
+  const { stats, attendance, memberships } = detail;
+  const today = todayKey();
+  const days = (from: number, to: number) => new Set(attendance.map((a) => localDateKey(a.check_in_time))
+    .filter((k) => k > addDays(today, -from) && k <= addDays(today, -to))).size;
+  const now30 = days(30, 0), before30 = days(60, 30);
+  const diff = now30 - before30;
+  const cur = memberships[0] ?? null;
+  const left = cur?.expiry_date && !cur.never_expires ? daysBetween(today, cur.expiry_date) : null;
+  return (
+    <div className="md-figs" data-member-figures>
+      <div><span>Visit days, last 30</span><b>{now30}</b>
+        <small className={diff > 0 ? 'up' : diff < 0 ? 'dn' : ''}>{diff === 0 ? 'same as' : `${diff > 0 ? '+' : ''}${diff} vs`} the 30 days before</small></div>
+      <div><span>Last visit</span><b className="first-letter:uppercase">{stats.lastVisitOn == null ? 'never' : stats.daysSinceLastVisit === 0 ? 'today' : `${stats.daysSinceLastVisit}d ago`}</b>
+        <small>{stats.lastVisitOn ? formatDate(stats.lastVisitOn) : 'no check-in yet'}</small></div>
+      <div><span>Total paid</span><b>₱{stats.totalPaid.toLocaleString('en-PH')}</b>
+        <small>{stats.lastPaymentOn ? `last on ${formatDate(stats.lastPaymentOn)}` : 'no payment yet'}</small></div>
+      <div><span>Plan ends</span><b>{!cur ? 'No plan' : cur.never_expires ? 'Never' : left == null ? 'Not set' : left < 0 ? 'Ended' : left === 0 ? 'Today' : `in ${left}d`}</b>
+        <small>{cur?.expiry_date && !cur.never_expires ? formatDate(cur.expiry_date) : cur?.membership_plans?.name ?? 'no membership'}</small></div>
+    </div>
+  );
+}
 
-      {/* At-a-glance strip — the four numbers the desk is actually asked for. */}
-      <div className="grid grid-cols-4 flex-shrink-0 px-5 py-3"
-        style={{ borderTop: '1px solid var(--color-border)' }}>
-        <FootStat label="Visit days" value={String(stats.visitDays)} />
-        <FootStat
-          label="Last visit"
-          value={
-            stats.lastVisitOn == null
-              ? 'never'
-              : stats.daysSinceLastVisit === 0
-                ? 'today'
-                : `${stats.daysSinceLastVisit}d ago`
-          }
-        />
-        <FootStat label="Total paid" value={`₱${stats.totalPaid.toLocaleString('en-PH')}`} />
-        <FootStat label="Member since" value={member.created_at ? formatDate(member.created_at) : '—'} />
-      </div>
+/** Export (owner, 2026-11-27): a profile report or everything held, as PDF or Word, the gym's logo on top. */
+function ExportMenu({ detail }: { detail: MemberDetail }) {
+  const branding = useBranding();
+  const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const { profile } = detail.identity;
+  const fullName = `${profile.first_name} ${profile.last_name}`.trim();
+  const gym = { name: branding.name, address: branding.address, logoUrl: branding.logoUrl };
+  const run = async (what: 'report' | 'full', format: 'pdf' | 'docx' | 'json') => {
+    // The print window opens on the click itself; one opened after the reading is blocked as a pop-up.
+    const w = format === 'pdf' ? window.open('', '_blank') : null;
+    setOpen(false); setBusy(true);
+    try {
+      if (what === 'report') {
+        const doc = profileReport(detail);
+        if (format === 'pdf') printReport(doc, gym, w); else showToast(`Saved ${await wordReport(doc, gym)}`, 'success');
+        return;
+      }
+      // RA 10173's right to a copy: the same tables the member downloads from Settings, Your data.
+      const exp = await exportMemberData(profile.id);
+      const missing = Object.keys(exp.unavailable).length;
+      if (format === 'json') downloadExport(exp, fullName);
+      else if (format === 'pdf') printReport(fullDataReport(exp, fullName), gym, w);
+      else await wordReport(fullDataReport(exp, fullName), gym);
+      showToast(missing ? `Exported. ${missing} section(s) could not be read and are listed in the file` : 'Member data exported', 'success');
+    } catch (err) {
+      w?.close();
+      showToast(err instanceof Error ? err.message : 'Could not export', 'error');
+    } finally { setBusy(false); }
+  };
+  const item = (label: string, sub: string, go: () => void, key: string) => (
+    <button type="button" role="menuitem" onClick={go} data-export-pick={key}><b>{label}</b><span>{sub}</span></button>
+  );
+  return (
+    <>
+      <button ref={setAnchor} type="button" className="md-btn" onClick={() => setOpen(!open)} disabled={busy} aria-haspopup="menu" aria-expanded={open}
+        data-member-export data-tip="A profile report, or everything held for a data request">
+        <Download size={14} />{busy ? 'Exporting' : 'Export'}<ChevronDown size={13} />
+      </button>
+      <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} width={280}>
+        <div className="md-menu" role="menu">
+          <p>Profile report</p>
+          {item('PDF', 'Details, membership, payments, attendance', () => void run('report', 'pdf'), 'report-pdf')}
+          {item('Word (.docx)', 'The same report, to edit', () => void run('report', 'docx'), 'report-docx')}
+          <p>Everything held (a data request)</p>
+          {item('PDF', 'Every table about them, landscape', () => void run('full', 'pdf'), 'full-pdf')}
+          {item('Word (.docx)', 'Every table, to edit', () => void run('full', 'docx'), 'full-docx')}
+          {item('JSON', 'The machine readable copy', () => void run('full', 'json'), 'full-json')}
+        </div>
+      </Popover>
     </>
   );
 }
 
-function FootStat({ label, value }: { label: string; value: string }) {
+/** Newest first: check-ins, payments, plans started and trainer notes, in one list (CRM reference). */
+function RecentActivity({ detail }: { detail: MemberDetail }) {
+  type Ev = { at: string; icon: typeof User; title: string; sub: string };
+  const ev: Ev[] = [
+    ...detail.attendance.map((a): Ev => ({ at: a.check_in_time, icon: CalendarCheck, title: 'Checked in', sub: `${new Date(a.check_in_time).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}${a.activity ? `, ${a.activity}` : ''}` })),
+    ...detail.payments.map((p): Ev => ({ at: p.created_at, icon: Banknote, title: `Paid ₱${Number(p.amount).toLocaleString('en-PH')}`, sub: `${p.method}${p.status !== 'completed' ? `, ${p.status}` : ''}${p.invoice_number ? `, ${p.invoice_number}` : ''}` })),
+    ...detail.memberships.filter((m) => m.start_date).map((m): Ev => ({ at: `${m.start_date}T00:00:00`, icon: CreditCard, title: `Started ${m.membership_plans?.name ?? 'a plan'}`, sub: m.never_expires ? 'never expires' : m.expiry_date ? `until ${formatDate(m.expiry_date)}` : 'no end set' })),
+    ...detail.notes.map((n): Ev => ({ at: n.date, icon: MessageSquare, title: n.title, sub: n.message })),
+  ].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 8);
   return (
-    <div className="min-w-0">
-      <p className="text-[12px]" style={{ color: 'var(--color-text-secondary)' }}>{label}</p>
-      <p className="text-[15px] font-semibold text-white tabular-nums truncate first-letter:uppercase">{value}</p>
-    </div>
+    <Section title="Recent activity">
+      {ev.length === 0 ? <Empty text="Nothing yet: check-ins, payments and notes show here as they happen." /> : (
+        <ol className="md-feed" data-recent-activity>
+          {ev.map((e, i) => (
+            <li key={i}>
+              <span className="k"><e.icon size={13} /></span>
+              <div className="min-w-0"><b>{e.title}</b><span>{e.sub}</span></div>
+              <time>{formatDate(e.at)}</time>
+            </li>
+          ))}
+        </ol>
+      )}
+    </Section>
   );
 }
 
 /* ─────────────────────────── Overview ─────────────────────────── */
 
-function OverviewTab({ detail }: { detail: MemberDetail }) {
+function OverviewTab({ detail, wide }: { detail: MemberDetail; wide: boolean }) {
   const { profile, member } = detail.identity;
   const { stats, progression } = detail;
 
@@ -377,12 +512,15 @@ function OverviewTab({ detail }: { detail: MemberDetail }) {
 
   return (
     <div className="space-y-7">
-      <Section title="Contact">
-        <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-          <InfoCell icon={Mail} label="Email" value={realEmail(profile.email) ?? 'No email'} />
-          <InfoCell icon={Phone} label="Phone" value={profile.phone ? formatPhoneNumber(profile.phone) : null} />
-          <InfoCell icon={MapPin} label="Address" value={member.address} className="col-span-2" />
-        </div>
+      {wide && <RecentActivity detail={detail} />}
+      <Section title={wide ? 'Login' : 'Contact'}>
+        {!wide && (
+          <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+            <InfoCell icon={Mail} label="Email" value={realEmail(profile.email) ?? 'No email'} />
+            <InfoCell icon={Phone} label="Phone" value={profile.phone ? formatPhoneNumber(profile.phone) : null} />
+            <InfoCell icon={MapPin} label="Address" value={member.address} className="col-span-2" />
+          </div>
+        )}
         <div className="mt-2"><LoginSection userId={profile.id} name={`${profile.first_name} ${profile.last_name}`} role="member" /></div>
       </Section>
 
@@ -399,12 +537,7 @@ function OverviewTab({ detail }: { detail: MemberDetail }) {
           {member.guardian_consent_name && (
             <InfoCell icon={User} label="Guardian consent" value={member.guardian_consent_name} />
           )}
-          <InfoCell
-            icon={QrCode}
-            label="Check-in code"
-            value={formatCheckInCode(profile.id)}
-            mono
-          />
+          {!wide && <InfoCell icon={QrCode} label="Check-in code" value={formatCheckInCode(profile.id)} mono />}
           {/* The consent record (0079). NULL renders as the InfoCell's own
               placeholder rather than as "not accepted" — everyone who joined
               before 0079, and everyone the desk signed up on paper, is NULL
@@ -420,7 +553,7 @@ function OverviewTab({ detail }: { detail: MemberDetail }) {
         </div>
       </Section>
 
-      <Section title="Emergency contact">
+      {!wide && <Section title="Emergency contact">
         {hasEmergencyContact ? (
           <div className="grid grid-cols-3 gap-x-6 gap-y-4">
             <InfoCell icon={User} label="Name" value={member.emergency_contact_name} />
@@ -437,7 +570,7 @@ function OverviewTab({ detail }: { detail: MemberDetail }) {
             </p>
           </div>
         )}
-      </Section>
+      </Section>}
 
       <Section title="Training level">
         <div className="grid grid-cols-2 gap-x-6 gap-y-4">
@@ -894,8 +1027,19 @@ function RecordPaymentInline({
 
 /* ─────────────────────────── Attendance ─────────────────────────── */
 
+/** Manila hour and minute of a check-in (+8h, never the browser's own zone). */
+const manilaHM = (iso: string) => { const d = new Date(new Date(iso).getTime() + 8 * 3600_000); return d.getUTCHours() + d.getUTCMinutes() / 60; };
+
+/** Each day they came, with a 6 am to 10 pm bar and a dot per check-in, then its rows (attendance reference, like History). */
 function AttendanceTab({ detail }: { detail: MemberDetail }) {
   const { attendance, stats } = detail;
+  const [shown, setShown] = useState(20);
+  const today = todayKey();
+  const days: [string, typeof attendance][] = [];
+  for (const a of [...attendance].sort((x, y) => y.check_in_time.localeCompare(x.check_in_time))) {
+    const k = localDateKey(a.check_in_time);
+    if (days.length && days[days.length - 1][0] === k) days[days.length - 1][1].push(a); else days.push([k, [a]]);
+  }
   return (
     <div className="space-y-7">
       <div className="grid grid-cols-3 gap-x-6 gap-y-4">
@@ -907,17 +1051,30 @@ function AttendanceTab({ detail }: { detail: MemberDetail }) {
         {attendance.length === 0 ? (
           <Empty text="This member has never checked in." />
         ) : (
-          <div >
-            {attendance.map((a) => {
-              const at = new Date(a.check_in_time);
-              return (
-                <Row key={a.id}
-                  title={at.toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
-                  subtitle={`${at.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}${a.activity ? ` · ${a.activity}` : ''}`}
-                  right={<Badge variant={a.method === 'qr' ? 'QR' : 'Manual'}>{a.method}</Badge>}
-                />
-              );
-            })}
+          <div className="md-days" data-member-days>
+            {days.slice(0, shown).map(([k, list]) => (
+              <div key={k} className="md-day">
+                <div className="md-dh">
+                  <span><b>{k === today ? 'Today' : k === addDays(today, -1) ? 'Yesterday' : new Date(`${k}T00:00:00`).toLocaleDateString('en-PH', { weekday: 'long' })}</b>
+                    <small>{new Date(`${k}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: k.slice(0, 4) === today.slice(0, 4) ? undefined : 'numeric' })}</small></span>
+                  <div className="md-tl" aria-hidden>
+                    <i className="track" />
+                    {[6, 10, 14, 18, 22].map((h) => <em key={h} style={{ left: `${((h - 6) / 16) * 100}%` }}>{h % 12 || 12} {h < 12 ? 'am' : 'pm'}</em>)}
+                    {list.map((a, i) => <u key={`${a.id}:${i}`} style={{ left: `${Math.min(100, Math.max(0, ((manilaHM(a.check_in_time) - 6) / 16) * 100))}%` }} />)}
+                  </div>
+                </div>
+                {list.map((a, i) => (
+                  <div key={`${a.id}:${i}`} className="md-drow">
+                    <span className="t">{new Date(a.check_in_time).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Manila' })}</span>
+                    <span>{a.activity ?? <span style={{ color: 'var(--color-text-muted)' }}>Not recorded</span>}</span>
+                    <Badge variant={a.method === 'qr' ? 'QR' : 'Manual'}>{a.method === 'qr' ? 'scanned' : 'typed'}</Badge>
+                  </div>
+                ))}
+              </div>
+            ))}
+            {days.length > shown && (
+              <button type="button" className="md-btn" onClick={() => setShown(shown + 20)} data-more-days>Show 20 more days ({days.length - shown} left)</button>
+            )}
           </div>
         )}
       </Section>

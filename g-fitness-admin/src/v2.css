@@ -830,3 +830,72 @@ section:last-child > .nb-item:last-child { border-bottom: 0; }
 .nb-btn:disabled { opacity: .5; cursor: default; }
 .nb-none { padding: 18px 0; font-size: 12.5px; color: var(--color-text-secondary); }
 @media (max-width: 1400px) { .nb-item { grid-template-columns: 32px minmax(0, 1fr); } .nb-acts { grid-column: 2; justify-content: flex-start; } }
+
+/* ── The member drawer, two columns (owner, 2026-11-27, from the CRM, HR and attendance references) ──
+   Left: who they are, quick actions, contact with copy buttons. Right: tabs, a figure strip, the record. */
+.md-wide { flex: 1; min-height: 0; display: grid; grid-template-columns: 300px minmax(0, 1fr); }
+.md-side { min-height: 0; overflow-y: auto; overscroll-behavior: contain; border-right: 1px solid var(--color-border); padding: 22px 18px 18px; display: flex; flex-direction: column; gap: 18px; }
+.md-who { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; }
+.md-who h2 { font-size: 18px; font-weight: 650; letter-spacing: -0.01em; color: var(--color-text-primary); line-height: 1.25; text-wrap: balance; }
+.md-quick { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+.md-sect { border-top: 1px solid var(--color-border); padding-top: 14px; display: grid; gap: 10px; }
+.md-sect h3 { font-size: 12px; font-weight: 600; color: var(--color-text-muted); letter-spacing: .02em; }
+.md-field { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
+.md-field > svg { color: var(--color-text-muted); margin-top: 2px; flex: none; }
+.md-field span { display: block; font-size: 11.5px; color: var(--color-text-secondary); }
+.md-field b { display: block; font-size: 13px; font-weight: 600; color: var(--color-text-primary); overflow-wrap: anywhere; }
+.md-field b.none { font-weight: 500; color: var(--color-text-muted); }
+.md-field b.mono { font-family: ui-monospace, monospace; letter-spacing: .12em; }
+.md-warn { display: flex; gap: 8px; font-size: 12.5px; line-height: 1.45; color: var(--color-text-primary); }
+.md-warn svg { color: var(--v2-warn); flex: none; margin-top: 1px; }
+.md-main { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.md-top { display: flex; align-items: center; gap: 12px; padding: 0 12px 0 20px; border-bottom: 1px solid var(--color-border); flex: none; min-width: 0; }
+.md-top .md-tabs { border-bottom: 0; padding: 0; flex: 1; }
+.md-tabs { display: flex; gap: 20px; padding: 0 20px; overflow-x: auto; border-bottom: 1px solid var(--color-border); flex: none; scrollbar-width: none; }
+.md-tabs button { display: inline-flex; align-items: center; gap: 6px; padding: 14px 0 12px; margin-bottom: -1px; font-size: 13px; font-weight: 500; white-space: nowrap;
+  color: var(--color-text-secondary); border-bottom: 2px solid transparent; transition: color .15s, border-color .15s; }
+.md-tabs button:hover { color: var(--color-text-primary); }
+.md-tabs button.on { color: var(--color-text-primary); border-bottom-color: var(--color-primary); }
+.md-btn { height: 32px; padding: 0 11px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; white-space: nowrap;
+  color: var(--color-text-primary); border: 1px solid var(--color-border); background: transparent; cursor: pointer; transition: background .15s; }
+.md-btn:hover { background: rgb(var(--hair-rgb, 255 255 255) / 0.06); }
+.md-btn:disabled { opacity: .6; cursor: default; }
+.md-btn.go { background: var(--v2-act); color: var(--v2-on-act); border-color: transparent; }
+.md-btn.go:hover { filter: brightness(1.06); background: var(--v2-act); }
+.md-icon { width: 34px; height: 34px; border-radius: 8px; display: inline-grid; place-items: center; color: var(--color-text-secondary); flex: none; transition: background .15s, color .15s; }
+.md-icon:hover { background: rgb(var(--hair-rgb, 255 255 255) / 0.06); color: var(--color-text-primary); }
+.md-icon.sm { width: 26px; height: 26px; border-radius: 6px; }
+.md-figs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 14px 20px 0; border: 1px solid var(--color-border); border-radius: 10px; flex: none; }
+.md-figs > div { padding: 10px 14px; min-width: 0; } .md-figs > div + div { border-left: 1px solid var(--color-border); }
+.md-figs span { display: block; font-size: 11.5px; color: var(--color-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.md-figs b { display: block; font-size: 20px; font-weight: 650; letter-spacing: -0.01em; color: var(--color-text-primary); font-variant-numeric: tabular-nums; margin-top: 1px; }
+.md-figs small { display: block; font-size: 11.5px; color: var(--color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.md-figs small.up { color: var(--color-primary-300, var(--color-primary)); } .md-figs small.dn { color: var(--v2-warn); }
+.md-menu { padding: 6px; display: grid; }
+.md-menu p { font-size: 11px; font-weight: 600; color: var(--color-text-muted); padding: 8px 10px 4px; letter-spacing: .02em; }
+.md-menu button { display: grid; text-align: left; padding: 7px 10px; border-radius: 7px; }
+.md-menu button:hover, .md-menu button:focus-visible { background: rgb(var(--hair-rgb, 255 255 255) / 0.07); }
+.md-menu button b { font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
+.md-menu button span { font-size: 11.5px; color: var(--color-text-secondary); }
+/* Recent activity: one line an event, newest first. */
+.md-feed { display: grid; }
+.md-feed li { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid rgb(var(--hair-rgb, 255 255 255) / 0.07); }
+.md-feed li:last-child { border-bottom: 0; }
+.md-feed .k { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; background: rgb(var(--hair-rgb, 255 255 255) / 0.06); color: var(--color-text-secondary); }
+.md-feed b { display: block; font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
+.md-feed div span { display: block; font-size: 12px; color: var(--color-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.md-feed time { font-size: 12px; color: var(--color-text-muted); white-space: nowrap; }
+/* Attendance by day: a 6 am to 10 pm bar with a dot per check-in, then its rows. */
+.md-days { display: grid; gap: 10px; justify-items: start; }
+.md-day { width: 100%; border: 1px solid var(--color-border); border-radius: 10px; padding: 10px 14px 6px; }
+.md-dh { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 14px; align-items: center; padding-bottom: 6px; }
+.md-dh b { display: block; font-size: 13px; color: var(--color-text-primary); } .md-dh small { font-size: 12px; color: var(--color-text-muted); }
+.md-tl { position: relative; height: 26px; }
+.md-tl .track { position: absolute; left: 0; right: 0; top: 16px; height: 2px; border-radius: 1px; background: rgb(var(--hair-rgb, 255 255 255) / 0.1); }
+.md-tl em { position: absolute; top: 0; font-style: normal; font-size: 10px; color: var(--color-text-muted); transform: translateX(-50%); white-space: nowrap; }
+.md-tl em:first-of-type { transform: none; } .md-tl em:last-of-type { transform: translateX(-100%); }
+.md-tl u { position: absolute; top: 11px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: var(--color-primary); border: 2px solid var(--color-surface); }
+.md-drow { display: grid; grid-template-columns: 110px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 6px 0; border-top: 1px solid rgb(var(--hair-rgb, 255 255 255) / 0.07); font-size: 13px; color: var(--color-text-primary); }
+.md-drow .t { color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+@media (max-width: 1180px) { .md-wide { grid-template-columns: 260px minmax(0, 1fr); } .md-figs { grid-template-columns: repeat(2, minmax(0, 1fr)); } .md-figs > div:nth-child(3) { border-left: 0; } .md-figs > div:nth-child(n+3) { border-top: 1px solid var(--color-border); } }
+@media (max-width: 860px) { .md-wide { grid-template-columns: 1fr; overflow-y: auto; } .md-side { border-right: 0; border-bottom: 1px solid var(--color-border); overflow: visible; } }
