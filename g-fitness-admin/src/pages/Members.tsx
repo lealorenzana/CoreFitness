@@ -22,6 +22,7 @@ import ReasonDialog from '../components/ui/ReasonDialog';
 import { recordReason } from '../lib/api/reasons';
 import MembershipActionDialog from '../components/ui/MembershipActionDialog';
 import MemberDetailDrawer from '../components/ui/MemberDetailDrawer';
+import ViewMenu from '../components/ui/ViewMenu';
 import InviteMembersPanel from '../components/InviteMembersPanel';
 import FormField, { SectionLabel, FieldDivider } from '../components/ui/FormField';
 import DatePicker from '../components/ui/DatePicker';
@@ -116,6 +117,10 @@ const MEMBERSHIP_LABEL: Record<MembershipStatus, string> = {
 
 /** Rows a page shows (the mock-up's ten). */
 const PER_PAGE = 10;
+/** The View menu (2026-11-27): the table (as before), a one line list, or tiles with each member's photo. */
+const VIEWS: [string, string][] = [['details', 'Details'], ['list', 'List'], ['tiles', 'Tiles']];
+/** Tiles do not measure like table rows; a page of them scrolls inside its own box. */
+const TILE_PAGE = 24;
 type ChipKey = 'all' | 'active' | 'expiring' | 'pending' | 'approval' | 'expired' | 'suspended';
 
 /** Days of remaining membership below which the roster starts warning. */
@@ -205,6 +210,16 @@ export default function Members() {
    *  the header search and the Activity feed land on one member (via
    *  /members/:id) — read once, in the initialiser, like `?pending`. */
   const [viewingId, setViewingId] = useState<string | null>(() => searchParams.get('open'));
+  const view = VIEWS.some(([k]) => k === searchParams.get('view')) ? searchParams.get('view')! : 'details';
+  const pane = searchParams.get('pane') === '1';
+  const setLook = (v: string, p: boolean) => {
+    setSearchParams((prev) => {
+      if (v === 'details') prev.delete('view'); else prev.set('view', v);
+      if (p) prev.set('pane', '1'); else prev.delete('pane');
+      return prev;
+    }, { replace: true });
+    setCurrentPage(1);
+  };
   const closeDrawer = () => {
     setViewingId(null);
     if (searchParams.has('open')) {
@@ -354,9 +369,10 @@ export default function Members() {
 
   // Clamped here, not corrected in an effect: a taller window means fewer
   // pages, and the one that was open may no longer exist.
-  const page = Math.min(currentPage, Math.max(1, Math.ceil(sorted.length / perPage)));
-  const paginated = sorted.slice((page - 1) * perPage, page * perPage);
-  const pages = Math.max(1, Math.ceil(sorted.length / perPage));
+  const per = view === 'tiles' ? TILE_PAGE : perPage;
+  const page = Math.min(currentPage, Math.max(1, Math.ceil(sorted.length / per)));
+  const paginated = sorted.slice((page - 1) * per, page * per);
+  const pages = Math.max(1, Math.ceil(sorted.length / per));
 
   const planNames = [...new Set(members.map((m) => m.planName))].filter((p) => p !== '—').sort();
 
@@ -677,7 +693,8 @@ export default function Members() {
       </FloatingWindow>
 
       {/* ── The roster ── */}
-      <div className="a-card" style={{ flex: 1 }} data-members-table>
+      <div className="a-roster" data-view={view}>
+      <div className="a-card" style={{ flex: 1, minWidth: 0 }} data-members-table>
         <div className="a-ct" data-members-toolbar>
           <div className="flex gap-1.5 min-w-0 overflow-hidden" data-rd-chips>
             {CHIPS.map((c) => (
@@ -699,6 +716,7 @@ export default function Members() {
             <button type="button" className={`a-chip ${filters.accountStatus !== 'all' || filters.membershipStatus !== 'all' ? 'on' : ''}`} onClick={(e) => setFilterAnchor(filterAnchor ? null : e.currentTarget)} aria-expanded={!!filterAnchor} data-tip="Account and membership status">
               <Filter size={12} />Filter
             </button>
+            <ViewMenu views={VIEWS} view={view} pane={pane} onChange={setLook} />
             <button type="button" className="a-btn sm" onClick={exportCsv} data-tip="Export what the table shows"><Download size={13} />Export</button>
           </div>
           <Popover anchor={filterAnchor} open={!!filterAnchor} onClose={() => setFilterAnchor(null)} width={280}>
@@ -724,8 +742,26 @@ export default function Members() {
           </Popover>
         </div>
 
-        <div ref={fitRef} className="a-scroll" style={{ flex: 1 }} data-rd-table>
-          <table className="a-table">
+        {view === 'tiles' && !loading && (
+          <div className="a-scroll a-tiles" style={{ flex: 1 }} data-member-tiles>
+            {paginated.map((m) => {
+              const daysLeft = daysUntilExpiry(m);
+              return (
+                <button key={m.id} type="button" className={`a-tile${pane && viewingId === m.id ? ' on' : ''}`} onClick={() => setViewingId(m.id)} data-member-row>
+                  <Av name={m.fullName} photo={m.photoUrl} />
+                  <b className="block truncate">{m.fullName}</b>
+                  <span className="a-sub truncate">{m.planName || 'No plan'}</span>
+                  <span className="a-sub">{m.accountStatus === 'pending_approval' ? 'Awaiting approval' : m.accountStatus === 'suspended' ? 'Suspended'
+                    : !m.membershipStatus ? 'No plan' : m.membershipStatus === 'pending' ? 'Payment due'
+                    : daysLeft == null ? MEMBERSHIP_LABEL[m.membershipStatus] : daysLeft < 0 ? `Ended ${-daysLeft} days ago` : `${MEMBERSHIP_LABEL[m.membershipStatus]}, ${daysLeft} days left`}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {/* key: a new view is a new box, so useFitRows measures its rows again (List's rows are shorter). */}
+        <div key={view} ref={fitRef} className="a-scroll" style={{ flex: 1, display: view === 'tiles' && !loading ? 'none' : undefined }} data-rd-table>
+          <table className={`a-table${view === 'list' ? ' a-compact' : ''}`}>
             <thead><tr>
               <th>{sortHead('Member', 'name')}</th><th>Phone</th><th>{sortHead('Plan', 'plan')}</th><th>{sortHead('Status', 'membership')}</th>
               <th>{sortHead('Ends', 'expiry')}</th><th>Last visit</th><th />
@@ -745,7 +781,7 @@ export default function Members() {
                   : daysLeft == null ? '' : daysLeft < 0 ? `ended ${-daysLeft} day${daysLeft === -1 ? '' : 's'} ago` : daysLeft === 0 ? 'today' : `${daysLeft} day${daysLeft === 1 ? '' : 's'}`;
                 const joined = m.joinedOn ? new Date(m.joinedOn).toLocaleDateString('en-PH', { month: 'short', year: 'numeric' }) : null;
                 return (
-                  <tr key={m.id} data-member-row onClick={() => setViewingId(m.id)} style={{ cursor: 'pointer', height: filtered.length > perPage ? fitRowHeight : undefined }}>
+                  <tr key={m.id} data-member-row onClick={() => setViewingId(m.id)} className={pane && viewingId === m.id ? 'on' : undefined} style={{ cursor: 'pointer', height: filtered.length > perPage ? fitRowHeight : undefined }}>
                     <td><div className="a-who"><Av name={m.fullName} photo={m.photoUrl} />
                       <div className="min-w-0"><b className="block truncate">{m.fullName}</b>
                         {byPlatform.has(m.id) && <span className="a-sub" data-platform-suspended-mark style={{ color: 'var(--a-a300)' }}>Suspended by Core Fitness</span>}
@@ -799,10 +835,13 @@ export default function Members() {
         </div>
         {filtered.length > 0 && (
           <div className="a-sub" style={{ paddingTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} data-rd-footer>
-            <span>Showing {(page - 1) * perPage + 1}–{Math.min(filtered.length, page * perPage)} of {filtered.length} {showArchived ? 'archived members' : 'members'} · click a member to open them</span>
+            <span>Showing {(page - 1) * per + 1}–{Math.min(filtered.length, page * per)} of {filtered.length} {showArchived ? 'archived members' : 'members'} · click a member to open them</span>
             <Pager page={page} pages={pages} onPage={setCurrentPage} />
           </div>
         )}
+      </div>
+
+      {pane && <MemberDetailDrawer docked memberId={viewingId} onClose={closeDrawer} onChanged={load} />}
       </div>
 
       <ReasonDialog isOpen={!!toResume} onClose={() => setToResume(null)} title="Resume the membership"
@@ -824,7 +863,7 @@ export default function Members() {
       {/* The whole member record, opened by clicking a row. Reloads the roster
           behind it after any write, so a payment taken in the drawer moves the
           membership badge in the table without a manual refresh. */}
-      <MemberDetailDrawer memberId={viewingId} onClose={closeDrawer} onChanged={load} />
+      {!pane && <MemberDetailDrawer memberId={viewingId} onClose={closeDrawer} onChanged={load} />}
 
       {isAddOpen && (
         <AddMemberWizard plans={plans} onClose={() => setIsAddOpen(false)} onCreated={load} />

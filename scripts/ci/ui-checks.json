@@ -540,6 +540,10 @@
       "app": "platform"
     },
     {
+      "file": "admin-members-view-check.js",
+      "app": "admin"
+    },
+    {
       "file": "platform-insight-check.js",
       "app": "platform"
     },

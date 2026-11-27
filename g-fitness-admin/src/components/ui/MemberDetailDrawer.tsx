@@ -98,9 +98,11 @@ interface Props {
   onClose: () => void;
   /** Called after any write, so the roster behind the drawer stays in step. */
   onChanged: () => void | Promise<void>;
+  /** In the page beside the roster (the View menu's Details pane), not sliding over it. */
+  docked?: boolean;
 }
 
-export default function MemberDetailDrawer({ memberId, onClose, onChanged }: Props) {
+export default function MemberDetailDrawer({ memberId, onClose, onChanged, docked }: Props) {
   const [detail, setDetail] = useState<MemberDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -157,6 +159,23 @@ export default function MemberDetailDrawer({ memberId, onClose, onChanged }: Pro
     await onChanged();
   };
 
+  const body = loading && !detail ? (
+    <DrawerMessage onClose={onClose} text="Loading member record…" />
+  ) : error ? (
+    <DrawerMessage onClose={onClose} text={error} />
+  ) : detail ? (
+    <DrawerBody detail={detail} onClose={onClose} tab={tab} setTab={setTab} onRefresh={refresh} byPlatform={byPlatform} switchMark={switchMark} />
+  ) : null;
+
+  // The Members View menu's Details pane (2026-11-27): the same record, beside the roster instead of over it.
+  if (docked) {
+    return (
+      <aside className="a-card a-dock flex flex-col" aria-label="Details pane" data-member-pane>
+        {memberId ? body : <p className="a-sub" style={{ padding: 18 }}>Pick a member to see them here.</p>}
+      </aside>
+    );
+  }
+
   return createPortal(
     <AnimatePresence>
       {memberId && (
@@ -172,13 +191,7 @@ export default function MemberDetailDrawer({ memberId, onClose, onChanged }: Pro
             className="fixed top-0 right-0 bottom-0 w-full max-w-3xl z-[150] flex flex-col shadow-2xl"
             style={{ background: 'var(--color-surface)', borderLeft: '1px solid var(--color-border)' }}
           >
-            {loading && !detail ? (
-              <DrawerMessage onClose={onClose} text="Loading member record…" />
-            ) : error ? (
-              <DrawerMessage onClose={onClose} text={error} />
-            ) : detail ? (
-              <DrawerBody detail={detail} onClose={onClose} tab={tab} setTab={setTab} onRefresh={refresh} byPlatform={byPlatform} switchMark={switchMark} />
-            ) : null}
+            {body}
           </motion.aside>
         </>
       )}

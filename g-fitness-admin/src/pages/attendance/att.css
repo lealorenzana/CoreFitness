@@ -628,3 +628,37 @@
 .att .st-sec + .st-sec { border-top: 1px solid var(--a-border); padding-top: 28px; }
 .att .st-sec .a-ct h3 { font-size: 18px !important; font-weight: 700; }
 .att [data-settings] .a-sn button, .att .a-sn button { transition: background-color 120ms, color 120ms; }
+
+/* Members View menu (2026-11-27): Details (the table, as before), List (the same table on one line a member), Tiles,
+   and a Details pane that docks the member record beside the roster. Lines use --hair-rgb, so they hold in light. */
+.att .a-roster { display: flex; gap: 14px; flex: 1 1 auto; min-height: 0; min-width: 0; }
+.att .a-dock { flex: none; width: clamp(420px, 40%, 620px); padding: 0; overflow: hidden; }
+.att .a-dock > * { min-height: 0; }
+.att .a-table tbody tr.on td { background: var(--a-plight); }
+.att .a-table tbody tr.on td:first-child { box-shadow: inset 3px 0 0 var(--a-primary); }
+/* List: one line a member, so more fit; the actions stay. */
+.att .a-table.a-compact th:nth-child(2), .att .a-table.a-compact td:nth-child(2),
+.att .a-table.a-compact th:nth-child(3), .att .a-table.a-compact td:nth-child(3),
+.att .a-table.a-compact th:nth-child(6), .att .a-table.a-compact td:nth-child(6) { display: none; }
+.att .a-table.a-compact td { padding-top: 5px; padding-bottom: 5px; }
+.att .a-table.a-compact .a-who .a-sub { display: none; }
+.att .a-table.a-compact .a-av { width: 24px; height: 24px; font-size: 9.5px; }
+/* Tiles: a card a member, the photo first, for a desk that knows faces. */
+.att .a-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; align-content: start; padding: 4px 2px; }
+.att .a-tile { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; padding: 12px; text-align: left; cursor: pointer;
+  border: 1px solid rgb(var(--hair-rgb, 255 255 255) / .1); border-radius: 14px; background: var(--a-raised); color: var(--a-ink); }
+.att .a-tile:hover { border-color: rgb(var(--hair-rgb, 255 255 255) / .22); }
+.att .a-tile.on { border-color: var(--a-primary); box-shadow: inset 0 0 0 1px var(--a-primary); }
+.att .a-tile .a-av { width: 44px; height: 44px; font-size: 14px; margin-bottom: 4px; }
+.att .a-tile b { font-size: 13px; max-width: 100%; }
+.att .a-tile .a-sub { max-width: 100%; }
+
+/* The menu itself opens in a Popover, outside .att, so it uses the app's global colours. */
+.a-viewmenu { display: grid; padding: 6px; }
+.a-viewmenu button { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border: 0; border-radius: 8px; background: none;
+  color: var(--color-text-secondary); font: inherit; font-size: 13px; text-align: left; cursor: pointer; justify-content: flex-start; }
+.a-viewmenu button:hover, .a-viewmenu button:focus-visible { background: rgb(var(--hair-rgb, 255 255 255) / .07); color: var(--color-text); }
+.a-viewmenu button[aria-checked="true"] { color: var(--color-text); font-weight: 600; }
+.a-viewmenu hr { border: 0; border-top: 1px solid rgb(var(--hair-rgb, 255 255 255) / .12); margin: 6px 4px; }
+.a-tick { width: 14px; display: grid; place-items: center; }
+.a-tick i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
