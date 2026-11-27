@@ -181,6 +181,11 @@ async (page) => {
         ? (await page.locator('[data-invite-closed]').count()) === 1 && /Change how they join/.test(t) && /Add a walk-in/.test(t) && /mascot-map/.test(await page.locator('.am-buddy img').getAttribute('src'))
         : /LAB4K2/.test(t) && /join\/core-fitness-lab/.test(t) && (await page.locator('[data-invite-qr] svg').count()) === 1 && (await page.locator('[data-invite-panel] .am-btn.go').count()) === 1,
       t.replace(/\s+/g, ' ').slice(0, 90));
+    if (policy !== 'closed') {
+      await page.locator('[data-print-poster]').click(); await page.waitForTimeout(500);
+      say('Print a poster opens the poster from the invite window', (await page.locator('[data-invite-panel]').count()) === 0 && (await page.getByRole('button', { name: /Print/ }).count()) >= 1, 'poster');
+      await page.screenshot({ path: '.tmp-shots/admin-invite-poster.png' });
+    } else say('a desk-only gym is offered no poster it cannot print', (await page.locator('[data-print-poster]').count()) === 0, 'none');
     await page.unroute('**/rest/v1/rpc/my_gym_app*');
   }
   return out.join('\n');

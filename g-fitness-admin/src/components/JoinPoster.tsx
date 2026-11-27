@@ -133,7 +133,7 @@ export default function JoinPoster({
               a poster that implies instant access sets up an argument at the
               counter on day one. */}
           <p style={{ fontSize: 13, marginTop: 26, color: '#4B5563' }}>
-            Ask at the desk once you have signed up — we approve every new member.
+            Ask at the desk once you have signed up. We approve every new member.
           </p>
 
           <p style={{ fontSize: 11, marginTop: 20, color: '#9CA3AF' }}>

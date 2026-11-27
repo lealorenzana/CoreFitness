@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { ArrowRight, Check, Copy, Download, Mail, MessageSquare, Smartphone, UserPlus, X } from 'lucide-react';
+import { ArrowRight, Check, Copy, Download, Mail, MessageSquare, Printer, Smartphone, UserPlus, X } from 'lucide-react';
 import { getGymApp, type GymApp } from '../lib/api/gymApp';
 import SkelRows from './ui/SkelRows';
+import JoinPoster from './JoinPoster';
+import { rampFor } from '../lib/gymTheme';
 
 export const MEMBER_APP = 'https://corefitness-gym.vercel.app';
 /**
@@ -24,6 +26,7 @@ export const APP_PAGE = `${MEMBER_APP}/get-app`;
 export default function InviteMembersPanel({ onClose, onAddWalkIn }: { onClose: () => void; onAddWalkIn?: () => void }) {
   const [app, setApp] = useState<GymApp | null | undefined>(undefined);
   const [copied, setCopied] = useState<string | null>(null);
+  const [poster, setPoster] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -31,10 +34,11 @@ export default function InviteMembersPanel({ onClose, onAddWalkIn }: { onClose: 
     return () => { alive = false; };
   }, []);
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    // While the poster is open, Escape is the poster's.
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !poster) onClose(); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [onClose, poster]);
 
   const copy = (key: string, text: string) => {
     void navigator.clipboard.writeText(text).then(() => setCopied(key), () => setCopied(null));
@@ -65,6 +69,16 @@ export default function InviteMembersPanel({ onClose, onAddWalkIn }: { onClose: 
       ? <a href={to} target="_blank" rel="noreferrer" className="iv-more">{inner}</a>
       : <Link to={to} onClick={onClose} className="iv-more">{inner}</Link>;
   };
+
+  // The poster takes the screen while it is open (its own print layout); closing it comes back here.
+  if (poster && app) {
+    return (
+      <JoinPoster gymName={app.gym_name} tagline={app.tagline} logoUrl={app.logo_url} joinLink={joinLink}
+        /* A listed gym has no code, so the poster leaves that half out rather than printing a blank box. */
+        joinCode={app.join_policy === 'code' ? app.join_code : null}
+        accent={rampFor(app.accent, 'violet').base} onClose={() => setPoster(false)} />
+    );
+  }
 
   return createPortal((
     <div className="am-root" role="dialog" aria-modal="true" aria-label="Invite members" data-invite-panel>
@@ -132,7 +146,13 @@ export default function InviteMembersPanel({ onClose, onAddWalkIn }: { onClose: 
                 <h3>More ways</h3>
                 {more(APP_PAGE, <Download size={16} />, 'Android app page', 'Where members download the app', true)}
                 {more('/invitations', <Mail size={16} />, 'Invite one person by email', 'They get a login straight away')}
-                {more('/gym-app', <Smartphone size={16} />, 'Poster and joining rules', 'Print a poster; choose who may join')}
+                {/* The poster lives on Your app, but only while people can join from the app; it opens right here too. */}
+                {open && (
+                  <button type="button" className="iv-more w-full text-left" onClick={() => setPoster(true)} data-print-poster>
+                    <Printer size={16} /><span className="flex-1 min-w-0"><b>Print a poster</b><small>The QR and the code, for the wall by the desk</small></span><ArrowRight size={14} className="go" />
+                  </button>
+                )}
+                {more('/gym-app', <Smartphone size={16} />, 'Joining rules', open ? 'Who may join, and whether you approve each one' : 'Let people join from the app; the poster comes with it')}
               </div>
             )}
           </div>

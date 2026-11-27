@@ -1,6 +1,6 @@
 import PageGuide from '../components/guides/PageGuide';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Copy, Mail, Upload, X, Users, CheckCircle2, Clock, UserPlus, FileText, Info, Send, Lock, Trash2, ArrowRight, RotateCw, Smartphone, Monitor, KeyRound, AlertTriangle } from 'lucide-react';
+import { Copy, Upload, X, Users, CheckCircle2, Clock, UserPlus, FileText, Info, Send, Lock, Trash2, ArrowRight, RotateCw, Smartphone, Monitor, KeyRound, AlertTriangle } from 'lucide-react';
 import { usePaged } from '../hooks/usePaged';
 import { useFitRows } from '../hooks/useFitRows';
 import { showToast } from '../utils/toast';
@@ -11,7 +11,7 @@ import {
 } from '../lib/api/invitations';
 import { isStandInEmail, suggestUsername, usernameShape, USERNAME_HINT } from '../lib/api/logins';
 import LoginSlip from '../components/LoginSlip';
-import { RdHeader, RdCard, StatTile, RdButton, Pill, RdTable, Tr, Td, TableFooter, EmptyBlock } from '../components/ui/rd';
+import { RdHeader, RdCard, StatTile, RdButton, Pill, RdTable, Tr, Td, TableFooter } from '../components/ui/rd';
 import type { Tone } from '../components/ui/rdTokens';
 import SkelRows from '../components/ui/SkelRows';
 
@@ -24,6 +24,12 @@ const relDays = (iso: string, now: number) => {
   return d > 0 ? `In ${d} day${d === 1 ? '' : 's'}` : `${-d} day${d === -1 ? '' : 's'} ago`;
 };
 const ROLE: Record<InviteRole, string> = { member: 'Member', trainer: 'Coach', staff: 'Front desk' };
+/** The band's mascot and its line, by who is being invited. */
+const HERO: Record<InviteRole, { art: string; say: string }> = {
+  member: { art: '/mockup-art/phone-journey-mascot.webp', say: 'They get a login for the phone app by email, and arrive already approved.' },
+  trainer: { art: '/images/admin-art/mascot-kettlebell.webp', say: 'A coach login for the trainer side of the app. They add what they coach at first sign-in.' },
+  staff: { art: '/images/admin-art/mascot-clipboard.webp', say: 'A login for this dashboard, for the people at your front desk.' },
+};
 const STATE_TONE: Record<Invitation['state'], Tone> = { waiting: 'violet', accepted: 'green', revoked: 'gray', expired: 'amber' };
 const STATE_LABEL: Record<Invitation['state'], string> = { waiting: 'Waiting', accepted: 'Joined', revoked: 'Withdrawn', expired: 'Expired' };
 /** What each kind of invitation gives, said where the role is chosen. */
@@ -183,14 +189,23 @@ export default function Invitations() {
 
       <div className="rd-fit-split">
         <RdCard className="flex flex-col min-h-0 overflow-hidden" data-invite-ways>
-          <div className="px-4 py-3" style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.06)' }}><div className="v2-seg" role="tablist">
-            {([['one', 'Invite one person', UserPlus], ['group', 'Invite a group', FileText]] as const).map(([k, label, Icon]) => (
-              <button key={k} type="button" role="tab" aria-selected={way === k} onClick={() => setWay(k)} data-way={k}
-                data-on={way === k ? '' : undefined}>
-                <Icon size={15} /> {label}
-              </button>
-            ))}
-          </div></div>
+          {/* The band (owner, 2026-11-27, the Add member window's look): the gym's colour, the two ways in, and a
+              mascot that changes with who is being invited. */}
+          <div className="ivp-hero">
+            <div className="min-w-0">
+              <h2>{way === 'group' ? 'Invite a whole list' : `Invite a ${ROLE[role].toLowerCase()}`}</h2>
+              <p>{way === 'group' ? 'Paste a sheet or choose a CSV. You review every line before anything is sent.' : HERO[role].say}</p>
+              <div className="v2-seg" role="tablist">
+                {([['one', 'Invite one person', UserPlus], ['group', 'Invite a group', FileText]] as const).map(([k, label, Icon]) => (
+                  <button key={k} type="button" role="tab" aria-selected={way === k} onClick={() => setWay(k)} data-way={k}
+                    data-on={way === k ? '' : undefined}>
+                    <Icon size={15} /> {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <img key={way === 'group' ? 'group' : role} src={way === 'group' ? '/images/admin-art/mascot-bag.webp' : HERO[role].art} alt="" aria-hidden />
+          </div>
           <div className="rd-fit-scroll p-5">
         {/* ── One person ── */}
         {way === 'one' && (
@@ -369,8 +384,13 @@ export default function Invitations() {
         </div>
         <RdTable boxRef={fit.ref} head={['Email', 'Invited date', 'Expires', 'Role', ...(showDone ? ['State'] : []), { label: 'Actions', align: 'right' }]}
           empty={rows === null ? <SkelRows label="Loading…" />
-            : rows.length === 0 ? <EmptyBlock icon={Mail} title={showDone ? 'Nobody has been invited yet.' : 'Nobody is waiting.'}
-                body="Invite one person or a whole list above: each gets their own login by email." /> : undefined}>
+            : rows.length === 0 ? (
+              <div className="ivp-empty" data-invite-empty>
+                <img src="/images/admin-art/mascot-stopwatch.webp" alt="" aria-hidden />
+                <b>{showDone ? 'Nobody has been invited yet.' : 'Nobody is waiting.'}</b>
+                <span>Invite one person or a whole list: each gets their own login by email.</span>
+              </div>
+            ) : undefined}>
           {paged.visible.map((r) => {
             const soon = r.state === 'waiting' && new Date(r.expires_at).getTime() - nowMs <= 3 * 86_400_000;
             const name = [r.first_name, r.last_name].filter(Boolean).join(' ');
