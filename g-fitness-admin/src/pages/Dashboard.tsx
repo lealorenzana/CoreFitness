@@ -478,11 +478,11 @@ export default function Dashboard() {
   const nowH = new Date().getHours() + new Date().getMinutes() / 60;
   const inToday = today?.checkIns ?? null;
   const mood = hours.openH != null && nowH < hours.openH
-    ? { key: 'before', art: '/images/admin-art/mascot-stopwatch.webp', say: `Doors open at ${hours.open}.` }
+    ? { key: 'before', art: '/images/admin-art/mascot-kettlebell.webp', say: `Doors open at ${hours.open}.` }
     : hours.closeH != null && nowH >= hours.closeH
       ? { key: 'done', art: '/images/admin-art/mascot-clipboard.webp', say: inToday ? `Day done: ${plural(inToday, 'check-in')} today.` : 'Day done. Doors open again tomorrow.' }
       : !inToday
-        ? { key: 'waiting', art: '/images/admin-art/mascot-stopwatch.webp', say: 'Nobody in yet. The first check-in starts the bars.' }
+        ? { key: 'waiting', art: '/images/admin-art/mascot-kettlebell.webp', say: 'Nobody in yet. The first check-in starts the bars.' }
         : { key: 'busy', art: '/images/admin-art/mascot-kettlebell.webp', say: `${plural(inToday, 'check-in')} so far today.` };
   const dayOpen = Math.floor(Math.min(hours.openH ?? 6, ...activeHours, ...dayItems.map((i) => i.start)));
   const dayClose = Math.ceil(Math.max(hours.closeH ?? 22, ...activeHours.map((h) => h + 1), ...dayItems.map((i) => i.start + i.minutes / 60)));

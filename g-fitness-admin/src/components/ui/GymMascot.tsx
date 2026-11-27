@@ -55,8 +55,11 @@ function tintMascot(src: string, primary: string, action: string): Promise<strin
         for (let i = 0; i < d.length; i += 4) {
           if (d[i + 3] === 0) continue;
           const [h, s, l] = rgbToHsl(d[i], d[i + 1], d[i + 2]);
-          if (s < 0.22) continue; // whites, creams, greys and the black screen stay
-          const to = h >= 225 && h <= 320 ? hp : h >= 12 && h <= 62 ? ha : null;
+          // Violet reaches down to pale lavender (the kettlebell's belly); orange stops short of cream (towels,
+          // soles), which stays cream. Greys, whites and the black screen are left alone.
+          const violet = h >= 225 && h <= 320 && s >= 0.06 && l > 0.08;
+          const orange = h >= 12 && h <= 62 && s >= 0.35 && l < 0.82;
+          const to = violet ? hp : orange ? ha : null;
           if (to == null) continue;
           const [r, g, b] = hslToRgb(to, s, l);
           d[i] = r; d[i + 1] = g; d[i + 2] = b;

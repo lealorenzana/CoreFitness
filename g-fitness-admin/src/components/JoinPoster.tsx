@@ -135,14 +135,15 @@ export default function JoinPoster({
                 equipment flying out around it. Decoration only, kept above the QR card. */}
             <div aria-hidden style={{ position: 'absolute', right: -6, top: 4, width: 300, height: 300, pointerEvents: 'none' }} data-poster-burst>
               {[
-                ['/images/admin-art/mascot-kettlebell.webp', { left: 6, top: 18, width: 78, transform: 'rotate(-18deg)' }],
+                ['/images/admin-art/mascot-bottle.webp', { left: 4, top: 10, width: 72, transform: 'rotate(-16deg)' }],
                 ['/images/admin-art/mascot-stopwatch.webp', { right: 18, top: 0, width: 60, transform: 'rotate(16deg)' }],
                 ['/images/admin-art/mascot-plate.webp', { right: 0, top: 128, width: 62, transform: 'rotate(22deg)' }],
                 ['/images/admin-art/mascot-shoe.webp', { left: 0, top: 170, width: 84, transform: 'rotate(-12deg)' }],
               ].map(([src, st]) => (
                 <GymMascot key={src as string} src={src as string} primary={accent.base} action={(action ?? accent).base} style={{ position: 'absolute', height: 'auto', filter: 'drop-shadow(0 6px 8px rgba(0,0,0,0.28))', ...(st as React.CSSProperties) }} />
               ))}
-              <GymMascot src="/images/admin-art/mascot-bottle.webp" primary={accent.base} action={(action ?? accent).base} style={{ position: 'absolute', left: 64, top: 52, width: 172, height: 'auto',
+              {/* The kettlebell is Core Fitness's main mascot (owner, 2026-11-27): it takes the middle of the burst. */}
+              <GymMascot src="/images/admin-art/mascot-kettlebell.webp" primary={accent.base} action={(action ?? accent).base} style={{ position: 'absolute', left: 70, top: 52, width: 172, height: 'auto',
                 filter: 'drop-shadow(0 12px 16px rgba(0,0,0,0.35))' }} />
             </div>
 

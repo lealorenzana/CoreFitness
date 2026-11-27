@@ -165,7 +165,7 @@ export default function NeedsYou({ inboxLine, onChanged }: { inboxLine: string; 
         <div><b>{peso(cash.reduce((s, r) => s + r.planPrice, 0))}</b><span>asked to renew, cash</span></div>
         <div><b>{sessions.length + packPay.length + packAsk.length}</b><span>personal training</span></div>
       </div>
-      <GymMascot className="nb-buddy" key={total === 0 ? 'done' : 'wait'} src={total === 0 ? '/images/admin-art/mascot-clipboard.webp' : '/images/admin-art/mascot-stopwatch.webp'} aria-hidden data-needs-mascot />
+      <GymMascot className="nb-buddy" key={total === 0 ? 'done' : 'wait'} src={total === 0 ? '/images/admin-art/mascot-clipboard.webp' : '/images/admin-art/mascot-kettlebell.webp'} aria-hidden data-needs-mascot />
       </div>
       {failed && <p className="nb-fail">Part of this could not be loaded. Reload the page to try again; what is shown is real.</p>}
       <div className="nb-need">

@@ -1046,3 +1046,9 @@ section:last-child > .nb-item:last-child { border-bottom: 0; }
 @media (max-width: 1500px) { .dv2-buddy p { display: none; } .dv2-dayband .dv2-figs { padding-right: 120px; } .dv2-dayband > header .dv2-aside { margin-right: 110px; } }
 /* A short screen keeps the hour chart its room: the band gives back its padding and the mascot shrinks. */
 @media (max-height: 800px) { .dv2-dayband { padding-bottom: 0; } .dv2-buddy img { width: 84px; height: 84px; } }
+
+/* Personal training, To decide (owner, 2026-11-27): the Needs you look; the member's name, then what they asked. */
+.ptd .nb-item .ptd-what { font-weight: 500; color: var(--color-text-secondary); margin-left: 6px; }
+.ptd .nb-need { max-width: 1100px; }
+.ptd .nb-item, .ptd .nb-item { grid-template-columns: 32px minmax(0, 1fr) auto; }
+.ptd .nb-acts { grid-column: auto; justify-content: flex-end; }

@@ -387,7 +387,7 @@ export default function Invitations() {
           empty={rows === null ? <SkelRows label="Loading…" />
             : rows.length === 0 ? (
               <div className="ivp-empty" data-invite-empty>
-                <GymMascot src="/images/admin-art/mascot-stopwatch.webp" aria-hidden />
+                <GymMascot src="/images/admin-art/mascot-kettlebell.webp" aria-hidden />
                 <b>{showDone ? 'Nobody has been invited yet.' : 'Nobody is waiting.'}</b>
                 <span>Invite one person or a whole list: each gets their own login by email.</span>
               </div>

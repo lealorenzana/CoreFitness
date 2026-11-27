@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import GymMascot from '../components/ui/GymMascot';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CalendarDays, Handshake, Inbox } from 'lucide-react';
 import { Av } from './attendance/parts';
@@ -136,61 +137,88 @@ export default function PersonalTraining() {
       {tab === 'sessions' && <Bookings scope="pt" embedded />}
       {tab === 'packages' && <Coaching embedded />}
       {tab === 'decide' && (
-        <div className="a-card" style={{ flex: 1, padding: 0 }} data-to-decide>
+        // To decide (owner, 2026-11-27): the Needs you look (nb-* in v2.css): a band in the gym's colour with a count,
+        // three figures and a mascot, then the answers grouped, one amber button for the first thing waiting.
+        <div className="a-card ptd" style={{ flex: 1, padding: 0, overflow: 'hidden' }} data-to-decide>
           {data === undefined ? <SkelRows label="Loading…" />
             : data === null ? <p className="a-sub" style={{ padding: 18, color: 'var(--a-a300)' }}>What waits could not be loaded. Refresh to try again.</p>
-            : data.sessions.length + data.payments.length + data.asked.length === 0 ? <p className="a-sub text-center" style={{ padding: 26 }} data-decide-empty>Nothing waits for you: requests and payments show here as they come in.</p>
-            : (
-              <div className="a-scroll" style={{ flex: 1 }}>
-                <table className="a-table">
-                  <thead><tr><th>Member</th><th>What</th><th>Coach</th><th>When</th><th /></tr></thead>
-                  <tbody>
-                    {data.sessions.map((r) => (
-                      <tr key={`s:${r.id}`} data-decide-row="session">
-                        <td><div className="a-who"><Av name={r.memberName} photo={names[r.memberId]?.photo} small /><b>{r.memberName}</b></div></td>
-                        <td>Single session{r.coachOkName ? <span className="a-sub"> · {r.coachOkName} accepted</span> : null}</td>
-                        <td>{r.trainerName ?? '—'}</td>
-                        <td>{when(r.when)} <span className="a-sub">· {waited(r.requestedAt)}</span></td>
-                        <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                          <button type="button" className="a-btn ghost sm" disabled={busy === r.id} onClick={() => void decide(r, 'rejected')}>Decline</button>{' '}
-                          <button type="button" className="a-btn violet sm" disabled={busy === r.id} onClick={() => void decide(r, 'approved')}>Confirm</button>
-                        </td>
-                      </tr>
-                    ))}
-                    {data.payments.map((r) => (
-                      <tr key={`p:${r.id}`} data-decide-row="payment">
-                        <td><div className="a-who"><Av name={name(r.member_id)} photo={names[r.member_id]?.photo} small /><b>{name(r.member_id)}</b></div></td>
-                        <td>{r.months}-month package · {r.price != null ? peso(r.price) : 'no price'} <span className="a-sub">· {r.pay_reference ? `ref ${r.pay_reference}` : 'to pay at the desk'}</span></td>
-                        <td>{name(r.trainer_id)}</td>
-                        <td>Starts when confirmed</td>
-                        <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                          {r.pay_reference && <><button type="button" className="a-btn ghost sm" disabled={busy === r.id} onClick={() => void confirmPay(r, false)}>Not found</button>{' '}</>}
-                          <button type="button" className="a-btn violet sm" disabled={busy === r.id} onClick={() => void confirmPay(r, true)}>{r.pay_reference ? 'Confirm payment' : 'Paid in cash'}</button>
-                        </td>
-                      </tr>
-                    ))}
-                    {data.asked.map((r) => (
-                      <tr key={`a:${r.id}`} data-decide-row="asked">
-                        <td><div className="a-who"><Av name={name(r.member_id)} photo={names[r.member_id]?.photo} small /><b>{name(r.member_id)}</b></div></td>
-                        <td>Asked for a {r.months}-month package</td>
-                        <td>{name(r.trainer_id)}</td>
-                        <td><span className="a-sub">{waited(r.created_at)} · {approval === 'desk' ? 'you decide'
-                          : approval === 'coach_desk' ? (r.coach_ok_at ? `${name(r.trainer_id)} said yes: you confirm` : `waiting for ${name(r.trainer_id)} first`)
-                          : 'the coach decides'}</span></td>
-                        <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                          {approval === 'coach' ? (
-                            <button type="button" className="a-btn ghost sm" onClick={() => navigate('/personal-training?tab=packages')}>See packages</button>
-                          ) : (<>
-                            <button type="button" className="a-btn ghost sm" disabled={busy === r.id} onClick={() => void answerAsk(r, false)} data-ask-decline>Decline</button>{' '}
-                            {deskMay(r) && <button type="button" className="a-btn violet sm" disabled={busy === r.id} onClick={() => void answerAsk(r, true)} data-ask-confirm>Confirm</button>}
-                          </>)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            : (() => {
+              const total = data.sessions.length + data.payments.length + data.asked.length;
+              const owed = data.payments.reduce((s, r) => s + (r.price ?? 0), 0);
+              let amberUsed = false;
+              /** The answer that moves things on: amber for the first one on the page, plain after that. */
+              const yes = () => { const go = !amberUsed; amberUsed = true; return go ? 'nb-btn go' : 'nb-btn strong'; };
+              const row = (key: string, kind: string, who: string, photo: string | null | undefined, title: React.ReactNode, line: React.ReactNode, acts: React.ReactNode) => (
+                <div key={key} className="nb-item" data-decide-row={kind}>
+                  <Av name={who} photo={photo} small />
+                  <div className="min-w-0"><b>{title}</b><p>{line}</p></div>
+                  <div className="nb-acts">{acts}</div>
+                </div>
+              );
+              return (
+                <div className="nb-home">
+                  <div className="nb-band">
+                    <div className="nb-hd">
+                      {/* The same count as the tab: what the gym answers, not a package ask its coach decides. */}
+                      <h2>{count === 0 ? 'Nothing for you to decide' : `${count} thing${count === 1 ? '' : 's'} to decide`}</h2>
+                      <p>{count === 0 ? 'Session requests, package payments and package asks show here as they come in.'
+                        : 'The gym’s answers on personal training. Each one tells the member straight away.'}</p>
+                    </div>
+                    <div className="nb-sum">
+                      <div><b>{data.sessions.length}</b><span>sessions to confirm</span></div>
+                      <div><b>{peso(owed)}</b><span>package payments to check</span></div>
+                      <div><b>{data.asked.length}</b><span>package asks</span></div>
+                    </div>
+                    <GymMascot className="nb-buddy" key={count === 0 ? 'done' : 'wait'} aria-hidden
+                      src={count === 0 ? '/images/admin-art/mascot-clipboard.webp' : '/images/admin-art/mascot-kettlebell.webp'} />
+                  </div>
+                  {total === 0 ? <p className="nb-none" style={{ padding: '18px 22px' }} data-decide-empty>Nothing waits for you: requests and payments show here as they come in.</p> : (
+                    <div className="nb-need">
+                      {data.sessions.length > 0 && (
+                        <section>
+                          <h3>Single sessions <span>{data.sessions.length}</span></h3>
+                          {data.sessions.map((r) => row(`s:${r.id}`, 'session', r.memberName, names[r.memberId]?.photo,
+                            <>{r.memberName} <span className="ptd-what">Single session{r.trainerName ? ` with ${r.trainerName}` : ''}</span></>,
+                            <>{when(r.when)} · {waited(r.requestedAt)}{r.coachOkName ? ` · ${r.coachOkName} accepted` : ''}</>,
+                            <>
+                              <button type="button" className="nb-btn" disabled={busy === r.id} onClick={() => void decide(r, 'rejected')}>Decline</button>
+                              <button type="button" className={yes()} disabled={busy === r.id} onClick={() => void decide(r, 'approved')}>Confirm</button>
+                            </>))}
+                        </section>
+                      )}
+                      {data.payments.length > 0 && (
+                        <section>
+                          <h3>Package payments <span>{data.payments.length}</span></h3>
+                          {data.payments.map((r) => row(`p:${r.id}`, 'payment', name(r.member_id), names[r.member_id]?.photo,
+                            <>{name(r.member_id)} <span className="ptd-what">{r.months}-month package · {r.price != null ? peso(r.price) : 'no price'}</span></>,
+                            <>With {name(r.trainer_id)} · {r.pay_reference ? `ref ${r.pay_reference}` : 'to pay at the desk'} · starts when confirmed</>,
+                            <>
+                              {r.pay_reference && <button type="button" className="nb-btn" disabled={busy === r.id} onClick={() => void confirmPay(r, false)}>Not found</button>}
+                              <button type="button" className={yes()} disabled={busy === r.id} onClick={() => void confirmPay(r, true)}>{r.pay_reference ? 'Confirm payment' : 'Paid in cash'}</button>
+                            </>))}
+                        </section>
+                      )}
+                      {data.asked.length > 0 && (
+                        <section>
+                          <h3>Package asks <span>{data.asked.length}</span></h3>
+                          {data.asked.map((r) => row(`a:${r.id}`, 'asked', name(r.member_id), names[r.member_id]?.photo,
+                            <>{name(r.member_id)} <span className="ptd-what">Asked for a {r.months}-month package with {name(r.trainer_id)}</span></>,
+                            <>{waited(r.created_at)} · {approval === 'desk' ? 'you decide'
+                              : approval === 'coach_desk' ? (r.coach_ok_at ? `${name(r.trainer_id)} said yes: you confirm` : `waiting for ${name(r.trainer_id)} first`)
+                              : 'the coach decides'}</>,
+                            approval === 'coach' ? (
+                              <button type="button" className="nb-btn" onClick={() => navigate('/personal-training?tab=packages')}>See packages</button>
+                            ) : (<>
+                              <button type="button" className="nb-btn" disabled={busy === r.id} onClick={() => void answerAsk(r, false)} data-ask-decline>Decline</button>
+                              {deskMay(r) && <button type="button" className={yes()} disabled={busy === r.id} onClick={() => void answerAsk(r, true)} data-ask-confirm>Confirm</button>}
+                            </>)))}
+                        </section>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
         </div>
       )}
     </div>
