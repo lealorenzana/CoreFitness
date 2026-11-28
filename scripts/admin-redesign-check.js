@@ -174,7 +174,7 @@ async (page) => {
   has('remind all names who will get it before anything is sent', /Send a renewal reminder to 1 member/.test(await page.locator('body').innerText()));
   await page.getByRole('button', { name: 'Send reminders' }).click(); await page.waitForTimeout(600);
   await page.locator('[data-open-signups]').click(); await page.waitForTimeout(400);
-  has('the Sign-ups tab opens the sign-ups waiting', /Pending registrations/.test(await page.locator('body').innerText()));
+  has('the Sign-ups tab opens the sign-ups waiting', /Sign-ups waiting/.test(await page.locator('body').innerText()));
   await page.keyboard.press('Escape'); await page.waitForTimeout(300);
 
   // ── Invitations ──
@@ -241,6 +241,15 @@ async (page) => {
   await page.getByLabel('Select Bianca Soriano').check(); await page.waitForTimeout(200);
   has('ticking rows offers bulk suspend and archive', (await page.locator('[data-trainer-bulk]').count()) === 1 && /1 selected/.test(await page.locator('[data-trainer-bulk]').innerText()));
   await page.screenshot({ path: 'shots/rd-trainers-selected.png' });
+  // 2026-11-28 (owner): Monthly totals and Add trainer open as the floating page, like Add member.
+  await page.getByRole('button', { name: 'Monthly totals' }).first().click(); await page.waitForTimeout(600);
+  has('Monthly totals is the floating page', (await page.locator('[data-month-totals] .am-side').count()) === 1);
+  await page.screenshot({ path: 'shots/rd-month-totals.png' });
+  await page.keyboard.press('Escape'); await page.waitForTimeout(300);
+  await page.getByRole('button', { name: 'Add trainer' }).first().click(); await page.waitForTimeout(500);
+  has('Add trainer is the floating page, its steps on the side', (await page.locator('[data-step-modal] .am-side .am-parts li').count()) === 4);
+  await page.screenshot({ path: 'shots/rd-add-trainer.png' });
+  await page.keyboard.press('Escape'); await page.waitForTimeout(300);
 
   t = await visit('/trainers?view=credentials', 'credentials');
   has('credentials: tiles, chips and certificate cards', /Waiting for review/.test(t) && /Expiring or lapsed/.test(t) && (await page.locator('[data-credential-tile]').count()) === 2);

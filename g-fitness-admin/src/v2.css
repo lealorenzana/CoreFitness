@@ -1218,3 +1218,8 @@ button.dv2-sidebtn:hover b { text-decoration: underline; text-underline-offset: 
 .pr-tag { font-size: 12px; padding: 2px 8px; border-radius: 6px; color: var(--color-text-primary); background: color-mix(in srgb, var(--color-primary) 18%, transparent); }
 .pr-tag.ask { background: color-mix(in srgb, var(--color-secondary) 18%, transparent); }
 .pr-form [data-empty-block] { margin: auto; }
+
+/* The step windows (Add trainer, Edit trainer, Add front desk): the floating page, a little smaller. */
+.sm-win { width: min(940px, 100%); height: min(700px, calc(100vh - 32px)); grid-template-columns: 290px minmax(0, 1fr); }
+.am-parts button:disabled { opacity: .55; cursor: default; }
+.am-btn:disabled { opacity: .55; cursor: not-allowed; }

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, X } from 'lucide-react';
+import GymMascot from './GymMascot';
 
 /**
  * A form in steps (2026-10-04): Add member, Add trainer, Add staff. One
@@ -13,7 +14,7 @@ import { Check, X } from 'lucide-react';
  * editing asks exactly what adding asked, in the same places.
  */
 export default function StepModal({
-  title, subtitle, steps, step, onStep, canNext, onNext, onBack, onClose, finishLabel, busy, children, hideNav, tabs, flagged,
+  title, subtitle, steps, step, onStep, canNext, onNext, onBack, onClose, finishLabel, busy, children, hideNav, tabs, flagged, art, sayLine,
 }: {
   title: string;
   subtitle?: string;
@@ -33,6 +34,9 @@ export default function StepModal({
   tabs?: boolean;
   /** Steps with a problem to fix, marked on the tab. */
   flagged?: number[];
+  /** The mascot on the side (the kettlebell when not given), and what it says. */
+  art?: string;
+  sayLine?: string;
 }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -40,38 +44,31 @@ export default function StepModal({
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
   const last = step === steps.length - 1;
-  // Design V2 (owner, 2026-11-22: "still AI slop"): flat, a hairline, the steps as a quiet line of tabs
-  // (no progress bar, no numbered bubbles), outlined fields, and normal-sized buttons on the right.
+  // The floating page (owner, 2026-11-28: one design for every window): the steps on the gym's colour with a
+  // mascot, the questions on the right, Back/Next at the foot. Same props, so every wizard follows.
+  const say = sayLine ?? (hideNav ? 'All set.' : tabs ? `Editing: ${steps[step]}.` : `Step ${step + 1} of ${steps.length}: ${steps[step]}.`);
   return createPortal((
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={title}>
-      <div className="absolute inset-0 bg-black/70" onClick={onClose} />
-      <div className="relative w-full max-w-xl rounded-xl flex flex-col max-h-[calc(100vh-2rem)]"
-        style={{ background: 'var(--color-surface)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.12)', boxShadow: '0 24px 64px -24px rgba(0,0,0,0.5)' }}>
-        <div className="px-6 pt-5" style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)' }}>
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h2 className="text-[17px] font-semibold text-white">{title}</h2>
-              {subtitle && <p className="text-[13px] mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>{subtitle}</p>}
-            </div>
-            <button aria-label="Close" onClick={onClose} className="w-8 h-8 -mr-1.5 grid place-items-center rounded-lg hover:bg-white/[0.06] flex-none"
-              style={{ color: 'var(--color-text-secondary)' }}><X size={16} /></button>
+    <div className="am-root" role="dialog" aria-modal="true" aria-label={title} data-step-modal>
+      <div className="am-scrim" onClick={onClose} />
+      <div className="am-win sm-win">
+        <aside className="am-side">
+          <div>
+            <h2>{title}</h2>
+            {subtitle && <p>{subtitle}</p>}
           </div>
-          {hideNav ? <div className="h-4" /> : (
-            <ol className="flex gap-5 mt-4 overflow-x-auto overflow-y-hidden scrollbar-hide" aria-label={tabs ? 'Sections' : 'Steps'} role={tabs ? 'tablist' : undefined}>
+          {!hideNav && (
+            <ol className="am-parts" aria-label={tabs ? 'Sections' : 'Steps'} role={tabs ? 'tablist' : undefined}>
               {steps.map((t, i) => {
                 const reach = tabs || i <= step;
                 const here = i === step;
                 const passed = !tabs && i < step;
                 const flag = flagged?.includes(i);
                 return (
-                  <li key={t} className="flex-none">
-                    <button type="button" disabled={!reach} onClick={() => onStep(i)} role={tabs ? 'tab' : undefined} aria-selected={tabs ? here : undefined}
-                      aria-current={!tabs && here ? 'step' : undefined}
-                      className="flex items-center gap-1.5 pb-2.5 -mb-px text-[13px] font-medium whitespace-nowrap disabled:cursor-default enabled:hover:text-white transition-colors"
-                      style={{ borderBottom: `2px solid ${here ? 'var(--color-primary)' : 'transparent'}`,
-                        color: here ? 'var(--color-text-primary)' : reach ? 'var(--color-text-secondary)' : 'var(--color-text-muted)' }}>
-                      {passed && <Check size={13} style={{ color: 'var(--color-text-secondary)' }} />}
-                      {t}
+                  <li key={t}>
+                    <button type="button" disabled={!reach} onClick={() => onStep(i)} className={here ? 'on' : ''}
+                      role={tabs ? 'tab' : undefined} aria-selected={tabs ? here : undefined} aria-current={!tabs && here ? 'step' : undefined}>
+                      <span className={`n ${passed ? 'ok' : ''}`}>{passed ? <Check size={12} /> : i + 1}</span>
+                      <span className="flex-1 min-w-0 truncate">{t}</span>
                       {flag && <span className="w-1.5 h-1.5 rounded-full flex-none" style={{ background: 'var(--color-secondary)' }} aria-label="needs fixing" />}
                     </button>
                   </li>
@@ -79,24 +76,24 @@ export default function StepModal({
               })}
             </ol>
           )}
-        </div>
-        <div className="px-6 py-5 space-y-5 overflow-y-auto flex-1">{children}</div>
-        {!hideNav && (
-          <div className="px-6 py-4 flex items-center gap-2" style={{ borderTop: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)' }}>
-            {!tabs && <span className="text-[12.5px] mr-auto tabular-nums" style={{ color: 'var(--color-text-muted)' }}>Step {step + 1} of {steps.length}</span>}
-            {tabs && <span className="mr-auto" />}
-            <button type="button" className="h-9 px-4 rounded-lg text-[13px] font-medium transition-colors hover:bg-white/[0.05] disabled:opacity-50"
-              style={{ border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.14)', color: 'var(--color-text-primary)' }}
-              onClick={!tabs && step > 0 ? onBack : onClose} disabled={busy}>{!tabs && step > 0 ? 'Back' : 'Cancel'}</button>
-            <button type="button" className="v2-btn h-9 px-4 rounded-lg text-[13px] font-semibold disabled:cursor-not-allowed"
-              // Disabled is neutral, not a faded action colour (that read as a muddy brown).
-              style={canNext && !busy ? { background: 'var(--v2-act, #F59E0B)', color: 'var(--v2-on-act, #1a1206)', border: '1px solid transparent' }
-                : { background: 'rgb(var(--hair-rgb, 255 255 255) / 0.06)', color: 'var(--color-text-muted)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)' }}
-              onClick={onNext} disabled={!canNext || busy} data-step-next>
-              {busy ? 'Working…' : tabs || last ? finishLabel : 'Next'}
-            </button>
+          <div className="am-buddy" aria-hidden>
+            <p key={say} className="am-say">{say}</p>
+            <GymMascot src={art ?? '/images/admin-art/mascot-kettlebell.webp'} />
           </div>
-        )}
+        </aside>
+        <section className="am-main">
+          <button type="button" aria-label="Close" onClick={onClose} className="am-x"><X size={16} /></button>
+          <div className="am-form space-y-5">{children}</div>
+          {!hideNav && (
+            <footer className="am-foot">
+              <span className="am-sum">{tabs ? '' : `Step ${step + 1} of ${steps.length}`}</span>
+              <button type="button" className="am-btn" onClick={!tabs && step > 0 ? onBack : onClose} disabled={busy}>{!tabs && step > 0 ? 'Back' : 'Cancel'}</button>
+              <button type="button" className="am-btn go" onClick={onNext} disabled={!canNext || busy} data-step-next>
+                {busy ? 'Working…' : tabs || last ? finishLabel : 'Next'}
+              </button>
+            </footer>
+          )}
+        </section>
       </div>
     </div>
   ), document.body);

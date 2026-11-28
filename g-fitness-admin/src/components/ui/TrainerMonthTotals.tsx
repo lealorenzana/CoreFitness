@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import Modal from './Modal';
-import Button from './Button';
+import { Banknote, CalendarDays, Download, Dumbbell } from 'lucide-react';
+import SideWindow from './SideWindow';
 import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV } from '../../utils/exportUtils';
 import { todayKey } from '../../utils/dates';
@@ -75,24 +75,30 @@ export default function TrainerMonthTotals({ isOpen, onClose }: { isOpen: boolea
     })), `trainer-totals-${month}`, false);
   };
 
+  if (!isOpen) return null;
+  const all = rows ?? [];
+  const ptN = all.reduce((x, r) => x + r.pt_sessions, 0);
+  const clsN = all.reduce((x, r) => x + r.classes_led, 0);
+  const payN = all.reduce((x, r) => x + pay(r), 0);
+  // The floating page (owner, 2026-11-28): the month's totals on the gym's colour, the table and rates on the right.
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="lg" title={`Trainer totals — ${monthLabel}`}
-      subtitle="Sessions and classes each coach delivered, for paying them" cancelLabel="Close"
-      footer={
-        <div className="flex items-center justify-between w-full gap-2">
-          <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>Rates are for this estimate only and are not saved.</p>
-          <div className="flex gap-2">
-            <Button variant="ghost" onClick={onClose}>Close</Button>
-            <Button variant="primary" onClick={exportCsv} disabled={!rows?.length}>Export</Button>
-          </div>
-        </div>
-      }>
-      <div className="flex flex-wrap items-center gap-3 mb-3">
+    <SideWindow label={`Trainer totals, ${monthLabel}`} data-month-totals onClose={onClose}
+      title="Monthly totals" blurb={`Sessions and classes each coach delivered in ${monthLabel}, for paying them.`}
+      figure={{ n: ptN + clsN, word: 'sessions and classes' }}
+      facts={[
+        { icon: <Dumbbell size={14} />, text: `${ptN} PT session${ptN === 1 ? '' : 's'} across ${all.length} coach${all.length === 1 ? '' : 'es'}` },
+        { icon: <CalendarDays size={14} />, text: `${clsN} class${clsN === 1 ? '' : 'es'} led` },
+        { icon: <Banknote size={14} />, text: pr || cr ? `${peso(payN)} at the rates you typed` : 'Type a rate per session or class for an estimate. Rates are not saved.' },
+      ]}
+      say={rows === undefined ? 'Counting the month.' : all.length ? `${monthLabel}: ${ptN} sessions and ${clsN} classes.` : 'No active coaches this month.'}
+      art="/images/admin-art/mascot-clipboard.webp">
+      <div className="flex flex-wrap items-center gap-3 mb-3" style={{ paddingRight: 40 }}>
+        <button type="button" className="am-btn go ml-auto order-last" onClick={exportCsv} disabled={!rows?.length}><Download size={14} />Export</button>
         {/* A month that happened: the gym's first month … this month, never a year
             nobody worked in (the native month input offered any). */}
         <select value={month} onChange={(e) => setMonth(e.target.value)} aria-label="Month"
-          className="h-9 rounded-lg px-2.5 text-xs text-white outline-none"
-          style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', colorScheme: 'dark' }}>
+          className="h-9 rounded-lg px-2.5 text-[13px] outline-none"
+          style={{ background: 'var(--color-surface)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>
           {monthsSince(firstDay, todayKey()).map((m) => <option key={m} value={m}>{fmtMonth(m)}</option>)}
         </select>
         {[['Per PT session ₱', ptRate, setPtRate], ['Per class led ₱', classRate, setClassRate]].map(([label, v, set]) => (
@@ -100,8 +106,8 @@ export default function TrainerMonthTotals({ isOpen, onClose }: { isOpen: boolea
             {label as string}
             <input value={v as string} inputMode="numeric" placeholder="0"
               onChange={(e) => (set as (s: string) => void)(e.target.value.replace(/\D/g, ''))}
-              className="h-8 w-20 rounded-lg px-2 text-xs text-white text-right outline-none"
-              style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
+              className="h-9 w-20 rounded-lg px-2 text-[13px] text-right outline-none"
+              style={{ background: 'var(--color-surface)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }} />
           </label>
         ))}
       </div>
@@ -112,7 +118,7 @@ export default function TrainerMonthTotals({ isOpen, onClose }: { isOpen: boolea
       ) : rows.length === 0 ? (
         <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>No active trainers.</p>
       ) : (
-        <table className="w-full text-xs">
+        <table className="w-full text-[13px]">
           <thead>
             <tr style={{ color: 'var(--color-text-muted)' }}>
               <th className="text-left font-medium py-1.5">Trainer</th>
@@ -127,10 +133,10 @@ export default function TrainerMonthTotals({ isOpen, onClose }: { isOpen: boolea
           <tbody>
             {rows.map((r) => (
               <tr key={r.trainer_id} style={{ borderTop: '1px solid var(--color-border)' }}>
-                <td className="py-2 text-white">{r.first_name} {r.last_name}</td>
-                <td className="text-right tabular-nums text-white">{r.pt_sessions}</td>
+                <td className="py-2.5" style={{ color: 'var(--color-text-primary)' }}>{r.first_name} {r.last_name}</td>
+                <td className="text-right tabular-nums" style={{ color: 'var(--color-text-primary)' }}>{r.pt_sessions}</td>
                 <td className="text-right tabular-nums" style={{ color: 'var(--color-text-secondary)' }}>{r.pt_hours}</td>
-                <td className="text-right tabular-nums text-white">{r.classes_led}</td>
+                <td className="text-right tabular-nums" style={{ color: 'var(--color-text-primary)' }}>{r.classes_led}</td>
                 <td className="text-right tabular-nums" style={{ color: 'var(--color-text-secondary)' }}>{r.class_attendees}</td>
                 <td className="text-right tabular-nums" style={{ color: 'var(--color-text-secondary)' }}>{r.distinct_members}</td>
                 {(pr > 0 || cr > 0) && <td className="text-right tabular-nums font-semibold" style={{ color: 'var(--color-secondary)' }}>{peso(pay(r))}</td>}
@@ -139,6 +145,6 @@ export default function TrainerMonthTotals({ isOpen, onClose }: { isOpen: boolea
           </tbody>
         </table>
       )}
-    </Modal>
+    </SideWindow>
   );
 }
