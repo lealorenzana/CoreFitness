@@ -192,6 +192,13 @@ async (page) => {
   // The day line is drawn: one bar per hour with check-ins, and the classes on their times.
   out.push('the day line draws today’s check-ins and classes: ' + ((await page.locator('[data-day-line] rect.bar').count()) > 0 && (await page.locator('[data-day-line] g.cls').count()) > 0 ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/admin-dashboard-v2.png' });
+  // 2026-11-28 (owner): the band is plain, no mascot; its right side says what is next and the busiest hour so far.
+  const side = await text('[data-day-side]');
+  out.push('the day band: no mascot, next and busiest hour beside the figures: ' + ((await page.locator('[data-day-band] img').count()) === 0
+    && /Next class/.test(side) && /Busiest hour so far/.test(side) && /(am|pm) to \d+ (am|pm) \d+ check-ins? in that hour|No check-ins yet/.test(side) ? 'yes' : 'MISSING ' + side.slice(0, 160)));
+  await page.emulateMedia({ colorScheme: 'dark' }); await page.waitForTimeout(300);
+  await page.screenshot({ path: 'shots/admin-dashboard-v2-dark.png' });
+  await page.emulateMedia({ colorScheme: 'light' });
   await go(1280, 720);
   f = await fits();
   out.push('1280×720: still fits: ' + (f.page && f.wide ? 'yes' : 'MISSING ' + JSON.stringify(f)));

@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, type ReactNode, type CSSProperties } from 'react';
-import GymMascot from '../components/ui/GymMascot';
 import { CountUp, Skel, Spark, Initials } from '../components/ui/rd';
 import { useNavigate } from 'react-router-dom';
 import { useGymModules, moduleOn } from '../hooks/useGymModules';
@@ -474,16 +473,17 @@ export default function Dashboard() {
       sub: x.coach ? `with ${x.coach}` : '', done: x.done, tip: `${timeOf(x.startsAt)} · ${x.member ?? 'A member'}${x.coach ? ` with ${x.coach}` : ''}${x.done ? ' · done' : ''}` }));
   // The range drawn: the gym's hours when set, widened to hold anything that happened outside them.
   const activeHours = (today?.perHour ?? []).map((v, h) => (v > 0 ? h : null)).filter((h): h is number => h !== null);
-  // The mascot's mood: before the doors open, nobody in yet, people in, or the day done. Read numbers only.
-  const nowH = new Date().getHours() + new Date().getMinutes() / 60;
-  const inToday = today?.checkIns ?? null;
-  const mood = hours.openH != null && nowH < hours.openH
-    ? { key: 'before', art: '/images/admin-art/mascot-kettlebell.webp', say: `Doors open at ${hours.open}.` }
-    : hours.closeH != null && nowH >= hours.closeH
-      ? { key: 'done', art: '/images/admin-art/mascot-clipboard.webp', say: inToday ? `Day done: ${plural(inToday, 'check-in')} today.` : 'Day done. Doors open again tomorrow.' }
-      : !inToday
-        ? { key: 'waiting', art: '/images/admin-art/mascot-kettlebell.webp', say: 'Nobody in yet. The first check-in starts the bars.' }
-        : { key: 'busy', art: '/images/admin-art/mascot-kettlebell.webp', say: `${plural(inToday, 'check-in')} so far today.` };
+  // Beside the figures (owner, 2026-11-28, in place of the mascot): what is next today, and the busiest hour so far.
+  // Both from what this page already reads; nothing invented.
+  const nowMs = Date.now();
+  const upNext = classesOn
+    ? (classes ?? []).filter((c) => new Date(c.startsAt).getTime() > nowMs).sort((x, y) => x.startsAt.localeCompare(y.startsAt))[0] ?? null
+    : null;
+  const nextSession = !classesOn
+    ? (sessionsToday ?? []).filter((x) => new Date(x.startsAt).getTime() > nowMs).sort((x, y) => x.startsAt.localeCompare(y.startsAt))[0] ?? null
+    : null;
+  const peak = (today?.perHour ?? []).reduce((best, v, h) => (v > best.v ? { h, v } : best), { h: -1, v: 0 });
+  const hourWord = (h: number) => `${h % 12 === 0 ? 12 : h % 12} ${h < 12 ? 'am' : 'pm'}`;
   const dayOpen = Math.floor(Math.min(hours.openH ?? 6, ...activeHours, ...dayItems.map((i) => i.start)));
   const dayClose = Math.ceil(Math.max(hours.closeH ?? 22, ...activeHours.map((h) => h + 1), ...dayItems.map((i) => i.start + i.minutes / 60)));
 
@@ -508,11 +508,7 @@ export default function Dashboard() {
             {/* The band (owner, 2026-11-27, the member app's Today as the cue): the title and figures on the gym's
                 colour, a slow ray burst and a mascot that says how the day is going. Motion stops under reduced motion. */}
             <div className="dv2-dayband" data-day-band>
-            <span className="dv2-rays" aria-hidden />
-            <div className="dv2-buddy" aria-hidden data-day-mascot={mood.key}>
-              <p key={mood.say}>{mood.say}</p>
-              <GymMascot key={mood.art} src={mood.art} />
-            </div>
+            <div className="dv2-daymain">
             <header>
               <h2>The day so far</h2>
               <span className="dv2-aside">bars are check-ins per hour</span>
@@ -546,6 +542,32 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
+            </div>
+            <aside className="dv2-dayside" aria-label="Next and busiest" data-day-side>
+              <div className="dv2-sideitem" data-up-next>
+                <div className="l">{classesOn ? 'Next class' : 'Next 1-on-1'}</div>
+                {today === null ? <Skel w={140} h={20} /> : classesOn ? (
+                  upNext ? (
+                    <button className="dv2-sidebtn" onClick={() => navigate('/schedule')}>
+                      <b>{timeOf(upNext.startsAt)} · {upNext.name}</b>
+                      <span>{[upNext.coach ?? 'No coach yet', upNext.location, `${upNext.booked} of ${upNext.capacity} booked`].filter(Boolean).join(' · ')}</span>
+                    </button>
+                  ) : <p className="dv2-sidenone">{classes === null ? 'Could not read the classes.' : 'No more classes today.'}</p>
+                ) : nextSession ? (
+                  <button className="dv2-sidebtn" onClick={() => navigate('/personal-training?tab=sessions')}>
+                    <b>{timeOf(nextSession.startsAt)} · {nextSession.member ?? 'A member'}</b>
+                    <span>{nextSession.coach ? `with ${nextSession.coach}` : 'No coach yet'} · {nextSession.minutes} min</span>
+                  </button>
+                ) : <p className="dv2-sidenone">{sessionsToday === null ? 'Could not read the sessions.' : 'No more sessions today.'}</p>}
+              </div>
+              <div className="dv2-sideitem" data-busiest>
+                <div className="l">Busiest hour so far</div>
+                {today === null ? <Skel w={120} h={20} /> : today.perHour === null ? <p className="dv2-sidenone">Could not read the check-ins.</p>
+                  : peak.h < 0 ? <p className="dv2-sidenone">No check-ins yet today.</p> : (
+                    <div className="dv2-sidebtn as-text"><b>{hourWord(peak.h)} to {hourWord((peak.h + 1) % 24)}</b><span>{plural(peak.v, 'check-in')} in that hour</span></div>
+                  )}
+              </div>
+            </aside>
             </div>
             <div className="flex-1 min-h-0 flex flex-col" data-today-classes={classesOn ? '' : undefined} data-today-sessions={classesOn ? undefined : ''}>
               {today === null ? (
