@@ -40,6 +40,7 @@ async (page) => {
       never_expires: false, frozen_at: null, freeze_count: 0, created_at: iso(-10), membership_plans: { id: 'p1', name: 'Monthly', price: 800, duration_days: 30, tier: 'premium' } })),
     membership_plans: [{ id: 'p1', name: 'Monthly', price: 800, duration_days: 30, tier: 'premium', is_active: true }],
   };
+  const PREFS = {};
   const RPC = {
     my_gym_context: [{ gym_id: 'gym-1', gym_name: 'Core Fitness Lab', slug: 'core-fitness-lab', role: 'admin', status: 'active',
       lock_reason: null, short_name: null, logo_url: null, accent: 'violet', gym_count: 1, onboarded: true, onboarding_step: null, gym_state: 'live' }],
@@ -56,7 +57,13 @@ async (page) => {
     const json = (b, s = 200) => route.fulfill({ status: s, contentType: 'application/json', body: JSON.stringify(b),
       headers: { 'Content-Range': '0-0/1', 'Access-Control-Allow-Origin': '*', 'Access-Control-Expose-Headers': 'Content-Range' } });
     if (pathname.startsWith('/auth/v1/')) return json(pathname.includes('/user') ? session.user : { ...session });
-    if (pathname.startsWith('/rest/v1/rpc/')) { const fn = pathname.split('/rest/v1/rpc/')[1]; return json(fn in RPC ? RPC[fn] : []); }
+    if (pathname.startsWith('/rest/v1/rpc/')) {
+      const fn = pathname.split('/rest/v1/rpc/')[1];
+      // 0285: the account's saved looks, kept here across page loads as the database would.
+      if (fn === 'my_view_prefs') return json(PREFS);
+      if (fn === 'set_view_pref') { const b = req.postDataJSON(); PREFS[b.p_key] = b.p_value; return json(null); }
+      return json(fn in RPC ? RPC[fn] : []);
+    }
     if (pathname.startsWith('/rest/v1/') && req.method() !== 'GET') return json([], 200);
     if (pathname.startsWith('/rest/v1/')) {
       const t = pathname.split('/rest/v1/')[1].replace('gym_people', 'profiles');
@@ -117,6 +124,11 @@ async (page) => {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.locator('[data-member-row]').first().waitFor({ timeout: 20000 });
     say(`${mode}: the address keeps the choice`, /view=list/.test(page.url()) && /pane=1/.test(page.url()) && (await page.locator('[data-member-pane]').count()) === 1, 'after reload');
+    // 2026-11-28 (owner): and the account keeps it, so coming back with a bare address (or after signing out) finds it.
+    await page.goto('http://localhost:5174/members', { waitUntil: 'domcontentloaded' });
+    await page.locator('[data-member-row]').first().waitFor({ timeout: 20000 });
+    await page.waitForTimeout(800);
+    say(`${mode}: the account keeps the choice`, /view=list/.test(page.url()) && /pane=1/.test(page.url()), 'back with a bare address');
     await pick('Details pane');
     await pick('Details');
     say(`${mode}: back to the table, no pane`, !/view=|pane=/.test(page.url()) && (await page.locator('[data-member-pane]').count()) === 0, 'reset');

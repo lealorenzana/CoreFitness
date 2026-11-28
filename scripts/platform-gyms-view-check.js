@@ -32,6 +32,8 @@ async (page) => {
     base(2, { name: 'Late Gym', plan: 'starter', plan_name: 'Starter', max_members: 75, lock_reason: 'overdue', paid_until: manila(-10), days_left: -10 }),
     ...[3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].map((i) => base(i)),
   ];
+  // 0285: the account's saved looks, kept here across reloads as the database would.
+  const PREFS = {};
   await page.route(`**://${REF}.supabase.co/**`, async (route) => {
     const req = route.request();
     const after = req.url().replace(/^https?:\/\/[^/]+/, '');
@@ -42,6 +44,8 @@ async (page) => {
     if (path.startsWith('/rest/v1/rpc/')) {
       const fn = path.split('/rest/v1/rpc/')[1];
       if (fn === 'is_platform_admin') return json(true);
+      if (fn === 'my_view_prefs') return json(PREFS);
+      if (fn === 'set_view_pref') { const b = req.postDataJSON(); PREFS[b.p_key] = b.p_value; return json(null); }
       if (fn === 'platform_gyms') return json(GYMS);
       return json([]);
     }

@@ -215,6 +215,9 @@ export default function Members() {
   const view = VIEWS.some(([k]) => k === searchParams.get('view')) ? searchParams.get('view')! : 'details';
   const pane = searchParams.get('pane') === '1';
   const setLook = (v: string, p: boolean) => {
+    // Kept on the account too (0285, owner 2026-11-28), so it is there after leaving the page or signing out.
+    // A query only runs once awaited or then'd: this one is fired and forgotten.
+    void supabase.rpc('set_view_pref', { p_key: 'admin.members', p_value: { view: v, pane: p } }).then(() => undefined, () => undefined);
     setSearchParams((prev) => {
       if (v === 'details') prev.delete('view'); else prev.set('view', v);
       if (p) prev.set('pane', '1'); else prev.delete('pane');
@@ -222,6 +225,24 @@ export default function Members() {
     }, { replace: true });
     setCurrentPage(1);
   };
+  // With no layout in the address, the one this person chose last time (0285). Before 0285 the call fails: Details.
+  useEffect(() => {
+    if (searchParams.has('view') || searchParams.has('pane')) return;
+    let alive = true;
+    void (async () => {
+      const { data, error } = await supabase.rpc('my_view_prefs');
+      const saved = !error && data && typeof data === 'object' ? (data as Record<string, { view?: string; pane?: boolean }>)['admin.members'] : undefined;
+      if (!alive || !saved) return;
+      setSearchParams((prev) => {
+        if (saved.view && saved.view !== 'details' && VIEWS.some(([k]) => k === saved.view)) prev.set('view', saved.view);
+        if (saved.pane) prev.set('pane', '1');
+        return prev;
+      }, { replace: true });
+    })();
+    return () => { alive = false; };
+    // Once, on arriving at the page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const closeDrawer = () => {
     setViewingId(null);
     if (searchParams.has('open')) {

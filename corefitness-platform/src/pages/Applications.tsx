@@ -12,7 +12,7 @@ import InviteOwner from '../components/InviteOwner';
 import Ask from '../components/Ask';
 import GymMark from '../components/GymMark';
 import Modal from '../components/Modal';
-import ViewMenu, { readLook, saveLook, type Look } from '../components/ViewMenu';
+import ViewMenu, { useLook } from '../components/ViewMenu';
 import Tiles from '../components/Tiles';
 import GymSuggestions from '../components/GymSuggestions';
 import MapData from '../components/MapData';
@@ -67,7 +67,7 @@ export default function Applications() {
   const [picked, setPicked] = useState<string | null>(null);
   const open = shownAll.find((a) => a.id === picked) ?? shownAll[0] ?? null;
   const pick = (s: Show) => setShow(show === s ? 'all' : s);
-  const [look, setLook] = useState<Look>(() => readLook(VIEW_KEY, VIEWS, { view: 'list', pane: true }));
+  const [look, saveLook] = useLook('platform.applications', VIEW_KEY, VIEWS, { view: 'list', pane: true });
   /** With the pane off, choosing an application opens it in a popup. */
   const [reading, setReading] = useState(false);
   const choose = (id: string) => { setPicked(id); if (!look.pane) setReading(true); };
@@ -182,7 +182,7 @@ export default function Applications() {
         <section className="card ap-queue">
           <header className="ap-qhead">
             <span className="ap-qtop"><h2 className="section-title"><ClipboardList size={14} /> {show === 'pending' ? 'Waiting for an answer' : show === 'approved' ? 'Let in' : show === 'rejected' ? 'Turned down' : show === 'withdrawn' ? 'Called off' : 'Every application'}</h2>
-              <ViewMenu views={VIEWS} look={look} onChange={(l) => { setLook(l); saveLook(VIEW_KEY, l); }} /></span>
+              <ViewMenu views={VIEWS} look={look} onChange={saveLook} /></span>
             <div className="filters ap-filters" role="group" aria-label="Show">
               {([['pending', 'Waiting'], ['approved', 'Let in'], ['rejected', 'Turned down'], ['withdrawn', 'Called off'], ['all', 'All']] as [Show, string][]).map(([s, label]) => (
                 <button key={s} type="button" className={show === s ? 'on' : ''} aria-pressed={show === s} onClick={() => setShow(s)}>{label}<b>{apps ? of(s).length : ''}</b></button>

@@ -33,6 +33,8 @@ async (page) => {
   const APPS = [app('a1', 'Iron Den', { created_at: iso(5), member_estimate: 120 }), app('a2', 'Bulwark Gym', { heard_from: 'secret', address: TOWNS[1] }),
     app('a3', 'Coral Strength', { plan_name: 'Growth', heard_from: 'sa kakelala', address: TOWNS[2] }),
     ...TOWNS.slice(3).map((t, i) => app(`b${i}`, `Town Gym ${i}`, { status: 'approved', address: t, heard_from: i ? 'Google' : 'Other' }))];
+  // 0285: the account's saved looks, kept here across reloads as the database would.
+  const PREFS = {};
   const RPC = {
     is_platform_admin: () => true,
     platform_applications: () => APPS,
@@ -47,7 +49,12 @@ async (page) => {
     const json = (b) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(b),
       headers: { 'Content-Range': '0-9/10', 'Access-Control-Allow-Origin': '*', 'Access-Control-Expose-Headers': 'Content-Range' } });
     if (path.startsWith('/auth/v1/')) return json(path.includes('/user') ? session.user : session);
-    if (path.startsWith('/rest/v1/rpc/')) { const fn = path.split('/rest/v1/rpc/')[1]; return json(fn in RPC ? RPC[fn]() : []); }
+    if (path.startsWith('/rest/v1/rpc/')) {
+      const fn = path.split('/rest/v1/rpc/')[1];
+      if (fn === 'my_view_prefs') return json(PREFS);
+      if (fn === 'set_view_pref') { const b = req.postDataJSON(); PREFS[b.p_key] = b.p_value; return json(null); }
+      return json(fn in RPC ? RPC[fn]() : []);
+    }
     return json([]);
   });
 

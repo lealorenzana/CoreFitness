@@ -11,7 +11,7 @@ import {
 } from '../lib/platform';
 import InviteOwner from '../components/InviteOwner';
 import BillGym from '../components/BillGym';
-import ViewMenu, { readLook, saveLook, type Look } from '../components/ViewMenu';
+import ViewMenu, { useLook, type Look } from '../components/ViewMenu';
 import Ask from '../components/Ask';
 import GymMark from '../components/GymMark';
 import GymStatus from '../components/GymStatus';
@@ -86,9 +86,9 @@ export default function Gyms() {
   /** Cards a page = what fits the screen (useFitCards); PER_PAGE below 1280px. */
   const { ref: gridRef, perPage } = useFitCards(PER_PAGE);
   const [dialog, setDialog] = useState<Dialog | null>(null);
-  const [look, setLook] = useState<Look>(() => readLook(VIEW_KEY, VIEWS, { view: 'large', pane: false }));
+  const [look, saveLook] = useLook('platform.gyms', VIEW_KEY, VIEWS, { view: 'large', pane: false });
   const [selected, setSelected] = useState<string | null>(null);
-  const changeLook = (next: Look) => { setLook(next); setPage(1); saveLook(VIEW_KEY, next); };
+  const changeLook = (next: Look) => { saveLook(next); setPage(1); };
   const [form, setForm] = useState({ name: '', slug: '' });
   const navigate = useNavigate();
 

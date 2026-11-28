@@ -1,18 +1,43 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, LayoutGrid } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
 
 /** A layout and whether the Details pane is on: a screen preference, never a person's data. */
 export interface Look { view: string; pane: boolean }
 
-/** The saved choice for one screen, or the fallback when there is none (or it names a layout that no longer exists). */
-export function readLook(key: string, views: [string, string][], fallback: Look): Look {
-  try {
-    const v = JSON.parse(localStorage.getItem(key) ?? '{}');
-    return { view: views.some(([k]) => k === v.view) ? v.view : fallback.view, pane: typeof v.pane === 'boolean' ? v.pane : fallback.pane };
-  } catch { return fallback; }
-}
-export function saveLook(key: string, look: Look) {
-  try { localStorage.setItem(key, JSON.stringify(look)); } catch { /* private window */ }
+const valid = (v: unknown, views: [string, string][], fallback: Look): Look => {
+  const o = (v && typeof v === 'object' ? v : {}) as Partial<Look>;
+  return { view: views.some(([k]) => k === o.view) ? o.view! : fallback.view, pane: typeof o.pane === 'boolean' ? o.pane : fallback.pane };
+};
+
+/**
+ * One screen's look, kept on the signed-in account (0285, owner 2026-11-28): it survives a refresh, leaving the page
+ * and signing out, and follows the person to another computer. Before 0285 it was in this browser's storage; that
+ * value is read once, moved to the account and removed.
+ */
+export function useLook(page: string, legacyKey: string, views: [string, string][], fallback: Look): [Look, (l: Look) => void] {
+  const [look, setLook] = useState<Look>(fallback);
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      const { data, error } = await supabase.rpc('my_view_prefs');
+      if (!alive) return;
+      const saved = !error && data && typeof data === 'object' ? (data as Record<string, unknown>)[page] : undefined;
+      if (saved) { setLook(valid(saved, views, fallback)); return; }
+      let legacy: unknown;
+      try { legacy = JSON.parse(localStorage.getItem(legacyKey) ?? 'null'); } catch { legacy = null; }
+      if (legacy) {
+        const l = valid(legacy, views, fallback);
+        setLook(l);
+        if (!error) { void supabase.rpc('set_view_pref', { p_key: page, p_value: l }).then(() => undefined, () => undefined); try { localStorage.removeItem(legacyKey); } catch { /* private window */ } }
+      }
+    })();
+    return () => { alive = false; };
+    // Read once per screen; views and fallback are constants of the page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, legacyKey]);
+  const save = (l: Look) => { setLook(l); void supabase.rpc('set_view_pref', { p_key: page, p_value: l }).then(() => undefined, () => undefined); };
+  return [look, save];
 }
 
 /** The View menu, like File Explorer's (2026-11-27): one layout chosen, and the Details pane on or off. Gyms and Applications. */
