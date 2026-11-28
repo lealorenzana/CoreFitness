@@ -1174,3 +1174,5 @@ button.dv2-sidebtn:hover b { text-decoration: underline; text-underline-offset: 
 @media (max-width: 1400px) { .ref-split { grid-template-columns: 190px minmax(0, 1fr); } }
 /* Referrals with the figures beside it: the reward column wraps instead of being cut at the table's edge. */
 [data-referrals] [data-referral-row] td:last-child, [data-referrals] [data-referral-row] td:last-child * { white-space: normal; }
+/* A line between the figures in the left column (owner, 2026-11-28); the shared strip rule above zeroes tile borders. */
+.ref-figs > [data-stat-tile] + [data-stat-tile] { border-left: 0 !important; border-top: 1px solid var(--color-border) !important; }
