@@ -635,8 +635,11 @@ export default function Members() {
         <button type="button" className="a-btn amber" onClick={() => setIsAddOpen(true)}><UserPlus size={15} />Add member</button>
       </div>
 
-      {!showArchived && (
-        <div className="a-grid flex-none a-figstrip" style={{ gridTemplateColumns: 'repeat(4,minmax(0,1fr))' }} data-members-hero>
+      {/* The Schedule's layout (owner, 2026-11-28): the figures in a column on the left, the roster takes the width. */}
+      {/* With a member's pane docked open the figures step aside, so the table and the pane keep their room. */}
+      <div className={`mb-split ${showArchived || pane ? 'one' : ''}`}>
+      {!showArchived && !pane && (
+        <div className="a-figstrip mb-figs" data-members-hero>
           <button type="button" className="a-card press text-left" onClick={() => pickChip('active')}>
             <div className="a-lbl">Active</div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}><div className="a-num"><CountUp value={activeCount} /></div><span className="a-sub">of {members.length}{share !== null ? ` · ${Math.round(share * 100)}%` : ''}</span></div>
@@ -672,6 +675,7 @@ export default function Members() {
         </div>
       )}
 
+      <div className="mb-main">
       {/* ── Members asking to pause or stop (0118) — granting is not a button: freezing or
           cancelling the member the way the desk always has closes the request. ── */}
       {!showArchived && msRequests && msRequests.length > 0 && (
@@ -842,6 +846,8 @@ export default function Members() {
       </div>
 
       {pane && <MemberDetailDrawer docked memberId={viewingId} onClose={closeDrawer} onChanged={load} />}
+      </div>
+      </div>
       </div>
 
       <ReasonDialog isOpen={!!toResume} onClose={() => setToResume(null)} title="Resume the membership"

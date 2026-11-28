@@ -882,3 +882,18 @@
 .att .sc-figs.v { grid-auto-flow: row; grid-auto-rows: max-content; grid-auto-columns: auto; align-content: start; min-height: 0; overflow-y: auto; }
 .att .sc-figs.v > div { padding: 14px 16px; }
 .att .sc-figs.v > div + div { border-left: 0; border-top: 1px solid var(--a-border); }
+
+/* Members, the Schedule's layout (owner, 2026-11-28): a column of figures on the left, the roster with the width. */
+.att .mb-split { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 12px; }
+.att .mb-split.one { grid-template-columns: minmax(0, 1fr); }
+.att .mb-main { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 12px; }
+.att .mb-figs { display: flex; flex-direction: column; gap: 0; min-height: 0; overflow-y: auto; border: 1px solid var(--a-border); border-radius: 12px; background: var(--a-surface); }
+.att .mb-figs > .a-card { flex: none; border: 0; border-radius: 0; background: transparent; padding: 14px 16px; }
+.att .mb-figs > .a-card + .a-card { border-top: 1px solid var(--a-border); }
+.att .mb-figs > .a-card:first-child { border-radius: 11px 11px 0 0; }
+.att .mb-figs [data-joins-bars] { width: 64px !important; }
+@media (max-width: 1400px) { .att .mb-split { grid-template-columns: 200px minmax(0, 1fr); } }
+/* With the figures beside it, the chips get their own row (as with the pane open), so none is cut off. */
+.att .mb-split:not(.one) [data-members-toolbar] { flex-wrap: wrap; row-gap: 8px; }
+.att .mb-split:not(.one) [data-members-toolbar] > [data-rd-chips] { flex: 1 1 100%; flex-wrap: wrap; row-gap: 6px; }
+.att .mb-split:not(.one) [data-members-toolbar] > :not([data-rd-chips]) { margin-left: auto; }
