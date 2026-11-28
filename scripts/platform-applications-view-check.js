@@ -28,7 +28,11 @@ async (page) => {
     member_estimate: 80, message: null, status: 'pending', reason: null, gym_id: null, created_at: iso(2), duplicates: 0, already_a_gym: false,
     plan_key: 'starter', plan_name: 'Starter', billing: 'monthly', heard_from: 'Facebook', contact_pref: 'viber', contact_handle: null,
     status_token: 'f'.repeat(64), messages: 0, unread: 0, last_message_at: null, ...over });
-  const APPS = [app('a1', 'Iron Den', { created_at: iso(5), member_estimate: 120 }), app('a2', 'Bulwark Gym'), app('a3', 'Coral Strength', { plan_name: 'Growth' })];
+  // 2026-11-28 (owner): typed answers under Other and seven places, so the breakdowns must cap and group.
+  const TOWNS = ['Calapan, Oriental Mindoro', 'Mamburao', 'Sablayan', 'San Jose', 'Abra de Ilog', 'Paluan', 'Looc'];
+  const APPS = [app('a1', 'Iron Den', { created_at: iso(5), member_estimate: 120 }), app('a2', 'Bulwark Gym', { heard_from: 'secret', address: TOWNS[1] }),
+    app('a3', 'Coral Strength', { plan_name: 'Growth', heard_from: 'sa kakelala', address: TOWNS[2] }),
+    ...TOWNS.slice(3).map((t, i) => app(`b${i}`, `Town Gym ${i}`, { status: 'approved', address: t, heard_from: i ? 'Google' : 'Other' }))];
   const RPC = {
     is_platform_admin: () => true,
     platform_applications: () => APPS,
@@ -92,5 +96,15 @@ async (page) => {
   say('Details with the pane at 1280', (await page.locator('.ap-read [data-app-card]').count()) === 1 && await noScroll(), 'fits');
   await page.screenshot({ path: '.tmp-shots/platform-apps-details-1280.png' });
   await pick('List');
+  // The breakdowns: a typed answer counts as Other, which opens the words; past five rows, one line opens them all.
+  const side = page.locator('.ap-side');
+  const ht = (await side.innerText()).replace(/\s+/g, ' ');
+  say('heard from: typed answers count as Other (3), never their own rows', /Other See what they wrote 3/.test(ht) && !/secret/.test(ht) && !/sa kakelala/.test(ht), ht.slice(0, 160));
+  await side.getByRole('button', { name: 'See what they wrote' }).click(); await page.waitForTimeout(300);
+  const typed = (await page.getByRole('dialog').innerText()).replace(/\s+/g, ' ');
+  say('…See what they wrote opens the words in a window', /secret/.test(typed) && /sa kakelala/.test(typed), typed.slice(0, 120));
+  await page.keyboard.press('Escape'); await page.waitForTimeout(200);
+  say('where the gym is: five places, then one line for the rest', /2 more, 2 applications/.test(ht), ht.slice(0, 200));
+  await page.screenshot({ path: '.tmp-shots/platform-applications-breakdowns.png' });
   return out.join('\n');
 }

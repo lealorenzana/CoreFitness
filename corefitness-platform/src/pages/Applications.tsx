@@ -245,7 +245,9 @@ export default function Applications() {
                 <span><b>{all.length}</b>applied, ever</span>
                 <span><b>{all.length ? `${Math.round((of('approved').length / all.length) * 100)}%` : '—'}</b>let in</span>
               </div>
-              <Breakdown title="How they heard of us" icon={Sparkles} rows={tally(all, (a) => a.heard_from)} total={all.length} />
+              {/* A typed answer counts as Other (owner, 2026-11-28): the rows are the site's choices, the words open on their own. */}
+              <Breakdown title="How they heard of us" icon={Sparkles} rows={tally(all, (a) => heardChoice(a.heard_from))} total={all.length}
+                typed={tally(all, (a) => (a.heard_from && !HEARD.includes(a.heard_from.trim()) ? a.heard_from : null)).filter(([k]) => k !== 'Not said')} />
               <Breakdown title="Where the gym is" icon={MapPin} rows={tally(all, (a) => place(a.address))} total={all.length} />
               <Breakdown title="Plan they asked for" icon={Layers} rows={tally(all, (a) => a.plan_name)} total={all.length} />
             </>
@@ -387,24 +389,55 @@ function tally(apps: Application[], key: (a: Application) => string | null | und
     const k = key(a)?.trim() || 'Not said';
     m.set(k, (m.get(k) ?? 0) + 1);
   }
-  return [...m.entries()].sort((a, b) => (a[0] === 'Not said' ? 1 : b[0] === 'Not said' ? -1 : b[1] - a[1])).slice(0, 6);
+  return [...m.entries()].sort((a, b) => (a[0] === 'Not said' ? 1 : b[0] === 'Not said' ? -1 : b[1] - a[1]));
 }
 
-function Breakdown({ title, icon: Icon, rows, total }: { title: string; icon: typeof Inbox; rows: [string, number][]; total: number }) {
+/** The website's choices (corefitness-site App.tsx `HEARD`): change both together. Anything else was typed under Other. */
+const HEARD = ['Facebook', 'A friend or another gym', 'Google', 'TikTok', 'Instagram', 'A Core Fitness gym', 'Other'];
+const heardChoice = (h: string | null | undefined) => (!h?.trim() ? null : HEARD.includes(h.trim()) ? h.trim() : 'Other');
+/** A breakdown shows this many rows; the rest are counted in one line that opens them all. */
+const SHOW = 5;
+
+function Breakdown({ title, icon: Icon, rows, total, typed }: { title: string; icon: typeof Inbox; rows: [string, number][]; total: number;
+  /** What people typed under Other, opened from the Other row. */ typed?: [string, number][] }) {
+  const [open, setOpen] = useState<'all' | 'typed' | null>(null);
+  // "Not said" stays last and always shows; only the answers are capped.
+  const said = rows.filter(([k]) => k !== 'Not said');
+  const notSaid = rows.find(([k]) => k === 'Not said');
+  const shown = said.slice(0, SHOW);
+  const rest = said.slice(SHOW);
+  const line = ([k, n]: [string, number]) => (
+    <div key={k}>
+      <div className="row" style={{ gap: 8 }}>
+        <span className="grow" style={{ color: k === 'Not said' ? 'var(--text-3)' : undefined }}>{k}</span>
+        {k === 'Other' && typed && typed.length > 0 && <button type="button" className="linky" onClick={() => setOpen('typed')}>See what they wrote</button>}
+        <b>{n}</b>
+      </div>
+      <div className="meter"><span style={{ width: `${(n / total) * 100}%` }} /></div>
+    </div>
+  );
+  const list = open === 'typed' ? typed ?? [] : said;
   return (
     <div style={{ marginTop: 12 }}>
       <div className="meta" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}><Icon size={13} /> {title}</div>
       <div className="source-list">
-        {rows.map(([k, n]) => (
-          <div key={k}>
-            <div className="row" style={{ gap: 8 }}>
-              <span className="grow" style={{ color: k === 'Not said' ? 'var(--text-3)' : undefined }}>{k}</span>
-              <b>{n}</b>
-            </div>
-            <div className="meter"><span style={{ width: `${(n / total) * 100}%` }} /></div>
+        {shown.map(line)}
+        {rest.length > 0 && (
+          <div className="row" style={{ gap: 8 }}>
+            <span className="grow meta" style={{ margin: 0 }}>{rest.length} more, {rest.reduce((a, [, n]) => a + n, 0)} applications</span>
+            <button type="button" className="linky" onClick={() => setOpen('all')}>See all</button>
           </div>
-        ))}
+        )}
+        {notSaid && line(notSaid)}
       </div>
+      <Modal open={open !== null} onClose={() => setOpen(null)} size="sm"
+        title={open === 'typed' ? 'What they wrote under Other' : title} subtitle={`${list.length} different answer${list.length === 1 ? '' : 's'}`}>
+        <div className="source-list" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+          {list.map(([k, n]) => (
+            <div key={k} className="row" style={{ gap: 8, padding: '6px 0' }}><span className="grow">{k}</span><b>{n}</b></div>
+          ))}
+        </div>
+      </Modal>
     </div>
   );
 }
