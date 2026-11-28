@@ -2,18 +2,24 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Download, Printer, X } from 'lucide-react';
 import Button from './ui/Button';
-import { downloadReceiptPng, peso, type ReceiptDoc } from '../lib/receipt';
+import { downloadReceiptPng, logoCutout, peso, type ReceiptDoc } from '../lib/receipt';
 
 /** The receipt as paper: white, narrow, the same lines the PNG draws. */
 export function ReceiptPaper({ doc }: { doc: ReceiptDoc }) {
   const muted = '#6B7280';
   const tone = doc.status?.tone === 'done' ? (getComputedStyle(document.documentElement).getPropertyValue('--color-primary-800').trim() || '#5B21B6') : doc.status?.tone === 'void' ? muted : '#92400E';
   const change = doc.tendered != null && doc.tendered >= doc.total ? doc.tendered - doc.total : null;
+  const [logo, setLogo] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    if (doc.logoUrl) void logoCutout(doc.logoUrl).then((c) => { if (live) setLogo(c ? c.toDataURL('image/png') : doc.logoUrl ?? null); });
+    return () => { live = false; };
+  }, [doc.logoUrl]);
   return (
     <div role="document" aria-label={`${doc.title} ${doc.number}`} className="receipt-paper"
       style={{ background: '#FFFFFF', color: '#111827', fontSize: 14, padding: '32px 28px', borderRadius: 14 }}>
       <div style={{ textAlign: 'center' }}>
-        {doc.logoUrl && <img src={doc.logoUrl} alt="" style={{ width: 48, height: 48, objectFit: 'contain', margin: '0 auto 8px' }} />}
+        {doc.logoUrl && logo && <img src={logo}alt="" style={{ width: 48, height: 48, objectFit: 'contain', margin: '0 auto 8px' }} />}
         <p style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>{doc.gymName}</p>
         {doc.gymLines.map((l) => <p key={l} style={{ margin: '3px 0 0', color: '#4B5563', fontSize: 13 }}>{l}</p>)}
       </div>

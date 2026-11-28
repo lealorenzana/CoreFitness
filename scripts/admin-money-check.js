@@ -105,23 +105,79 @@ async (page) => {
     for (const [w, h] of [[1280, 800], [1600, 900]]) {
       await page.setViewportSize({ width: w, height: h });
       await page.goto('http://localhost:5174/payments', { waitUntil: 'domcontentloaded' });
-      await page.waitForSelector('[data-drawer-sum]', { timeout: 15000 });
+      await page.waitForSelector('[data-drawer-hero]', { timeout: 15000 });
       await page.waitForTimeout(600);
-      const t = await text();
       const tag = `${m} ${w}`;
-      say(`${tag}: drawer tile reads the system's ₱4,580`, /In the drawer now ₱4,580/.test(t), t.slice(0, 300));
-      say(`${tag}: End of day shows the carry and what left the drawer`, /Left from the last close ₱3,200\.00/.test(t) && /Handed over − ₱3,000\.00/.test(t) && /Paid out − ₱120\.00/.test(t) && /Should be in the drawer now ₱4,580\.00/.test(t));
-      say(`${tag}: the day's cash outs are listed`, /Handed to Ana Reyes/.test(t) && /Paid out: Drinking water/.test(t));
-      say(`${tag}: Close the day now`, (await page.locator('[data-close-day]').innerText()).includes('Close the day now'));
-      say(`${tag}: recent closes mark the automatic one`, /not counted/.test(t));
+      // One drawer, one button, one floating page, a 7-day strip to change day (owner, 2026-11-28).
+      const rail = (await page.locator('[data-cash]').innerText()).replace(/\s+/g, ' ');
+      say(`${tag}: drawer tile reads the system's ₱4,580`, /In the drawer now ₱4,580/.test(await text()) && /Should be in the drawer now ₱4,580\.00/.test(rail), rail.slice(0, 300));
+      say(`${tag}: the rail names the day and its state`, /^Today, /.test(await page.locator('[data-drawer-day]').innerText()) && /Not closed yet/.test(rail) && /Taken out today − ₱3,120\.00/.test(rail), rail);
+      const yesterday = page.locator('[data-week] [data-week-day]').nth(5);
+      say(`${tag}: the strip marks yesterday's automatic close`, (await page.locator('[data-week] [data-week-day]').count()) === 7
+        && (await yesterday.getAttribute('data-state')) === 'auto' && /not counted/.test(await yesterday.getAttribute('aria-label')));
       const scroll = await page.evaluate(() => document.scrollingElement.scrollHeight - window.innerHeight);
-      say(`${tag}: no page scroll`, scroll <= 1, `overflow ${scroll}px`);
+      const railFits = await page.evaluate(() => { const r = document.querySelector('.rd-fit-rail'); return !r || r.scrollHeight <= r.clientHeight + 1; });
+      say(`${tag}: no page scroll`, scroll <= 1 && railFits, `overflow ${scroll}px, rail fits ${railFits}`);
       await page.screenshot({ path: `.tmp-shots/money-records-${m}-${w}.png` });
 
-      await page.locator('[data-take-out]').click();
-      await page.waitForTimeout(200);
-      say(`${tag}: Take cash out opens with the owner picked`, (await page.locator('[data-take-out-form]').innerText()).includes('Ana Reyes (owner)'));
-      await page.screenshot({ path: `.tmp-shots/money-takeout-${m}-${w}.png` });
+      // Money gets its steps one tap away (owner, 2026-11-28): How it works opens the drawer guide.
+      await page.locator('[data-cash] [data-guide-button="cash-drawer"]').click();
+      await page.waitForSelector('[data-guide-player]');
+      say(`${tag}: How it works opens the drawer guide`, /Money → Payments → The drawer/.test(await page.locator('[data-guide-player]').innerText()));
+      await page.screenshot({ path: `.tmp-shots/money-guide-${m}-${w}.png` });
+      await page.keyboard.press('Escape');
+      await page.waitForSelector('[data-guide-player]', { state: 'detached' });
+
+      // Picking a day changes the whole card, and says so in amber; Back to today returns.
+      await yesterday.click();
+      await page.waitForSelector('[data-back-today]');
+      say(`${tag}: picking a day says which day`, !/^Today/.test(await page.locator('[data-drawer-day]').innerText()));
+      await page.screenshot({ path: `.tmp-shots/money-pastday-${m}-${w}.png` });
+      await page.locator('[data-back-today]').click();
+
+      await page.locator('[data-open-drawer]').click();
+      await page.waitForSelector('[data-drawer-window] [data-drawer-sum]');
+      const t = await text();
+      say(`${tag}: End of day shows the carry and what left the drawer`, /Left from the last close ₱3,200\.00/.test(t) && /Handed over − ₱3,000\.00/.test(t) && /Paid out − ₱120\.00/.test(t) && /Should be in the drawer now ₱4,580\.00/.test(t));
+      say(`${tag}: Close the day now`, (await page.locator('[data-close-day]').innerText()).includes('Close the day now'));
+      say(`${tag}: recent closes mark the automatic one`, (await page.locator('[data-drawer-window] [data-month] [data-state="auto"]').count()) >= 1
+        && (await page.locator('[data-month-next]').isDisabled()));
+      // This month, from the saved closes: the short day says its net, the automatic one is counted apart.
+      const sum = (await page.locator('[data-month-summary]').innerText()).replace(/\s+/g, ' ');
+      say(`${tag}: This month adds up the closes`, day(-2).slice(0, 7) !== day(0).slice(0, 7)
+        || (/Days short or over net −₱100\.00 1/.test(sum) && /Days nobody counted 1/.test(sum)), sum);
+      const fits = await page.evaluate(() => [...document.querySelectorAll('[data-drawer-body], [data-drawer-body] [role="tabpanel"]')]
+        .every((el) => el.scrollHeight <= el.clientHeight + 1));
+      say(`${tag}: the drawer page fits, nothing scrolls`, fits && (await page.locator('[data-drawer-window] [data-guide-button="cash-drawer"]').count()) === 1);
+      await page.screenshot({ path: `.tmp-shots/money-drawer-count-${m}-${w}.png` });
+      // Two tabs (owner, 2026-11-28): Taken out has its form and its button in view, no scrolling.
+      await page.locator('[data-tab="outs"]').click();
+      await page.waitForSelector('[data-cash-outs]');
+      const btnInView = await page.evaluate(() => {
+        const b = document.querySelector('[data-take-out]').getBoundingClientRect();
+        const pane = document.querySelector('[data-drawer-window] [role="tabpanel"]').getBoundingClientRect();
+        return b.bottom <= pane.bottom && b.top >= pane.top;
+      });
+      say(`${tag}: Taken out's button shows without scrolling`, btnInView);
+      const o = await page.locator('[data-cash-outs]').innerText();
+      say(`${tag}: the day's cash outs are listed`, /Handed to Ana Reyes/.test(o) && /Paid out: Drinking water/.test(o));
+      await page.locator('[aria-label="Amount taken out"]').fill('500');
+      say(`${tag}: Take cash out opens with the owner picked`, (await page.locator('[aria-label="Taken by"] option:checked').innerText()).includes('Ana Reyes (owner)')
+        && /Record ₱500\.00 handed to Ana Reyes/.test(await page.locator('[data-take-out]').innerText()));
+      await page.screenshot({ path: `.tmp-shots/money-drawer-${m}-${w}.png` });
+
+      // The month calendar: back a month, and a day past the last 7 is looked at, never counted (owner, 2026-11-28).
+      const title0 = await page.locator('[data-month-title]').innerText();
+      await page.locator('[data-month-prev]').click();
+      const title1 = await page.locator('[data-month-title]').innerText();
+      await page.locator('[data-month-day]').nth(9).click();
+      await page.locator('[data-tab="count"]').click();
+      await page.waitForSelector('[data-drawer-window] [data-read-only]');
+      say(`${tag}: an older month opens, its days read only`, title0 !== title1 && (await page.locator('[data-close-form]').count()) === 0
+        && (await page.locator('[data-take-out-form]').count()) === 0);
+      await page.screenshot({ path: `.tmp-shots/money-month-${m}-${w}.png` });
+      await page.keyboard.press('Escape');
+      await page.locator('[data-back-today]').click();
 
       await page.getByRole('tab', { name: /To approve/ }).first().click().catch(async () => { await page.getByText('To approve', { exact: false }).first().click(); });
       await page.waitForSelector('[data-online-pay]', { timeout: 8000 });
@@ -134,6 +190,25 @@ async (page) => {
       const scroll2 = await page.evaluate(() => document.scrollingElement.scrollHeight - window.innerHeight);
       say(`${tag}: To approve has no page scroll`, scroll2 <= 1, `overflow ${scroll2}px`);
       await page.screenshot({ path: `.tmp-shots/money-approve-${m}-${w}.png` });
+
+      // The View menu, like Members: List and Details open a renewal in its own window, or in the Details pane.
+      await page.locator('[data-view-menu]').click();
+      await page.getByRole('menuitemradio', { name: 'Details' }).click();
+      await page.waitForSelector('[data-renew-view="details"] table');
+      say(`${tag}: Details view lines up reference and amount`, /7012 345 678901/.test(await page.locator('[data-renew-view] table').first().innerText()));
+      await page.locator('[data-renew-view] tbody tr').first().click();
+      await page.waitForSelector('[data-renew-window] [data-approve]');
+      say(`${tag}: a row opens the whole renewal in its own window`, /It reached us, approve/.test(await page.locator('[data-renew-window]').innerText()));
+      await page.screenshot({ path: `.tmp-shots/money-renew-window-${m}-${w}.png` });
+      await page.keyboard.press('Escape');
+      await page.locator('[data-view-menu]').click();
+      await page.getByRole('menuitemcheckbox', { name: 'Details pane' }).click();
+      await page.locator('[data-view-menu]').click();
+      await page.getByRole('menuitemradio', { name: 'List' }).click();
+      await page.waitForSelector('[data-renew-pane] [data-approve]');
+      const scroll3 = await page.evaluate(() => document.scrollingElement.scrollHeight - window.innerHeight);
+      say(`${tag}: List with the Details pane, no page scroll`, scroll3 <= 1 && /rview=list/.test(page.url()) && /rpane=1/.test(page.url()), `overflow ${scroll3}px ${page.url()}`);
+      await page.screenshot({ path: `.tmp-shots/money-renew-list-${m}-${w}.png` });
     }
   }
   return out.join('\n');

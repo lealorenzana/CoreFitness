@@ -1204,6 +1204,8 @@ button.dv2-sidebtn:hover b { text-decoration: underline; text-underline-offset: 
 
 /* Sign-ups waiting (owner, 2026-11-28): the floating page shell; rows, two tags in the gym's colours. */
 .pr-win { width: min(980px, 100%); height: min(720px, calc(100vh - 32px)); grid-template-columns: 290px minmax(0, 1fr); }
+/* Wide, but only as tall as the work needs (owner, 2026-11-28: the full height left dead space). */
+.pr-win.pr-wide { width: min(1320px, 100%); height: min(660px, calc(100vh - 32px)); }
 .pr-big { display: flex; align-items: baseline; gap: 8px; }
 .pr-big b { font-size: 44px; font-weight: 700; letter-spacing: -0.03em; color: var(--color-text-primary); line-height: 1; }
 .pr-big span { font-size: 14px; color: var(--color-text-secondary); }

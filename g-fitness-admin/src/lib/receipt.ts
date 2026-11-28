@@ -56,9 +56,48 @@ async function loadImage(url: string): Promise<HTMLImageElement | null> {
   });
 }
 
+/** The logo without a solid backdrop: a JPG logo carries its own square, which reads as a black box on white
+ *  paper. Clears the colour touching the edges, only when the whole border is that one colour. */
+export async function logoCutout(url: string): Promise<HTMLCanvasElement | null> {
+  const img = await loadImage(url);
+  if (!img || !img.naturalWidth) return null;
+  const scale = Math.min(1, 256 / Math.max(img.naturalWidth, img.naturalHeight));
+  const w = Math.round(img.naturalWidth * scale), h = Math.round(img.naturalHeight * scale);
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const ctx = c.getContext('2d')!;
+  ctx.drawImage(img, 0, 0, w, h);
+  let data: ImageData;
+  try { data = ctx.getImageData(0, 0, w, h); } catch { return null; } // served without CORS
+  const px = data.data;
+  const near = (i: number, r: number, g: number, b: number, tol: number) =>
+    Math.abs(px[i] - r) + Math.abs(px[i + 1] - g) + Math.abs(px[i + 2] - b) <= tol;
+  const [r, g, b, a] = [px[0], px[1], px[2], px[3]];
+  if (a < 250) return c; // already transparent
+  const border: number[] = [];
+  for (let x = 0; x < w; x++) border.push(x, (h - 1) * w + x);
+  for (let y = 0; y < h; y++) border.push(y * w, y * w + w - 1);
+  if (border.filter((p) => near(p * 4, r, g, b, 60)).length < border.length * 0.9) return c; // no plain backdrop
+  const seen = new Uint8Array(w * h);
+  const stack = border.filter((p) => near(p * 4, r, g, b, 60));
+  while (stack.length) {
+    const p = stack.pop()!;
+    if (seen[p]) continue;
+    seen[p] = 1;
+    if (!near(p * 4, r, g, b, 60)) continue;
+    px[p * 4 + 3] = 0;
+    const x = p % w;
+    if (x > 0) stack.push(p - 1);
+    if (x < w - 1) stack.push(p + 1);
+    if (p >= w) stack.push(p - w);
+    if (p < w * (h - 1)) stack.push(p + w);
+  }
+  ctx.putImageData(data, 0, 0);
+  return c;
+}
+
 /** Lays the receipt out twice: once to measure, once to draw. */
 export async function receiptPng(doc: ReceiptDoc): Promise<Blob> {
-  const logo = doc.logoUrl ? await loadImage(doc.logoUrl) : null;
+  const logo = doc.logoUrl ? await logoCutout(doc.logoUrl) : null;
   const font = (w: number, s: number) => `${w} ${s}px Inter, "Segoe UI", system-ui, sans-serif`;
   const scratch = document.createElement('canvas').getContext('2d')!;
 

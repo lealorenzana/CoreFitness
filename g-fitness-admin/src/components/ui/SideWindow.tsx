@@ -8,8 +8,10 @@ import GymMascot from './GymMascot';
  * member. On the left, on the gym's colour: the title, a line, a big figure, a few facts and a mascot that says
  * how it stands. On the right, the work. Esc, the X or the backdrop closes it.
  */
-export default function SideWindow({ label, title, blurb, figure, facts, say, art, onClose, children, ...rest }: {
+export default function SideWindow({ label, title, blurb, figure, facts, say, art, onClose, children, size, ...rest }: {
   label: string; title: string; blurb: string;
+  /** 'wide': nearly the whole screen, for a page with two columns of work (the drawer's calendar and tabs). */
+  size?: 'wide';
   figure?: { n: ReactNode; word: string };
   facts?: { icon: ReactNode; text: ReactNode }[];
   say: string; art: string;
@@ -24,7 +26,7 @@ export default function SideWindow({ label, title, blurb, figure, facts, say, ar
   return createPortal((
     <div className="am-root" role="dialog" aria-modal="true" aria-label={label} {...rest}>
       <div className="am-scrim" onClick={onClose} />
-      <div className="am-win pr-win">
+      <div className={`am-win pr-win${size === 'wide' ? ' pr-wide' : ''}`}>
         <aside className="am-side">
           <div>
             <h2>{title}</h2>

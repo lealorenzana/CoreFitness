@@ -1,4 +1,8 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import ViewMenu from '../components/ui/ViewMenu';
+import FloatingWindow from '../components/ui/FloatingWindow';
+import { supabase } from '../lib/supabaseClient';
 import { useFitRows } from '../hooks/useFitRows';
 import RecordPaymentModal, { type RecordPaymentInput } from '../components/ui/RecordPaymentModal';
 import ViewReceiptModal from '../components/ui/ViewReceiptModal';
@@ -10,7 +14,7 @@ import {
 import { TONE } from '../components/ui/rdTokens';
 import { todayKey } from '../utils/dates';
 import { exportPaymentsToCSV } from '../utils/exportUtils';
-import { Banknote, CalendarRange, ChevronRight, Download, ImageOff, Plus, Receipt as ReceiptIcon, Send, Wallet } from 'lucide-react';
+import { ArrowRightLeft, Banknote, CalendarRange, Smartphone, ChevronRight, Download, ImageOff, Plus, Receipt as ReceiptIcon, Send, Wallet } from 'lucide-react';
 import { showToast } from '../utils/toast';
 import { listPayments, updatePaymentStatus } from '../lib/api/payments';
 import { recordDeskPayment, renewalPayment, type MemberPlanInfo } from '../services/deskActions';
@@ -53,6 +57,7 @@ interface MemberGroup {
 const SECOND = 'var(--color-text-secondary)';
 const MUTED = 'var(--color-text-muted)';
 const LINE = '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.06)';
+const RENEW_VIEWS: [string, string][] = [['details', 'Details'], ['list', 'List'], ['tiles', 'Tiles']];
 const peso = (n: number) => `₱${n.toLocaleString('en-PH', { maximumFractionDigits: 2 })}`;
 
 /**
@@ -89,6 +94,42 @@ export default function Payments() {
   const [toDecline, setToDecline] = useState<OpenRenewalRequest | null>(null);
   /** Today's drawer, from the End of day card (0271): what should be in it right now. */
   const [drawer, setDrawer] = useState<CashDay | null>(null);
+  /** To approve's View menu, like Members (owner, 2026-11-28): kept in the address and on the account (0285). */
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rView = RENEW_VIEWS.some(([k]) => k === searchParams.get('rview')) ? searchParams.get('rview')! : 'tiles';
+  const rPane = searchParams.get('rpane') === '1';
+  const setRenewLook = (v: string, p: boolean) => {
+    void supabase.rpc('set_view_pref', { p_key: 'admin.renewals', p_value: { view: v, pane: p } }).then(() => undefined, () => undefined);
+    setSearchParams((prev) => {
+      if (v === 'tiles') prev.delete('rview'); else prev.set('rview', v);
+      if (p) prev.set('rpane', '1'); else prev.delete('rpane');
+      return prev;
+    }, { replace: true });
+  };
+  // With no layout in the address, the one this person chose last time (0285).
+  useEffect(() => {
+    if (searchParams.has('rview') || searchParams.has('rpane')) return;
+    let alive = true;
+    void (async () => {
+      const { data, error } = await supabase.rpc('my_view_prefs');
+      const saved = !error && data && typeof data === 'object' ? (data as Record<string, { view?: string; pane?: boolean }>)['admin.renewals'] : undefined;
+      if (!alive || !saved) return;
+      setSearchParams((prev) => {
+        if (saved.view && saved.view !== 'tiles' && RENEW_VIEWS.some(([k]) => k === saved.view)) prev.set('rview', saved.view);
+        if (saved.pane) prev.set('rpane', '1');
+        return prev;
+      }, { replace: true });
+    })();
+    return () => { alive = false; };
+    // Once, on arriving at the page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  /** The renewal a List or Details row opened: in the pane when it is on, else in its own window. */
+  const [pickedId, setPickedId] = useState<string | null>(null);
+  const [windowOpen, setWindowOpen] = useState(false);
+  const picked = requests?.find((r) => r.id === pickedId) ?? null;
+  const shown = picked ?? (rPane ? requests?.find((r) => r.paid) ?? requests?.[0] ?? null : null);
+  const openRenewal = (id: string) => { setPickedId(id); if (!rPane) setWindowOpen(true); };
 
   const loadData = async () => {
     setLoading(true);
@@ -316,6 +357,71 @@ export default function Payments() {
   const reqCount = requests?.length ?? 0;
   const paidCount = requests?.filter((r) => r.paid).length ?? 0;
 
+  /** One renewal, whole: the Tiles view, and the Details pane beside the List and Details views. */
+  const renewalCard = (r: OpenRenewalRequest) => {
+                    const current = memberMembership[r.memberId];
+                    const planChange = current && current.planName !== r.planName;
+                    const hours = Math.max(0, Math.round((nowMs - Date.parse(r.createdAt)) / 3_600_000));
+    return (
+                      <div key={r.id} className="rounded-xl flex flex-col" style={{ background: 'rgb(var(--hair-rgb, 255 255 255) / 0.02)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.09)' }}>
+                        <div className="p-3.5 flex flex-col gap-3 flex-1">
+                        <div className="flex items-start gap-2.5">
+                          <Initials name={r.memberName} photo={r.photoUrl} size={36} />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[14px] text-white font-semibold truncate">{r.memberName}</p>
+                            <p className="text-[12px]" style={{ color: MUTED }}>
+                              {hours < 1 ? 'just now' : hours < 24 ? `${hours} h ago` : `${Math.round(hours / 24)} d ago`}
+                              {r.note ? `. ${r.note}` : ''}
+                            </p>
+                          </div>
+                          <span className="text-[17px] font-bold tabular-nums text-white">{r.planPrice > 0 ? peso(r.planPrice) : 'Free'}</span>
+                        </div>
+                        {r.paid && (
+                          // What to check against the gym's own GCash or bank before approving (owner, 2026-11-24).
+                          <div className="flex gap-3 rounded-lg p-2.5" data-online-pay style={{ background: 'rgb(var(--hair-rgb, 255 255 255) / 0.03)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.07)' }}>
+                            {r.paid.proof && (
+                              <button type="button" onClick={() => setProof(r.paid!.proof)} aria-label="Open the screenshot full size" data-tip="Open full size"
+                                className="h-[92px] w-[68px] flex-shrink-0 overflow-hidden rounded-md bg-white" data-proof>
+                                <img src={r.paid.proof} alt="The member's payment screenshot" className="h-full w-full object-cover object-top" />
+                              </button>
+                            )}
+                            <dl className="text-[12.5px] leading-snug grid gap-y-1 min-w-0 flex-1" style={{ gridTemplateColumns: 'auto minmax(0, 1fr)', columnGap: 12, color: MUTED }}>
+                              <dt>Amount</dt><dd className="text-white font-semibold tabular-nums">{peso(r.paid.amount)}</dd>
+                              <dt>Sent by</dt><dd className="text-white truncate">{r.paid.method}</dd>
+                              <dt>Reference</dt><dd className="font-mono text-[13px] text-white break-all tracking-wide" data-ref>{r.paid.reference}</dd>
+                              <dt>Paid on</dt><dd className="text-white">{r.paid.paidOn ? fmtDate(r.paid.paidOn) : 'not given'}</dd>
+                              {!r.paid.proof && <><dt>Screenshot</dt><dd className="flex items-center gap-1"><ImageOff size={13} />No screenshot sent</dd></>}
+                            </dl>
+                          </div>
+                        )}
+                        <div className="text-[12.5px] grid gap-1" style={{ color: SECOND }}>
+                          <p>
+                            Wants <span className="text-white font-semibold">{r.planName}</span>
+                            {current ? <>, on {current.planName} now</> : ', no membership yet'}
+                          </p>
+                          {planChange && (
+                            <p className="flex items-center gap-1.5 text-[12px]" style={{ color: TONE.amber.fg }} data-plan-switch>
+                              <ArrowRightLeft size={13} className="flex-shrink-0" />Approving switches them from {current.planName} to {r.planName}.
+                            </p>
+                          )}
+                          {!current && (
+                            <p className="text-[12px]" style={{ color: TONE.amber.fg }}>No membership yet. Give them one in Members first.</p>
+                          )}
+                        </div>
+                        </div>
+                        <div className="p-3 grid grid-cols-2 gap-1.5" style={{ borderTop: LINE }}>
+                          <RdButton size="md" variant="primary" icon={Banknote} className="col-span-2" disabled={!current || approving !== null} onClick={() => void approveRequest(r)} data-approve>
+                            {approving === r.id ? 'Approving…'
+                              : r.paid ? `It reached us, approve ${peso(r.paid.amount)}`
+                              : r.planPrice > 0 ? `Cash received, approve ${peso(r.planPrice)}` : 'Approve'}
+                          </RdButton>
+                          <RdButton size="sm" variant="secondary" disabled={!current || approving !== null} onClick={() => recordForRequest(r)} data-approve-edit>Edit details</RdButton>
+                          <RdButton size="sm" variant="ghost" onClick={() => setToDecline(r)}>Decline</RdButton>
+                        </div>
+                      </div>
+    );
+  };
+
   return (
     <div className="rd-fit" data-payments>
       <RdHeader title="Payments" subtitle="Money taken at the desk and online, by member, and the drawer at closing time."
@@ -418,87 +524,107 @@ export default function Payments() {
           /* ── Coming to renew (0091) ── a member tapped "Tell the desk I'm coming". Recording the
              payment closes the request by itself; the only desk action of its own is Decline. */
           <RdCard className="flex flex-col min-h-0 overflow-hidden rd-fit-fill" data-renew>
-            <div className="px-4 py-3" style={{ borderBottom: LINE }}>
-              <p className="text-[15px] font-semibold text-white">To approve: renewals</p>
-              <p className="text-[12.5px]" style={{ color: SECOND }}>
-                Members renewing their plan from the phone app. <span className="text-white font-semibold">Paid online</span>: they sent your GCash or bank the money and typed the reference. Open your GCash, find that reference and amount, then approve. <span className="text-white font-semibold">Coming to pay</span>: approve when they hand you the cash. Approving records the payment, the receipt and the plan they asked for.
-              </p>
+            <div className="px-4 py-3 grid gap-2" style={{ borderBottom: LINE }}>
+              <div className="flex items-start gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[15px] font-semibold text-white">To approve: renewals</p>
+                  <p className="text-[12.5px]" style={{ color: SECOND }}>Members renewing from the phone app. Approving records the payment, the receipt and the plan they asked for.</p>
+                </div>
+                <span className="att" style={{ height: 'auto', overflow: 'visible', display: 'inline-flex' }}>
+                  <ViewMenu views={RENEW_VIEWS} view={rView} pane={rPane} onChange={setRenewLook} />
+                </span>
+              </div>
+              <ol className="flex flex-wrap gap-x-6 gap-y-1 text-[12px]" style={{ color: SECOND }}>
+                <li className="flex gap-2"><Smartphone size={14} className="mt-0.5 flex-shrink-0" style={{ color: TONE.violet.fg }} />
+                  <span><span className="text-white font-semibold">Paid online</span>: open your GCash or bank, find that reference and amount, then approve.</span></li>
+                <li className="flex gap-2"><Banknote size={14} className="mt-0.5 flex-shrink-0" style={{ color: TONE.amber.fg }} />
+                  <span><span className="text-white font-semibold">Coming to pay</span>: approve when they hand you the cash.</span></li>
+              </ol>
             </div>
-            <div className="rd-fit-scroll p-4">
+            <div className="flex-1 min-h-0 flex">
+            <div className="rd-fit-scroll p-4 flex-1 min-w-0" data-renew-view={rView}>
               {!requests || requests.length === 0 ? (
                 <EmptyBlock compact icon={Send} title="Nothing to approve" body="When a member renews in the app, by paying your GCash or bank or by saying they will pay at the desk, they show here." />
               ) : (
-                <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
-                  {/* Paid ones first: money is waiting on the desk's yes (owner, 2026-10-28). */}
-                  {[...requests].sort((a, b) => Number(!!b.paid) - Number(!!a.paid)).map((r) => {
-                    const current = memberMembership[r.memberId];
-                    const planChange = current && current.planName !== r.planName;
-                    const hours = Math.max(0, Math.round((nowMs - Date.parse(r.createdAt)) / 3_600_000));
-                    return (
-                      <div key={r.id} className="rounded-xl p-3.5 flex flex-col gap-2.5" style={{ background: 'rgba(255,255,255,0.02)', border: `1px solid ${TONE.amber.line}` }}>
-                        <div className="flex items-center gap-2.5">
-                          <Initials name={r.memberName} photo={r.photoUrl} size={36} />
-                          <div className="min-w-0 flex-1">
-                            <p className="text-[14px] text-white font-semibold truncate">{r.memberName}</p>
-                            <p className="text-[12px]" style={{ color: MUTED }}>
-                              {hours < 1 ? 'just now' : hours < 24 ? `${hours} h ago` : `${Math.round(hours / 24)} d ago`}
-                              {r.note ? `. ${r.note}` : ''}
-                            </p>
-                          </div>
-                          <span className="text-[15px] font-bold tabular-nums" style={{ color: TONE.amber.fg }}>{r.planPrice > 0 ? peso(r.planPrice) : 'Free'}</span>
+                /* Paid ones first: money is waiting on the desk's yes (owner, 2026-10-28). */
+                <div className="grid gap-5">
+                  {([['Paid online, check it', requests.filter((q) => q.paid)], ['Coming to pay at the desk', requests.filter((q) => !q.paid)]] as const)
+                    .filter(([, list]) => list.length > 0).map(([label, list]) => (
+                    <section key={label} className="grid gap-2.5">
+                      <p className="text-[12.5px] font-semibold flex items-center gap-2" style={{ color: SECOND }}>
+                        {label}<span className="tabular-nums rounded-full px-1.5 text-[11.5px]" style={{ background: 'rgb(var(--hair-rgb, 255 255 255) / 0.08)', color: MUTED }}>{list.length}</span>
+                      </p>
+                      {rView === 'tiles' ? (
+                        <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
+                          {list.map((r) => renewalCard(r))}
                         </div>
-                        <p className="text-[12px] font-semibold uppercase tracking-wide" style={{ color: r.paid ? TONE.amber.fg : MUTED }}>
-                          {r.paid ? 'Paid online, check it' : 'Coming to pay at the desk'}
-                        </p>
-                        {r.paid && (
-                          // What to check against the gym's own GCash or bank before approving (owner, 2026-11-24).
-                          <div className="flex gap-2.5 rounded-lg p-2.5" data-online-pay style={{ background: TONE.violet.bg, border: `1px solid ${TONE.violet.line}` }}>
-                            {r.paid.proof ? (
-                              <button type="button" onClick={() => setProof(r.paid!.proof)} aria-label="Open the screenshot full size" data-tip="Open full size"
-                                className="h-[92px] w-[68px] flex-shrink-0 overflow-hidden rounded-md bg-white" data-proof>
-                                <img src={r.paid.proof} alt="The member's payment screenshot" className="h-full w-full object-cover object-top" />
-                              </button>
-                            ) : (
-                              <div className="h-[92px] w-[68px] flex-shrink-0 rounded-md grid place-items-center text-center px-1" style={{ border: '1px dashed rgb(var(--hair-rgb, 255 255 255) / 0.2)' }}>
-                                <span className="text-[12px] leading-tight" style={{ color: MUTED }}><ImageOff size={15} className="mx-auto mb-1" />No screenshot</span>
-                              </div>
-                            )}
-                            <dl className="text-[12.5px] leading-snug grid gap-y-0.5 min-w-0" style={{ gridTemplateColumns: 'auto minmax(0, 1fr)', columnGap: 8, color: SECOND }}>
-                              <dt>Amount</dt><dd className="text-white font-semibold tabular-nums">{peso(r.paid.amount)}</dd>
-                              <dt>Sent by</dt><dd className="text-white truncate">{r.paid.method}</dd>
-                              <dt>Reference</dt><dd className="font-mono text-white break-all" data-ref>{r.paid.reference}</dd>
-                              <dt>Paid on</dt><dd className="text-white">{r.paid.paidOn ? fmtDate(r.paid.paidOn) : 'not given'}</dd>
-                            </dl>
-                          </div>
-                        )}
-                        <p className="text-[12.5px]" style={{ color: SECOND }}>
-                          Wants <span className="text-white font-semibold">{r.planName}</span>
-                          {current ? <>, on {current.planName} now</> : ', no membership yet'}
-                        </p>
-                        {planChange && (
-                          <p className="text-[12px]" style={{ color: TONE.amber.fg }} data-plan-switch>Approving switches them from {current.planName} to {r.planName}.</p>
-                        )}
-                        {!current && (
-                          <p className="text-[12px]" style={{ color: TONE.amber.fg }}>No membership yet. Give them one in Members first.</p>
-                        )}
-                        <div className="flex flex-wrap gap-1.5">
-                          <RdButton size="sm" variant="primary" icon={Banknote} disabled={!current || approving !== null} onClick={() => void approveRequest(r)} data-approve>
-                            {approving === r.id ? 'Approving…'
-                              : r.paid ? `It reached us, approve ${peso(r.paid.amount)}`
-                              : r.planPrice > 0 ? `Cash received, approve ${peso(r.planPrice)}` : 'Approve'}
-                          </RdButton>
-                          <RdButton size="sm" variant="ghost" disabled={!current || approving !== null} onClick={() => recordForRequest(r)} data-approve-edit>Edit details</RdButton>
-                          <RdButton size="sm" variant="ghost" onClick={() => setToDecline(r)}>Decline</RdButton>
+                      ) : rView === 'list' ? (
+                        // List: one line each; the row opens the whole renewal (the pane, or its own window).
+                        <div className="grid" style={{ borderTop: LINE }}>
+                          {list.map((r) => (
+                            <button key={r.id} type="button" onClick={() => openRenewal(r.id)} aria-pressed={rPane ? shown?.id === r.id : undefined}
+                              className="flex items-center gap-3 px-2 py-2 text-left hover:bg-white/[0.03]"
+                              style={{ borderBottom: LINE, background: rPane && shown?.id === r.id ? TONE.violet.bg : undefined }}>
+                              <Initials name={r.memberName} photo={r.photoUrl} size={30} />
+                              <span className="min-w-0 flex-1">
+                                <span className="block text-[13.5px] text-white font-semibold truncate">{r.memberName}</span>
+                                <span className="block text-[12px] truncate" style={{ color: MUTED }}>Wants {r.planName}{r.paid ? `. ${r.paid.method}, ${r.paid.reference}` : ''}</span>
+                              </span>
+                              <span className="text-[14px] font-bold tabular-nums text-white">{r.planPrice > 0 ? peso(r.planPrice) : 'Free'}</span>
+                              <ChevronRight size={15} style={{ color: MUTED }} />
+                            </button>
+                          ))}
                         </div>
-                      </div>
-                    );
-                  })}
+                      ) : (
+                        // Details: the columns to check against your GCash or bank, side by side.
+                        <div className="overflow-x-auto">
+                          {/* Fixed widths, the same in both groups, so the columns line up down the whole page. */}
+                          <table className="w-full text-[12.5px]" style={{ borderCollapse: 'collapse', tableLayout: 'fixed', minWidth: 720 }}>
+                            <colgroup>
+                              {['24%', '12%', '11%', '17%', '20%', '12%', '4%'].map((w, i) => <col key={i} style={{ width: w }} />)}
+                            </colgroup>
+                            <thead>
+                              <tr style={{ color: MUTED, borderBottom: LINE }}>
+                                {['Member', 'Wants', 'Amount', 'Sent by', 'Reference', 'Paid on', ''].map((h) => <th key={h} className="text-left font-medium px-2 py-2 whitespace-nowrap">{h}</th>)}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {list.map((r) => (
+                                <tr key={r.id} onClick={() => openRenewal(r.id)} className="cursor-pointer hover:bg-white/[0.03]"
+                                  style={{ borderBottom: LINE, background: rPane && shown?.id === r.id ? TONE.violet.bg : undefined }}>
+                                  <td className="px-2 py-2"><span className="flex items-center gap-2.5 min-w-0"><Initials name={r.memberName} photo={r.photoUrl} size={28} /><span className="text-white font-semibold truncate">{r.memberName}</span></span></td>
+                                  <td className="px-2 py-2 truncate" style={{ color: SECOND }}>{r.planName}</td>
+                                  <td className="px-2 py-2 tabular-nums text-white font-semibold whitespace-nowrap">{peso(r.paid ? r.paid.amount : r.planPrice)}</td>
+                                  <td className="px-2 py-2 truncate" style={{ color: SECOND }}>{r.paid ? r.paid.method : 'Cash at the desk'}</td>
+                                  <td className="px-2 py-2 font-mono text-white truncate">{r.paid ? r.paid.reference : ''}</td>
+                                  <td className="px-2 py-2 whitespace-nowrap" style={{ color: SECOND }}>{r.paid ? (r.paid.paidOn ? fmtDate(r.paid.paidOn) : 'not given') : ''}</td>
+                                  <td className="px-2 py-2 text-right"><ChevronRight size={15} style={{ color: MUTED }} className="inline" /></td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </section>
+                  ))}
                 </div>
               )}
+            </div>
+            {/* The Details pane (the View menu): the chosen renewal, whole, beside the list. */}
+            {rPane && rView !== 'tiles' && shown && (
+              <aside className="w-[340px] flex-shrink-0 rd-fit-scroll p-4" style={{ borderLeft: LINE }} aria-label="Details pane" data-renew-pane>
+                {renewalCard(shown)}
+              </aside>
+            )}
             </div>
           </RdCard>
         )}
       </FitBody>
+
+      {/* A renewal opened from the List or Details view with the pane off. Closes itself once approved or declined. */}
+      <FloatingWindow open={windowOpen && !!picked && !rPane} onClose={() => setWindowOpen(false)} title={picked ? `Renewal: ${picked.memberName}` : 'Renewal'} icon={Send} width={440} data-renew-window>
+        <div className="p-4">{picked && renewalCard(picked)}</div>
+      </FloatingWindow>
 
       {/* One member's receipts, floating over the list. */}
       <DetailSheet

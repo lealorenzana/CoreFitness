@@ -67,6 +67,17 @@ export async function closeCashDay(day: string, counted: number, note: string): 
   if (error) throw error;
 }
 
+/** Every close between two days, inclusive: one month of the drawer's calendar (owner, 2026-11-28). */
+export async function closeoutsBetween(from: string, to: string): Promise<Closeout[]> {
+  const { data, error } = await supabase.from('cash_closeouts')
+    .select('day, expected, counted, difference, payment_count, refunds_out, note, closed_at, previous, auto')
+    .gte('day', from).lte('day', to).order('day', { ascending: true });
+  if (error) throw error;
+  return ((data ?? []) as Closeout[]).map((c) => ({
+    ...c, expected: Number(c.expected), counted: Number(c.counted), difference: Number(c.difference), refunds_out: Number(c.refunds_out),
+  }));
+}
+
 export async function recentCloseouts(limit = 14): Promise<Closeout[]> {
   const { data, error } = await supabase.from('cash_closeouts')
     .select('day, expected, counted, difference, payment_count, refunds_out, note, closed_at, previous, auto')

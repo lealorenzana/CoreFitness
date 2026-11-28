@@ -9,8 +9,8 @@ import { useEscapeToClose } from '../../hooks/useEscapeToClose';
  * scrolls itself; a table inside keeps its header (`rd-fit-scroll`). Design V2:
  * it sizes to its content up to 88vh, flat with a hairline (no glow).
  */
-export default function FloatingWindow({ open, onClose, title, icon: Icon, count, tools, children, footer, ...rest }: {
-  open: boolean; onClose: () => void; title: string; icon: LucideIcon; count?: number;
+export default function FloatingWindow({ open, onClose, title, icon: Icon, count, tools, children, footer, width = 1240, ...rest }: {
+  open: boolean; onClose: () => void; title: string; icon: LucideIcon; count?: number; width?: number;
   tools?: React.ReactNode; children: React.ReactNode; footer?: React.ReactNode;
 } & { [k: `data-${string}`]: string | boolean | undefined }) {
   useEscapeToClose(open, onClose);
@@ -20,7 +20,7 @@ export default function FloatingWindow({ open, onClose, title, icon: Icon, count
       style={{ background: 'rgba(5,4,10,0.72)', backdropFilter: 'blur(6px)' }}>
       <div role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()} {...rest}
         className="w-full flex flex-col rounded-2xl overflow-hidden v2-window"
-        style={{ maxWidth: 1240, maxHeight: 'min(88vh, 980px)', background: 'var(--color-surface)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)',
+        style={{ maxWidth: width, maxHeight: 'min(88vh, 980px)', background: 'var(--color-surface)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)',
           boxShadow: '0 24px 64px -24px rgba(0,0,0,0.45)' }}>
         <div className="flex items-center justify-between gap-3 flex-wrap px-5 py-3.5" style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.07)' }}>
           <div className="flex items-center gap-3">
