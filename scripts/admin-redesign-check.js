@@ -247,7 +247,7 @@ async (page) => {
   await page.screenshot({ path: 'shots/rd-month-totals.png' });
   await page.keyboard.press('Escape'); await page.waitForTimeout(300);
   await page.getByRole('button', { name: 'Add trainer' }).first().click(); await page.waitForTimeout(500);
-  has('Add trainer is the floating page, its steps on the side', (await page.locator('[data-step-modal] .am-side .am-parts li').count()) === 4);
+  has('Add trainer is one scrolling page like Add member, its parts on the side', (await page.locator('[data-add-trainer] .am-side .am-parts li').count()) === 4 && (await page.locator('[data-add-trainer] .am-part').count()) === 4);
   await page.screenshot({ path: 'shots/rd-add-trainer.png' });
   await page.keyboard.press('Escape'); await page.waitForTimeout(300);
 

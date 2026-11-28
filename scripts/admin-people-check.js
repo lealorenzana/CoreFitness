@@ -140,24 +140,22 @@ async (page) => {
   out.push("the coach's drawer shows their certificates to decide on: " + (/Kettlebell Level 1/.test(drawer) && (await page.locator('[data-credential-review="trainer"] button', { hasText: /Verify/ }).count()) > 0 ? 'yes' : 'MISSING ' + drawer.slice(drawer.indexOf('Tess'), drawer.indexOf('Tess') + 400)));
   await page.keyboard.press('Escape');
   await page.waitForTimeout(300);
+  // 2026-11-28 (owner): Add trainer is one scrolling page like Add member, so there is no Next between parts.
   await page.getByRole('button', { name: /Add trainer/ }).first().click();
   await page.getByLabel('First name').fill('Ben');
   await page.getByLabel('Last name').fill('Cruz');
   // Years coaching is an exact number now, with quick picks (2026-10-20) — the same control as Edit.
   await page.locator('[data-years-field] button', { hasText: /^5$/ }).click();
   await page.screenshot({ path: 'shots/admin-add-trainer.png' });
-  await next();
   await page.getByRole('button', { name: 'Boxing Coach' }).click();
   await page.getByRole('button', { name: 'Boxing', exact: true }).click();
   await page.getByRole('button', { name: 'Weight loss' }).click();
   out.push('says where members will find them: ' + (/Members will find them under: .*Sport & fight/.test(await text()) && /Lose fat/.test(await text()) ? 'yes' : 'MISSING'));
   await page.getByRole('button', { name: 'First Aid / CPR' }).click();
-  await next();
   await page.getByRole('button', { name: 'Mon–Sat' }).click();
-  await next();
   await page.getByLabel('Email', { exact: true }).fill('ben@x.ph');
   await page.getByRole('button', { name: 'Add trainer' }).last().click();
-  await page.getByText('is on the team').waitFor({ timeout: 8000 });
+  await page.getByText('is on the team').first().waitFor({ timeout: 8000 });
   const up = CALLS.find((c) => c[0] === 'PATCH' && c[1] === 'trainer_profiles');
   out.push('coaching details saved onto the profile: ' + (up && up[2].years_experience === 5 && up[2].focus_areas.includes('Boxing') && up[2].certifications.includes('First Aid / CPR') ? 'yes' : 'MISSING ' + JSON.stringify(up?.[2])));
 
@@ -203,7 +201,7 @@ async (page) => {
   out.push('status said plainly: ' + (/Can sign in/.test(st) && /Suspended: cannot sign in/.test(st) && (await page.getByRole('button', { name: /Let them sign in again/ }).count()) === 1 ? 'yes' : 'MISSING'));
   out.push('a narrowed account shows its areas: ' + (/Check-ins Shop/.test(st) && /The whole front desk/.test(st) ? 'yes' : 'MISSING ' + st.slice(st.indexOf('Front-desk staff'), st.indexOf('Front-desk staff') + 700) + ' | whole=' + /The whole front desk/.test(st)));
   await page.getByRole('button', { name: 'Change' }).first().click();
-  await page.getByLabel('Payments').check();
+  await page.getByRole('checkbox', { name: 'Payments' }).first().check();
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await page.waitForTimeout(600);
   const sp = CALLS.find((c) => c[1] === 'set_staff_permissions');
