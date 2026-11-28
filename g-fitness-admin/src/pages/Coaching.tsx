@@ -234,7 +234,7 @@ export default function Coaching({ embedded = false }: { embedded?: boolean } = 
 
       {/* The Schedule's layout (owner, 2026-11-28): the figures in a column on the left ending in each coach's trainees,
           the coachings in the middle, payments to confirm and Assign a coach on the right. */}
-      <div className="a-grid coach-split rail" style={{ gridTemplateRows: 'minmax(0,1fr)', flex: 1, minHeight: 0 }}>
+      <div className="a-grid coach-split" style={{ gridTemplateRows: 'minmax(0,1fr)', flex: 1, minHeight: 0 }}>
       <div className="a-figstrip mb-figs" data-coaching-cards>
         <button type="button" className={`a-card press text-left ${filter === 'active' ? 'on' : ''}`} onClick={() => setFilter('active')}>
           <div className="a-lbl">Active pairings</div>

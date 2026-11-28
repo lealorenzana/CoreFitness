@@ -900,6 +900,6 @@
 /* Light mode resets card borders; the lines between the figures in a left column stay (owner, 2026-11-28). */
 :root[data-mode="light"] .att .mb-figs > .a-card + .a-card, .att .mb-figs > .a-card + .a-card { border-top: 1px solid var(--a-border) !important; }
 /* Packages (owner, 2026-11-28): figures | coachings | the rail when it has something; narrower sides on a laptop so the table never runs off sideways. */
-.att .coach-split { grid-template-columns: 210px minmax(0, 1fr); }
-.att .coach-split.rail { grid-template-columns: 210px minmax(0, 1fr) 340px; }
-@media (max-width: 1500px) { .att .coach-split { grid-template-columns: 170px minmax(0, 1fr); } .att .coach-split.rail { grid-template-columns: 170px minmax(0, 1fr) 250px; } }
+/* Not ".rail": that is the sidebar's own class, and a grid carrying it was painted as the sidebar in light mode. */
+.att .coach-split { grid-template-columns: 210px minmax(0, 1fr) 340px; }
+@media (max-width: 1500px) { .att .coach-split { grid-template-columns: 170px minmax(0, 1fr) 250px; } }
