@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import SideWindow from '../components/ui/SideWindow';
+import FigBreakdown from '../components/ui/FigBreakdown';
 import { useNavigate } from 'react-router-dom';
-import { Handshake, Wallet, UserPlus, Settings2, Search, Info, Check, BarChart3, X, CircleStop, Maximize2 } from 'lucide-react';
+import { Handshake, Wallet, UserPlus, Settings2, Search, Info, Check, Clock, BarChart3, X, CircleStop, Maximize2 } from 'lucide-react';
 import FloatingWindow from '../components/ui/FloatingWindow';
 import DetailSheet from '../components/ui/DetailSheet';
 import { RdButton } from '../components/ui/rd';
@@ -51,6 +53,8 @@ export default function Coaching({ embedded = false }: { embedded?: boolean } = 
   const [filter, setFilter] = useState<Filter>('active');
   const [q, setQ] = useState('');
   const [coachFilter, setCoachFilter] = useState('');
+  /** Assign a coach, open as its own floating page (owner, 2026-11-28). */
+  const [assignOpen, setAssignOpen] = useState(false);
   const [assign, setAssign] = useState({ member: '', coach: '', months: 0 });
   const [memberQ, setMemberQ] = useState('');
   /** Finding a coach by name or specialty (the owner's ask, 2026-10-20) — every coach, not only the most free. */
@@ -204,7 +208,7 @@ export default function Coaching({ embedded = false }: { embedded?: boolean } = 
   const action = (r: CoachingRow) => {
     if (isEnding(r)) return <button type="button" className="a-btn soft sm" onClick={() => navigate(`/members?open=${r.member_id}`)} data-tip="Open the member to talk renewal">Talk renewal</button>;
     if (CLOSED.includes(r.status) && settings.modes.includes('desk_assigns')) {
-      return <button type="button" className="a-btn ghost sm" onClick={() => { setAssign({ member: r.member_id, coach: r.trainer_id, months: r.months }); setMemberQ(''); }} data-tip="Pair them again in Assign a coach">Renew</button>;
+      return <button type="button" className="a-btn ghost sm" onClick={() => { setAssign({ member: r.member_id, coach: r.trainer_id, months: r.months }); setMemberQ(''); setAssignOpen(true); }} data-tip="Pair them again in Assign a coach">Renew</button>;
     }
     if (r.status === 'active' || OPEN.includes(r.status)) {
       return <button type="button" className="a-btn ghost sm" disabled={busy} onClick={() => void run(() => endCoaching(r.id, 'Ended by the gym'), 'Ended')}><CircleStop size={12} />End</button>;
@@ -222,9 +226,16 @@ export default function Coaching({ embedded = false }: { embedded?: boolean } = 
               : 'Coaching is included in your plans'}{settings.modes.includes('desk_assigns') ? ' · the desk pairs a member with a coach for a length' : ''}</p>
         </div>
         <button type="button" className="a-btn" style={{ marginLeft: 'auto' }} onClick={() => setHowOpen(true)} data-how-coaching><Info size={15} />How coaching works here</button>
+        {/* The owner (2026-11-28): Assign a coach is a button that opens its own floating page. */}
+        {settings.modes.includes('desk_assigns') && (
+          <button type="button" className="a-btn amber" data-assign-open onClick={() => setAssignOpen(true)}><UserPlus size={15} />Assign a coach</button>
+        )}
       </div>
 
-      <div className="a-grid flex-none" style={{ gridTemplateColumns: 'repeat(4,minmax(0,1fr))' }} data-coaching-cards>
+      {/* The Schedule's layout (owner, 2026-11-28): the figures in a column on the left ending in each coach's trainees,
+          the coachings in the middle, payments to confirm and Assign a coach on the right. */}
+      <div className="a-grid coach-split rail" style={{ gridTemplateRows: 'minmax(0,1fr)', flex: 1, minHeight: 0 }}>
+      <div className="a-figstrip mb-figs" data-coaching-cards>
         <button type="button" className={`a-card press text-left ${filter === 'active' ? 'on' : ''}`} onClick={() => setFilter('active')}>
           <div className="a-lbl">Active pairings</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}><div className="a-num">{counts.active}</div><span className="a-sub">members with a coach</span></div>
@@ -245,10 +256,12 @@ export default function Coaching({ embedded = false }: { embedded?: boolean } = 
             {sessions && (sessions.now > 0 || sessions.before > 0) && <span className="a-sub"><span className={sessions.now >= sessions.before ? 'a-up' : 'a-dn'}>{sessions.now >= sessions.before ? '▲' : '▼'} {Math.abs(sessions.now - sessions.before)}</span> vs last month</span>}</div>
           {toConfirm.length > 0 && <div className="a-sub" style={{ marginTop: 6, color: 'var(--a-a300)' }}>{toConfirm.length} payment{toConfirm.length === 1 ? '' : 's'} to confirm</div>}
         </div>
+        {/* The owner (2026-11-28) left this spot to us: which lengths members take, from every coaching on the list. */}
+        <FigBreakdown title="Package lengths" empty="No coachings yet."
+          rows={[...list.reduce((m, r) => m.set(r.months, (m.get(r.months) ?? 0) + 1), new Map<number, number>())]
+            .sort((x, y) => x[0] - y[0]).map(([mo, n]) => ({ key: String(mo), label: `${mo} month${mo === 1 ? '' : 's'}`, value: n,
+              sub: `${list.filter((r) => r.months === mo && r.status === 'active').length} active now` }))} />
       </div>
-
-      {/* The rail gets real room (the table had dead space, the rail scrolled): its cards sit side by side when it is wide. */}
-      <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0,1fr) 380px', gridTemplateRows: 'minmax(0,1fr)', flex: 1, minHeight: 0 }}>
         <div className="a-card" data-coaching-list>
           <div className="a-ct" style={{ flexWrap: 'wrap', rowGap: 8 }}>
             <div className="flex gap-1.5">
@@ -296,16 +309,42 @@ export default function Coaching({ embedded = false }: { embedded?: boolean } = 
             </div>
           )}
 
-          {settings.modes.includes('desk_assigns') ? (
-            <div className="a-card glow" data-coaching-assign>
-              <div className="a-ct"><h3><UserPlus size={16} />Assign a coach</h3></div>
+          <div className="a-card">
+            <div className="a-ct"><h3><BarChart3 size={16} />Coach load</h3><small>active trainees</small></div>
+            <div data-coach-load>
+            {coaches.length === 0 ? <p className="a-sub">No coaches yet.</p> : byBusy.slice(0, 4).map(loadOf)}
+            {coaches.length > 4 && <button type="button" className="a-link" style={{ color: 'var(--a-p300)', marginTop: 6 }} onClick={() => setWin('load')} data-see-all-load>See all {coaches.length} coaches</button>}
+            </div>
+          </div>
+          {!settings.modes.includes('desk_assigns') && (
+            <div className="a-card">
+              <div className="a-ct"><h3><UserPlus size={16} />Assigning a coach</h3></div>
+              <p className="a-sub">The desk does not assign coaches at this gym — members {settings.modes.includes('pick_pt') ? 'pick their own coach' : 'start coaching from the app'}.{' '}
+                <button type="button" className="a-link" style={{ color: 'var(--a-p300)' }} onClick={() => navigate('/settings?tab=coaching&focus=coach-modes')}>Change in Settings</button></p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {assignOpen && (
+        <SideWindow label="Assign a coach" data-coaching-assign onClose={() => setAssignOpen(false)}
+          title="Assign a coach" blurb="Pair a member with a coach for a length. They both hear about it straight away."
+          figure={{ n: coaches.length, word: coaches.length === 1 ? 'coach' : 'coaches' }}
+          facts={[
+            { icon: <Search size={14} />, text: 'Find the member, then pick a coach. The most free coach is first.' },
+            { icon: <Clock size={14} />, text: 'Pick the length. Renewing someone opens this with them already chosen.' },
+            { icon: <Check size={14} />, text: settings.feeMode === 'gym_priced' ? 'It starts once their payment is confirmed.' : 'It starts right away.' },
+          ]}
+          say={assign.member && assign.coach ? `${short(name(assign.member))} with ${short(name(assign.coach))}. Ready.` : assign.member ? 'Now pick their coach.' : 'Who is it for? Type their name.'}
+          art="/images/admin-art/mascot-kettlebell.webp">
+          <div className="att" style={{ height: 'auto', overflow: 'visible', padding: 0, gap: 0 }}>
               {assign.member ? (
                 <div className="a-input" style={{ fontSize: 12.5 }}><Av name={name(assign.member)} small />{name(assign.member)}
                   <button type="button" className="a-link" style={{ marginLeft: 'auto' }} onClick={() => setAssign({ ...assign, member: '' })} aria-label="Change member"><X size={14} /></button></div>
               ) : (
                 <div className="relative">
                   <label className="a-input" style={{ fontSize: 12.5 }}><Search size={14} />
-                    <input value={memberQ} onChange={(e) => setMemberQ(e.target.value)} placeholder="Find the member…" aria-label="Member" /></label>
+                    <input autoFocus value={memberQ} onChange={(e) => setMemberQ(e.target.value)} placeholder="Find the member" aria-label="Member" /></label>
                   {memberHits.length > 0 && (
                     <div className="a-card" style={{ position: 'absolute', zIndex: 5, left: 0, right: 0, top: 46, padding: '4px 10px' }}>
                       {memberHits.map((m) => (
@@ -317,7 +356,7 @@ export default function Coaching({ embedded = false }: { embedded?: boolean } = 
                 </div>
               )}
               <div className="a-lbl" style={{ margin: '10px 0 6px', display: 'flex', justifyContent: 'space-between' }}>
-                <span>Coach</span><span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 500 }}>{coaches.length} coaches · fewest trainees first</span></div>
+                <span>Coach</span><span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 500 }}>{coaches.length} coach{coaches.length === 1 ? '' : 'es'} · fewest trainees first</span></div>
               <label className="a-input sm" style={{ fontSize: 12.5, marginBottom: 6 }}><Search size={13} />
                 <input value={coachQ} onChange={(e) => setCoachQ(e.target.value)} placeholder="Find a coach or specialty…" aria-label="Find a coach" data-coach-search /></label>
               {/* No box inside the box: the four most free (or the matches), the chosen one always shown, the rest said in a line. */}
@@ -339,28 +378,12 @@ export default function Coaching({ embedded = false }: { embedded?: boolean } = 
                 {months.map((mo) => <button key={mo} type="button" className={`a-chip ${assignMonths === mo ? 'on' : ''}`} onClick={() => setAssign({ ...assign, months: mo })}>{mo} month{mo === 1 ? '' : 's'}</button>)}
               </div>
               <button type="button" className="a-btn amber" style={{ marginTop: 10 }} disabled={busy || !assign.member || !assign.coach} data-assign-go
-                onClick={() => void run(async () => { await assignCoaching(assign.member, assign.coach, assignMonths); setAssign({ member: '', coach: '', months: 0 }); }, 'Coach assigned')}>
+                onClick={() => void run(async () => { await assignCoaching(assign.member, assign.coach, assignMonths); setAssign({ member: '', coach: '', months: 0 }); setAssignOpen(false); }, 'Coach assigned')}>
                 <Check size={15} />{assign.member && assign.coach ? `Pair ${short(name(assign.member))} with ${short(name(assign.coach))} · ${assignMonths} month${assignMonths === 1 ? '' : 's'}` : 'Pick a member and a coach'}
               </button>
-            </div>
-          ) : (
-            <div className="a-card">
-              <div className="a-ct"><h3><UserPlus size={16} />Assigning a coach</h3></div>
-              <p className="a-sub">The desk does not assign coaches at this gym — members {settings.modes.includes('pick_pt') ? 'pick their own coach' : 'start coaching from the app'}.{' '}
-                <button type="button" className="a-link" style={{ color: 'var(--a-p300)' }} onClick={() => navigate('/settings?tab=coaching&focus=coach-modes')}>Change in Settings</button></p>
-            </div>
-          )}
-
-          <div className="a-card">
-            <div className="a-ct"><h3><BarChart3 size={16} />Coach load</h3><small>active trainees</small></div>
-            <div data-coach-load>
-            {coaches.length === 0 ? <p className="a-sub">No coaches yet.</p> : byBusy.slice(0, 4).map(loadOf)}
-            {coaches.length > 4 && <button type="button" className="a-link" style={{ color: 'var(--a-p300)', marginTop: 6 }} onClick={() => setWin('load')} data-see-all-load>See all {coaches.length} coaches</button>}
-            </div>
           </div>
-        </div>
-      </div>
-
+        </SideWindow>
+      )}
       <FloatingWindow open={win === 'all'} onClose={() => setWin(null)} title="Coachings" icon={Handshake} count={shown.length} data-coaching-window
         tools={<span className="a-sub">{filter === 'all' ? 'All' : filter === 'ending' ? 'Ending soon' : filter[0].toUpperCase() + filter.slice(1)}{coachFilter ? ` · ${name(coachFilter)}` : ''}{term ? ` · “${q.trim()}”` : ''}</span>}>
         <div className="att" style={{ height: 'auto', overflow: 'visible', padding: '6px 18px' }}>

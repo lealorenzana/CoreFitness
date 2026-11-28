@@ -125,7 +125,7 @@ async (page) => {
   t = await text();
   out.push('Packages: a payment to confirm, with its reference: ' + (/Lea Lorenzana with Rae Santos/.test(t) && /ref GC-1234/.test(t) ? 'yes' : 'MISSING'));
   out.push('…and who trains with whom, until when: ' + (/Ana Reyes with Rae Santos/.test(t) && /until/i.test(t) && /day \d+ of \d+/.test(t) ? 'yes' : 'MISSING'));
-  out.push('the redesign (2026-10-20): four cards, the chips, coach load: ' + ((await page.locator('[data-coaching-cards] > *').count()) === 4 && /Ending in 14 days/.test(t) && /Ending soon/.test(t) && /Coach load/.test(t) && /How coaching works here/.test(t) ? 'yes' : 'MISSING'));
+  out.push('the redesign (2026-10-20): four cards, the chips, coach load: ' + ((await page.locator('[data-coaching-cards] > .a-card').count()) === 4 && (await page.locator('[data-coaching-cards] [data-fig-breakdown]').count()) === 1 && (await page.locator('.coaching-side [data-coach-load]').count()) === 1 && /Ending in 14 days/.test(t) && /Ending soon/.test(t) && /Coach load/.test(t) && /How coaching works here/.test(t) ? 'yes' : 'MISSING'));
   // 2026-11-24: How coaching works here explains the gym's setup in a sheet, with a way on to Settings.
   await page.locator('[data-how-coaching]').click();
   await page.waitForTimeout(500);
@@ -137,6 +137,11 @@ async (page) => {
   c = CALLS.find(([f]) => f === 'confirm_coaching_payment');
   out.push('Confirm records the payment as online: ' + (c && c[1].p_id === 'k1' && c[1].p_received === true && c[1].p_method === 'online' ? 'yes' : 'MISSING'));
   // The assign panel (2026-10-20 mock-up): find the member, coaches fewest-trainees first, length chips.
+  // Since 2026-11-28 (owner) it is its own floating page, opened from the header, the member search ready to type in.
+  await page.locator('[data-assign-open]').click(); await page.waitForTimeout(600);
+  out.push('Assign a coach opens as the floating page, the member search ready: ' + ((await page.locator('[role="dialog"][data-coaching-assign] .am-side').count()) === 1
+    && await page.evaluate(() => document.activeElement?.getAttribute('aria-label') === 'Member') ? 'yes' : 'MISSING'));
+  await page.screenshot({ path: 'shots/admin-coaching-assign.png' });
   await page.getByLabel('Member', { exact: true }).fill('Ana');
   await page.locator('[data-coaching-assign] .a-row', { hasText: 'Ana Reyes' }).click();
   await page.locator('[data-assign-coach="t1"]').click();
@@ -147,6 +152,7 @@ async (page) => {
   await page.waitForTimeout(800);
   c = CALLS.find(([f]) => f === 'assign_coaching');
   out.push('the desk assigns a coach for a length: ' + (c && c[1].p_member === 'm2' && c[1].p_trainer === 't1' && c[1].p_months === 3 ? 'yes' : 'MISSING'));
+  out.push('…and the window closes once they are paired: ' + ((await page.locator('[role="dialog"][data-coaching-assign]').count()) === 0 ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/admin-coaching.png', fullPage: true });
   return out.join('\n');
 }

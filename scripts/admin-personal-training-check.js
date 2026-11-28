@@ -163,7 +163,7 @@ async (page) => {
   await page.locator('[data-pt-tabs] button', { hasText: 'Packages' }).click();
   await page.waitForTimeout(1500);
   t = await text();
-  say('Packages: the Coaching page, with its cards and assign', (await page.locator('[data-coaching-cards] > *').count()) === 4 && /1 mo/.test(t) && !/Group/.test(t), t.slice(0, 200));
+  say('Packages: the Coaching page, with its cards and assign', (await page.locator('[data-coaching-cards] > .a-card').count()) === 4 && (await page.locator('[data-assign-open]').count()) === 1 && /1 mo/.test(t) && !/Group/.test(t), t.slice(0, 200));
   say('…no page scroll', await page.evaluate(() => document.scrollingElement.scrollHeight <= innerHeight + 2));
 
   // ── Old addresses redirect ──
