@@ -407,8 +407,10 @@ export default function Trainers() {
         <button type="button" className="a-btn violet" onClick={() => setShowAddModal(true)}><Plus size={15} />Add trainer</button>
       </div>
 
+      {/* The Schedule's layout (owner, 2026-11-28): the figures in a column on the left, the table takes the width. */}
+      <div className={`mb-split ${showArchived ? 'one' : ''}`}>
       {!showArchived && (
-        <div className="a-grid flex-none" style={{ gridTemplateColumns: 'repeat(4,minmax(0,1fr))' }} data-trainer-cards>
+        <div className="a-figstrip mb-figs" data-trainer-cards>
           <button type="button" className="a-card press text-left" onClick={() => { setChip('active'); paged.setPage(1); }}>
             <div className="a-lbl">Active coaches</div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}><div className="a-num">{activeN}</div><span className="a-sub">of {trainers.length}{suspendedN ? ` · ${suspendedN} suspended` : ''}</span></div>
@@ -432,6 +434,7 @@ export default function Trainers() {
         </div>
       )}
 
+      <div className="mb-main">
       <div className="a-card" style={{ flex: 1 }} data-trainers-table>
         <div className="a-ct">
           {picked.size > 0 ? (
@@ -536,6 +539,8 @@ export default function Trainers() {
           <span>{paged.total ? `Showing ${(paged.page - 1) * paged.perPage + 1}–${Math.min(paged.total, paged.page * paged.perPage)} of ${paged.total} ${showArchived ? 'archived trainers' : 'trainers'} · ` : ''}click a coach to open their profile, classes, 1-on-1s, members and evaluations{selecting ? '' : ' · Select to suspend or archive several'}</span>
           <Pager page={paged.page} pages={paged.totalPages} onPage={paged.setPage} />
         </div>
+      </div>
+      </div>
       </div>
 
       <TrainerDetailDrawer trainerId={viewingId} onClose={() => setViewingId(null)} onChanged={loadTrainers} />

@@ -179,7 +179,9 @@ export default function Invitations() {
     <div className="rd-fit" data-invitations>
       <RdHeader title="Invitations" subtitle="Invite members, coaches and front desk. Each gets a login by email, chooses their own password at first sign-in, and arrives already approved." actions={<PageGuide id="invite" />} />
 
-      <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+      {/* The Schedule's layout (owner, 2026-11-28): the figures in a column on the left, the two boxes take the width. */}
+      <div className="ref-split">
+      <div className="ref-figs" data-invite-stats>
         <StatTile icon={Users} label="Pending invitations" compact value={counts.waiting} sub="Invites waiting to be accepted"
           onClick={() => { setShowDone(false); document.getElementById('waiting')?.scrollIntoView({ behavior: 'smooth' }); }} />
         <StatTile icon={CheckCircle2} tone="green" label="Accepted this month" compact value={counts.acceptedThisMonth} sub="New members joined"
@@ -427,6 +429,7 @@ export default function Invitations() {
         </RdTable>
         <TableFooter page={paged.page} perPage={paged.perPage} total={paged.total} noun="invitations" onPage={paged.setPage} />
       </RdCard>
+      </div>
       </div>
     </div>
   );

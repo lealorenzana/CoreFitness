@@ -236,6 +236,19 @@ export default function ReferralsSection() {
       </div>
 
       <div className="flex-1 min-h-0 flex flex-col p-4 gap-4">
+        {/* The Schedule's layout (owner, 2026-11-28): the figures in a column on the left, the rest takes the width. */}
+        <div className="ref-split">
+        <div className="ref-figs" data-referral-stats>
+          <StatTile icon={UserPlus} label="Friends invited" value={rows.length} sub="through a member’s link" />
+          <StatTile icon={UserPlus} label="Joined and paid" value={paid.length} sub={`${paidThisMonth} this month · ${rate}% of invited`} />
+          <StatTile icon={UserPlus} tone={oldestWait >= 14 ? 'amber' : 'violet'} label="Waiting for a first payment" value={waiting.length}
+            sub={waiting.length ? `the oldest for ${oldestWait} day${oldestWait === 1 ? '' : 's'}` : 'nobody waiting'} />
+          {pointsOn
+            ? <StatTile icon={Gift} label="Points paid out" value={pointsOut.toLocaleString('en-PH')} sub="to both sides, all time" />
+            : <StatTile icon={Gift} tone={deskOwed ? 'amber' : 'violet'} label="Rewards to hand over" value={deskOwed} sub="at the desk, not given yet" />}
+        </div>
+
+        <div className="min-w-0 min-h-0 flex flex-col gap-4">
         {!pointsOn && rewards && (
           <div data-desk-rewards>
             <div className="rounded-xl p-3.5" style={{ border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.1)' }}>
@@ -258,17 +271,7 @@ export default function ReferralsSection() {
           </div>
         )}
 
-        <div className="grid" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }} data-referral-stats>
-          <StatTile icon={UserPlus} label="Friends invited" value={rows.length} sub="through a member’s link" />
-          <StatTile icon={UserPlus} label="Joined and paid" value={paid.length} sub={`${paidThisMonth} this month · ${rate}% of invited`} />
-          <StatTile icon={UserPlus} tone={oldestWait >= 14 ? 'amber' : 'violet'} label="Waiting for a first payment" value={waiting.length}
-            sub={waiting.length ? `the oldest for ${oldestWait} day${oldestWait === 1 ? '' : 's'}` : 'nobody waiting'} />
-          {pointsOn
-            ? <StatTile icon={Gift} label="Points paid out" value={pointsOut.toLocaleString('en-PH')} sub="to both sides, all time" />
-            : <StatTile icon={Gift} tone={deskOwed ? 'amber' : 'violet'} label="Rewards to hand over" value={deskOwed} sub="at the desk, not given yet" />}
-        </div>
-
-        <div className="flex-1 min-h-0 flex flex-col">
+        <div className="flex-1 min-w-0 min-h-0 flex flex-col">
           <FitBody rail={rail}>
             {rows.length === 0 ? (
               <div className="flex-1 grid place-items-center">
@@ -302,6 +305,8 @@ export default function ReferralsSection() {
               </>
             )}
           </FitBody>
+        </div>
+        </div>
         </div>
       </div>
 
