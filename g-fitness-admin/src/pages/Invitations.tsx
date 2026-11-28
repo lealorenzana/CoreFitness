@@ -15,6 +15,7 @@ import LoginSlip from '../components/LoginSlip';
 import { RdHeader, RdCard, StatTile, RdButton, Pill, RdTable, Tr, Td, TableFooter } from '../components/ui/rd';
 import type { Tone } from '../components/ui/rdTokens';
 import SkelRows from '../components/ui/SkelRows';
+import FigBreakdown from '../components/ui/FigBreakdown';
 
 const when = (iso: string) =>
   new Date(iso).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -188,6 +189,10 @@ export default function Invitations() {
           onClick={() => { setShowDone(true); document.getElementById('waiting')?.scrollIntoView({ behavior: 'smooth' }); }} />
         <StatTile icon={Clock} tone="amber" label="Expiring soon" compact value={counts.expiringSoon} sub="Expires in 3 days or less"
           onClick={() => { setShowDone(false); document.getElementById('waiting')?.scrollIntoView({ behavior: 'smooth' }); }} />
+        <FigBreakdown title="Still waiting, by role" empty="No invitations yet."
+          rows={all.length === 0 ? [] : (['member', 'trainer', 'staff'] as const).map((k) => ({ key: k, label: k === 'member' ? 'Members' : k === 'trainer' ? 'Coaches' : 'Front desk',
+            value: all.filter((r) => r.role === k && r.state === 'waiting').length,
+            sub: `${all.filter((r) => r.role === k && r.state === 'accepted').length} joined so far` }))} />
       </div>
 
       <div className="rd-fit-split">

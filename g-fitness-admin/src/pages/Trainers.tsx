@@ -29,6 +29,7 @@ import { listAllAvailability } from '../lib/api/trainerAvailability';
 import type { ProfileStatus } from '../types/db';
 import { goalsFor } from '../lib/coachGoals';
 import SkelRows from '../components/ui/SkelRows';
+import FigBreakdown from '../components/ui/FigBreakdown';
 
 interface TrainerDisplay {
   id: string;
@@ -431,6 +432,11 @@ export default function Trainers() {
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}><div className="a-num">{extra.month ? extra.month.classes : '—'}</div><span className="a-sub">classes led{extra.month ? ` · ${extra.month.pt} PT session${extra.month.pt === 1 ? '' : 's'}` : ''}</span></div>
             <div className="a-sub" style={{ marginTop: 6 }}>for paying them: open Monthly totals</div>
           </button>
+          <FigBreakdown title="Bookable hours by coach" empty="No coaches yet."
+            onPick={(id) => setViewingId(id)}
+            rows={trainers.filter((t) => t.status === 'active').map((t) => ({ key: t.id, label: t.name, value: Math.round(extra.hours.get(t.id) ?? 0),
+              sub: (extra.hours.get(t.id) ?? 0) > 0 ? `this week · ${extra.trainees.get(t.id) ?? 0} trainee${(extra.trainees.get(t.id) ?? 0) === 1 ? '' : 's'}` : 'no hours set' }))
+              .sort((a, b) => b.value - a.value)} />
         </div>
       )}
 

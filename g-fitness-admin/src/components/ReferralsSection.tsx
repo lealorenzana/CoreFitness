@@ -8,6 +8,7 @@ import { getGymContext } from '../lib/gymContext';
 import { moduleOn, useGymModules } from '../hooks/useGymModules';
 import { showToast } from '../utils/toast';
 import { localDateKey, todayKey, daysBetween } from '../utils/dates';
+import FigBreakdown from './ui/FigBreakdown';
 
 const MUTED = 'var(--color-text-muted)';
 const SECOND = 'var(--color-text-secondary)';
@@ -246,6 +247,14 @@ export default function ReferralsSection() {
           {pointsOn
             ? <StatTile icon={Gift} label="Points paid out" value={pointsOut.toLocaleString('en-PH')} sub="to both sides, all time" />
             : <StatTile icon={Gift} tone={deskOwed ? 'amber' : 'violet'} label="Rewards to hand over" value={deskOwed} sub="at the desk, not given yet" />}
+          <FigBreakdown title="Friends invited, last six months" empty="No invites yet."
+            rows={Array.from({ length: 6 }, (_, i) => {
+              const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i);
+              const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+              const inMonth = rows.filter((r) => localDateKey(r.created_at).slice(0, 7) === key);
+              return { key, label: d.toLocaleDateString('en-PH', { month: 'long', year: d.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined }), value: inMonth.length,
+                sub: `${inMonth.filter((r) => r.status === 'rewarded').length} paid` };
+            })} />
         </div>
 
         <div className="min-w-0 min-h-0 flex flex-col gap-4">

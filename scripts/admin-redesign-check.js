@@ -151,7 +151,7 @@ async (page) => {
 
   // ── Members ──
   t = await visit('/members', 'members');
-  has('four cards: active, expiring (with remind all), payment due, new this month', (await page.locator('[data-members-hero] > *').count()) === 4 && /12 members/.test(t) && /Expiring in 7 days/.test(t) && /remind all/.test(t) && /New this month/.test(t));
+  has('four cards: active, expiring (with remind all), payment due, new this month, then members by plan', (await page.locator('[data-members-hero] > .a-card').count()) === 4 && (await page.locator('[data-members-hero] [data-fig-breakdown]').count()) === 1 && /12 members/.test(t) && /Expiring in 7 days/.test(t) && /remind all/.test(t) && /New this month/.test(t));
   has('tabs Members · Sign-ups · Switching · Archived (Switching since 0237)', (await page.locator('[data-rd-tabs] a').count()) === 4 && /Sign-ups/.test(t) && /Switching/.test(t));
   has('chips with counts', (await page.locator('[data-rd-chips] [data-chip]').count()) === 7 && /Payment due/.test(t) && /Awaiting approval/.test(t));
   has('search, plans, sort, Filter and Export', /All plans/.test(t) && /Name A–Z/.test(t) && /Filter/.test(t) && /Export/.test(t) && (await page.getByLabel('Search members').count()) === 1);

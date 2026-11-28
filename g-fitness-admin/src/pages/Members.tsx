@@ -59,6 +59,7 @@ import PlacePicker from '../components/ui/PlacePicker';
 import SwitchesList from '../components/members/SwitchesList';
 import { gymSwitchList } from '../lib/api/gymSwitches';
 import SkelRows from '../components/ui/SkelRows';
+import FigBreakdown from '../components/ui/FigBreakdown';
 
 /** A member row joined with their current membership, for the roster table. */
 interface MemberRow {
@@ -672,6 +673,9 @@ export default function Members() {
               {pendingCount > 0 ? <button type="button" className="a-link" style={{ fontSize: 11, color: 'var(--a-p300)' }} onClick={() => setShowPendingPanel(true)}>{pendingCount} sign-up{pendingCount === 1 ? '' : 's'} waiting for you</button> : 'no sign-ups waiting'}
             </div>
           </div>
+          <FigBreakdown title="Active members by plan" empty="Nobody is on an active plan yet."
+            rows={[...members.filter((m) => m.membershipStatus === 'active').reduce((acc, m) => acc.set(m.planName || 'No plan', (acc.get(m.planName || 'No plan') ?? 0) + 1), new Map<string, number>())]
+              .sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ key: k, label: k, value: v, sub: activeCount ? `${Math.round((v / activeCount) * 100)}% of active` : undefined }))} />
         </div>
       )}
 
