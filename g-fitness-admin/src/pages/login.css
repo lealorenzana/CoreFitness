@@ -162,3 +162,16 @@
   .al-side .al-foot { padding: 8px 24px; }
   .al-side .al-links a { min-height: 32px; }
 }
+
+/* ── Refinements (owner's review, 2026-11-28) ──
+   The crew stands on a floor: a soft contact shadow under their feet, and the props at the image's edges fade out
+   instead of being cut by the panel. A clearer split between the two panels. The real logo, larger, so it stays crisp. */
+.al-hero::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 90px; pointer-events: none; z-index: 0;
+  background: radial-gradient(ellipse 50% 70% at 50% 100%, rgb(0 0 0 / .55), transparent 72%),
+              linear-gradient(to top, rgb(10 8 16 / .85), transparent); }
+.al-crew { position: relative; z-index: 1; max-width: 94%; margin-bottom: 6px;
+  -webkit-mask: linear-gradient(to right, transparent, #000 5%, #000 95%, transparent);
+          mask: linear-gradient(to right, transparent, #000 5%, #000 95%, transparent); }
+.al-side { background: #17161e; border-left: 1px solid var(--al-line-strong); box-shadow: inset 1px 0 0 rgb(255 255 255 / .03); }
+.al-hero .al-brand img { width: 40px; height: 40px; }
+.al-brand img { box-shadow: 0 0 0 1px rgb(255 255 255 / .08); }
