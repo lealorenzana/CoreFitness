@@ -9,6 +9,7 @@ import {
   type DuesMethod, type DuesMonth, type EarningsMonth, type HouseRules,
 } from '../../lib/api/coachingRules';
 import SkelRows from '../ui/SkelRows';
+import FigBreakdown from '../ui/FigBreakdown';
 
 const peso = (n: number) => `₱${n.toLocaleString('en-PH', { maximumFractionDigits: 2 })}`;
 const monthLabel = (m: string) => new Date(`${m}T00:00:00`).toLocaleDateString('en-PH', { month: 'long', year: 'numeric' });
@@ -85,9 +86,49 @@ export default function CoachPay() {
   const earnRows = (earn ?? []).filter((x) => x.month === em);
   const duesRows = (dues ?? []).filter((x) => x.month === dm);
 
+  // The Schedule's layout (owner, 2026-11-28): this month's figures in a column on the left, the two tables stacked.
+  const shareTotal = earnRows.reduce((a, r) => a + r.owed, 0);
+  const shareSettled = earnRows.filter((r) => r.settled).length;
+  const coachTotal = earnRows.reduce((a, r) => a + r.paidTotal, 0);
+  const pkgTotal = earnRows.reduce((a, r) => a + r.packages, 0);
+  const duesDue = duesRows.reduce((a, r) => a + r.due, 0);
+  const duesPaid = duesRows.reduce((a, r) => a + (r.paid ?? 0), 0);
+  const behindNames = duesRows.filter((r) => (behind.get(r.trainerId) ?? 0) > 0).map((r) => r.trainerName.split(' ')[0]);
   return (
-    <div className="a-grid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', alignItems: 'start' }} data-coach-pay>
-      {failed && <div className="a-card" style={{ gridColumn: '1 / -1' }} role="alert"><p className="a-sub">{failed}</p></div>}
+    <div className="pay-split" data-coach-pay>
+      <div className="a-figstrip mb-figs" data-pay-figures>
+        <div className="a-card">
+          <div className="a-lbl">Gym&rsquo;s share{em ? `, ${monthLabel(em)}` : ''}</div>
+          <div className="a-num">{rules.cutOn ? peso(shareTotal) : 'Off'}</div>
+          <div className="a-sub" style={{ marginTop: 4 }}>{rules.cutOn ? `${shareSettled} of ${earnRows.length} coach${earnRows.length === 1 ? '' : 'es'} settled` : 'coaches keep all they are paid'}</div>
+        </div>
+        <div className="a-card">
+          <div className="a-lbl">Paid to coaches</div>
+          <div className="a-num">{peso(coachTotal)}</div>
+          <div className="a-sub" style={{ marginTop: 4 }}>{pkgTotal} package{pkgTotal === 1 ? '' : 's'} marked received</div>
+        </div>
+        <div className="a-card">
+          <div className="a-lbl">Dues collected{dm ? `, ${monthLabel(dm)}` : ''}</div>
+          <div className="a-num">{rules.duesOn ? peso(duesPaid) : 'Off'}</div>
+          {rules.duesOn && <div className="a-sub" style={{ marginTop: 4 }}>of {peso(duesDue)} due · {duesRows.filter((r) => r.paid != null).length} of {duesRows.length} paid</div>}
+          {rules.duesOn && duesDue > 0 && <div className="a-bar" style={{ marginTop: 8 }}><i style={{ width: `${Math.min(100, (duesPaid / duesDue) * 100)}%` }} /></div>}
+        </div>
+        <div className="a-card" style={behindNames.length ? { borderColor: 'var(--a-warn-line, #3e310f)' } : undefined}>
+          <div className="a-lbl" style={behindNames.length ? { color: 'var(--a-a300)' } : undefined}>Coaches behind on dues</div>
+          <div className="a-num">{rules.duesOn ? behindNames.length : '—'}</div>
+          <div className="a-sub" style={{ marginTop: 4 }}>{!rules.duesOn ? 'dues are off' : behindNames.length ? behindNames.slice(0, 3).join(' · ') + (behindNames.length > 3 ? ` · +${behindNames.length - 3}` : '') : 'everyone is up to date'}</div>
+        </div>
+        {rules.duesOn && (
+          <FigBreakdown title="Dues paid, month by month" empty="No dues months yet."
+            onPick={(m) => setDuesMonth(m)}
+            rows={duesMonths.slice(0, 6).map((m) => {
+              const inM = (dues ?? []).filter((x) => x.month === m);
+              return { key: m, label: monthLabel(m), value: inM.filter((x) => x.paid != null).length, sub: `of ${inM.length} coach${inM.length === 1 ? '' : 'es'} · ${peso(inM.reduce((a, x) => a + (x.paid ?? 0), 0))}` };
+            })} />
+        )}
+      </div>
+      <div className="pay-main">
+      {failed && <div className="a-card" role="alert"><p className="a-sub">{failed}</p></div>}
 
       <section className="a-card" data-coach-share>
         <div className="a-ct">
@@ -180,6 +221,7 @@ export default function CoachPay() {
           </>
         )}
       </section>
+      </div>
     </div>
   );
 }

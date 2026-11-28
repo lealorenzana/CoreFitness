@@ -720,7 +720,9 @@ export default function CredentialReview({ trainerId, compact = false, onChanged
   //    the right — what they have on file, and a way to ask for what is missing.
   return (
     <div className="att" data-credential-review="all" style={{ height: '100%' }}>
-      <div className="a-grid flex-none" style={{ gridTemplateColumns: 'repeat(4,minmax(0,1fr))' }} data-credential-counts>
+      {/* The Schedule's layout (owner, 2026-11-28): counts on the left, the cards in the middle, by coach on the right. */}
+      <div className="a-grid" style={{ gridTemplateColumns: '210px minmax(0,1fr) 300px', flex: 1 }}>
+      <div className="a-figstrip mb-figs" data-credential-counts>
         {([
           ['pending', 'Waiting for review', counts.pending, counts.pending ? 'decide on each document' : 'nothing to decide', counts.pending > 0],
           ['verified', 'Verified', counts.verified, 'members see the verified mark', false],
@@ -735,9 +737,12 @@ export default function CredentialReview({ trainerId, compact = false, onChanged
             <div className="a-sub" style={{ marginTop: 4 }}>{sub}</div>
           </button>
         ))}
+        <section className="fb" aria-label="What verified means">
+          <h3>What verified means</h3>
+          <p className="a-sub" style={{ lineHeight: 1.5 }}>You looked at the document and it matches what the coach claims. Members see a verified mark on that certificate until it expires; anything not verified reads as the coach&rsquo;s own words. Coaches upload them in the app under Profile → Edit profile → Certificates.</p>
+        </section>
       </div>
 
-      <div className="a-grid" style={{ gridTemplateColumns: 'minmax(0,1fr) 320px', flex: 1 }}>
         <div className="a-card" data-credential-list>
           <div className="a-ct">
             <div className="flex gap-1.5 flex-wrap">
@@ -798,10 +803,6 @@ export default function CredentialReview({ trainerId, compact = false, onChanged
             </div>
           )}
 
-          <div className="a-card">
-            <div className="a-ct"><h3><ShieldCheck size={16} />What verified means</h3></div>
-            <p className="a-sub" style={{ lineHeight: 1.5 }}>You looked at the document and it matches what the coach claims. Members see a verified mark on that certificate until it expires; anything not verified reads as the coach&rsquo;s own words. Coaches upload them in the app under Profile → Edit profile → Certificates.</p>
-          </div>
         </div>
       </div>
 
