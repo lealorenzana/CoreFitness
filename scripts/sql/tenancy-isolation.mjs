@@ -194,7 +194,12 @@ const GLOBAL = [
   // 0236: the username sign-in's failure count — usernames are Core Fitness-wide; RLS on, no policy, the server only.
   'login_failures',
   // 0221: which tours a person has seen — per account, not per gym; own row only, written by a definer.
-  'tours_seen'];
+  'tours_seen',
+  // 0280: OCR readings of an applicant's documents, before any gym exists; RLS on, no policy, definer functions only.
+  'document_readings',
+  // 0282: the assistants' search texts, shared help (no gym) beside each gym's waiver and rules, so a nullable gym_id;
+  // RLS on, no policy, read only through search_knowledge(), which filters to the caller's gym.
+  'knowledge_chunks', 'knowledge_vectors', 'knowledge_meta'];
 const unclassified = await db.query(`select tablename from pg_tables where schemaname = 'public'
   and tablename <> all(tenancy_gym_tables()) and tablename <> all(array['${GLOBAL.join("','")}'])`);
 check('every table is either one gym\'s or deliberately global', unclassified.rows.length === 0,
