@@ -897,3 +897,5 @@
 .att .mb-split:not(.one) [data-members-toolbar] { flex-wrap: wrap; row-gap: 8px; }
 .att .mb-split:not(.one) [data-members-toolbar] > [data-rd-chips] { flex: 1 1 100%; flex-wrap: wrap; row-gap: 6px; }
 .att .mb-split:not(.one) [data-members-toolbar] > :not([data-rd-chips]) { margin-left: auto; }
+/* Light mode resets card borders; the lines between the figures in a left column stay (owner, 2026-11-28). */
+:root[data-mode="light"] .att .mb-figs > .a-card + .a-card, .att .mb-figs > .a-card + .a-card { border-top: 1px solid var(--a-border) !important; }

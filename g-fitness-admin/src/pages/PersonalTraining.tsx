@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import GymMascot from '../components/ui/GymMascot';
+import FigBreakdown from '../components/ui/FigBreakdown';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CalendarDays, Handshake, Inbox } from 'lucide-react';
 import { Av } from './attendance/parts';
@@ -137,12 +137,11 @@ export default function PersonalTraining() {
       {tab === 'sessions' && <Bookings scope="pt" embedded />}
       {tab === 'packages' && <Coaching embedded />}
       {tab === 'decide' && (
-        // To decide (owner, 2026-11-27): the Needs you look (nb-* in v2.css): a band in the gym's colour with a count,
-        // three figures and a mascot, then the answers grouped, one amber button for the first thing waiting.
-        <div className="a-card ptd" style={{ flex: 1, padding: 0, overflow: 'hidden' }} data-to-decide>
-          {data === undefined ? <SkelRows label="Loading…" />
-            : data === null ? <p className="a-sub" style={{ padding: 18, color: 'var(--a-a300)' }}>What waits could not be loaded. Refresh to try again.</p>
-            : (() => {
+        // To decide (owner, 2026-11-28, the Schedule's layout): the figures in a column on the left ending in who the
+        // waiting is with, the answers grouped on the right with the width; one amber button for the first thing waiting.
+        data === undefined ? <div className="a-card" style={{ flex: 1 }}><SkelRows label="Loading…" /></div>
+          : data === null ? <div className="a-card" style={{ flex: 1 }} data-to-decide><p className="a-sub" style={{ padding: 18, color: 'var(--a-a300)' }}>What waits could not be loaded. Refresh to try again.</p></div>
+          : (() => {
               const total = data.sessions.length + data.payments.length + data.asked.length;
               const owed = data.payments.reduce((s, r) => s + (r.price ?? 0), 0);
               let amberUsed = false;
@@ -155,23 +154,42 @@ export default function PersonalTraining() {
                   <div className="nb-acts">{acts}</div>
                 </div>
               );
+              // Who each waiting thing is with, so the owner sees which coach's members are held up.
+              const withCoach = new Map<string, number>();
+              const tally = (n: string | null | undefined) => { const k = n || 'No coach yet'; withCoach.set(k, (withCoach.get(k) ?? 0) + 1); };
+              data.sessions.forEach((r) => tally(r.trainerName));
+              data.payments.forEach((r) => tally(name(r.trainer_id)));
+              data.asked.forEach((r) => tally(name(r.trainer_id)));
+              const oldest = data.sessions.map((r) => r.requestedAt).sort()[0];
               return (
-                <div className="nb-home">
-                  <div className="nb-band">
-                    <div className="nb-hd">
-                      {/* The same count as the tab: what the gym answers, not a package ask its coach decides. */}
-                      <h2>{count === 0 ? 'Nothing for you to decide' : `${count} thing${count === 1 ? '' : 's'} to decide`}</h2>
-                      <p>{count === 0 ? 'Session requests, package payments and package asks show here as they come in.'
-                        : 'The gym’s answers on personal training. Each one tells the member straight away.'}</p>
+                <div className="mb-split">
+                  <div className="a-figstrip mb-figs" data-decide-figures>
+                    {/* The same count as the tab: what the gym answers, not a package ask its coach decides. */}
+                    <div className="a-card">
+                      <div className="a-lbl">To decide</div>
+                      <div className="a-num">{count}</div>
+                      <div className="a-sub" style={{ marginTop: 4 }}>{count === 0 ? 'nothing waits for you' : 'each answer tells the member straight away'}</div>
                     </div>
-                    <div className="nb-sum">
-                      <div><b>{data.sessions.length}</b><span>sessions to confirm</span></div>
-                      <div><b>{peso(owed)}</b><span>package payments to check</span></div>
-                      <div><b>{data.asked.length}</b><span>package asks</span></div>
+                    <div className="a-card">
+                      <div className="a-lbl">Sessions to confirm</div>
+                      <div className="a-num">{data.sessions.length}</div>
+                      <div className="a-sub" style={{ marginTop: 4 }}>{oldest ? `oldest ${waited(oldest)}` : 'none waiting'}</div>
                     </div>
-                    <GymMascot className="nb-buddy" key={count === 0 ? 'done' : 'wait'} aria-hidden
-                      src={count === 0 ? '/images/admin-art/mascot-clipboard.webp' : '/images/admin-art/mascot-kettlebell.webp'} />
+                    <div className="a-card">
+                      <div className="a-lbl">Package payments to check</div>
+                      <div className="a-num">{peso(owed)}</div>
+                      <div className="a-sub" style={{ marginTop: 4 }}>{data.payments.length} payment{data.payments.length === 1 ? '' : 's'}</div>
+                    </div>
+                    <div className="a-card">
+                      <div className="a-lbl">Package asks</div>
+                      <div className="a-num">{data.asked.length}</div>
+                      <div className="a-sub" style={{ marginTop: 4 }}>{approval === 'desk' ? 'you decide' : approval === 'coach_desk' ? 'the coach, then you' : 'the coach decides'}</div>
+                    </div>
+                    <FigBreakdown title="Waiting, by coach" empty="Nothing is waiting."
+                      rows={[...withCoach].sort((x, y) => y[1] - x[1]).map(([k, v]) => ({ key: k, label: k, value: v }))} />
                   </div>
+                  <div className="a-card ptd" style={{ padding: 0, overflow: 'hidden', minHeight: 0 }} data-to-decide>
+                <div className="nb-home">
                   {total === 0 ? <p className="nb-none" style={{ padding: '18px 22px' }} data-decide-empty>Nothing waits for you: requests and payments show here as they come in.</p> : (
                     <div className="nb-need">
                       {data.sessions.length > 0 && (
@@ -217,9 +235,10 @@ export default function PersonalTraining() {
                     </div>
                   )}
                 </div>
+                  </div>
+                </div>
               );
-            })()}
-        </div>
+            })()
       )}
     </div>
   );

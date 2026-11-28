@@ -136,7 +136,7 @@ async (page) => {
   await page.waitForTimeout(600);
   for (const mode of ['dark', 'light']) { await page.emulateMedia({ colorScheme: mode }); await page.waitForTimeout(400); await page.screenshot({ path: `shots/admin-pt-decide-${mode}.png` }); }
   await page.emulateMedia({ colorScheme: 'dark' });
-  say('To decide: one amber button for the first thing waiting, the rest plain', (await page.locator('[data-to-decide] .nb-btn.go').count()) === 1 && (await page.locator('[data-to-decide] .nb-band img').count()) === 1, 'amber + mascot');
+  say('To decide: the figures on the left, one amber button for the first thing waiting, the rest plain', (await page.locator('[data-to-decide] .nb-btn.go').count()) === 1 && (await page.locator('[data-decide-figures] > .a-card').count()) === 4 && (await page.locator('[data-decide-figures] [data-fig-breakdown]').count()) === 1, 'amber + figures on the left');
   let t = await text();
   say('To decide: the session the desk decides', (await page.locator('[data-decide-row="session"]').count()) === 1 && /Single session/.test(t) && /waiting 2 days/.test(t), t.slice(0, 300));
   say('…the package payment to confirm, with its reference', (await page.locator('[data-decide-row="payment"]').count()) === 1 && /3-month package/.test(t) && /ref GC-1234/.test(t));
