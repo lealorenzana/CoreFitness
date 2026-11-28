@@ -144,9 +144,15 @@ async (page) => {
   out.push('messages are grouped by day: ' + (/Today/.test(await page.locator('[data-inbox-list]').innerText()) ? 'yes' : 'MISSING'));
   await page.locator('[data-inbox-row]').filter({ hasText: 'AI coach' }).locator('button').nth(0).click();
   await page.waitForTimeout(500);
-  out.push('a message opens in the reading pane, with its page named: ' + ((await page.locator('[data-opened]').count()) === 1 && /Open Your app/.test(await page.locator('[data-open-page]').innerText().catch(() => '')) ? 'yes' : 'MISSING'));
+  // 2026-11-28 (owner): a message opens in its own window; Needs you stays on the right, never hidden.
+  out.push('a message opens in its own window, with its page named: ' + ((await page.locator('[data-message-window] [data-opened]').count()) === 1 && /Open Your app/.test(await page.locator('[data-open-page]').innerText().catch(() => '')) ? 'yes' : 'MISSING'));
+  out.push('…and Needs you stays on the right: ' + ((await page.locator('[data-reading] [data-opened]').count()) === 0 && (await page.locator('[data-reading]').innerText()).length > 20 ? 'yes' : 'MISSING'));
   await page.screenshot({ path: 'shots/admin-inbox-open.png' });
-  await page.getByRole('button', { name: 'Close message' }).click();
+  await page.emulateMedia({ colorScheme: 'dark' }); await page.waitForTimeout(300);
+  await page.screenshot({ path: 'shots/admin-inbox-open-dark.png' });
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.keyboard.press('Escape'); await page.waitForTimeout(200);
+  out.push('…Escape closes the window: ' + ((await page.locator('[data-message-window]').count()) === 0 ? 'yes' : 'MISSING'));
   await page.locator('[data-kind="system"]').click();
   await page.waitForTimeout(300);
   out.push('a kind narrows the list: ' + ((await page.locator('[data-inbox-row]').count()) >= 1 && (await page.getByRole('button', { name: /Show every kind/ }).count()) === 1 ? 'yes' : 'MISSING'));

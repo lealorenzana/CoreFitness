@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import GymMascot from '../components/ui/GymMascot';
 import { useNavigate } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import {
   Archive, ArchiveRestore, ArrowUpRight, Banknote, Bell, Calendar, CheckCheck, Dumbbell, Gift,
   Info, ListChecks, Mail, MailOpen, MessageSquare, Reply, ShieldCheck, Trash2, Trophy, X,
@@ -292,9 +293,17 @@ export default function Inbox() {
           )}
         </section>
 
-        {/* ── The open message ── */}
+        {/* ── Needs you, always (owner, 2026-11-28): opening a message no longer hides it; the message floats above. ── */}
         <section className="ib2-read" data-reading>
-          {opened ? (() => {
+            {/* Mock-up B (owner, 2026-11-27): a greeting, a summary and what needs you, each with its own actions. */}
+            <NeedsYou inboxLine={`${live.length} in your inbox, ${unread ? `${unread} not read yet` : 'every message read'}${archivedCount ? `, ${archivedCount} archived` : ''}. Pick a message to open it.`}
+              onChanged={() => { window.dispatchEvent(new Event(INBOX_CHANGED)); void dashboardService.getHeaderAlerts().then(setAlerts, () => undefined); }} />
+        </section>
+      </div>
+
+      {opened && (
+        <MessageWindow onClose={() => setOpenId(null)} label={opened.title}>
+          {(() => {
             const k = kindOf(opened.type);
             const fromCF = opened.type === 'platform_message';
             const dest = !fromCF && openable(opened.action_url) ? opened.action_url! : null;
@@ -326,13 +335,24 @@ export default function Inbox() {
                 </div>
               </>
             );
-          })() : (
-            // Mock-up B (owner, 2026-11-27): with nothing open, a greeting, a summary and what needs you, each with its own actions.
-            <NeedsYou inboxLine={`${live.length} in your inbox, ${unread ? `${unread} not read yet` : 'every message read'}${archivedCount ? `, ${archivedCount} archived` : ''}. Pick a message to read it here.`}
-              onChanged={() => { window.dispatchEvent(new Event(INBOX_CHANGED)); void dashboardService.getHeaderAlerts().then(setAlerts, () => undefined); }} />
-          )}
-        </section>
-      </div>
+          })()}
+        </MessageWindow>
+      )}
     </div>
   );
+}
+
+/** A message, opened over the page (owner, 2026-11-28), so Needs you stays in view. Esc or the backdrop closes it. */
+function MessageWindow({ onClose, label, children }: { onClose: () => void; label: string; children: ReactNode }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  return createPortal((
+    <div className="am-root" role="dialog" aria-modal="true" aria-label={label} data-message-window>
+      <div className="am-scrim" onClick={onClose} />
+      <div className="am-win ib2-win">{children}</div>
+    </div>
+  ), document.body);
 }

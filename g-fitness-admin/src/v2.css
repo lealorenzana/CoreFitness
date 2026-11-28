@@ -1160,3 +1160,7 @@ button.dv2-sidebtn:hover b { text-decoration: underline; text-underline-offset: 
   .dv2-sidebtn span { display: none; }
 }
 @media (max-height: 800px) { .dv2-dayband .dv2-figs { padding-top: 6px; } .dv2-figs > .dv2-fig:first-child { padding: 10px 16px; } .dv2-fig .n.hero { font-size: 34px; } .dv2-daymain > header { height: 38px; } }
+
+/* Notifications (owner, 2026-11-28): an opened message floats over the page; Needs you stays on the right. */
+.ib2-win { width: min(640px, 100%); height: auto; max-height: min(640px, calc(100vh - 32px)); display: flex; flex-direction: column; grid-template-columns: none; }
+.ib2-win .ib2-body { flex: 1; min-height: 120px; overflow-y: auto; }
