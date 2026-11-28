@@ -1201,3 +1201,20 @@ button.dv2-sidebtn:hover b { text-decoration: underline; text-underline-offset: 
 @media (max-width: 1400px) { .att .pay-split { grid-template-columns: 200px minmax(0, 1fr); } }
 /* Credentials: the By coach list fills the right column (owner, 2026-11-28: no dead space). */
 [data-credential-review] [data-by-coach] { flex: 1 1 auto; }
+
+/* Sign-ups waiting (owner, 2026-11-28): the floating page shell; rows, two tags in the gym's colours. */
+.pr-win { width: min(980px, 100%); height: min(720px, calc(100vh - 32px)); grid-template-columns: 290px minmax(0, 1fr); }
+.pr-big { display: flex; align-items: baseline; gap: 8px; }
+.pr-big b { font-size: 44px; font-weight: 700; letter-spacing: -0.03em; color: var(--color-text-primary); line-height: 1; }
+.pr-big span { font-size: 14px; color: var(--color-text-secondary); }
+.pr-facts { display: grid; gap: 10px; }
+.pr-facts li { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; line-height: 1.45; color: var(--color-text-secondary); }
+.pr-facts svg { flex: none; margin-top: 2px; color: var(--color-text-primary); }
+.pr-form { display: flex; flex-direction: column; padding: 22px 28px 20px; overflow: hidden; }
+.pr-find { flex: none; margin: 0 40px 12px 0; }
+.pr-list { flex: 1; min-height: 0; overflow-y: auto; display: grid; align-content: start; }
+.pr-row { display: flex; align-items: center; gap: 14px; padding: 14px 4px; border-bottom: 1px solid rgb(var(--hair-rgb, 255 255 255) / .08); }
+.pr-name { font-size: 15px; font-weight: 650; color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pr-tag { font-size: 12px; padding: 2px 8px; border-radius: 6px; color: var(--color-text-primary); background: color-mix(in srgb, var(--color-primary) 18%, transparent); }
+.pr-tag.ask { background: color-mix(in srgb, var(--color-secondary) 18%, transparent); }
+.pr-form [data-empty-block] { margin: auto; }

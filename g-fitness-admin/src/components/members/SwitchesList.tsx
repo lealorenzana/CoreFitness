@@ -43,7 +43,7 @@ export default function SwitchesList({ onOpenSignups, onOpenRequests, onOpenMemb
 
 
   return (
-    <div data-switches-list style={{ padding: '4px 20px 20px' }}>
+    <div data-switches-list style={{ padding: '4px 0 0' }}>
       {incoming.length > 0 && (<>
         <p style={{ ...LBL, margin: '4px 0 2px' }}><ArrowDownLeft size={14} />Switching in · {incoming.length}</p>
         {incoming.map((r) => <SwitchRow key={r.id} r={r} onOpenSignups={onOpenSignups} onOpenRequests={onOpenRequests} onOpenMember={onOpenMember} />)}
@@ -52,10 +52,6 @@ export default function SwitchesList({ onOpenSignups, onOpenRequests, onOpenMemb
         <p style={{ ...LBL, margin: '18px 0 2px' }}><ArrowUpRight size={14} />Switched out · last 90 days · {outgoing.length}</p>
         {outgoing.map((r) => <SwitchRow key={r.id} r={r} onOpenSignups={onOpenSignups} onOpenRequests={onOpenRequests} onOpenMember={onOpenMember} />)}
       </>)}
-      <p style={{ ...SUB, margin: '16px 0 0', lineHeight: 1.55, fontSize: 12.5 }}>
-        A member belongs to one gym at a time. Approving a switch-in is the same as any sign-up: your joining rules and plans apply.
-        When someone leaves, nothing of theirs is deleted here; the other gym is never named, since that is the member's business.
-      </p>
     </div>
   );
 }

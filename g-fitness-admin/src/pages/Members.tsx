@@ -6,13 +6,14 @@ import {
   declineMembershipRequest, listOpenMembershipRequests,
   type OpenMembershipRequest,
 } from '../lib/api/membershipRequests';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
+import SideWindow from '../components/ui/SideWindow';
 import { useState, useEffect, useCallback } from 'react';
 import { useBranding } from '../hooks/useBranding';
 import { useSearchParams } from 'react-router-dom';
 import Popover from '../components/ui/Popover';
 import { useFitRows } from '../hooks/useFitRows';
-import { RdSelect, RdButton, DotMenu, IconTile, Pill, EmptyBlock, SearchField, Initials, CountUp, MiniBars } from '../components/ui/rd';
+import { RdSelect, RdButton, DotMenu, EmptyBlock, SearchField, Initials, CountUp, MiniBars } from '../components/ui/rd';
 import { Av, Pager } from './attendance/parts';
 import FloatingWindow from '../components/ui/FloatingWindow';
 import './attendance/att.css';
@@ -688,14 +689,23 @@ export default function Members() {
         </div>
       )}
       {/* 0237: members moving between gyms — who is switching in, who switched out, what to do. */}
-      <FloatingWindow open={switchesOpen} onClose={() => setSwitchesOpen(false)} title="Switching gyms" icon={ArrowLeftRight} data-switches-window>
-        {switchesOpen && (
+      {switchesOpen && (
+        <SideWindow label="Switching gyms" data-switches-window onClose={() => setSwitchesOpen(false)}
+          title="Switching gyms" blurb="Members moving here from another gym, and those who left for one."
+          figure={{ n: switchMarks.in, word: switchMarks.in === 1 ? 'asking to switch in' : 'asking to switch in' }}
+          facts={[
+            { icon: <UserPlus size={14} />, text: 'A member belongs to one gym at a time. Approving a switch-in is the same as any sign-up: your joining rules and plans apply.' },
+            { icon: <Archive size={14} />, text: 'When someone leaves, nothing of theirs is deleted here.' },
+            { icon: <ArrowLeftRight size={14} />, text: 'The other gym is never named: that is the member’s business.' },
+          ]}
+          say={switchMarks.in ? `${switchMarks.in === 1 ? 'One member is' : `${switchMarks.in} members are`} waiting to switch in.` : 'Nobody is waiting to switch in.'}
+          art="/images/admin-art/mascot-map.webp">
           <SwitchesList
             onOpenSignups={() => { setSwitchesOpen(false); setShowPendingPanel(true); }}
             onOpenRequests={() => { setSwitchesOpen(false); setRequestsOpen(true); }}
             onOpenMember={(id) => { setSwitchesOpen(false); setViewingId(id); }} />
-        )}
-      </FloatingWindow>
+        </SideWindow>
+      )}
       <FloatingWindow open={requestsOpen} onClose={() => setRequestsOpen(false)} title="Requests to pause or cancel" icon={Pause} count={msRequests?.length ?? 0} data-requests-window>
         <div className="att flex flex-col gap-2" style={{ height: 'auto', overflow: 'visible', padding: '12px 18px' }}>{(msRequests ?? []).map((r) => requestOf(r))}</div>
       </FloatingWindow>
@@ -956,33 +966,18 @@ export default function Members() {
         type={showArchived ? 'info' : 'danger'}
       />
 
-      {/* Pending Registrations Panel */}
-      <AnimatePresence>
-        {showPendingPanel && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/70 z-50" onClick={closePendingPanel} />
-            <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
-              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-                className="w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[86vh]" data-pending-dialog
-                style={{ background: 'var(--surface-solid, #161622)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.12)' }}
-                onClick={(e) => e.stopPropagation()}>
-                <div className="px-6 pt-6 pb-4 flex items-start justify-between gap-4" style={{ borderBottom: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.07)' }}>
-                  <div className="flex items-center gap-4">
-                    <IconTile icon={Clock} size={52} />
-                    <div>
-                      <div className="flex items-center gap-2.5">
-                        <h2 className="text-[22px] font-bold text-white">Pending registrations</h2>
-                        {pendingCount > 0 && <Pill tone="violet">{pendingCount} waiting</Pill>}
-                      </div>
-                      <p className="text-[14px] mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>People who signed up in the app and are waiting for you. Approving lets them in on the free plan.</p>
-                    </div>
-                  </div>
-                  <button aria-label="Close" onClick={closePendingPanel} className="w-10 h-10 grid place-items-center rounded-xl hover:bg-white/5 flex-none" style={{ color: 'var(--color-text-secondary)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.08)' }}>
-                    <X size={18} />
-                  </button>
-                </div>
-
+      {/* Pending registrations (owner, 2026-11-28): the floating page shell, like Add member and Book for a member. */}
+      {showPendingPanel && (
+        <SideWindow label="Pending registrations" data-pending-dialog onClose={closePendingPanel}
+          title="Sign-ups waiting" blurb="People who signed up in the app and are waiting for you."
+          figure={{ n: pendingCount, word: 'waiting' }}
+          facts={[
+            { icon: <CheckCircle size={14} />, text: 'Approving lets them in on the free plan.' },
+            { icon: <Clock size={14} />, text: 'What they asked about shows on each, so you can sell it at the desk.' },
+            { icon: <XCircle size={14} />, text: 'Rejecting asks for a reason and keeps it on record.' },
+          ]}
+          say={pendingCount === 0 ? 'All caught up. Nobody is waiting.' : pendingCount === 1 ? 'One person is waiting to get in.' : `${pendingCount} people are waiting to get in.`}
+          art={pendingCount ? '/images/admin-art/mascot-kettlebell.webp' : '/images/admin-art/mascot-clipboard.webp'}>
                 <PendingRegistrationsList
                   onApprove={async (reg) => {
                     try {
@@ -1011,14 +1006,12 @@ export default function Members() {
                     }
                   }}
                 />
-              </motion.div>
-            </div>
-          </>
-        )}
-      </AnimatePresence>
+        </SideWindow>
+      )}
     </div>
   );
 }
+
 
 /* ─── Edit Member ─── */
 function EditMemberForm({
@@ -1266,33 +1259,32 @@ function PendingRegistrationsList({
   return (
     <>
       {pendingList.length > 4 && (
-        <div className="px-6 pt-4"><SearchField value={search} onChange={setSearch} placeholder="Find a sign-up by name or email…" label="Find a sign-up" /></div>
+        <div className="pr-find"><SearchField value={search} onChange={setSearch} placeholder="Find a sign-up by name or email" label="Find a sign-up" /></div>
       )}
-      <div className="px-6 py-4 overflow-y-auto flex-1 min-h-0 flex flex-col gap-3" data-pending-list>
+      <div className="pr-list" data-pending-list>
         {shown.length === 0 && <p className="text-center py-6 text-[14px]" style={{ color: 'var(--color-text-muted)' }}>Nobody matches “{search}”.</p>}
         {shown.map((reg, i) => {
           const asked = reg.requested_plan_id ? planNames[reg.requested_plan_id] : null;
           const name = `${reg.first_name} ${reg.last_name}`;
           return (
             <motion.div key={reg.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.04 }}
-              className="flex items-center gap-4 p-4 rounded-2xl" data-pending-row
-              style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgb(var(--hair-rgb, 255 255 255) / 0.07)' }}>
-              <Initials name={name} size={48} />
+              className="pr-row" data-pending-row>
+              <Initials name={name} size={44} />
               <div className="flex-1 min-w-0">
-                <p className="text-[16px] font-semibold text-white truncate">{name}</p>
+                <p className="pr-name">{name}</p>
                 <p className="text-[13.5px] truncate" style={{ color: 'var(--color-text-secondary)' }}>{realEmail(reg.email) ?? 'No email'}</p>
                 <div className="flex items-center gap-2 mt-2 flex-wrap">
                   <span className="text-[12.5px] inline-flex items-center gap-1" style={{ color: 'var(--color-text-muted)' }}>
                     <Clock size={13} /> Registered {new Date(reg.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                   </span>
                   {/* What approving grants, and what they came in wanting: approving never sells a paid plan. */}
-                  <span className="text-[12px] px-2 py-0.5 rounded-md" style={{ background: 'rgba(124,58,237,0.14)', color: '#C4B5FD' }}>Starts on the free plan</span>
-                  {asked && <span className="text-[12px] px-2 py-0.5 rounded-md" style={{ background: 'rgba(245,158,11,0.12)', color: '#FBBF24' }}>Asked about {asked}</span>}
+                  <span className="pr-tag">Starts on the free plan</span>
+                  {asked && <span className="pr-tag ask">Asked about {asked}</span>}
                 </div>
               </div>
-              <div className="flex flex-col gap-2 flex-none">
-                <RdButton size="sm" variant="primary" icon={CheckCircle} onClick={() => void handleApprove(reg)}>Approve</RdButton>
-                <RdButton size="sm" variant="amber" icon={XCircle} onClick={() => setToReject(reg)}>Reject</RdButton>
+              <div className="flex items-center gap-2 flex-none">
+                <button type="button" className="am-btn" onClick={() => setToReject(reg)}><XCircle size={14} />Reject</button>
+                <button type="button" className="am-btn go" onClick={() => void handleApprove(reg)}><CheckCircle size={14} />Approve</button>
               </div>
             </motion.div>
           );

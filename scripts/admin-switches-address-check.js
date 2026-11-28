@@ -217,10 +217,15 @@ async (page) => {
   say('the other gym is never named', !/Gym [A-Z]|from .* gym/i.test(wt.replace(/another gym|one gym|other gym/gi, '')));
   let f = await faint();
   say('the Switching window is right in light', f.length === 0, f.join(' | '));
+  say('the Switching window is the floating page', (await page.locator('[data-switches-window] .am-side').count()) === 1);
   await page.locator('[data-switches-window]').screenshot({ path: 'shots/switches-light.png' }).catch(() => page.screenshot({ path: 'shots/switches-light.png' }));
   await w.locator('[data-switch-review]').click();
   await page.waitForTimeout(600);
   say('Review in Sign-ups opens the sign-ups', (await page.locator('[data-switches-list]').count()) === 0 && /Sign-ups|pending|approve/i.test(await page.locator('body').innerText()));
+  // 2026-11-28 (owner): both are the floating page, the gym's colour and a mascot on the left.
+  say('the sign-ups open as the floating page', (await page.locator('[data-pending-dialog] .am-side').count()) === 1);
+  await page.screenshot({ path: 'shots/pending-window.png' });
+  await page.keyboard.press('Escape'); await page.waitForTimeout(300);
 
   // ---- Settings → Gym information: the address picker ----
   await go('/settings?tab=gym');
