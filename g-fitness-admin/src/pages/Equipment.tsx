@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabaseClient';
 import { getGymContext } from '../lib/gymContext';
 import { todayKey, localDateKey } from '../utils/dates';
 import SkelRows from '../components/ui/SkelRows';
+import ChoicePicker from '../components/ChoicePicker';
 
 type Status = 'available' | 'repair' | 'soon';
 interface Item {
@@ -242,10 +243,9 @@ export default function Equipment() {
                 <input className={inputCls} style={inputStyle} inputMode="numeric" value={edit.f.quantity} onChange={(e) => setEdit({ ...edit, f: { ...edit.f, quantity: e.target.value.replace(/\D/g, '') } })} />
               </label>
             </div>
-            <label className="block text-xs" style={{ color: 'var(--color-text-secondary)' }}>Where in the gym
-              <input className={inputCls} style={inputStyle} value={edit.f.location_note} maxLength={80} list="equipment-areas" onChange={(e) => setEdit({ ...edit, f: { ...edit.f, location_note: e.target.value } })} placeholder="2nd floor" />
-              <datalist id="equipment-areas">{areas.filter((a) => a !== NOWHERE).map((a) => <option key={a} value={a} />)}</datalist>
-            </label>
+            <div className="block text-xs" role="group" aria-label="Where in the gym" style={{ color: 'var(--color-text-secondary)' }}><span className="block mb-1">Where in the gym</span>
+              <ChoicePicker kind="area" label="Where in the gym" none="Not set" value={edit.f.location_note} onChange={(v) => setEdit({ ...edit, f: { ...edit.f, location_note: v } })} />
+            </div>
             <ImageField kind="equipment" label="Photo" aspect={4 / 3} value={edit.f.photo_url} onChange={(v) => setEdit({ ...edit, f: { ...edit.f, photo_url: v } })} />
             <label className="block text-xs" style={{ color: 'var(--color-text-secondary)' }}>Notes for members
               <input className={inputCls} style={inputStyle} value={edit.f.notes} maxLength={300} onChange={(e) => setEdit({ ...edit, f: { ...edit.f, notes: e.target.value } })} placeholder="Ask the desk for the attachment" />

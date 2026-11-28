@@ -9,6 +9,7 @@ import GlassSheet from '../../components/ui/GlassSheet';
 import Modal from '../../components/ui/Modal';
 import { Field, Select, TextInput } from '../../components/ui/Field';
 import DateField from '../../components/ui/DateField';
+import AreaPicker from '../../components/AreaPicker';
 import { addDays, dateKey, todayKey } from '../../utils/dates';
 import { createClass, deleteClass, listTrainerClasses, updateClass } from '../../lib/api/classes';
 import { toast } from '../../components/ui/Toast';
@@ -327,9 +328,8 @@ function ClassEditor({
                 onChange={(e) => setCapacity(e.target.value)}
                 style={sizeOk ? undefined : { borderColor: 'var(--color-secondary)' }} />
             </Field>
-            <Field label="Room">
-              <TextInput value={location} maxLength={40} placeholder="e.g. Studio A"
-                onChange={(e) => setLocation(e.target.value)} />
+            <Field label="Area">
+              <AreaPicker value={location} onChange={setLocation} />
             </Field>
           </div>
 

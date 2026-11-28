@@ -46,6 +46,7 @@ import SkelRows from '../components/ui/SkelRows';
 import DeskBookCard from '../components/bookings/DeskBookCard';
 import { coachSlots } from '../lib/coachSlots';
 import { getBookingRules } from '../lib/api/bookingRules';
+import ChoicePicker from '../components/ChoicePicker';
 
 /**
  * Schedule — rebuilt to the owner's approved mock-up (2026-10-20,
@@ -1054,9 +1055,8 @@ export default function Schedule() {
                 {LEVELS.map((l) => <option key={l} value={l}>{l === 'all_levels' ? 'All levels' : l[0].toUpperCase() + l.slice(1)}</option>)}
               </RdSelect>
             </RdField>
-            <RdField label="Room">
-              <input type="text" list="schedule-rooms" value={templateForm.location} placeholder="e.g. Studio A" onChange={(e) => setTemplateForm({ ...templateForm, location: e.target.value })} className={RD_INPUT} style={RD_INPUT_STYLE} />
-              <datalist id="schedule-rooms">{rooms.map((r) => <option key={r} value={r} />)}</datalist>
+            <RdField group label="Area">
+              <ChoicePicker kind="area" label="Area" none="Not set" value={templateForm.location} onChange={(v) => setTemplateForm({ ...templateForm, location: v })} />
             </RdField>
           </div>
         </div>

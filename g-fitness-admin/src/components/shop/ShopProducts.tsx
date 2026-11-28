@@ -8,6 +8,7 @@ import { formatCurrency } from '../../utils/formatters';
 import type { Product } from '../../lib/api/shop';
 import { ProductArt } from './ShopSell';
 import { blankProduct, type ProductForm, type StockChange } from './shopForm';
+import ChoicePicker from '../ChoicePicker';
 
 const MUTED = 'var(--color-text-muted)';
 const SECOND = 'var(--color-text-secondary)';
@@ -168,9 +169,7 @@ export default function ShopProducts({ products, owner, busy, form, setForm, sto
                     placeholder="e.g. 100" aria-label="Price" className={RD_INPUT} style={RD_INPUT_STYLE} />
                 </Labelled>
                 <Labelled label="Category" tip="Groups the menu in the members' app and the till, e.g. Drinks, Supplements, Rentals.">
-                  <input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="e.g. Drinks" aria-label="Category"
-                    list="shop-categories" className={RD_INPUT} style={RD_INPUT_STYLE} />
-                  <datalist id="shop-categories">{categories.map((c) => <option key={c} value={c} />)}</datalist>
+                  <ChoicePicker kind="shop" label="Category" none="Other" value={form.category} onChange={(v) => setForm({ ...form, category: v })} />
                 </Labelled>
               </div>
               <div className="flex gap-1.5 flex-wrap" role="group" aria-label="Quick picks">

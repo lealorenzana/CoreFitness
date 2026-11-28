@@ -24,6 +24,7 @@ import {
 import { listMembers } from '../lib/api/members';
 import { recordReason } from '../lib/api/reasons';
 import SkelRows from '../components/ui/SkelRows';
+import ChoicePicker from '../components/ChoicePicker';
 
 /**
  * Gym events — real rows in `events` (migration 0014).
@@ -479,9 +480,8 @@ export default function Events() {
           </>)}
 
           {step === 1 && (<>
-            <RdField label="Where" hint="Leave blank if it is at the gym.">
-              <input className={RD_INPUT} style={RD_INPUT_STYLE} value={form.location} placeholder="e.g. Main floor" aria-label="Location"
-                onChange={(e) => setForm({ ...form, location: e.target.value })} />
+            <RdField group label="Where" hint="Pick an area, or add a place outside the gym. Not set means at the gym.">
+              <ChoicePicker kind="area" label="Where" none="At the gym" value={form.location} onChange={(v) => setForm({ ...form, location: v })} />
             </RdField>
             <RdField group label="Places" hint="Members can sign up until this is reached.">
               <div className="flex items-center gap-1.5 flex-wrap">

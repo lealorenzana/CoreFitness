@@ -21,6 +21,7 @@ import { showToast } from '../utils/toast';
 import { todayKey } from '../utils/dates';
 import { supabase } from '../lib/supabaseClient';
 import SkelRows from '../components/ui/SkelRows';
+import ChoicePicker from '../components/ChoicePicker';
 
 /**
  * CORE Points — the reward catalogue and the approval queue (migration 0051).
@@ -689,10 +690,8 @@ export default function Rewards() {
             {hasExtras && (
               <>
                 <div className="grid grid-cols-2 gap-3">
-                  <RdField label="Category">
-                    <input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} list="reward-categories" maxLength={40}
-                      placeholder="e.g. Drinks" className={RD_INPUT} style={RD_INPUT_STYLE} />
-                    <datalist id="reward-categories">{categories.map((c) => <option key={c} value={c} />)}</datalist>
+                  <RdField group label="Category">
+                    <ChoicePicker kind="reward" label="Category" value={form.category} onChange={(v) => setForm({ ...form, category: v })} />
                   </RdField>
                   <RdField label="Limit a member a month" hint="Blank = no limit. Declined requests do not count.">
                     <input value={form.per_member_monthly} onChange={(e) => setForm({ ...form, per_member_monthly: e.target.value })} placeholder="No limit" inputMode="numeric" className={RD_INPUT} style={RD_INPUT_STYLE} />

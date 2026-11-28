@@ -14,6 +14,7 @@ import {
   type AchievementRow, type AchievementMetric, type AchievementAudience, type AchievementTier, type AchievementRuleKind,
 } from '../lib/api/achievements';
 import SkelRows from '../components/ui/SkelRows';
+import ChoicePicker from '../components/ChoicePicker';
 
 /**
  * Achievements (0038/0093/0206, redrawn 2026-10-20 to the approved mock-up): the
@@ -364,9 +365,8 @@ export default function Achievements() {
           <div className="a-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 10 }}>
             <div className="a-fld"><label htmlFor="b-name">Name</label>
               <input id="b-name" className="a-in" value={draft.title} onChange={(e) => set({ title: e.target.value, ...(editing ? {} : { key: slugify(e.target.value) }) })} placeholder="e.g. Sunrise Crew" /></div>
-            <div className="a-fld"><label htmlFor="b-group">Group it under</label>
-              <input id="b-group" className="a-in" list="badge-groups" value={draft.category} onChange={(e) => set({ category: e.target.value })} />
-              <datalist id="badge-groups">{[...new Set(rows.map((r) => r.category))].map((c) => <option key={c} value={c} />)}</datalist></div>
+            <div className="a-fld" role="group" aria-label="Group it under"><span className="l">Group it under</span>
+              <ChoicePicker kind="badge" label="Group it under" none="General" value={draft.category} onChange={(v) => set({ category: v || 'General' })} /></div>
             <div className="a-fld" style={{ gridColumn: '1 / -1' }}><label htmlFor="b-said">What it says when earned</label>
               <input id="b-said" className="a-in" value={draft.description} onChange={(e) => set({ description: e.target.value })} placeholder="Ten workouts before 7am. The gym is yours at dawn." /></div>
             <div className="a-fld" style={{ gridColumn: '1 / -1' }}><label htmlFor="b-req">What it says while locked {draft.ownRequirement ? '' : <span style={{ fontWeight: 500 }}>· written from the rule: type to change</span>}</label>

@@ -25,7 +25,7 @@ export const RAIL: RailSection[] = [
   { key: 'engage', label: 'Engage', icon: Trophy, paths: ['/challenges', '/rewards', '/achievements'] },
   { key: 'messages', label: 'Messages', icon: MessagesSquare, paths: ['/notifications', '/gym-chat'] },
   { key: 'library', label: 'Library', icon: BookOpen, paths: ['/exercises', '/programs', '/resources', '/reels', '/equipment', '/rooms'] },
-  { key: 'gym', label: 'Gym', icon: Settings, paths: ['/gym-app', '/settings', '/subscription'], foot: true },
+  { key: 'gym', label: 'Gym', icon: Settings, paths: ['/gym-app', '/settings', '/lists', '/subscription'], foot: true },
   { key: 'help', label: 'Help', icon: LifeBuoy, paths: ['/help'], foot: true },
 ];
 

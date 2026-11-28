@@ -12,6 +12,7 @@ import {
 } from '../lib/api/workoutResources';
 import type { ClassLevel } from '../types/db';
 import SkelRows from '../components/ui/SkelRows';
+import ChoicePicker from '../components/ChoicePicker';
 
 /**
  * Resources — the free-workout library (0019/0061/0090, redrawn 2026-10-20 to
@@ -224,9 +225,8 @@ export default function Resources() {
             <label className="block text-[12px]" style={{ color: 'var(--color-text-secondary)' }}>Description <span style={{ color: 'var(--color-text-muted)' }}>· optional, one line</span>
               <input className={fld} style={fldStyle} value={editing.f.description} placeholder="What a member gets from it" aria-label="Description" onChange={(e) => set({ description: e.target.value })} /></label>
             <div className="grid grid-cols-2 gap-3">
-              <label className="block text-[12px]" style={{ color: 'var(--color-text-secondary)' }}>Category <span style={{ color: 'var(--color-text-muted)' }}>· groups the list</span>
-                <input className={fld} style={fldStyle} value={editing.f.category} list="resource-cats" placeholder="e.g. Bodyweight" aria-label="Category" onChange={(e) => set({ category: e.target.value })} />
-                <datalist id="resource-cats">{categories.map((c) => <option key={c} value={c} />)}</datalist></label>
+              <div className="block text-[12px]" role="group" aria-label="Category" style={{ color: 'var(--color-text-secondary)' }}>Category <span style={{ color: 'var(--color-text-muted)' }}>· groups the list</span>
+                <ChoicePicker kind="resource" label="Category" value={editing.f.category} onChange={(v) => set({ category: v })} /></div>
               <label className="block text-[12px]" style={{ color: 'var(--color-text-secondary)' }}>Order <span style={{ color: 'var(--color-text-muted)' }}>· lower shows first</span>
                 <input className={fld} style={fldStyle} type="number" value={editing.f.sortOrder} aria-label="Sort order" onChange={(e) => set({ sortOrder: e.target.value })} /></label>
             </div>

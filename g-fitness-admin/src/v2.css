@@ -1128,3 +1128,20 @@ section:last-child > .nb-item:last-child { border-bottom: 0; }
 .cw-roster li { display: flex; align-items: center; gap: 10px; padding: 9px 2px; border-bottom: 1px solid rgb(var(--hair-rgb, 255 255 255) / .07); }
 .cw-ok { font-size: 12px; color: var(--color-text-secondary); }
 .cw-empty { padding: 18px 0; }
+
+/* Gym → Areas and lists (owner, 2026-11-28; 0284): the add box, then rows; a help card beside it. */
+.gl-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 12px; }
+.gl-card { padding: 16px 18px; min-height: 0; overflow-y: auto; }
+.gl-add { display: flex; gap: 8px; margin-bottom: 12px; }
+.gl-in { flex: 1; min-width: 0; height: 38px; padding: 0 12px; border-radius: 9px; font-size: 13.5px; outline: none; color: var(--color-text-primary);
+  background: var(--v2-field, rgba(255,255,255,0.03)); border: 1px solid rgb(var(--hair-rgb, 255 255 255) / .14); }
+.gl-in:focus { border-color: var(--color-primary); }
+.gl-list { display: grid; }
+.gl-row { display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 4px 2px; border-bottom: 1px solid rgb(var(--hair-rgb, 255 255 255) / .07); }
+.gl-name { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gl-sub { margin: 18px 0 4px; font-size: 12px; font-weight: 600; color: var(--color-text-secondary); }
+.gl-empty { font-size: 13px; color: var(--color-text-secondary); padding: 12px 0; }
+.gl-help h3 { font-size: 14px; font-weight: 650; color: var(--color-text-primary); margin-bottom: 10px; }
+.gl-help p { font-size: 13px; line-height: 1.5; color: var(--color-text-secondary); margin-bottom: 8px; }
+.gl-help b { color: var(--color-text-primary); }
+@media (max-width: 1100px) { .gl-grid { grid-template-columns: minmax(0, 1fr); } .gl-help { display: none; } }

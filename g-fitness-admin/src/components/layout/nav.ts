@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Users, CheckSquare, Target, Banknote,
   CreditCard, Dumbbell, CalendarDays, Calendar, Settings,
   Bell, BookOpen, History, MessagesSquare, ShoppingBag, LifeBuoy,
-  Trophy, ListChecks, Gift, Flag, TrendingUp, Smartphone, MailPlus, CalendarRange, Handshake, Wrench, Inbox, Clapperboard, MessageCircle, UserPlus,
+  Trophy, ListChecks, Gift, Flag, TrendingUp, Smartphone, MapPin, MailPlus, CalendarRange, Handshake, Wrench, Inbox, Clapperboard, MessageCircle, UserPlus,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { StaffArea } from '../../lib/api/staffPermissions';
@@ -177,6 +177,8 @@ export const NAV: Entry[] = [
 
   { label: 'Your app', path: '/gym-app', icon: Smartphone, adminOnly: true },
   { label: 'Settings', path: '/settings', icon: Settings, adminOnly: true },
+  // The gym's areas and category lists every form picks from (0284).
+  { label: 'Areas and lists', path: '/lists', icon: MapPin, adminOnly: true },
   // What this gym pays Core Fitness, and its receipts (0138).
   { label: 'Your plan', path: '/subscription', icon: CreditCard, adminOnly: true },
   // Talking to Core Fitness — questions (0137), ideas and ratings (0188) — owner and desk.
@@ -217,6 +219,7 @@ export const NAV_TIPS: Record<string, string> = {
   '/rooms': "Coaches' rooms: their posts, classwork and members — read and moderate",
   '/gym-app': "How the member app looks: your logo, colours, words and join poster",
   '/settings': 'Gym details, hours, rules, waivers and staff accounts',
+  '/lists': 'Your areas (Studio, Gym floor) and the categories your forms pick from',
   '/subscription': 'What this gym pays Core Fitness, until when, and the receipts',
   '/help': 'Ask Core Fitness anything, ask for a feature, report a problem, or rate it',
   People: 'Members, invitations and coaches (with their certificates)',

@@ -51,6 +51,9 @@ async (page) => {
     member_profiles: members.map((m) => ({ profile_id: m.id, gym_id: 'gym-1', qr_code: `QR-${m.id}`, experience_level: 'beginner', created_at: m.created_at, profiles: m })),
     trainer_profiles: T.map((t) => ({ profile_id: t.id, specialization: 'HIIT', bio: null, years_experience: 5, certifications: [], focus_areas: [], profiles: t })),
     class_templates: TEMPLATES,
+    // 0284: the gym's own lists; Mat area is retired, so it is offered on no new form.
+    gym_choices: [['g1', 'area', 'Studio A'], ['g2', 'area', 'Gym floor'], ['g3', 'area', 'Mat area', true], ['g4', 'shop', 'Drinks']]
+      .map(([id, kind, name, r]) => ({ id, kind, name, sort_order: 0, retired_at: r ? iso(-3) : null })),
     trainer_availability: [
       { id: 'av1', trainer_id: 't0', day_of_week: 1, start_time: '09:00:00', end_time: '12:00:00', slot_minutes: 60 },
       { id: 'av2', trainer_id: 't0', day_of_week: 3, start_time: '14:00:00', end_time: '17:00:00', slot_minutes: 60 },
@@ -90,7 +93,7 @@ async (page) => {
   };
   const RPC = { my_gym_modules: [], my_gyms: [], my_announcements: [], my_gym_features: [], generate_class_instances: 0,
     cash_day_summary: [{ day: day(0), cash_in: 3000, refunds_out: 0, expected: 3000, payment_count: 2, closed: false, counted: null, difference: null, note: null, closed_by_name: null, closed_at: null }],
-    recent_cash_closeouts: [] };
+    recent_cash_closeouts: [], gym_choice_add: 'g9' };
 
   await page.route(`**://${REF}.supabase.co/**`, async (route) => {
     const req = route.request();
@@ -208,6 +211,17 @@ async (page) => {
   has('a class opens in the editor with its day, time, coach and room', (await page.getByRole('dialog', { name: 'Edit class' }).count()) === 1
     && (await page.getByRole('group', { name: 'Repeats every' }).getByRole('button', { name: 'Tue', pressed: true }).count()) === 1);
   await page.screenshot({ path: 'shots/ops-schedule-edit.png' });
+  // 2026-11-28 (owner): a class's area is picked from the gym's list, with Add a new area at the end.
+  await page.locator('[data-rd-select="Area"]').click(); await page.waitForTimeout(300);
+  const areaOpts = (await page.getByRole('listbox', { name: 'Area' }).innerText()).replace(/\s+/g, ' ').trim();
+  has('the area is picked from the gym list: no retired one, Add a new area last',
+    /Studio A/.test(areaOpts) && /Gym floor/.test(areaOpts) && !/Mat area/.test(areaOpts) && /\+ Add a new area$/.test(areaOpts));
+  await page.getByRole('option', { name: '+ Add a new area' }).click(); await page.waitForTimeout(200);
+  has('…which turns into a box to name it, in place', (await page.locator('[data-choice-add="area"]').count()) === 1);
+  await page.screenshot({ path: 'shots/ops-schedule-area-add.png' });
+  // The first Escape cancels the new area box, the second closes the editor.
+  await page.keyboard.press('Escape'); await page.waitForTimeout(200);
+  has('…Escape cancels the box first, the editor stays open', (await page.locator('[data-choice-add="area"]').count()) === 0 && (await page.getByRole('dialog', { name: 'Edit class' }).count()) === 1);
   await page.keyboard.press('Escape');
   await page.waitForTimeout(300);
   await page.locator('[data-view="hours"]').click();
@@ -303,6 +317,16 @@ async (page) => {
   has('coming to renew: the online reference, one-click Approve, Edit details, Decline', /Ref GC-998877/.test(t) && (await page.locator('[data-approve]').count()) >= 1 && /^Approve ₱/.test((await page.locator('[data-approve]').first().innerText()).trim()) && (await page.locator('[data-approve-edit]').count()) >= 1
     && (await page.getByRole('button', { name: 'Decline', exact: true }).count()) === 1);
   await page.screenshot({ path: 'shots/ops-payments-renew.png' });
+
+  // Gym > Areas and lists (0284): the lists every form picks from; rename and retire are the owner's.
+  t = await visit('/lists', 'lists');
+  has('areas and lists: the active areas, the retired one apart, a tab per list',
+    (await page.locator('[data-choice-list] [data-choice]').count()) === 2 && /Retired/.test(t) && /Mat area/.test(t)
+    && (await page.locator('[data-page-tabs] [role="tab"]').count()) === 5);
+  has('…and the page does not scroll', await noScroll());
+  await page.emulateMedia({ colorScheme: 'dark' }); await page.waitForTimeout(300);
+  await page.screenshot({ path: 'shots/ops-lists-dark.png' });
+  await page.emulateMedia({ colorScheme: 'light' });
 
   return out.join('\n');
 }

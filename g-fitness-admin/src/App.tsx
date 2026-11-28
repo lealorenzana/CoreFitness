@@ -21,6 +21,7 @@ import Reels from './pages/Reels';
 import GymChat from './pages/GymChat';
 import Trainers from './pages/Trainers';
 import Settings from './pages/Settings';
+import GymLists from './pages/GymLists';
 import GymApp from './pages/GymApp';
 import Invitations from './pages/Invitations';
 import Schedule from './pages/Schedule';
@@ -168,6 +169,7 @@ function App() {
             {/* Credentials live with the trainers now (2026-10-10); old links land on that view. */}
             <Route path="credentials" element={<Navigate to="/trainers?view=credentials" replace />} />
             <Route path="settings" element={<ProtectedRoute adminOnly><Settings /></ProtectedRoute>} />
+            <Route path="lists" element={<ProtectedRoute adminOnly><GymLists /></ProtectedRoute>} />
             {/* System moved to the platform app (2026-10-04): migrations, demo data and backups are
                 Core Fitness's to look after, not a gym owner's. An old bookmark lands on Help. */}
             <Route path="system" element={<Navigate to="/help" replace />} />
